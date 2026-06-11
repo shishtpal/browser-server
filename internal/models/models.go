@@ -1,0 +1,67 @@
+package models
+
+import "time"
+
+type Todo struct {
+	ID          int       `json:"id"`
+	UserID      int       `json:"user_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Completed   bool      `json:"completed"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type Bookmark struct {
+	ID          int       `json:"id"`
+	UserID      int       `json:"user_id"`
+	Title       string    `json:"title"`
+	URL         string    `json:"url"`
+	Description string    `json:"description"`
+	Tags        string    `json:"tags"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type BookmarkResponse struct {
+	ID          int       `json:"id"`
+	UserID      int       `json:"user_id"`
+	Title       string    `json:"title"`
+	URL         string    `json:"url"`
+	Description string    `json:"description"`
+	Tags        []string  `json:"tags"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type History struct {
+	ID        int       `json:"id"`
+	UserID    int       `json:"user_id"`
+	URL       string    `json:"url"`
+	Title     string    `json:"title"`
+	VisitedAt time.Time `json:"visited_at"`
+	Duration  int       `json:"duration"`
+}
+
+type WalletEntry struct {
+	ID          int       `json:"id"`
+	UserID      int       `json:"user_id"`
+	Username    string    `json:"username"`
+	Password    string    `json:"password"`
+	Website     string    `json:"website"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type User struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
+type Route struct {
+	Method      string `json:"method"`
+	Path        string `json:"path"`
+	Description string `json:"description"`
+}

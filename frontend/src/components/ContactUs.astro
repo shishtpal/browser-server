@@ -1,0 +1,64 @@
+<div class="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden mt-16">
+    <div class="px-4 py-2">
+        <h1 class="text-gray-800 font-bold text-2xl uppercase">Contact Us</h1>
+    </div>
+    <form id="contact-form" class="w-full max-w-sm mx-auto px-4 py-2">
+        <div class="flex items-center border-b-2 border-teal-500 py-2">
+            <input
+                class="appearance-none bg-transparent border-none w-full text-gray-700 mr-3 py-1 px-2 leading-tight focus:outline-none"
+                type="text"
+                placeholder="Your Name"
+                name="name"
+                required
+            />
+        </div>
+        <div class="flex items-center border-b-2 border-teal-500 py-2">
+            <input
+                class="appearance-none bg-transparent border-none w-full text-gray-700 mr-3 py-1 px-2 leading-tight focus:outline-none"
+                type="email"
+                placeholder="Your Email"
+                name="email"
+                required
+            />
+        </div>
+        <div class="flex items-center border-b-2 border-teal-500 py-2">
+            <textarea
+                class="appearance-none bg-transparent border-none w-full text-gray-700 mr-3 py-1 px-2 leading-tight focus:outline-none"
+                placeholder="Your Message"
+                name="message"
+                required
+            ></textarea>
+        </div>
+        <div class="flex justify-end py-2">
+            <button
+                class="flex-shrink-0 bg-teal-500 hover:bg-teal-700 border-teal-500 hover:border-teal-700 text-sm border-4 text-white py-1 px-2 rounded"
+                type="submit"
+            >
+                Send
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('contact-form');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const response = await fetch('https://formsubmit.co/ajax/demo@gmail.com', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                alert('Form submitted successfully!');
+                form.reset();
+            } else {
+                alert('Form submission failed!');
+            }
+        });
+    });
+</script>

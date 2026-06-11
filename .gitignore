@@ -1,0 +1,11 @@
+# Binaries
+/bin
+/browser-server
+/browser-server.exe
+
+# Data directory
+.data/
+
+# OS-specific
+.DS_Store
+Thumbs.db

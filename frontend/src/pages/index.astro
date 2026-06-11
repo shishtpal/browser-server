@@ -1,10 +1,10 @@
 ---
-import TodoApp from '../components/TodoApp.astro';
-import Layout from '../layouts/Layout.astro';
+import TodoPage from '../components/TodoPage.vue'
+import Layout from '../layouts/Layout.astro'
 ---
 
-<Layout title="Todo App">
-	<main>
-		<TodoApp />
-	</main>
+<Layout title="Todos">
+  <main>
+    <TodoPage client:load />
+  </main>
 </Layout>

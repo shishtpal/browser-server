@@ -1,0 +1,10 @@
+---
+import UsersPage from '../components/UsersPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Users">
+  <main>
+    <UsersPage client:load />
+  </main>
+</Layout>

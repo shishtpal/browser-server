@@ -1,0 +1,10 @@
+---
+import BookmarkPage from '../components/BookmarkPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Bookmarks">
+  <main>
+    <BookmarkPage client:load />
+  </main>
+</Layout>

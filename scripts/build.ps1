@@ -1,7 +1,7 @@
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $ErrorActionPreference = "Stop"
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $ProjectRoot
 
 $BinDir = Join-Path $ProjectRoot "bin"
@@ -51,7 +51,7 @@ if (Test-Path $TargetDir) {
     Remove-Item -LiteralPath $TargetDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
-Copy-Item -LiteralPath "$FrontendDist\*" -Destination $TargetDir -Recurse -Force
+Copy-Item -Path "$FrontendDist\*" -Destination $TargetDir -Recurse -Force
 Write-Host "Frontend copied to: $TargetDir" -ForegroundColor Green
 
 Write-Host "`n==> Build complete!" -ForegroundColor Green

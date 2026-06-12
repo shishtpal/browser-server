@@ -123,8 +123,20 @@
             class="w-full rounded-xl border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-cyan-900/30"
           />
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span class="font-semibold">{{ filteredBookmarks.length }} of {{ bookmarks.length }}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex overflow-hidden rounded-lg border border-gray-300 text-xs font-black shadow-sm dark:border-slate-600">
+            <button
+              type="button"
+              @click="viewMode = 'flat'"
+              :class="[viewMode === 'flat' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white text-slate-600 hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700', 'px-2.5 py-1.5 transition']"
+            >List</button>
+            <button
+              type="button"
+              @click="viewMode = 'tree'"
+              :class="[viewMode === 'tree' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white text-slate-600 hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700', 'px-2.5 py-1.5 transition']"
+            >Tree</button>
+          </div>
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">{{ viewMode === 'tree' ? treeCount : filteredBookmarks.length }} of {{ bookmarks.length }}</span>
         </div>
       </div>
 
@@ -154,12 +166,21 @@
         <p class="mt-1 text-xs text-slate-500 transition-colors dark:text-slate-400">Try a different search term or clear the filter.</p>
       </div>
 
-      <div v-else>
-        <div class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
-          <table class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700">
+      <template v-if="viewMode === 'flat'">
+        <div class="hidden overflow-x-auto rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
+          <table class="w-full table-fixed divide-y divide-gray-200 transition-colors dark:divide-slate-700">
+            <colgroup>
+              <col class="w-10" />
+              <col class="w-[22%]" />
+              <col class="w-[24%]" />
+              <col class="w-[16%]" />
+              <col class="w-[12%]" />
+              <col class="w-[16%]" />
+              <col class="w-28" />
+            </colgroup>
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
               <tr>
-                <th class="w-10 px-3 py-3"></th>
+                <th class="px-3 py-3"></th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Title</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">URL</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Description</th>
@@ -173,17 +194,17 @@
                 <td class="px-3 py-3">
                   <div class="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 text-xs font-black text-white dark:from-slate-950 dark:to-slate-900">{{ getInitial(b.title) }}</div>
                 </td>
-                <td class="px-3 py-3">
+                <td class="truncate px-3 py-3">
                   <span class="block truncate text-sm font-black text-slate-900 transition-colors dark:text-white" :title="b.title">{{ b.title }}</span>
                   <span class="block truncate text-[10px] text-cyan-600 dark:text-cyan-400">{{ formatHost(b.url) }}</span>
                 </td>
-                <td class="max-w-xs px-3 py-3">
+                <td class="truncate px-3 py-3">
                   <a :href="b.url" target="_blank" rel="noopener" class="block truncate text-sm font-semibold text-blue-600 transition-colors hover:underline dark:text-blue-400" :title="b.url">{{ b.url }}</a>
                 </td>
-                <td class="max-w-sm px-3 py-3">
+                <td class="truncate px-3 py-3">
                   <span class="block truncate text-sm text-slate-500 transition-colors dark:text-slate-400" :title="b.description">{{ b.description || '—' }}</span>
                 </td>
-                <td class="px-3 py-3">
+                <td class="truncate px-3 py-3">
                   <span class="block truncate text-xs font-semibold text-slate-400 transition-colors dark:text-slate-500" :title="b.folder_path">{{ b.folder_path || '—' }}</span>
                 </td>
                 <td class="px-3 py-3">
@@ -238,7 +259,52 @@
             </div>
           </article>
         </div>
-      </div>
+      </template>
+
+      <template v-else>
+        <div class="overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90">
+          <div v-for="n in treeNodes" :key="n.key" v-show="n.visible">
+            <div
+              v-if="n.type === 'folder'"
+              class="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 dark:border-slate-700/50 dark:text-slate-300 dark:hover:bg-slate-800/50"
+              :style="{ paddingLeft: 12 + n.depth * 20 + 'px' }"
+              @click="toggleTreeFolder(n.key)"
+            >
+              <svg class="h-3 w-3 shrink-0 text-slate-400 transition" :class="n.expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+              <svg class="h-4 w-4 shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+              </svg>
+              <span class="font-black">{{ n.name }}</span>
+              <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">({{ n.count }})</span>
+            </div>
+            <div
+              v-else
+              class="group flex items-center gap-2 border-b border-gray-100 px-3 py-2 transition hover:bg-cyan-50/60 dark:border-slate-700/50 dark:hover:bg-cyan-900/20"
+              :style="{ paddingLeft: 12 + n.depth * 20 + 'px' }"
+            >
+              <div class="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-gradient-to-br from-slate-900 to-slate-800 text-[10px] font-black text-white dark:from-slate-950 dark:to-slate-900">{{ getInitial(n.bookmark!.title) }}</div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-sm font-black text-slate-900 dark:text-white" :title="n.bookmark!.title">{{ n.bookmark!.title }}</span>
+                  <span class="shrink-0 text-[10px] text-cyan-600 dark:text-cyan-400">{{ formatHost(n.bookmark!.url) }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <a :href="n.bookmark!.url" target="_blank" rel="noopener" class="truncate text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400">{{ n.bookmark!.url }}</a>
+                  <template v-for="tag in n.bookmark!.tags" :key="tag">
+                    <button type="button" @click.stop="filterByTag(tag)" class="shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 text-[9px] font-black text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-700 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-cyan-900/30 dark:hover:text-cyan-400">#{{ tag }}</button>
+                  </template>
+                </div>
+              </div>
+              <div class="flex shrink-0 gap-1 opacity-0 transition group-hover:opacity-100">
+                <button type="button" @click="openEdit(n.bookmark!)" class="rounded-lg px-2 py-1 text-[10px] font-black text-slate-500 transition hover:bg-cyan-50 hover:text-cyan-700 dark:hover:bg-cyan-900/10 dark:hover:text-cyan-400">Edit</button>
+                <button type="button" @click="removeBookmark(n.bookmark!.id)" class="rounded-lg px-2 py-1 text-[10px] font-black text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </template>
 
     <div v-else-if="!isLoading && !error" class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center shadow-sm transition-colors dark:border-slate-600 dark:bg-slate-800/60">
@@ -343,6 +409,116 @@ const filteredBookmarks = computed(() => {
     return terms.every(t => haystack.includes(t))
   })
 })
+
+const viewMode = ref<'flat' | 'tree'>('flat')
+const expandedFolders = ref<Set<string>>(new Set())
+
+interface TreeFolder {
+  name: string
+  children: Map<string, TreeFolder>
+  bookmarks: BookmarkResponse[]
+  count: number
+}
+
+interface FlatTreeEntry {
+  key: string
+  name: string
+  depth: number
+  type: 'folder' | 'bookmark'
+  expanded: boolean
+  visible: boolean
+  bookmark: BookmarkResponse | null
+  count: number
+}
+
+function buildTree(bms: BookmarkResponse[]): Map<string, TreeFolder> {
+  const root = new Map<string, TreeFolder>()
+  for (const b of bms) {
+    const parts = b.folder_path ? b.folder_path.split('/').filter(Boolean) : []
+    if (parts.length === 0) {
+      const f = root.get('\0') || { name: 'Unfiled', children: new Map(), bookmarks: [] as BookmarkResponse[], count: 0 }
+      f.bookmarks.push(b)
+      f.count++
+      root.set('\0', f)
+      continue
+    }
+    let cur = root
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i]
+      if (!cur.has(p)) cur.set(p, { name: p, children: new Map(), bookmarks: [] as BookmarkResponse[], count: 0 })
+      const f = cur.get(p)!
+      f.count++
+      if (i === parts.length - 1) f.bookmarks.push(b)
+      cur = f.children
+    }
+  }
+  return root
+}
+
+const treeNodes = computed(() => {
+  const tree = buildTree(filteredBookmarks.value)
+  const searching = searchQuery.value.trim().length > 0
+  const result: FlatTreeEntry[] = []
+  const entries = [...tree.entries()]
+  entries.sort((a, b) => {
+    if (a[0] === '\0') return 1
+    if (b[0] === '\0') return -1
+    return a[0].localeCompare(b[0])
+  })
+  for (const [, folder] of entries) {
+    flattenFolder(folder, 0, true, '', result, searching)
+  }
+  return result
+})
+
+function flattenFolder(
+  node: TreeFolder,
+  depth: number,
+  parentVisible: boolean,
+  parentKey: string,
+  result: FlatTreeEntry[],
+  searching: boolean,
+) {
+  if (node.name === 'Unfiled' && depth === 0) {
+    for (const bm of node.bookmarks) {
+      result.push(makeBookmarkEntry(bm, 0, true))
+    }
+    return
+  }
+  const key = parentKey ? parentKey + '/' + node.name : node.name
+  const hasBms = node.bookmarks.length > 0
+  let expanded = expandedFolders.value.has(key)
+  if (searching && hasBms) expanded = true
+  const vis = parentVisible
+  if (hasBms || node.children.size > 0) {
+    result.push({ key, name: node.name, depth, type: 'folder', expanded, visible: vis, bookmark: null, count: node.count })
+  }
+  const childKeys = [...node.children.keys()].sort()
+  for (const k of childKeys) {
+    flattenFolder(node.children.get(k)!, depth + 1, vis && expanded, key, result, searching)
+  }
+  if (vis && expanded) {
+    for (const bm of node.bookmarks) {
+      result.push(makeBookmarkEntry(bm, depth + 1, true))
+    }
+  }
+}
+
+function makeBookmarkEntry(bm: BookmarkResponse, depth: number, visible: boolean): FlatTreeEntry {
+  return { key: 'bm-' + bm.id, name: bm.title, depth, type: 'bookmark', expanded: false, visible, bookmark: bm, count: 0 }
+}
+
+const treeCount = computed(() => treeNodes.value.filter(n => n.type === 'bookmark' && n.visible).length)
+
+function toggleTreeFolder(key: string) {
+  const s = new Set(expandedFolders.value)
+  if (s.has(key)) {
+    s.delete(key)
+  } else {
+    s.add(key)
+  }
+  expandedFolders.value = s
+}
 
 const loadBookmarks = async () => {
   if (!selectedUserId.value) return

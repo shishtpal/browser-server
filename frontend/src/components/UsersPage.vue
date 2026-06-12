@@ -1,66 +1,89 @@
 <template>
-  <div class="max-w-4xl mx-auto p-4">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Users</h1>
+  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <section class="mb-6 overflow-hidden rounded-[2rem] border border-gray-200/80 bg-white/90 p-5 shadow-2xl shadow-gray-900/10 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-slate-800/90 dark:shadow-slate-950/20 sm:p-8">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p class="mb-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-amber-700 transition-colors dark:bg-amber-900/20 dark:text-amber-400">Workspace</p>
+          <h1 class="text-3xl font-black tracking-tight text-slate-900 transition-colors dark:text-white sm:text-5xl">Users</h1>
+          <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 transition-colors dark:text-slate-400 sm:text-base">Create personal workspaces for todos, bookmarks, history, and wallet entries.</p>
+        </div>
+        <div class="grid h-24 w-24 shrink-0 place-items-center rounded-[2rem] bg-gradient-to-br from-amber-400 to-orange-500 text-4xl font-black text-white shadow-xl shadow-orange-500/25 sm:h-28 sm:w-28 sm:text-5xl">
+          {{ usersList.length }}
+        </div>
+      </div>
+    </section>
 
-    <!-- Add Form -->
-    <form @submit.prevent="addUser" class="bg-white rounded-lg shadow p-4 mb-6">
-      <h2 class="text-lg font-semibold text-gray-700 mb-3">Create User</h2>
-      <div class="flex flex-col md:flex-row gap-3">
-        <input v-model="newUsername" type="text" placeholder="Username" required
-          class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500" />
-        <input v-model="newEmail" type="email" placeholder="Email (optional)"
-          class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500" />
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+    <form @submit.prevent="addUser" class="mb-6 rounded-3xl border border-gray-200 bg-white p-4 shadow-xl shadow-gray-900/10 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-slate-800/90 dark:shadow-slate-950/20 sm:p-5">
+      <div class="mb-4">
+        <h2 class="text-lg font-black text-slate-900 transition-colors dark:text-white">Create user</h2>
+        <p class="mt-1 text-sm text-slate-500 transition-colors dark:text-slate-400">Add a workspace that can hold personal data.</p>
+      </div>
+      <div class="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+        <input v-model="newUsername" type="text" placeholder="Username" required class="rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-4 focus:ring-amber-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-amber-900/30" />
+        <input v-model="newEmail" type="email" placeholder="Email (optional)" class="rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-4 focus:ring-amber-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-amber-900/30" />
+        <button type="submit" class="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-orange-500/25 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/30 focus:outline-none focus:ring-4 focus:ring-amber-200 dark:focus:ring-amber-900/40">
           Create
         </button>
       </div>
-      <div v-if="successMsg" class="mt-2 text-sm text-green-600">{{ successMsg }}</div>
+      <div v-if="successMsg" class="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 transition-colors dark:bg-emerald-900/20 dark:text-emerald-400">{{ successMsg }}</div>
     </form>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="flex justify-center py-12">
-      <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-      <span class="ml-3 text-gray-500">Loading...</span>
+    <div v-if="isLoading" class="flex justify-center py-16">
+      <div class="h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent"></div>
+      <span class="ml-3 self-center font-semibold text-slate-600 transition-colors dark:text-slate-400">Loading users...</span>
     </div>
 
-    <!-- Error -->
-    <div v-else-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+    <div v-else-if="error" class="mb-6 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 shadow-sm transition-colors dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
       {{ error }}
-      <button @click="loadUsers" class="ml-4 underline font-medium">Retry</button>
+      <button type="button" @click="loadUsers" class="ml-2 underline decoration-red-300 underline-offset-4 transition-colors dark:decoration-red-800">Retry</button>
     </div>
 
-    <!-- Empty State -->
-    <div v-else-if="usersList.length === 0" class="text-center py-12 text-gray-400">
-      <svg class="mx-auto h-12 w-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
-      <p>No users yet — create one above!</p>
+    <div v-else-if="usersList.length === 0" class="rounded-[2rem] border border-dashed border-gray-300 bg-gray-50 p-10 text-center shadow-sm backdrop-blur-xl transition-colors dark:border-slate-600 dark:bg-slate-800/60">
+      <div class="mx-auto grid h-14 w-14 place-items-center rounded-3xl bg-amber-50 text-amber-500 transition-colors dark:bg-amber-900/20 dark:text-amber-400">
+        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      </div>
+      <h2 class="mt-4 text-lg font-black text-slate-800 transition-colors dark:text-slate-200">No users yet</h2>
+      <p class="mt-1 text-sm text-slate-500 transition-colors dark:text-slate-400">Create your first workspace above.</p>
     </div>
 
-    <!-- Users Table -->
-    <div v-else class="bg-white rounded-lg shadow overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-          <tr v-for="u in usersList" :key="u.id" class="hover:bg-gray-50">
-            <td class="px-4 py-3 text-sm text-gray-500">{{ u.id }}</td>
-            <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ u.username }}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">{{ u.email || '—' }}</td>
-            <td class="px-4 py-3 text-right">
-              <button @click="removeUser(u.id)" class="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition">
-                Delete
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else>
+      <div class="mb-4 hidden overflow-hidden rounded-[1.75rem] border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
+        <table class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700">
+          <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
+            <tr>
+              <th class="px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">ID</th>
+              <th class="px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Username</th>
+              <th class="px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Email</th>
+              <th class="px-5 py-4 text-right text-xs font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
+            <tr v-for="u in usersList" :key="u.id" class="transition hover:bg-amber-50/60 dark:hover:bg-amber-900/20">
+              <td class="px-5 py-4 text-sm font-mono font-bold text-slate-400 transition-colors dark:text-slate-500">#{{ u.id }}</td>
+              <td class="px-5 py-4 text-sm font-black text-slate-900 transition-colors dark:text-white">{{ u.username }}</td>
+              <td class="px-5 py-4 text-sm font-semibold text-slate-600 transition-colors dark:text-slate-400">{{ u.email || '—' }}</td>
+              <td class="px-5 py-4 text-right">
+                <button type="button" @click="removeUser(u.id)" class="rounded-2xl bg-red-50 px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid gap-3 md:hidden">
+        <article v-for="u in usersList" :key="u.id" class="rounded-[1.75rem] border border-gray-200/80 bg-white/90 p-4 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90">
+          <div class="flex items-start justify-between gap-3">
+            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-50 text-lg font-black text-amber-600 transition-colors dark:bg-amber-900/20 dark:text-amber-400">#{{ u.id }}</div>
+            <button type="button" @click="removeUser(u.id)" class="rounded-2xl bg-red-50 px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30">Delete</button>
+          </div>
+          <h3 class="mt-4 text-base font-black text-slate-900 transition-colors dark:text-white">{{ u.username }}</h3>
+          <p class="mt-1 text-sm font-semibold text-slate-600 transition-colors dark:text-slate-400">{{ u.email || 'No email' }}</p>
+        </article>
+      </div>
     </div>
   </div>
 </template>
@@ -92,12 +115,13 @@ const loadUsers = async () => {
 
 const addUser = async () => {
   if (!newUsername.value.trim()) return
+  const username = newUsername.value.trim()
   try {
     await createUser({
-      username: newUsername.value.trim(),
+      username,
       email: newEmail.value.trim() || undefined,
     })
-    successMsg.value = `User "${newUsername.value.trim()}" created!`
+    successMsg.value = `User "${username}" created!`
     newUsername.value = ''
     newEmail.value = ''
     await loadUsers()

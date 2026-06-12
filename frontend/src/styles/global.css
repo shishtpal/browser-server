@@ -1,1 +1,42 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --page-bg: #f8fafc;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  color-scheme: dark;
+  --page-bg: #020617;
+  --card-bg: rgba(15, 23, 42, 0.9);
+  --card-border: rgba(255, 255, 255, 0.08);
+}
+
+html {
+  min-height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--page-bg);
+  transition: background-color 0.3s ease;
+}
+
+main {
+  min-height: calc(100vh - 72px);
+}
+
+::selection {
+  background: rgb(129 140 248 / 0.35);
+}
+
+.dark ::selection {
+  background: rgb(99 102 241 / 0.45);
+}

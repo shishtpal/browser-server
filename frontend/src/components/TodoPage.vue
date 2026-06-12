@@ -95,10 +95,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api'
+import { ref, watch } from 'vue'
 import { useUser } from '../composables/useUser'
-import type { Todo } from '../types'
+import { useTodos } from '../composables/useTodos'
 import PageHeader from './ui/PageHeader.vue'
 import StatCard from './ui/StatCard.vue'
 import UserSelector from './ui/UserSelector.vue'
@@ -115,93 +114,29 @@ import TodoCard from './todos/TodoCard.vue'
 const { users, currentUserId, setUser, clearUser } = useUser()
 
 const selectedUserId = ref<number | null>(currentUserId.value)
-const todos = ref<Todo[]>([])
-const isLoading = ref(false)
-const error = ref<string | null>(null)
 
-const newTitle = ref('')
-const newDescription = ref('')
-const activeFilter = ref<'all' | 'active' | 'completed'>('all')
-const filters = [
-  { label: 'All', value: 'all' as const },
-  { label: 'Active', value: 'active' as const },
-  { label: 'Completed', value: 'completed' as const },
-]
-
-const editingId = ref<number | null>(null)
-const editTitle = ref('')
-const editDescription = ref('')
-
-const activeCount = computed(() => todos.value.filter(t => !t.completed).length)
-const completedCount = computed(() => todos.value.filter(t => t.completed).length)
-const filteredTodos = computed(() => {
-  if (activeFilter.value === 'active') return todos.value.filter(t => !t.completed)
-  if (activeFilter.value === 'completed') return todos.value.filter(t => t.completed)
-  return todos.value
-})
-
-const loadTodos = async () => {
-  if (!selectedUserId.value) return
-  isLoading.value = true
-  error.value = null
-  try {
-    todos.value = await getTodos(selectedUserId.value)
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load todos'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const addTodo = async () => {
-  if (!selectedUserId.value || !newTitle.value.trim()) return
-  try {
-    await createTodo({ user_id: selectedUserId.value, title: newTitle.value.trim(), description: newDescription.value.trim() || undefined })
-    newTitle.value = ''
-    newDescription.value = ''
-    await loadTodos()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to add todo'
-  }
-}
-
-const toggleTodo = async (todo: Todo) => {
-  try {
-    await updateTodo(todo.id, { ...todo, completed: !todo.completed })
-    await loadTodos()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to update todo'
-  }
-}
-
-const startEdit = (todo: Todo) => {
-  editingId.value = todo.id
-  editTitle.value = todo.title
-  editDescription.value = todo.description
-}
-
-const cancelEdit = () => {
-  editingId.value = null
-}
-
-const saveEdit = async (todo: Todo, title: string, description: string) => {
-  try {
-    await updateTodo(todo.id, { ...todo, title, description })
-    editingId.value = null
-    await loadTodos()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to update todo'
-  }
-}
-
-const removeTodo = async (id: number) => {
-  try {
-    await deleteTodo(id)
-    await loadTodos()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to delete todo'
-  }
-}
+const {
+  todos,
+  isLoading,
+  error,
+  newTitle,
+  newDescription,
+  activeFilter,
+  filters,
+  editingId,
+  editTitle,
+  editDescription,
+  activeCount,
+  completedCount,
+  filteredTodos,
+  loadTodos,
+  addTodo,
+  toggleTodo,
+  startEdit,
+  cancelEdit,
+  saveEdit,
+  removeTodo,
+} = useTodos(selectedUserId)
 
 watch(selectedUserId, (id) => {
   if (id) {
@@ -211,10 +146,6 @@ watch(selectedUserId, (id) => {
     clearUser()
     todos.value = []
   }
-})
-
-watch(activeFilter, () => {
-  if (selectedUserId.value) loadTodos()
 })
 
 if (selectedUserId.value) {

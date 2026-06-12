@@ -74,12 +74,12 @@ const isActive = (href: string) => {
             ))
           }
           <div class="ml-1">
-            <ThemeToggle client:load />
+            <ThemeToggle client:only="vue" />
           </div>
         </div>
 
         <div class="flex items-center gap-2 md:hidden">
-          <ThemeToggle client:load />
+          <ThemeToggle client:only="vue" />
           <button id="mobile-menu-btn" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-slate-600 transition hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10" type="button" aria-label="Toggle menu" aria-expanded="false">
             <svg id="menu-icon-open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />

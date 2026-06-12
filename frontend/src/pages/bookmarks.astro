@@ -5,6 +5,6 @@ import Layout from '../layouts/Layout.astro'
 
 <Layout title="Bookmarks">
   <main>
-    <BookmarkPage client:load />
+    <BookmarkPage client:only="vue" />
   </main>
 </Layout>

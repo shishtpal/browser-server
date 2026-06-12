@@ -5,6 +5,6 @@ import Layout from '../layouts/Layout.astro'
 
 <Layout title="Wallet">
   <main>
-    <WalletPage client:load />
+    <WalletPage client:only="vue" />
   </main>
 </Layout>

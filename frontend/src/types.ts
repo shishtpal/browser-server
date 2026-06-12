@@ -14,7 +14,7 @@ export interface Bookmark {
   title: string
   url: string
   description: string
-  tags: string
+  tags: string[]
   folder_path: string
   created_at: string
   updated_at: string

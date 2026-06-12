@@ -69,6 +69,80 @@ Each domain has its own SQLite database file in `.data/`:
 
 Bookmark tags are stored as JSON strings in SQLite and parsed/presented as `[]string` in API responses.
 
+## How to Add a New Route
+
+Adding a new API route involves touching **6 files** (plus `internal/db/db.go` for entirely new domains):
+
+### 1. Define the model (`internal/models/models.go`)
+
+Add your request/response structs with JSON tags. For import endpoints, create a dedicated result struct:
+
+```go
+type MyDomain struct {
+	ID        int       `json:"id"`
+	UserID    int       `json:"user_id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+}
+```
+
+### 2. Create the handler (`internal/handlers/<domain>.go`)
+
+Each handler file groups all CRUD functions for a domain. Handlers follow these conventions:
+- Function signature: `func HandlerName(w http.ResponseWriter, r *http.Request)`
+- Use `helpers.GetUserIDFromQuery(r)` for `?user_id=` filtering
+- Use `helpers.GetIDFromPath(r)` for `{id}` path params
+- Query the global DB var from `internal/db` (e.g., `db.HistoryDB`)
+- Return JSON with `json.NewEncoder(w).Encode(...)`
+- Set `w.Header().Set("Content-Type", "application/json")` before writing
+- For file uploads, use `r.ParseMultipartForm()` + `r.FormFile("file")`
+- Use `http.Error(w, "message", httpStatusCode)` for errors
+
+### 3. Register the route (`cmd/server/main.go`)
+
+Add a `r.HandleFunc(...)` line with the correct HTTP method:
+
+```go
+r.HandleFunc("/api/mydomain", handlers.GetMyDomain).Methods("GET")
+r.HandleFunc("/api/mydomain", handlers.CreateMyDomain).Methods("POST")
+r.HandleFunc("/api/mydomain/{id}", handlers.GetMyDomainByID).Methods("GET")
+r.HandleFunc("/api/mydomain/{id}", handlers.UpdateMyDomain).Methods("PUT")
+r.HandleFunc("/api/mydomain/{id}", handlers.DeleteMyDomain).Methods("DELETE")
+```
+
+### 4. Add route description (`internal/handlers/routes.go`)
+
+Add a `models.Route` entry so the `/api/routes` endpoint reflects the new route:
+
+```go
+{Method: "GET", Path: "/api/mydomain", Description: "Get all mydomain entries (filter: user_id)"},
+```
+
+### 5. Add frontend API client (`frontend/src/lib/api.ts`)
+
+Add TypeScript functions matching each endpoint. For JSON bodies use `apiFetch`. For file uploads, use `FormData` with raw `fetch`:
+
+```typescript
+export function getMyDomain(userId?: number): Promise<MyDomain[]> {
+  const qs = userId ? `?user_id=${userId}` : ''
+  return apiFetch<MyDomain[]>('GET', `/api/mydomain${qs}`)
+}
+```
+
+Also add any new TypeScript interfaces to `frontend/src/types.ts`.
+
+### Checklist
+
+- [ ] Model struct in `internal/models/models.go`
+- [ ] Handler functions in `internal/handlers/<domain>.go`
+- [ ] Route registered in `cmd/server/main.go`
+- [ ] Route description in `internal/handlers/routes.go`
+- [ ] API client functions in `frontend/src/lib/api.ts`
+- [ ] TypeScript types in `frontend/src/types.ts`
+- [ ] For new domains: SQLite DB init in `internal/db/db.go` (global var + `Init*DB()` + wire into `InitAll`/`CloseAll`)
+- [ ] Go builds without errors (`go build ./cmd/server`)
+- [ ] Vue components use the new API functions as needed
+
 ## Key Conventions
 
 - All handlers receive `(w http.ResponseWriter, r *http.Request)`

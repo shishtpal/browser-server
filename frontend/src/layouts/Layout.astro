@@ -10,13 +10,17 @@ const pageTitle = title ? `${title} | Browser Server` : 'Browser Server'
 const activePath = Astro.url.pathname
 const navItems = [
   { href: '/', label: 'Todos' },
-  { href: '/bookmarks', label: 'Bookmarks' },
-  { href: '/history', label: 'History' },
-  { href: '/wallet', label: 'Wallet' },
-  { href: '/users', label: 'Users' },
-  { href: '/about', label: 'About' },
+  { href: '/bookmarks/', label: 'Bookmarks' },
+  { href: '/history/', label: 'History' },
+  { href: '/wallet/', label: 'Wallet' },
+  { href: '/users/', label: 'Users' },
+  { href: '/about/', label: 'About' },
 ]
-const isActive = (href: string) => (href === '/' ? activePath === '/' : activePath.startsWith(href))
+const isActive = (href: string) => {
+  if (href === '/') return activePath === '/'
+  const p = activePath.endsWith('/') ? activePath : activePath + '/'
+  return p.startsWith(href)
+}
 ---
 <!doctype html>
 <html lang="en">

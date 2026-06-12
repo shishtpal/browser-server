@@ -84,7 +84,8 @@ func InitBookmarkDB(dataPath string) {
 			title TEXT NOT NULL,
 			url TEXT NOT NULL,
 			description TEXT,
-			tags TEXT,
+			tags TEXT DEFAULT '[]',
+			folder_path TEXT DEFAULT '',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)

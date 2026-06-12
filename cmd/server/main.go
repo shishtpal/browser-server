@@ -35,6 +35,7 @@ func main() {
 	r.HandleFunc("/api/bookmarks/{id}", handlers.GetBookmarkByID).Methods("GET")
 	r.HandleFunc("/api/bookmarks/{id}", handlers.UpdateBookmark).Methods("PUT")
 	r.HandleFunc("/api/bookmarks/{id}", handlers.DeleteBookmark).Methods("DELETE")
+	r.HandleFunc("/api/bookmarks/import", handlers.ImportBookmarks).Methods("POST")
 
 	r.HandleFunc("/api/history", handlers.GetHistory).Methods("GET")
 	r.HandleFunc("/api/history", handlers.CreateHistory).Methods("POST")

@@ -18,12 +18,18 @@ func GetBookmarks(w http.ResponseWriter, r *http.Request) {
 	userID := helpers.GetUserIDFromQuery(r)
 	tagsFilter := r.URL.Query().Get("tags")
 
-	query := "SELECT id, user_id, title, url, description, tags, created_at, updated_at FROM bookmarks WHERE 1=1"
+	query := "SELECT id, user_id, title, url, description, tags, folder_path, created_at, updated_at FROM bookmarks WHERE 1=1"
 	args := []interface{}{}
 
 	if userID > 0 {
 		query += " AND user_id = ?"
 		args = append(args, userID)
+	}
+
+	folderPathFilter := r.URL.Query().Get("folder_path")
+	if folderPathFilter != "" {
+		query += " AND folder_path LIKE ?"
+		args = append(args, folderPathFilter+"%")
 	}
 
 	rows, err := db.BookmarkDB.Query(query, args...)
@@ -36,7 +42,7 @@ func GetBookmarks(w http.ResponseWriter, r *http.Request) {
 	bookmarks := []models.BookmarkResponse{}
 	for rows.Next() {
 		var bookmark models.Bookmark
-		err := rows.Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.CreatedAt, &bookmark.UpdatedAt)
+		err := rows.Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.FolderPath, &bookmark.CreatedAt, &bookmark.UpdatedAt)
 		if err != nil {
 			continue
 		}
@@ -48,6 +54,7 @@ func GetBookmarks(w http.ResponseWriter, r *http.Request) {
 			URL:         bookmark.URL,
 			Description: bookmark.Description,
 			Tags:        helpers.ParseTagsFromJSON(bookmark.Tags),
+			FolderPath:  bookmark.FolderPath,
 			CreatedAt:   bookmark.CreatedAt,
 			UpdatedAt:   bookmark.UpdatedAt,
 		}
@@ -86,8 +93,8 @@ func CreateBookmark(w http.ResponseWriter, r *http.Request) {
 
 	tagsJSON := helpers.TagsToJSON(bookmark.Tags)
 
-	result, err := db.BookmarkDB.Exec("INSERT INTO bookmarks (user_id, title, url, description, tags) VALUES (?, ?, ?, ?, ?)",
-		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON)
+	result, err := db.BookmarkDB.Exec("INSERT INTO bookmarks (user_id, title, url, description, tags, folder_path) VALUES (?, ?, ?, ?, ?, ?)",
+		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -107,8 +114,8 @@ func GetBookmarkByID(w http.ResponseWriter, r *http.Request) {
 	id := helpers.GetIDFromPath(r)
 
 	var bookmark models.Bookmark
-	err := db.BookmarkDB.QueryRow("SELECT id, user_id, title, url, description, tags, created_at, updated_at FROM bookmarks WHERE id = ?", id).
-		Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.CreatedAt, &bookmark.UpdatedAt)
+	err := db.BookmarkDB.QueryRow("SELECT id, user_id, title, url, description, tags, folder_path, created_at, updated_at FROM bookmarks WHERE id = ?", id).
+		Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.FolderPath, &bookmark.CreatedAt, &bookmark.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		http.Error(w, "Bookmark not found", http.StatusNotFound)
@@ -125,6 +132,7 @@ func GetBookmarkByID(w http.ResponseWriter, r *http.Request) {
 		URL:         bookmark.URL,
 		Description: bookmark.Description,
 		Tags:        helpers.ParseTagsFromJSON(bookmark.Tags),
+		FolderPath:  bookmark.FolderPath,
 		CreatedAt:   bookmark.CreatedAt,
 		UpdatedAt:   bookmark.UpdatedAt,
 	}
@@ -144,8 +152,8 @@ func UpdateBookmark(w http.ResponseWriter, r *http.Request) {
 
 	tagsJSON := helpers.TagsToJSON(bookmark.Tags)
 
-	_, err := db.BookmarkDB.Exec("UPDATE bookmarks SET user_id = ?, title = ?, url = ?, description = ?, tags = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, id)
+	_, err := db.BookmarkDB.Exec("UPDATE bookmarks SET user_id = ?, title = ?, url = ?, description = ?, tags = ?, folder_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath, id)
 
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)

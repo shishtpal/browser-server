@@ -1,4 +1,4 @@
-import type { Todo, Bookmark, BookmarkResponse, History, WalletEntry, User } from '../types'
+import type { Todo, Bookmark, BookmarkResponse, History, WalletEntry, User, ImportResult } from '../types'
 
 const API_BASE = 'http://localhost:8080'
 
@@ -66,6 +66,21 @@ export function updateBookmark(id: number, data: Partial<Bookmark>): Promise<Boo
 
 export function deleteBookmark(id: number): Promise<void> {
   return apiFetch<void>('DELETE', `/api/bookmarks/${id}`)
+}
+
+export function importBookmarks(userId: number, file: File): Promise<ImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetch(`${API_BASE}/api/bookmarks/import?user_id=${userId}`, {
+    method: 'POST',
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Import failed: ${res.status}`)
+    }
+    return res.json()
+  })
 }
 
 // ─── History ─────────────────────────────────────────────

@@ -15,6 +15,7 @@ export interface Bookmark {
   url: string
   description: string
   tags: string
+  folder_path: string
   created_at: string
   updated_at: string
 }
@@ -26,8 +27,15 @@ export interface BookmarkResponse {
   url: string
   description: string
   tags: string[]
+  folder_path: string
   created_at: string
   updated_at: string
+}
+
+export interface ImportResult {
+  imported: number
+  skipped: number
+  bookmarks: BookmarkResponse[]
 }
 
 export interface History {

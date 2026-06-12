@@ -19,6 +19,7 @@ type Bookmark struct {
 	URL         string    `json:"url"`
 	Description string    `json:"description"`
 	Tags        string    `json:"tags"`
+	FolderPath  string    `json:"folder_path"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -30,8 +31,15 @@ type BookmarkResponse struct {
 	URL         string    `json:"url"`
 	Description string    `json:"description"`
 	Tags        []string  `json:"tags"`
+	FolderPath  string    `json:"folder_path"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type ImportResult struct {
+	Imported  int                `json:"imported"`
+	Skipped   int                `json:"skipped"`
+	Bookmarks []BookmarkResponse `json:"bookmarks"`
 }
 
 type History struct {

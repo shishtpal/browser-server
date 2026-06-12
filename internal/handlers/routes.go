@@ -20,6 +20,9 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "GET", Path: "/api/bookmarks/{id}", Description: "Get bookmark by ID"},
 		{Method: "PUT", Path: "/api/bookmarks/{id}", Description: "Update bookmark by ID"},
 		{Method: "DELETE", Path: "/api/bookmarks/{id}", Description: "Delete bookmark by ID"},
+		{Method: "POST", Path: "/api/bookmarks/import", Description: "Import bookmarks from Chrome HTML export"},
+
+
 		{Method: "GET", Path: "/api/history", Description: "Get browsing history (filter: user_id, url)"},
 		{Method: "POST", Path: "/api/history", Description: "Add history entry"},
 		{Method: "GET", Path: "/api/history/{id}", Description: "Get history entry by ID"},

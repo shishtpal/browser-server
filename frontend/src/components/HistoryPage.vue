@@ -17,13 +17,11 @@
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadHistory" />
 
     <div v-else-if="selectedUserId">
-      <form @submit.prevent="addEntry" class="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors dark:border-white/10 dark:bg-slate-800/90">
-        <div class="flex items-center gap-2">
-          <InputField v-model="newUrl" type="url" placeholder="URL" required flex color="violet" />
-          <InputField v-model="newTitle" type="text" placeholder="Title" required flex color="violet" />
-          <InputField v-model="newDuration" type="number" placeholder="Seconds" class="w-24" color="violet" />
-          <Button type="submit" variant="gradient-violet" size="sm">Add</Button>
-        </div>
+      <form @submit.prevent="addEntry" class="mb-4 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors sm:flex-row sm:items-center sm:gap-3 dark:border-white/10 dark:bg-slate-800/90">
+        <InputField v-model="newUrl" type="url" placeholder="https://example.com" required flex color="violet" />
+        <InputField v-model="newTitle" type="text" placeholder="Page title" required flex color="violet" />
+        <InputField v-model="newDuration" type="number" placeholder="Duration (s)" class="w-28 shrink-0 sm:w-24" color="violet" />
+        <Button type="submit" variant="gradient-violet" size="sm">Add</Button>
       </form>
 
       <div class="mb-4">
@@ -75,11 +73,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { getHistory, createHistory, deleteHistory } from '../lib/api'
-import { formatDuration } from '../lib/utils'
+import { ref, watch } from 'vue'
 import { useUser } from '../composables/useUser'
-import type { History } from '../types'
+import { useHistory } from '../composables/useHistory'
 import PageHeader from './ui/PageHeader.vue'
 import StatCard from './ui/StatCard.vue'
 import UserSelector from './ui/UserSelector.vue'
@@ -95,63 +91,21 @@ import HistoryCard from './history/HistoryCard.vue'
 const { users, currentUserId, setUser, clearUser } = useUser()
 
 const selectedUserId = ref<number | null>(currentUserId.value)
-const historyEntries = ref<History[]>([])
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-const urlFilter = ref('')
 
-const newUrl = ref('')
-const newTitle = ref('')
-const newDuration = ref('')
-
-const totalDuration = computed(() => formatDuration(historyEntries.value.reduce((sum, h) => sum + h.duration, 0)))
-
-const filteredHistory = computed(() => {
-  if (!urlFilter.value.trim()) return historyEntries.value
-  const q = urlFilter.value.toLowerCase()
-  return historyEntries.value.filter(h => h.url.toLowerCase().includes(q) || h.title.toLowerCase().includes(q))
-})
-
-const loadHistory = async () => {
-  if (!selectedUserId.value) return
-  isLoading.value = true
-  error.value = null
-  try {
-    historyEntries.value = await getHistory(selectedUserId.value)
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load history'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const addEntry = async () => {
-  if (!selectedUserId.value || !newUrl.value.trim() || !newTitle.value.trim()) return
-  try {
-    await createHistory({
-      user_id: selectedUserId.value,
-      url: newUrl.value.trim(),
-      title: newTitle.value.trim(),
-      duration: newDuration.value ? Number(newDuration.value) : 0,
-    })
-    newUrl.value = ''
-    newTitle.value = ''
-    newDuration.value = ''
-    await loadHistory()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to add history entry'
-  }
-}
-
-const removeEntry = async (id: number) => {
-  if (!confirm('Delete this history entry?')) return
-  try {
-    await deleteHistory(id)
-    await loadHistory()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to delete entry'
-  }
-}
+const {
+  historyEntries,
+  isLoading,
+  error,
+  urlFilter,
+  newUrl,
+  newTitle,
+  newDuration,
+  totalDuration,
+  filteredHistory,
+  loadHistory,
+  addEntry,
+  removeEntry,
+} = useHistory(selectedUserId)
 
 watch(selectedUserId, (id) => {
   if (id) {

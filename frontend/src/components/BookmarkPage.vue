@@ -111,6 +111,23 @@
         </div>
       </div>
 
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="relative flex-1">
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search bookmarks by title, URL, tags, folder..."
+            class="w-full rounded-xl border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-cyan-900/30"
+          />
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span class="font-semibold">{{ filteredBookmarks.length }} of {{ bookmarks.length }}</span>
+        </div>
+      </div>
+
       <div v-if="activeTagFilter" class="mb-4 flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50/80 p-2 text-xs text-cyan-800 shadow-sm transition-colors dark:border-cyan-900/30 dark:bg-cyan-900/20 dark:text-cyan-300">
         <span class="font-bold">Filtering by tag:</span>
         <span class="rounded-md bg-white px-2 py-0.5 font-black text-cyan-700 shadow-sm transition-colors dark:bg-slate-800 dark:text-cyan-400">{{ activeTagFilter }}</span>
@@ -127,6 +144,16 @@
         <p class="mt-1 text-xs text-slate-500 transition-colors dark:text-slate-400">Save your first link above.</p>
       </div>
 
+      <div v-else-if="filteredBookmarks.length === 0" class="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-8 text-center shadow-sm transition-colors dark:border-amber-900/20 dark:bg-amber-900/10">
+        <div class="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-amber-100 text-amber-500 transition-colors dark:bg-amber-900/30 dark:text-amber-400">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <h2 class="mt-3 text-base font-black text-slate-800 transition-colors dark:text-slate-200">No results match your search</h2>
+        <p class="mt-1 text-xs text-slate-500 transition-colors dark:text-slate-400">Try a different search term or clear the filter.</p>
+      </div>
+
       <div v-else>
         <div class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
           <table class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700">
@@ -136,12 +163,13 @@
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Title</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">URL</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Description</th>
+                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Folder</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Tags</th>
                 <th class="w-28 px-3 py-3 text-right text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
-              <tr v-for="b in bookmarks" :key="b.id" class="transition hover:bg-cyan-50/60 dark:hover:bg-cyan-900/20">
+              <tr v-for="b in filteredBookmarks" :key="b.id" class="transition hover:bg-cyan-50/60 dark:hover:bg-cyan-900/20">
                 <td class="px-3 py-3">
                   <div class="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-slate-900 to-slate-800 text-xs font-black text-white dark:from-slate-950 dark:to-slate-900">{{ getInitial(b.title) }}</div>
                 </td>
@@ -154,6 +182,9 @@
                 </td>
                 <td class="max-w-sm px-3 py-3">
                   <span class="block truncate text-sm text-slate-500 transition-colors dark:text-slate-400" :title="b.description">{{ b.description || '—' }}</span>
+                </td>
+                <td class="px-3 py-3">
+                  <span class="block truncate text-xs font-semibold text-slate-400 transition-colors dark:text-slate-500" :title="b.folder_path">{{ b.folder_path || '—' }}</span>
                 </td>
                 <td class="px-3 py-3">
                   <div class="flex flex-wrap gap-1">
@@ -179,7 +210,7 @@
         </div>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:hidden">
-          <article v-for="b in bookmarks" :key="b.id" class="group flex flex-col overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-800/90 dark:hover:border-cyan-500/30">
+          <article v-for="b in filteredBookmarks" :key="b.id" class="group flex flex-col overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-800/90 dark:hover:border-cyan-500/30">
             <div class="flex items-start justify-between gap-3 border-b border-gray-100 bg-gradient-to-br from-slate-900 to-slate-800 p-3 text-white transition-colors dark:from-slate-950 dark:to-slate-900">
               <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/10 text-sm font-black">{{ getInitial(b.title) }}</div>
               <div class="text-right">
@@ -189,7 +220,8 @@
             </div>
             <div class="flex flex-1 flex-col p-3">
               <a :href="b.url" target="_blank" rel="noopener" class="truncate text-xs font-bold text-blue-600 transition-colors hover:underline dark:text-blue-400">{{ b.url }}</a>
-              <p v-if="b.description" class="mt-2 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400">{{ b.description }}</p>
+              <p v-if="b.folder_path" class="mt-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ b.folder_path }}</p>
+              <p v-if="b.description" class="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400">{{ b.description }}</p>
               <div v-if="b.tags.length" class="mt-auto flex flex-wrap gap-1 pt-3">
                 <button
                   v-for="tag in b.tags"
@@ -256,6 +288,7 @@ const bookmarks = ref<BookmarkResponse[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const activeTagFilter = ref<string | null>(null)
+const searchQuery = ref('')
 
 const newTitle = ref('')
 const newUrl = ref('')
@@ -297,6 +330,19 @@ const doImport = async () => {
 }
 
 const allTags = computed(() => Array.from(new Set(bookmarks.value.flatMap(b => b.tags))).sort())
+
+const filteredBookmarks = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  if (!q) return bookmarks.value
+  const terms = q.split(/\s+/).filter(Boolean)
+  return bookmarks.value.filter(b => {
+    const haystack = [b.title, b.url, b.description, b.folder_path, ...b.tags]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return terms.every(t => haystack.includes(t))
+  })
+})
 
 const loadBookmarks = async () => {
   if (!selectedUserId.value) return

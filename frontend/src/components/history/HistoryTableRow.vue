@@ -1,6 +1,6 @@
 <template>
   <tr class="transition hover:bg-violet-50/60 dark:hover:bg-violet-900/20">
-    <td class="px-3 py-3">
+    <td class="truncate px-3 py-3">
       <div class="flex items-center gap-3">
         <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

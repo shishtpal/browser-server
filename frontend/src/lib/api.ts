@@ -1,4 +1,4 @@
-import type { Todo, Bookmark, BookmarkResponse, History, WalletEntry, User, ImportResult } from '../types'
+import type { Todo, Bookmark, BookmarkResponse, History, WalletEntry, User, ImportResult, HistoryImportResult } from '../types'
 
 const API_BASE = 'http://localhost:8080'
 
@@ -103,6 +103,21 @@ export function createHistory(data: { user_id: number; url: string; title: strin
 
 export function deleteHistory(id: number): Promise<void> {
   return apiFetch<void>('DELETE', `/api/history/${id}`)
+}
+
+export function importHistory(userId: number, file: File): Promise<HistoryImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetch(`${API_BASE}/api/history/import?user_id=${userId}`, {
+    method: 'POST',
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Import failed: ${res.status}`)
+    }
+    return res.json()
+  })
 }
 
 // ─── Wallet ──────────────────────────────────────────────

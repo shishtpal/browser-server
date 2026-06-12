@@ -17,6 +17,8 @@
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadHistory" />
 
     <div v-else-if="selectedUserId">
+      <HistoryImport v-if="selectedUserId" :selected-user-id="selectedUserId" class="mb-4" @imported="loadHistory" />
+
       <form @submit.prevent="addEntry" class="mb-4 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors sm:flex-row sm:items-center sm:gap-3 dark:border-white/10 dark:bg-slate-800/90">
         <InputField v-model="newUrl" type="url" placeholder="https://example.com" required flex color="violet" />
         <InputField v-model="newTitle" type="text" placeholder="Page title" required flex color="violet" />
@@ -37,8 +39,15 @@
       />
 
       <div v-else>
-        <div class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
-          <table class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700">
+        <div class="hidden overflow-x-auto rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
+          <table class="w-full table-fixed divide-y divide-gray-200 transition-colors dark:divide-slate-700">
+            <colgroup>
+              <col class="w-[25%]" />
+              <col class="w-[35%]" />
+              <col class="w-[22%]" />
+              <col class="w-[10%]" />
+              <col class="w-[8%]" />
+            </colgroup>
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
               <tr>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Title</th>
@@ -87,6 +96,7 @@ import Button from './ui/Button.vue'
 import SelectUserPrompt from './ui/SelectUserPrompt.vue'
 import HistoryTableRow from './history/HistoryTableRow.vue'
 import HistoryCard from './history/HistoryCard.vue'
+import HistoryImport from './history/HistoryImport.vue'
 
 const { users, currentUserId, setUser, clearUser } = useUser()
 

@@ -47,6 +47,12 @@ export interface History {
   duration: number
 }
 
+export interface HistoryImportResult {
+  imported: number
+  skipped: number
+  errors: string[]
+}
+
 export interface WalletEntry {
   id: number
   user_id: number

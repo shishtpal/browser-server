@@ -51,6 +51,12 @@ type History struct {
 	Duration  int       `json:"duration"`
 }
 
+type HistoryImportResult struct {
+	Imported int      `json:"imported"`
+	Skipped  int      `json:"skipped"`
+	Errors   []string `json:"errors"`
+}
+
 type WalletEntry struct {
 	ID          int       `json:"id"`
 	UserID      int       `json:"user_id"`

@@ -39,6 +39,7 @@ func main() {
 
 	r.HandleFunc("/api/history", handlers.GetHistory).Methods("GET")
 	r.HandleFunc("/api/history", handlers.CreateHistory).Methods("POST")
+	r.HandleFunc("/api/history/import", handlers.ImportHistory).Methods("POST")
 	r.HandleFunc("/api/history/{id}", handlers.GetHistoryByID).Methods("GET")
 	r.HandleFunc("/api/history/{id}", handlers.DeleteHistory).Methods("DELETE")
 

@@ -242,6 +242,7 @@ const saveEdit = async () => {
     : []
   try {
     await updateBookmark(editing.value.id, {
+      user_id: editing.value.user_id,
       title: editForm.value.title,
       url: editForm.value.url,
       description: editForm.value.description,

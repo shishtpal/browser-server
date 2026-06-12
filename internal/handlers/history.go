@@ -39,7 +39,7 @@ func GetHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var history []models.History
+	history := []models.History{}
 	for rows.Next() {
 		var entry models.History
 		err := rows.Scan(&entry.ID, &entry.UserID, &entry.URL, &entry.Title, &entry.VisitedAt, &entry.Duration)

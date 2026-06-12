@@ -20,7 +20,7 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var users []models.User
+	users := []models.User{}
 	for rows.Next() {
 		var user models.User
 		err := rows.Scan(&user.ID, &user.Username, &user.Email)
@@ -71,4 +71,16 @@ func GetUserByID(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	id := helpers.GetIDFromPath(r)
+
+	_, err := db.UserDB.Exec("DELETE FROM users WHERE id = ?", id)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

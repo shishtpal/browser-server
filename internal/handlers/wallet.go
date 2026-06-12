@@ -37,7 +37,7 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var wallet []models.WalletEntry
+	wallet := []models.WalletEntry{}
 	for rows.Next() {
 		var entry models.WalletEntry
 		err := rows.Scan(&entry.ID, &entry.UserID, &entry.Username, &entry.Password, &entry.Website, &entry.Description, &entry.CreatedAt, &entry.UpdatedAt)

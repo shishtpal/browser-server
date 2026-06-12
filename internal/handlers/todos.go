@@ -39,7 +39,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var todos []models.Todo
+	todos := []models.Todo{}
 	for rows.Next() {
 		var todo models.Todo
 		err := rows.Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)

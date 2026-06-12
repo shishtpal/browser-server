@@ -33,7 +33,7 @@ func GetBookmarks(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var bookmarks []models.BookmarkResponse
+	bookmarks := []models.BookmarkResponse{}
 	for rows.Next() {
 		var bookmark models.Bookmark
 		err := rows.Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.CreatedAt, &bookmark.UpdatedAt)

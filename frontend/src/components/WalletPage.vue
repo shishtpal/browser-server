@@ -267,7 +267,7 @@ const openEdit = (e: WalletEntry) => {
 const saveEdit = async () => {
   if (!editing.value) return
   try {
-    await updateWalletEntry(editing.value.id, editForm.value)
+    await updateWalletEntry(editing.value.id, { ...editing.value, ...editForm.value })
     editing.value = null
     await loadWallet()
   } catch (e) {

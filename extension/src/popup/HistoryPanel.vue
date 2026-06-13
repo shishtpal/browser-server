@@ -14,9 +14,9 @@ const { settings } = useExtensionSettings()
 const userId = useUserId(computed(() => settings.value))
 const client = computed(() => (settings.value ? createApiClient(settings.value) : null))
 
-const { grouped, stats, errorMessage, load, clearAll } = useHistoryView(client, userId)
+const { grouped, stats, errorMessage, load } = useHistoryView(client, userId)
 
-defineExpose({ refresh: load, clearAll })
+defineExpose({ refresh: load })
 
 onMounted(() => {
   void load()
@@ -28,10 +28,6 @@ function emitStats() {
 
 function onErrorRetry() {
   void load()
-}
-
-function onClear() {
-  void clearAll()
 }
 
 function onRefresh() {

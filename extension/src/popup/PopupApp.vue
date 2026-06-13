@@ -31,10 +31,6 @@ function refreshHistory() {
   historyPanel.value?.refresh()
 }
 
-function clearHistory() {
-  historyPanel.value?.clearAll()
-}
-
 function refreshTodos() {
   todosPanel.value?.refresh()
 }
@@ -79,17 +75,10 @@ watch(activePanel, () => {
       <div v-show="activePanel === 'history'" class="flex gap-2">
         <button
           type="button"
-          class="flex-1 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-slate-500 hover:text-white"
+          class="w-full rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-slate-500 hover:text-white"
           @click="refreshHistory"
         >
           Refresh
-        </button>
-        <button
-          type="button"
-          class="flex-1 rounded-md border border-rose-800 px-3 py-2 text-sm text-rose-300 hover:bg-rose-500 hover:text-white"
-          @click="clearHistory"
-        >
-          Clear All
         </button>
       </div>
       <div v-show="activePanel === 'todos'" class="flex gap-2">

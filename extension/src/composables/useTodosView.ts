@@ -31,7 +31,11 @@ function toView(todo: Todo, client: BrowserServerClient): TodoView {
   }
 }
 
-export function useTodosView(client: Ref<BrowserServerClient | null>, userId: Ref<number>) {
+export function useTodosView(
+  client: Ref<BrowserServerClient | null>,
+  userId: Ref<number>,
+  autoCapture: Ref<boolean> = ref(false),
+) {
   const currentDomain = ref<string | null>(null)
   const domainDisplay = ref<string>('Detecting active tab…')
   const screenshotPreview = ref<string | null>(null)
@@ -74,20 +78,43 @@ export function useTodosView(client: Ref<BrowserServerClient | null>, userId: Re
     }
   }
 
-  async function init(autoCapture: boolean) {
-    currentDomain.value = await getActiveTabDomain()
-    domainDisplay.value = currentDomain.value
-      ? `Todos for: ${currentDomain.value}`
-      : 'Could not determine current domain.'
+  let initPromise: Promise<void> | null = null
 
-    if (autoCapture && currentDomain.value) {
-      setPreview(await captureVisibleTab())
+  async function init() {
+    if (initPromise) {
+      return initPromise
+    }
+
+    initPromise = (async () => {
+      currentDomain.value = await getActiveTabDomain()
+      domainDisplay.value = currentDomain.value
+        ? `Todos for: ${currentDomain.value}`
+        : 'Could not determine current domain.'
+
+      if (autoCapture.value && currentDomain.value) {
+        setPreview(await captureVisibleTab())
+      } else {
+        setPreview(null)
+      }
+
+      reset()
+      await refresh()
+    })()
+
+    return initPromise
+  }
+
+  function refreshWithScreenshot() {
+    if (!client.value || !userId.value) {
+      return
+    }
+    if (autoCapture.value && currentDomain.value) {
+      void captureVisibleTab().then((dataUrl) => {
+        setPreview(dataUrl)
+      })
     } else {
       setPreview(null)
     }
-
-    reset()
-    await refresh()
   }
 
   async function add(title: string) {
@@ -158,8 +185,8 @@ export function useTodosView(client: Ref<BrowserServerClient | null>, userId: Re
     await refresh()
   }
 
-  watch(currentDomain, () => {
-    void refresh()
+  watch(autoCapture, () => {
+    refreshWithScreenshot()
   })
 
   return {

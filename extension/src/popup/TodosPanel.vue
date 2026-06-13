@@ -8,6 +8,7 @@ const title = ref('')
 const { settings } = useExtensionSettings()
 const userId = useUserId(computed(() => settings.value))
 const client = computed(() => (settings.value ? createApiClient(settings.value) : null))
+const autoCapture = computed(() => Boolean(settings.value?.autoCapture))
 
 const {
   currentDomain,
@@ -21,13 +22,12 @@ const {
   toggle,
   remove,
   clearAll,
-} = useTodosView(client, userId)
+} = useTodosView(client, userId, autoCapture)
 
-defineExpose({ refresh: () => void init(Boolean(settings.value?.autoCapture)), clearAll })
-
-async function initTodos() {
-  await init(Boolean(settings.value?.autoCapture))
-}
+defineExpose({
+  refresh: () => void init(),
+  clearAll: () => void clearAll(),
+})
 
 async function submit() {
   if (!title.value.trim()) {
@@ -38,7 +38,7 @@ async function submit() {
 }
 
 onMounted(() => {
-  void initTodos()
+  void init()
 })
 
 watch(stats, (label) => emit('stats', label))

@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite'
+import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,7 +8,7 @@ const rootDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   base: './',
-  plugins: [tailwindcss()],
+  plugins: [vue(), tailwindcss()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

@@ -8,7 +8,16 @@
     "noEmit": true,
     "types": ["chrome", "node"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "jsx": "preserve",
+    "isolatedModules": true
   },
-  "include": ["src/**/*", "popup.html", "options.html", "vite.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.vue",
+    "popup.html",
+    "options.html",
+    "vite.config.ts"
+  ]
 }

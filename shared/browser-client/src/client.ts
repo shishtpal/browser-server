@@ -45,6 +45,8 @@ async function apiFetch<T>(baseUrl: string, method: HttpMethod, path: string, bo
   return response.json() as Promise<T>
 }
 
+export type BrowserServerClient = ReturnType<typeof createBrowserServerClient>
+
 export function createBrowserServerClient(baseUrl: string) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
 

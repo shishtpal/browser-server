@@ -8,7 +8,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       width: 480px;
-      max-height: 500px;
+      max-height: 520px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #1a1a2e;
       color: #e0e0e0;
@@ -17,9 +17,6 @@
       background: #16213e;
       padding: 12px 16px;
       border-bottom: 1px solid #0f3460;
-      position: sticky;
-      top: 0;
-      z-index: 10;
     }
     .header h2 {
       font-size: 16px;
@@ -31,10 +28,29 @@
       color: #8899aa;
       margin-top: 4px;
     }
-    #history-list {
-      overflow-y: auto;
-      max-height: 420px;
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #0f3460;
     }
+    .tabs button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      background: transparent;
+      color: #556677;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tabs button.active {
+      color: #e94560;
+      border-bottom-color: #e94560;
+    }
+    .tabs button:hover { color: #8899aa; }
+    .section { display: none; overflow-y: auto; max-height: 370px; }
+    .section.active { display: block; }
     .entry {
       display: flex;
       align-items: center;
@@ -86,14 +102,121 @@
       color: #556677;
       font-size: 13px;
     }
+    .todo-form {
+      display: flex;
+      gap: 6px;
+      padding: 8px 16px;
+      border-bottom: 1px solid #16213e;
+    }
+    .todo-form input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      background: #16213e;
+      color: #e0e0e0;
+      font-size: 13px;
+      outline: none;
+    }
+    .todo-form input:focus { border-color: #e94560; }
+    .todo-form button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      background: #e94560;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .todo-form button:hover { opacity: 0.85; }
+    .todo-entry {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      border-bottom: 1px solid #16213e;
+      gap: 10px;
+    }
+    .todo-entry .todo-check {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      accent-color: #e94560;
+      cursor: pointer;
+    }
+    .todo-entry .todo-info { flex: 1; min-width: 0; }
+    .todo-entry .todo-title {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .todo-entry .todo-title.done {
+      text-decoration: line-through;
+      color: #556677;
+    }
+    .todo-entry .todo-meta {
+      font-size: 10px;
+      color: #556677;
+      margin-top: 2px;
+    }
+    .todo-entry .screenshot-thumb {
+      width: 40px;
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid #0f3460;
+      object-fit: cover;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .todo-entry .todo-delete {
+      padding: 4px 8px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: #556677;
+      font-size: 11px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .todo-entry .todo-delete:hover {
+      background: #e94560;
+      color: #fff;
+    }
+    .domain-badge {
+      display: inline-block;
+      background: rgba(233, 69, 96, 0.1);
+      color: #e94560;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .screenshot-preview {
+      padding: 8px 16px;
+      border-bottom: 1px solid #16213e;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .screenshot-preview img {
+      width: 80px;
+      height: 52px;
+      border-radius: 4px;
+      border: 1px solid #0f3460;
+      object-fit: cover;
+    }
+    .screenshot-preview span {
+      font-size: 11px;
+      color: #667788;
+    }
     .actions {
       display: flex;
       gap: 8px;
       padding: 8px 16px;
       border-top: 1px solid #16213e;
       background: #16213e;
-      position: sticky;
-      bottom: 0;
     }
     .actions button {
       flex: 1;
@@ -115,6 +238,12 @@
       border-color: #e94560;
       color: #fff;
     }
+    .status-msg {
+      padding: 4px 16px;
+      font-size: 11px;
+      color: #667788;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -122,11 +251,38 @@
     <h2>History Tracker</h2>
     <div class="stats" id="stats">Loading&hellip;</div>
   </div>
-  <div id="history-list"></div>
-  <div class="actions">
+  <div class="tabs">
+    <button id="tab-history" class="active">History</button>
+    <button id="tab-todos">Todos</button>
+  </div>
+
+  <div id="section-history" class="section active">
+    <div class="status-msg" id="history-status"></div>
+    <div id="history-list"></div>
+  </div>
+
+  <div id="section-todos" class="section">
+    <div class="status-msg" id="domain-display"></div>
+    <div class="screenshot-preview" id="screenshot-preview" style="display:none">
+      <img id="screenshot-img" src="" />
+      <span>Screenshot captured</span>
+    </div>
+    <div class="todo-form">
+      <input type="text" id="todo-title" placeholder="Add todo for this page..." />
+      <button id="btn-add-todo">Add</button>
+    </div>
+    <div id="todo-list"></div>
+  </div>
+
+  <div class="actions" id="actions-history">
     <button id="btn-refresh">Refresh</button>
     <button id="btn-clear" class="danger">Clear All</button>
   </div>
+  <div class="actions" id="actions-todos" style="display:none">
+    <button id="btn-refresh-todos">Refresh</button>
+    <button id="btn-clear-todos" class="danger">Clear All</button>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

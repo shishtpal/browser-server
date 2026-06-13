@@ -17,8 +17,9 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 
 	userID := helpers.GetUserIDFromQuery(r)
 	completedStr := r.URL.Query().Get("completed")
+	domain := r.URL.Query().Get("domain")
 
-	query := "SELECT id, user_id, title, description, completed, created_at, updated_at FROM todos WHERE 1=1"
+	query := "SELECT id, user_id, title, description, domain, screenshot_path, completed, created_at, updated_at FROM todos WHERE 1=1"
 	args := []interface{}{}
 
 	if userID > 0 {
@@ -32,6 +33,11 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 		args = append(args, completed)
 	}
 
+	if domain != "" {
+		query += " AND domain = ?"
+		args = append(args, domain)
+	}
+
 	rows, err := db.TodoDB.Query(query, args...)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -42,7 +48,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 	todos := []models.Todo{}
 	for rows.Next() {
 		var todo models.Todo
-		err := rows.Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
+		err := rows.Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
 		if err != nil {
 			continue
 		}
@@ -59,8 +65,8 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := db.TodoDB.Exec("INSERT INTO todos (user_id, title, description, completed) VALUES (?, ?, ?, ?)",
-		todo.UserID, todo.Title, todo.Description, todo.Completed)
+	result, err := db.TodoDB.Exec("INSERT INTO todos (user_id, title, description, domain, completed) VALUES (?, ?, ?, ?, ?)",
+		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.Completed)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -80,8 +86,8 @@ func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 	id := helpers.GetIDFromPath(r)
 
 	var todo models.Todo
-	err := db.TodoDB.QueryRow("SELECT id, user_id, title, description, completed, created_at, updated_at FROM todos WHERE id = ?", id).
-		Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
+	err := db.TodoDB.QueryRow("SELECT id, user_id, title, description, domain, screenshot_path, completed, created_at, updated_at FROM todos WHERE id = ?", id).
+		Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		http.Error(w, "Todo not found", http.StatusNotFound)
@@ -104,8 +110,8 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := db.TodoDB.Exec("UPDATE todos SET user_id = ?, title = ?, description = ?, completed = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-		todo.UserID, todo.Title, todo.Description, todo.Completed, id)
+	_, err := db.TodoDB.Exec("UPDATE todos SET user_id = ?, title = ?, description = ?, domain = ?, screenshot_path = ?, completed = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.ScreenshotPath, todo.Completed, id)
 
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)

@@ -9,7 +9,7 @@ async function getSettings() {
 }
 
 async function postVisit(url, title) {
-  if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url === 'about:blank') {
+  if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('brave://') || url.startsWith('opera://') || url.startsWith('browser://') || url === 'about:blank') {
     return;
   }
 
@@ -50,4 +50,13 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
       postVisit(tab.url, tab.title);
     }
   });
+});
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'captureScreenshot') {
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+      sendResponse({ dataUrl });
+    });
+    return true;
+  }
 });

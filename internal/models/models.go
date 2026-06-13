@@ -3,13 +3,22 @@ package models
 import "time"
 
 type Todo struct {
-	ID          int       `json:"id"`
-	UserID      int       `json:"user_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Completed   bool      `json:"completed"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID             int       `json:"id"`
+	UserID         int       `json:"user_id"`
+	Title          string    `json:"title"`
+	Description    string    `json:"description"`
+	Domain         string    `json:"domain"`
+	ScreenshotPath string    `json:"screenshot_path"`
+	Completed      bool      `json:"completed"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type Screenshot struct {
+	ID        int       `json:"id"`
+	TodoID    int       `json:"todo_id"`
+	Filename  string    `json:"filename"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Bookmark struct {

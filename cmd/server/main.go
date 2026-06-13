@@ -30,6 +30,9 @@ func main() {
 	r.HandleFunc("/api/todos/{id}", handlers.UpdateTodo).Methods("PUT")
 	r.HandleFunc("/api/todos/{id}", handlers.DeleteTodo).Methods("DELETE")
 
+	r.HandleFunc("/api/screenshots", handlers.UploadScreenshot).Methods("POST")
+	r.HandleFunc("/api/screenshots/{id}", handlers.GetScreenshot).Methods("GET")
+
 	r.HandleFunc("/api/bookmarks", handlers.GetBookmarks).Methods("GET")
 	r.HandleFunc("/api/bookmarks", handlers.CreateBookmark).Methods("POST")
 	r.HandleFunc("/api/bookmarks/{id}", handlers.GetBookmarkByID).Methods("GET")

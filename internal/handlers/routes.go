@@ -10,11 +10,13 @@ import (
 func GetRoutes(w http.ResponseWriter, r *http.Request) {
 	routes := []models.Route{
 		{Method: "POST", Path: "/api/routes", Description: "List all available routes"},
-		{Method: "GET", Path: "/api/todos", Description: "Get all todos (filter: user_id, completed)"},
+		{Method: "GET", Path: "/api/todos", Description: "Get all todos (filter: user_id, domain, completed)"},
 		{Method: "POST", Path: "/api/todos", Description: "Create a new todo"},
 		{Method: "GET", Path: "/api/todos/{id}", Description: "Get todo by ID"},
 		{Method: "PUT", Path: "/api/todos/{id}", Description: "Update todo by ID"},
 		{Method: "DELETE", Path: "/api/todos/{id}", Description: "Delete todo by ID"},
+		{Method: "POST", Path: "/api/screenshots", Description: "Upload a screenshot for a todo (multipart: file + ?todo_id=)"},
+		{Method: "GET", Path: "/api/screenshots/{id}", Description: "Get screenshot PNG by todo ID"},
 		{Method: "GET", Path: "/api/bookmarks", Description: "Get all bookmarks (filter: user_id, tags)"},
 		{Method: "POST", Path: "/api/bookmarks", Description: "Create a new bookmark"},
 		{Method: "GET", Path: "/api/bookmarks/{id}", Description: "Get bookmark by ID"},

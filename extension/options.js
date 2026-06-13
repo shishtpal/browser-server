@@ -1,7 +1,8 @@
 const SETTINGS_KEY = 'tracker_settings';
 const DEFAULTS = {
   apiBase: 'http://localhost:8080',
-  userId: '1'
+  userId: '1',
+  autoCapture: true
 };
 
 async function loadSettings() {
@@ -10,6 +11,7 @@ async function loadSettings() {
 
   document.getElementById('api-base').value = merged.apiBase;
   document.getElementById('user-id').value = merged.userId;
+  document.getElementById('auto-capture').checked = merged.autoCapture;
 }
 
 function showStatus(msg, ok) {
@@ -22,6 +24,7 @@ function showStatus(msg, ok) {
 async function saveSettings() {
   const apiBase = document.getElementById('api-base').value.trim();
   const userId = document.getElementById('user-id').value.trim();
+  const autoCapture = document.getElementById('auto-capture').checked;
 
   if (!apiBase) {
     showStatus('Server URL is required.', false);
@@ -41,7 +44,7 @@ async function saveSettings() {
   }
 
   await chrome.storage.local.set({
-    [SETTINGS_KEY]: { apiBase, userId }
+    [SETTINGS_KEY]: { apiBase, userId, autoCapture }
   });
 
   showStatus('Settings saved.', true);
@@ -52,6 +55,7 @@ document.getElementById('btn-reset').addEventListener('click', async () => {
   await chrome.storage.local.remove(SETTINGS_KEY);
   document.getElementById('api-base').value = DEFAULTS.apiBase;
   document.getElementById('user-id').value = DEFAULTS.userId;
+  document.getElementById('auto-capture').checked = DEFAULTS.autoCapture;
   showStatus('Reset to defaults.', true);
 });
 

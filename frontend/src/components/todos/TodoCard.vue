@@ -21,7 +21,13 @@
           </div>
         </div>
         <div v-else>
-          <span :class="['block truncate text-sm font-black', todo.completed ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-900 dark:text-white']">{{ todo.title }}</span>
+          <div class="flex items-center gap-2">
+            <button v-if="todo.screenshot_path" type="button" @click="emit('viewScreenshot', todo)" class="shrink-0 cursor-zoom-in transition hover:opacity-80" title="View screenshot">
+              <img :src="screenshotUrl" class="h-8 w-14 rounded border border-gray-200 object-cover dark:border-slate-600" />
+            </button>
+            <span :class="['block truncate text-sm font-black', todo.completed ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-900 dark:text-white']">{{ todo.title }}</span>
+          </div>
+          <span v-if="todo.domain" class="mt-1 inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">domain: {{ todo.domain }}</span>
           <p v-if="todo.description" class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400">{{ todo.description }}</p>
           <span class="mt-1 inline-block rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 transition-colors dark:bg-slate-700 dark:text-slate-400">{{ formatDate(todo.updated_at) }}</span>
         </div>
@@ -35,8 +41,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { formatDate } from '../../lib/utils'
+import { getScreenshotUrl } from '../../lib/api'
 import type { Todo } from '../../types'
 
 interface Props {
@@ -48,12 +55,15 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')
+
 const emit = defineEmits<{
   toggle: [todo: Todo]
   startEdit: [todo: Todo]
   saveEdit: [todo: Todo, title: string, description: string]
   cancelEdit: []
   delete: [id: number]
+  viewScreenshot: [todo: Todo]
 }>()
 
 const localTitle = ref('')

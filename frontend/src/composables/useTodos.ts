@@ -2,7 +2,7 @@ import { ref, computed, watch, type Ref } from 'vue'
 import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api'
 import type { Todo } from '../types'
 
-export function useTodos(selectedUserId: Ref<number | null>) {
+export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<string | null>) {
   const todos = ref<Todo[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -33,7 +33,7 @@ export function useTodos(selectedUserId: Ref<number | null>) {
     isLoading.value = true
     error.value = null
     try {
-      todos.value = await getTodos(selectedUserId.value)
+      todos.value = await getTodos(selectedUserId.value, domainFilter?.value ?? undefined)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load todos'
     } finally {
@@ -94,6 +94,12 @@ export function useTodos(selectedUserId: Ref<number | null>) {
   watch(activeFilter, () => {
     if (selectedUserId.value) loadTodos()
   })
+
+  if (domainFilter) {
+    watch(domainFilter, () => {
+      if (selectedUserId.value) loadTodos()
+    })
+  }
 
   return {
     todos,

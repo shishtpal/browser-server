@@ -69,6 +69,7 @@
                 @save-edit="saveEdit"
                 @cancel-edit="cancelEdit"
                 @delete="removeTodo"
+                @view-screenshot="openScreenshot"
               />
             </tbody>
           </table>
@@ -87,10 +88,15 @@
             @save-edit="saveEdit"
             @cancel-edit="cancelEdit"
             @delete="removeTodo"
+            @view-screenshot="openScreenshot"
           />
         </ul>
       </div>
     </div>
+
+    <Modal :open="screenshotModal.open" :title="screenshotModal.title" @close="screenshotModal.open = false" fullscreen>
+      <img :src="screenshotModal.url" class="w-full h-full rounded-lg border border-gray-200 object-contain dark:border-slate-700" />
+    </Modal>
   </div>
 </template>
 
@@ -108,8 +114,11 @@ import EmptyState from './ui/EmptyState.vue'
 import InputField from './ui/InputField.vue'
 import Button from './ui/Button.vue'
 import SelectUserPrompt from './ui/SelectUserPrompt.vue'
+import Modal from './ui/Modal.vue'
 import TodoTableRow from './todos/TodoTableRow.vue'
 import TodoCard from './todos/TodoCard.vue'
+import { getScreenshotUrl } from '../lib/api'
+import type { Todo } from '../types'
 
 const { users, currentUserId, setUser, clearUser } = useUser()
 
@@ -151,5 +160,19 @@ watch(selectedUserId, (id) => {
 if (selectedUserId.value) {
   setUser(selectedUserId.value)
   loadTodos()
+}
+
+const screenshotModal = ref<{ open: boolean; url: string; title: string }>({
+  open: false,
+  url: '',
+  title: '',
+})
+
+function openScreenshot(todo: Todo) {
+  screenshotModal.value = {
+    open: true,
+    url: getScreenshotUrl(todo.id),
+    title: todo.title,
+  }
 }
 </script>

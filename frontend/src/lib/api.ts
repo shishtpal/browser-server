@@ -1,4 +1,4 @@
-import type { Todo, Bookmark, BookmarkResponse, History, WalletEntry, User, ImportResult, HistoryImportResult } from '../types'
+import type { Todo, Bookmark, BookmarkResponse, History, WalletEntry, User, ImportResult, HistoryImportResult, Screenshot } from '../types'
 
 const API_BASE = 'http://localhost:8080'
 
@@ -21,16 +21,19 @@ async function apiFetch<T>(method: string, path: string, body?: unknown): Promis
 
 // ─── Todos ───────────────────────────────────────────────
 
-export function getTodos(userId?: number): Promise<Todo[]> {
-  const qs = userId ? `?user_id=${userId}` : ''
-  return apiFetch<Todo[]>('GET', `/api/todos${qs}`)
+export function getTodos(userId?: number, domain?: string): Promise<Todo[]> {
+  const params = new URLSearchParams()
+  if (userId) params.set('user_id', String(userId))
+  if (domain) params.set('domain', domain)
+  const qs = params.toString()
+  return apiFetch<Todo[]>('GET', `/api/todos${qs ? '?' + qs : ''}`)
 }
 
 export function getTodo(id: number): Promise<Todo> {
   return apiFetch<Todo>('GET', `/api/todos/${id}`)
 }
 
-export function createTodo(data: { user_id: number; title: string; description?: string }): Promise<Todo> {
+export function createTodo(data: { user_id: number; title: string; description?: string; domain?: string }): Promise<Todo> {
   return apiFetch<Todo>('POST', '/api/todos', { ...data, completed: false })
 }
 
@@ -40,6 +43,25 @@ export function updateTodo(id: number, data: Partial<Todo>): Promise<Todo> {
 
 export function deleteTodo(id: number): Promise<void> {
   return apiFetch<void>('DELETE', `/api/todos/${id}`)
+}
+
+export function uploadScreenshot(todoId: number, file: Blob): Promise<Screenshot> {
+  const formData = new FormData()
+  formData.append('file', file, 'screenshot.png')
+  return fetch(`${API_BASE}/api/screenshots?todo_id=${todoId}`, {
+    method: 'POST',
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Upload failed: ${res.status}`)
+    }
+    return res.json()
+  })
+}
+
+export function getScreenshotUrl(todoId: number): string {
+  return `${API_BASE}/api/screenshots/${todoId}`
 }
 
 // ─── Bookmarks ───────────────────────────────────────────

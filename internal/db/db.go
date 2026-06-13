@@ -10,11 +10,12 @@ import (
 )
 
 var (
-	TodoDB     *sql.DB
-	BookmarkDB *sql.DB
-	HistoryDB  *sql.DB
-	WalletDB   *sql.DB
-	UserDB     *sql.DB
+	TodoDB       *sql.DB
+	BookmarkDB   *sql.DB
+	HistoryDB    *sql.DB
+	WalletDB     *sql.DB
+	UserDB       *sql.DB
+	ScreenshotDB *sql.DB
 )
 
 func GetDataPath() string {
@@ -49,6 +50,14 @@ func Exec(db *sql.DB, query string) {
 	}
 }
 
+func migrateColumn(db *sql.DB, table, column, colDef string) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?", table, column).Scan(&count)
+	if err == nil && count == 0 {
+		db.Exec("ALTER TABLE " + table + " ADD COLUMN " + column + " " + colDef)
+	}
+}
+
 func InitUserDB(dataPath string) {
 	UserDB = Open(filepath.Join(dataPath, "users.db"))
 	Exec(UserDB, `
@@ -68,11 +77,16 @@ func InitTodoDB(dataPath string) {
 			user_id INTEGER NOT NULL,
 			title TEXT NOT NULL,
 			description TEXT,
+			domain TEXT DEFAULT '',
+			screenshot_path TEXT DEFAULT '',
 			completed BOOLEAN DEFAULT FALSE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
+	// migration: add new columns to existing databases
+	migrateColumn(TodoDB, "todos", "domain", "TEXT DEFAULT ''")
+	migrateColumn(TodoDB, "todos", "screenshot_path", "TEXT DEFAULT ''")
 }
 
 func InitBookmarkDB(dataPath string) {
@@ -106,6 +120,20 @@ func InitHistoryDB(dataPath string) {
 	`)
 }
 
+func InitScreenshotDB(dataPath string) {
+	ScreenshotDB = Open(filepath.Join(dataPath, "screenshots.db"))
+	screenshotDir := filepath.Join(dataPath, "screenshots")
+	os.MkdirAll(screenshotDir, 0755)
+	Exec(ScreenshotDB, `
+		CREATE TABLE IF NOT EXISTS screenshots (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			todo_id INTEGER NOT NULL,
+			filename TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+}
+
 func InitWalletDB(dataPath string) {
 	WalletDB = Open(filepath.Join(dataPath, "wallet.db"))
 	Exec(WalletDB, `
@@ -135,8 +163,8 @@ func InsertSampleData() {
 
 	err = TodoDB.QueryRow("SELECT COUNT(*) FROM todos").Scan(&count)
 	if err == nil && count == 0 {
-		_, err = TodoDB.Exec("INSERT INTO todos (user_id, title, description, completed) VALUES (?, ?, ?, ?)",
-			1, "Sample Todo", "This is a sample todo", false)
+		_, err = TodoDB.Exec("INSERT INTO todos (user_id, title, description, domain, completed) VALUES (?, ?, ?, ?, ?)",
+			1, "Sample Todo", "This is a sample todo", "", false)
 		if err != nil {
 			log.Printf("Failed to insert sample todo: %v", err)
 		}
@@ -149,6 +177,7 @@ func InitAll(dataPath string) {
 	InitBookmarkDB(dataPath)
 	InitHistoryDB(dataPath)
 	InitWalletDB(dataPath)
+	InitScreenshotDB(dataPath)
 	InsertSampleData()
 }
 
@@ -167,5 +196,8 @@ func CloseAll() {
 	}
 	if UserDB != nil {
 		UserDB.Close()
+	}
+	if ScreenshotDB != nil {
+		ScreenshotDB.Close()
 	}
 }

@@ -3,7 +3,7 @@
   "name": "Browser History Tracker",
   "version": "1.0.0",
   "description": "Captures browsing history in real-time, syncing to the local browser-server on localhost:8080.",
-  "permissions": ["tabs", "storage"],
+  "permissions": ["tabs", "storage", "activeTab"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"

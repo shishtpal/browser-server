@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "types": ["chrome", "node"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*", "popup.html", "options.html", "vite.config.ts"]
+}

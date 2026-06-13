@@ -10,10 +10,13 @@
   },
   "dependencies": {
     "@astrojs/vue": "^6.0.1",
+    "@browser-server/shared-client": "link:..\\shared\\browser-client",
+    "@browser-server/shared-types": "link:..\\shared\\browser-types",
+    "@browser-server/shared-utils": "link:..\\shared\\browser-utils",
     "@tailwindcss/vite": "4.3.0",
     "astro": "^6.4.6",
     "tailwindcss": "4.3.0",
     "vue": "^3.5.38"
   },
-  "packageManager": "pnpm@11.5.3"
+  "packageManager": "pnpm@11.6.0"
 }

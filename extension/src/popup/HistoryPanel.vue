@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { faviconUrl, timeAgo } from '../lib/format'
+import { faviconUrl, timeAgo } from '@browser-server/shared-utils'
 import {
   createApiClient,
   useExtensionSettings,

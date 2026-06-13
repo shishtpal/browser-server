@@ -1,7 +1,7 @@
 import type { History, BrowserServerClient } from '@browser-server/shared-client'
 import { ref, type Ref } from 'vue'
 import { summarizeHistory } from './history'
-import { timeAgo } from '../lib/format'
+import { timeAgo } from '@browser-server/shared-utils'
 
 export interface GroupedHistoryEntry {
   url: string

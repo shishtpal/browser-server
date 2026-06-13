@@ -5,7 +5,7 @@ import type {
   Screenshot,
   Todo,
   UpdateTodoInput,
-} from './types'
+} from '@browser-server/shared-types'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 

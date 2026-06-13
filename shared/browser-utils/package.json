@@ -1,13 +1,10 @@
 {
-  "name": "@browser-server/shared-client",
+  "name": "@browser-server/shared-utils",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
-  },
-  "dependencies": {
-    "@browser-server/shared-types": "link:..\\browser-types"
   },
   "packageManager": "pnpm@11.6.0"
 }

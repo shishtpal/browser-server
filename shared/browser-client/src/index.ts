@@ -1,2 +1,2 @@
 export * from './client'
-export * from './types'
+export * from '@browser-server/shared-types'

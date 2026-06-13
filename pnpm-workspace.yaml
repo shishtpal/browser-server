@@ -1,0 +1,12 @@
+packages:
+  - frontend
+  - extension
+  - shared/*
+
+overrides:
+  vue: ^3.5.38
+  vite: ^8.0.10
+
+allowBuilds:
+  esbuild: false
+  sharp: false

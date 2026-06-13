@@ -1,7 +1,7 @@
 import type { BrowserServerClient, Todo } from '@browser-server/shared-client'
 import { ref, watch, type Ref } from 'vue'
 import { captureVisibleTab, dataUrlToBlob, getActiveTabDomain } from '../lib/browser'
-import { timeAgo } from '../lib/format'
+import { timeAgo } from '@browser-server/shared-utils'
 
 export interface TodoView {
   id: number

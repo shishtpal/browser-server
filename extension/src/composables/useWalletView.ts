@@ -14,6 +14,8 @@ export function useWalletView(client: Ref<BrowserServerClient | null>, userId: R
   const domainDisplay = ref<string>('Detecting active tab…')
   const items = ref<WalletItemView[]>([])
   const stats = ref<string>('0 passwords')
+  const total = ref(0)
+  const isLoading = ref(false)
   const errorMessage = ref<string | null>(null)
 
   function toView(entry: WalletEntry): WalletItemView {
@@ -32,40 +34,42 @@ export function useWalletView(client: Ref<BrowserServerClient | null>, userId: R
 
     if (!currentDomain.value) {
       items.value = []
+      total.value = 0
       stats.value = '0 passwords'
       errorMessage.value = null
       return
     }
 
+    isLoading.value = true
     try {
       const entries = await client.value.getWallet(userId.value, currentDomain.value)
       items.value = entries.map(toView)
+      total.value = entries.length
       stats.value = `${entries.length} password${entries.length === 1 ? '' : 's'}`
       errorMessage.value = null
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       errorMessage.value = `Server not reachable. ${message}`
+      total.value = 0
       stats.value = '0 passwords'
       items.value = []
+    } finally {
+      isLoading.value = false
     }
   }
 
-  let initPromise: Promise<void> | null = null
+  let domainDetected = false
 
   async function init() {
-    if (initPromise) {
-      return initPromise
-    }
-
-    initPromise = (async () => {
+    if (!domainDetected) {
+      domainDetected = true
       currentDomain.value = await getActiveTabDomain()
       domainDisplay.value = currentDomain.value
         ? `Passwords for: ${currentDomain.value}`
         : 'Could not determine current domain.'
-      await refresh()
-    })()
+    }
 
-    return initPromise
+    await refresh()
   }
 
   async function reveal(item: WalletItemView): Promise<string> {
@@ -80,6 +84,8 @@ export function useWalletView(client: Ref<BrowserServerClient | null>, userId: R
     domainDisplay,
     items,
     stats,
+    total,
+    isLoading,
     errorMessage,
     init,
     refresh,

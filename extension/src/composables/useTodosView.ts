@@ -42,6 +42,9 @@ export function useTodosView(
   const items = ref<TodoView[]>([])
   const stats = ref<string>('0 todos · 0 done')
   const errorMessage = ref<string | null>(null)
+  const isLoading = ref(false)
+  const total = ref(0)
+  const completed = ref(0)
 
   function setPreview(dataUrl: string | null) {
     screenshotPreview.value = dataUrl
@@ -59,33 +62,39 @@ export function useTodosView(
 
     if (!currentDomain.value) {
       items.value = []
+      total.value = 0
+      completed.value = 0
       stats.value = '0 todos · 0 done'
       errorMessage.value = null
       return
     }
 
+    isLoading.value = true
     try {
       const todos = sortTodos(await client.value.getTodos(userId.value, currentDomain.value))
       items.value = todos.map((todo) => toView(todo, client.value!))
-      const completed = todos.filter((todo) => todo.completed).length
-      stats.value = `${todos.length} todos · ${completed} done`
+      const done = todos.filter((todo) => todo.completed).length
+      total.value = todos.length
+      completed.value = done
+      stats.value = `${todos.length} todos · ${done} done`
       errorMessage.value = null
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       errorMessage.value = `Server not reachable. ${message}`
+      total.value = 0
+      completed.value = 0
       stats.value = '0 todos · 0 done'
       items.value = []
+    } finally {
+      isLoading.value = false
     }
   }
 
-  let initPromise: Promise<void> | null = null
+  let domainDetected = false
 
   async function init() {
-    if (initPromise) {
-      return initPromise
-    }
-
-    initPromise = (async () => {
+    if (!domainDetected) {
+      domainDetected = true
       currentDomain.value = await getActiveTabDomain()
       domainDisplay.value = currentDomain.value
         ? `Todos for: ${currentDomain.value}`
@@ -98,10 +107,9 @@ export function useTodosView(
       }
 
       reset()
-      await refresh()
-    })()
+    }
 
-    return initPromise
+    await refresh()
   }
 
   function refreshWithScreenshot() {
@@ -195,8 +203,12 @@ export function useTodosView(
     screenshotPreview,
     items,
     stats,
+    total,
+    completed,
+    isLoading,
     errorMessage,
     init,
+    refresh,
     add,
     toggle,
     remove,

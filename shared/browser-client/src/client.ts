@@ -54,6 +54,21 @@ export function createBrowserServerClient(baseUrl: string) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
 
   return {
+    async ping(): Promise<boolean> {
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 3000)
+        const response = await fetch(`${normalizedBaseUrl}/api/routes`, {
+          method: 'POST',
+          signal: controller.signal,
+        })
+        clearTimeout(timeout)
+        return response.ok
+      } catch {
+        return false
+      }
+    },
+
     getHistory(userId?: number, url?: string): Promise<History[]> {
       return apiFetch<History[]>(normalizedBaseUrl, 'GET', `/api/history${buildQuery({ user_id: userId, url })}`)
     },

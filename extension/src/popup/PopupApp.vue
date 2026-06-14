@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, useTemplateRef } from 'vue'
+import { computed, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { faviconUrl } from '@browser-server/shared-utils'
+import { createApiClient, useExtensionSettings } from '../composables/composables'
 import { getActiveTabDomain } from '../lib/browser'
 import BookmarksPanel from './BookmarksPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
@@ -12,6 +13,10 @@ const props = defineProps<{ initialPanel: PanelKey }>()
 
 const activePanel = ref<PanelKey>(props.initialPanel)
 const activeDomain = ref<string | null>(null)
+const serverReachable = ref<boolean | null>(null)
+const isChecking = ref(false)
+
+const { settings } = useExtensionSettings()
 
 const historyPanel = useTemplateRef<InstanceType<typeof HistoryPanel>>('historyPanel')
 const todosPanel = useTemplateRef<InstanceType<typeof TodosPanel>>('todosPanel')
@@ -35,19 +40,32 @@ const tabs: { key: PanelKey; label: string }[] = [
 const activeStatus = computed(() => status[activePanel.value])
 
 const connection = computed<{ color: string; label: string }>(() => {
+  if (serverReachable.value === false) return { color: 'bg-rose-500', label: 'Server offline' }
   const state = activeStatus.value.state
   if (state === 'error') return { color: 'bg-rose-500', label: 'Offline' }
   if (state === 'loading') return { color: 'bg-amber-400 animate-pulse', label: 'Syncing' }
   return { color: 'bg-emerald-400', label: 'Connected' }
 })
 
-const isRefreshing = computed(() => activeStatus.value.state === 'loading')
+const isRefreshing = computed(() => activeStatus.value.state === 'loading' || isChecking.value)
 
 function onStatus(key: PanelKey, next: PanelStatus) {
   status[key] = next
 }
 
+async function checkConnection() {
+  if (!settings.value) return
+  isChecking.value = true
+  const client = createApiClient(settings.value)
+  serverReachable.value = await client.ping()
+  isChecking.value = false
+}
+
 function refreshActive() {
+  if (serverReachable.value === false) {
+    void checkConnection()
+    return
+  }
   if (activePanel.value === 'history') historyPanel.value?.refresh()
   else if (activePanel.value === 'todos') todosPanel.value?.refresh()
   else if (activePanel.value === 'wallet') walletPanel.value?.refresh()
@@ -57,6 +75,10 @@ function refreshActive() {
 function openSettings() {
   chrome.runtime.openOptionsPage()
 }
+
+watch(settings, () => {
+  if (settings.value) void checkConnection()
+}, { immediate: true })
 
 onMounted(async () => {
   activeDomain.value = await getActiveTabDomain()
@@ -134,6 +156,36 @@ onMounted(async () => {
         </span>
       </div>
     </header>
+
+    <!-- Server offline banner -->
+    <div
+      v-if="serverReachable === false"
+      class="shrink-0 border-b border-rose-800/50 bg-rose-500/10 px-4 py-3"
+    >
+      <div class="flex items-start gap-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/15">
+          <svg class="h-4 w-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <path d="M12 9v4" />
+            <path d="M12 17h.01" />
+          </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-semibold text-rose-300">Browser server is not running</p>
+          <p class="mt-0.5 text-[11px] text-rose-400/80">
+            Start <span class="font-mono">{{ settings?.apiBase ?? 'localhost:8080' }}</span> to sync your data.
+          </p>
+          <button
+            type="button"
+            class="mt-2 rounded-md bg-rose-500 px-3 py-1 text-[11px] font-medium text-white transition hover:bg-rose-400 disabled:opacity-50"
+            :disabled="isChecking"
+            @click="checkConnection"
+          >
+            {{ isChecking ? 'Checking…' : 'Retry connection' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Tabs -->
     <nav class="grid shrink-0 grid-cols-4 gap-1 border-b border-slate-800 bg-slate-900/40 px-2 py-2">

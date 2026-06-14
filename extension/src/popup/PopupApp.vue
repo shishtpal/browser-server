@@ -1,31 +1,29 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { ref, useTemplateRef, watch } from 'vue'
 import HistoryPanel from './HistoryPanel.vue'
 import TodosPanel from './TodosPanel.vue'
+import WalletPanel from './WalletPanel.vue'
 
-const props = defineProps<{ initialPanel: 'history' | 'todos' }>()
+type Panel = 'history' | 'todos' | 'wallet'
 
-const activePanel = ref<'history' | 'todos'>(props.initialPanel)
+const props = defineProps<{ initialPanel: Panel }>()
+
+const activePanel = ref<Panel>(props.initialPanel)
 const stats = ref('Loading…')
 
 const historyPanel = useTemplateRef<InstanceType<typeof HistoryPanel>>('historyPanel')
 const todosPanel = useTemplateRef<InstanceType<typeof TodosPanel>>('todosPanel')
+const walletPanel = useTemplateRef<InstanceType<typeof WalletPanel>>('walletPanel')
 
 function updateStats(label: string) {
   stats.value = label
 }
 
-const tabHistoryClass = computed(() =>
-  activePanel.value === 'history'
+function tabClass(panel: Panel) {
+  return activePanel.value === panel
     ? 'border-b-2 border-rose-400 px-3 py-2 text-sm font-medium text-rose-300'
-    : 'border-b-2 border-transparent px-3 py-2 text-sm font-medium text-slate-400',
-)
-
-const tabTodosClass = computed(() =>
-  activePanel.value === 'history'
-    ? 'border-b-2 border-transparent px-3 py-2 text-sm font-medium text-slate-400'
-    : 'border-b-2 border-rose-400 px-3 py-2 text-sm font-medium text-rose-300',
-)
+    : 'border-b-2 border-transparent px-3 py-2 text-sm font-medium text-slate-400'
+}
 
 function refreshHistory() {
   historyPanel.value?.refresh()
@@ -35,6 +33,10 @@ function refreshTodos() {
   todosPanel.value?.refresh()
 }
 
+function refreshWallet() {
+  walletPanel.value?.refresh()
+}
+
 function clearTodos() {
   todosPanel.value?.clearAll()
 }
@@ -42,8 +44,10 @@ function clearTodos() {
 watch(activePanel, () => {
   if (activePanel.value === 'history') {
     updateStats('Loading…')
-  } else {
+  } else if (activePanel.value === 'todos') {
     updateStats('0 todos · 0 done')
+  } else {
+    updateStats('0 passwords')
   }
 })
 </script>
@@ -55,9 +59,10 @@ watch(activePanel, () => {
       <p class="mt-1 text-xs text-slate-400">{{ stats }}</p>
     </header>
 
-    <nav class="grid grid-cols-2 border-b border-slate-800 bg-slate-950/60">
-      <button :class="tabHistoryClass" type="button" @click="activePanel = 'history'">History</button>
-      <button :class="tabTodosClass" type="button" @click="activePanel = 'todos'">Todos</button>
+    <nav class="grid grid-cols-3 border-b border-slate-800 bg-slate-950/60">
+      <button :class="tabClass('history')" type="button" @click="activePanel = 'history'">History</button>
+      <button :class="tabClass('todos')" type="button" @click="activePanel = 'todos'">Todos</button>
+      <button :class="tabClass('wallet')" type="button" @click="activePanel = 'wallet'">Wallet</button>
     </nav>
 
     <HistoryPanel
@@ -68,6 +73,11 @@ watch(activePanel, () => {
     <TodosPanel
       v-show="activePanel === 'todos'"
       ref="todosPanel"
+      @stats="updateStats"
+    />
+    <WalletPanel
+      v-show="activePanel === 'wallet'"
+      ref="walletPanel"
       @stats="updateStats"
     />
 
@@ -95,6 +105,15 @@ watch(activePanel, () => {
           @click="clearTodos"
         >
           Clear All
+        </button>
+      </div>
+      <div v-show="activePanel === 'wallet'" class="flex gap-2">
+        <button
+          type="button"
+          class="w-full rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-slate-500 hover:text-white"
+          @click="refreshWallet"
+        >
+          Refresh
         </button>
       </div>
     </footer>

@@ -1,5 +1,5 @@
 import { ref, computed, watch, type Ref } from 'vue'
-import { getWallet, createWalletEntry, updateWalletEntry, deleteWalletEntry } from '../lib/api'
+import { getWallet, createWalletEntry, updateWalletEntry, deleteWalletEntry, revealWalletPassword } from '../lib/api'
 import type { WalletEntry } from '../types'
 
 export function useWallet(selectedUserId: Ref<number | null>) {
@@ -59,13 +59,21 @@ export function useWallet(selectedUserId: Ref<number | null>) {
     }
   }
 
-  const openEdit = (e: WalletEntry) => {
+  const openEdit = async (e: WalletEntry) => {
     editing.value = e
     editForm.value = {
       website: e.website,
       username: e.username,
-      password: e.password,
+      password: '',
       description: e.description,
+    }
+    // Passwords are not included in the list response; fetch on demand.
+    if (selectedUserId.value) {
+      try {
+        editForm.value.password = await revealWalletPassword(selectedUserId.value, e.website, e.username)
+      } catch {
+        editForm.value.password = ''
+      }
     }
   }
 

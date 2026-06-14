@@ -48,6 +48,8 @@ func main() {
 
 	r.HandleFunc("/api/wallet", handlers.GetWallet).Methods("GET")
 	r.HandleFunc("/api/wallet", handlers.CreateWalletEntry).Methods("POST")
+	r.HandleFunc("/api/wallet/reveal", handlers.RevealWalletPassword).Methods("GET")
+	r.HandleFunc("/api/wallet/import", handlers.ImportWallet).Methods("POST")
 	r.HandleFunc("/api/wallet/{id}", handlers.GetWalletByID).Methods("GET")
 	r.HandleFunc("/api/wallet/{id}", handlers.UpdateWalletEntry).Methods("PUT")
 	r.HandleFunc("/api/wallet/{id}", handlers.DeleteWalletEntry).Methods("DELETE")

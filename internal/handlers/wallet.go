@@ -44,10 +44,45 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
+		// Passwords stay hidden by default; they must be requested via the
+		// reveal endpoint for a specific website + username.
+		entry.Password = ""
 		wallet = append(wallet, entry)
 	}
 
 	json.NewEncoder(w).Encode(wallet)
+}
+
+// RevealWalletPassword returns the password for a single credential identified
+// by the requested user, website, and username. All three are required so a
+// password can only be requested for a specific domain + username pair.
+func RevealWalletPassword(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	userID := helpers.GetUserIDFromQuery(r)
+	website := r.URL.Query().Get("website")
+	username := r.URL.Query().Get("username")
+
+	if userID == 0 || website == "" || username == "" {
+		http.Error(w, "user_id, website, and username are required", http.StatusBadRequest)
+		return
+	}
+
+	var password string
+	err := db.WalletDB.QueryRow(
+		"SELECT password FROM wallet WHERE user_id = ? AND website = ? AND username = ? LIMIT 1",
+		userID, website, username,
+	).Scan(&password)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, "Wallet entry not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"password": password})
 }
 
 func CreateWalletEntry(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +123,9 @@ func GetWalletByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
+
+	// Password stays hidden by default; use the reveal endpoint to request it.
+	entry.Password = ""
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(entry)

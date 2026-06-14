@@ -5,6 +5,7 @@ import type {
   Screenshot,
   Todo,
   UpdateTodoInput,
+  WalletEntry,
 } from '@browser-server/shared-types'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -98,6 +99,19 @@ export function createBrowserServerClient(baseUrl: string) {
 
     getScreenshotUrl(todoId: number): string {
       return `${normalizedBaseUrl}/api/screenshots/${todoId}`
+    },
+
+    getWallet(userId?: number, website?: string): Promise<WalletEntry[]> {
+      return apiFetch<WalletEntry[]>(normalizedBaseUrl, 'GET', `/api/wallet${buildQuery({ user_id: userId, website })}`)
+    },
+
+    async revealWalletPassword(userId: number, website: string, username: string): Promise<string> {
+      const result = await apiFetch<{ password: string }>(
+        normalizedBaseUrl,
+        'GET',
+        `/api/wallet/reveal${buildQuery({ user_id: userId, website, username })}`,
+      )
+      return result.password
     },
   }
 }

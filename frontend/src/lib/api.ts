@@ -11,6 +11,7 @@ import type {
   Todo,
   User,
   WalletEntry,
+  WalletImportResult,
 } from '@browser-server/shared-types'
 
 const API_BASE = 'http://localhost:8080'
@@ -164,6 +165,32 @@ export function getWallet(userId?: number, website?: string): Promise<WalletEntr
   return fetch(`${API_BASE}/api/wallet${qs ? `?${qs}` : ''}`).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<WalletEntry[]>
+  })
+}
+
+export function revealWalletPassword(userId: number, website: string, username: string): Promise<string> {
+  const params = new URLSearchParams({ user_id: String(userId), website, username })
+  return fetch(`${API_BASE}/api/wallet/reveal?${params.toString()}`).then(async (res) => {
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Request failed: ${res.status}`)
+    }
+    return (await res.json() as { password: string }).password
+  })
+}
+
+export function importWallet(userId: number, file: File): Promise<WalletImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetch(`${API_BASE}/api/wallet/import?user_id=${userId}`, {
+    method: 'POST',
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `Import failed: ${res.status}`)
+    }
+    return res.json() as Promise<WalletImportResult>
   })
 }
 

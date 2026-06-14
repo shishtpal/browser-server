@@ -73,6 +73,12 @@ export interface WalletEntry {
   updated_at: string
 }
 
+export interface WalletImportResult {
+  imported: number
+  skipped: number
+  errors: string[]
+}
+
 export interface User {
   id: number
   username: string

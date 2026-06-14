@@ -77,6 +77,12 @@ type WalletEntry struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type WalletImportResult struct {
+	Imported int      `json:"imported"`
+	Skipped  int      `json:"skipped"`
+	Errors   []string `json:"errors"`
+}
+
 type User struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`

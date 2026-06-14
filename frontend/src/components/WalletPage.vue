@@ -27,6 +27,13 @@
         </div>
       </form>
 
+      <WalletImport
+        v-if="selectedUserId"
+        :selected-user-id="selectedUserId"
+        @imported="loadWallet"
+        class="mb-4"
+      />
+
       <div class="mb-4">
         <InputField v-model="websiteFilter" placeholder="Search website, username, or description..." color="emerald" />
       </div>
@@ -57,6 +64,7 @@
                 v-for="e in filteredEntries"
                 :key="e.id"
                 :entry="e"
+                :user-id="selectedUserId"
                 @edit="openEdit"
                 @delete="removeEntry"
               />
@@ -69,6 +77,7 @@
             v-for="e in filteredEntries"
             :key="e.id"
             :entry="e"
+            :user-id="selectedUserId"
             @edit="openEdit"
             @delete="removeEntry"
           />
@@ -107,6 +116,7 @@ import SelectUserPrompt from './ui/SelectUserPrompt.vue'
 import Modal from './ui/Modal.vue'
 import WalletTableRow from './wallet/WalletTableRow.vue'
 import WalletCard from './wallet/WalletCard.vue'
+import WalletImport from './wallet/WalletImport.vue'
 
 const { users, currentUserId, setUser, clearUser } = useUser()
 

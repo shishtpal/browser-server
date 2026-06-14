@@ -7,6 +7,7 @@ export function useWallet(selectedUserId: Ref<number | null>) {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const websiteFilter = ref('')
+  const searchColumn = ref<'website' | 'username' | 'description' | 'all'>('website')
 
   const newWebsite = ref('')
   const newUsername = ref('')
@@ -19,11 +20,18 @@ export function useWallet(selectedUserId: Ref<number | null>) {
   const filteredEntries = computed(() => {
     if (!websiteFilter.value.trim()) return walletEntries.value
     const q = websiteFilter.value.toLowerCase()
-    return walletEntries.value.filter(e =>
-      e.website.toLowerCase().includes(q) ||
-      e.username.toLowerCase().includes(q) ||
-      e.description.toLowerCase().includes(q)
-    )
+    const col = searchColumn.value
+    return walletEntries.value.filter(e => {
+      if (col === 'all') {
+        return e.website.toLowerCase().includes(q) ||
+               e.username.toLowerCase().includes(q) ||
+               e.description.toLowerCase().includes(q)
+      }
+      if (col === 'website') return e.website.toLowerCase().includes(q)
+      if (col === 'username') return e.username.toLowerCase().includes(q)
+      if (col === 'description') return e.description.toLowerCase().includes(q)
+      return false
+    })
   })
 
   const loadWallet = async () => {
@@ -103,6 +111,7 @@ export function useWallet(selectedUserId: Ref<number | null>) {
     isLoading,
     error,
     websiteFilter,
+    searchColumn,
     newWebsite,
     newUsername,
     newPassword,

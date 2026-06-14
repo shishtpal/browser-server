@@ -34,8 +34,17 @@
         class="mb-4"
       />
 
-      <div class="mb-4">
-        <InputField v-model="websiteFilter" placeholder="Search website, username, or description..." color="emerald" />
+      <div class="mb-4 flex items-center gap-2">
+        <select
+          v-model="searchColumn"
+          class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-emerald-400 dark:focus:ring-emerald-900/30"
+        >
+          <option value="website">Website</option>
+          <option value="username">Username</option>
+          <option value="description">Description</option>
+          <option value="all">All columns</option>
+        </select>
+        <InputField v-model="websiteFilter" :placeholder="searchPlaceholder" color="emerald" flex />
       </div>
 
       <EmptyState
@@ -101,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useUser } from '../composables/useUser'
 import { useWallet } from '../composables/useWallet'
 import PageHeader from './ui/PageHeader.vue'
@@ -127,6 +136,7 @@ const {
   isLoading,
   error,
   websiteFilter,
+  searchColumn,
   newWebsite,
   newUsername,
   newPassword,
@@ -140,6 +150,16 @@ const {
   saveEdit,
   removeEntry,
 } = useWallet(selectedUserId)
+
+const searchPlaceholder = computed(() => {
+  const labels: Record<string, string> = {
+    website: 'Search by website URL...',
+    username: 'Search by username...',
+    description: 'Search description...',
+    all: 'Search all columns...',
+  }
+  return labels[searchColumn.value] || 'Search...'
+})
 
 watch(selectedUserId, (id) => {
   if (id) {

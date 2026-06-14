@@ -94,3 +94,35 @@ type Route struct {
 	Path        string `json:"path"`
 	Description string `json:"description"`
 }
+
+type DomainUsageEntry struct {
+	Domain  string `json:"domain"`
+	Date    string `json:"date"`
+	Seconds int    `json:"seconds"`
+}
+
+type UsageBatchRequest struct {
+	UserID  int                `json:"user_id"`
+	Entries []DomainUsageEntry `json:"entries"`
+}
+
+type UsageBatchResponse struct {
+	Upserted int `json:"upserted"`
+}
+
+type DomainUsage struct {
+	Domain       string  `json:"domain"`
+	TotalSeconds int     `json:"total_seconds"`
+	Percentage   float64 `json:"percentage"`
+}
+
+type TimelinePoint struct {
+	Period       string `json:"period"`
+	TotalSeconds int    `json:"total_seconds"`
+}
+
+type AnalyticsSummary struct {
+	TotalSeconds int             `json:"total_seconds"`
+	Domains      []DomainUsage   `json:"domains"`
+	Timeline     []TimelinePoint `json:"timeline"`
+}

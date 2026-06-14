@@ -1,4 +1,6 @@
 import type {
+  AnalyticsSummary,
+  AnalyticsSummaryParams,
   BookmarkResponse,
   CreateBookmarkInput,
   CreateHistoryInput,
@@ -7,6 +9,8 @@ import type {
   Screenshot,
   Todo,
   UpdateTodoInput,
+  UsageBatchRequest,
+  UsageBatchResponse,
   WalletEntry,
 } from '@browser-server/shared-types'
 
@@ -145,6 +149,18 @@ export function createBrowserServerClient(baseUrl: string) {
 
     deleteBookmark(id: number): Promise<void> {
       return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/bookmarks/${id}`)
+    },
+
+    batchUpsertUsage(data: UsageBatchRequest): Promise<UsageBatchResponse> {
+      return apiFetch<UsageBatchResponse>(normalizedBaseUrl, 'POST', '/api/analytics/usage', data)
+    },
+
+    getAnalyticsSummary(params: AnalyticsSummaryParams): Promise<AnalyticsSummary> {
+      return apiFetch<AnalyticsSummary>(
+        normalizedBaseUrl,
+        'GET',
+        `/api/analytics/summary${buildQuery(params as unknown as Record<string, string | number | undefined>)}`,
+      )
     },
   }
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PanelKey, PanelStatus } from './types'
 import { computed, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { faviconUrl } from '@browser-server/shared-utils'
 import { createApiClient, useExtensionSettings } from '../composables/composables'
@@ -7,7 +8,7 @@ import BookmarksPanel from './BookmarksPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import TodosPanel from './TodosPanel.vue'
 import WalletPanel from './WalletPanel.vue'
-import type { PanelKey, PanelStatus } from './types'
+import AnalyticsPanel from './AnalyticsPanel.vue'
 
 const props = defineProps<{ initialPanel: PanelKey }>()
 
@@ -22,15 +23,18 @@ const historyPanel = useTemplateRef<InstanceType<typeof HistoryPanel>>('historyP
 const todosPanel = useTemplateRef<InstanceType<typeof TodosPanel>>('todosPanel')
 const walletPanel = useTemplateRef<InstanceType<typeof WalletPanel>>('walletPanel')
 const bookmarksPanel = useTemplateRef<InstanceType<typeof BookmarksPanel>>('bookmarksPanel')
+const analyticsPanel = useTemplateRef<InstanceType<typeof AnalyticsPanel>>('analyticsPanel')
 
 const status = reactive<Record<PanelKey, PanelStatus>>({
   history: { count: 0, state: 'loading' },
   todos: { count: 0, state: 'loading' },
   wallet: { count: 0, state: 'loading' },
   bookmarks: { count: 0, state: 'loading' },
+  analytics: { count: 0, state: 'loading' },
 })
 
 const tabs: { key: PanelKey; label: string }[] = [
+  { key: 'analytics', label: 'Usage' },
   { key: 'history', label: 'History' },
   { key: 'bookmarks', label: 'Bookmarks' },
   { key: 'todos', label: 'Todos' },
@@ -69,7 +73,8 @@ function refreshActive() {
   if (activePanel.value === 'history') historyPanel.value?.refresh()
   else if (activePanel.value === 'todos') todosPanel.value?.refresh()
   else if (activePanel.value === 'wallet') walletPanel.value?.refresh()
-  else bookmarksPanel.value?.refresh()
+  else if (activePanel.value === 'bookmarks') bookmarksPanel.value?.refresh()
+  else if (activePanel.value === 'analytics') analyticsPanel.value?.refresh()
 }
 
 function openSettings() {
@@ -86,7 +91,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="flex h-[560px] w-[400px] flex-col overflow-hidden bg-slate-950 text-slate-100">
+  <main class="flex h-[560px] w-[480px] flex-col overflow-hidden bg-slate-950 text-slate-100">
     <!-- Header -->
     <header class="shrink-0 border-b border-slate-800 bg-slate-900/80 px-4 pt-3 pb-2 backdrop-blur">
       <div class="flex items-center justify-between gap-2">
@@ -188,7 +193,7 @@ onMounted(async () => {
     </div>
 
     <!-- Tabs -->
-    <nav class="grid shrink-0 grid-cols-4 gap-1 border-b border-slate-800 bg-slate-900/40 px-2 py-2">
+    <nav class="grid shrink-0 grid-cols-5 gap-1 border-b border-slate-800 bg-slate-900/40 px-2 py-2">
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -219,6 +224,12 @@ onMounted(async () => {
           <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
           <path d="M21 7H7a2 2 0 0 0 0 4h14v-4z" />
           <circle cx="16" cy="9" r="0.5" fill="currentColor" />
+        </svg>
+        <!-- Analytics icon -->
+        <svg v-else-if="tab.key === 'analytics'" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20V10" />
+          <path d="M18 20V4" />
+          <path d="M6 20v-4" />
         </svg>
         <span>{{ tab.label }}</span>
         <span
@@ -252,6 +263,11 @@ onMounted(async () => {
         v-show="activePanel === 'wallet'"
         ref="walletPanel"
         @status="onStatus('wallet', $event)"
+      />
+      <AnalyticsPanel
+        v-show="activePanel === 'analytics'"
+        ref="analyticsPanel"
+        @status="onStatus('analytics', $event)"
       />
     </div>
   </main>

@@ -1,5 +1,7 @@
 import { createBrowserServerClient } from '@browser-server/shared-client'
 import type {
+  AnalyticsSummary,
+  AnalyticsSummaryParams,
   Bookmark,
   BookmarkResponse,
   CreateHistoryInput,
@@ -262,4 +264,10 @@ export function deleteUser(id: number): Promise<void> {
     if (res.status === 204) return
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   })
+}
+
+// ─── Analytics ───────────────────────────────────────────
+
+export function getAnalyticsSummary(params: AnalyticsSummaryParams): Promise<AnalyticsSummary> {
+  return client.getAnalyticsSummary(params)
 }

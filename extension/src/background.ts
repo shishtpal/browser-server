@@ -1,8 +1,19 @@
 import { createBrowserServerClient } from '@browser-server/shared-client'
 import { isTrackableUrl } from './lib/browser'
 import { getSettings } from './lib/settings'
+import { TimeTracker } from './lib/timeTracker'
 
 let lastUrl: string | null = null
+const tracker = new TimeTracker()
+
+function extractHostname(url: string): string | null {
+  try {
+    const u = new URL(url)
+    return u.hostname || null
+  } catch {
+    return null
+  }
+}
 
 async function postVisit(url: string, title: string | undefined): Promise<void> {
   if (!isTrackableUrl(url)) {
@@ -29,12 +40,14 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.url && changeInfo.url !== lastUrl) {
     lastUrl = changeInfo.url
     void postVisit(changeInfo.url, tab.title)
+    tracker.startTracking(extractHostname(changeInfo.url))
     return
   }
 
   if (changeInfo.status === 'complete' && tab.url && tab.url !== lastUrl) {
     lastUrl = tab.url
     void postVisit(tab.url, tab.title)
+    tracker.startTracking(extractHostname(tab.url))
   }
 })
 
@@ -43,8 +56,18 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     if (tab.url && tab.url !== lastUrl) {
       lastUrl = tab.url
       void postVisit(tab.url, tab.title)
+      tracker.startTracking(extractHostname(tab.url))
     }
   })
+})
+
+chrome.idle.onStateChanged.addListener((newState) => {
+  tracker.handleIdleState(newState)
+})
+
+chrome.runtime.onSuspend.addListener(() => {
+  tracker.stopPeriodicFlush()
+  void tracker.flush()
 })
 
 chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendResponse) => {
@@ -66,3 +89,6 @@ chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendR
 
   return true
 })
+
+void tracker.restore()
+tracker.startPeriodicFlush()

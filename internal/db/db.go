@@ -16,6 +16,7 @@ var (
 	WalletDB     *sql.DB
 	UserDB       *sql.DB
 	ScreenshotDB *sql.DB
+	UsageDB      *sql.DB
 )
 
 func GetDataPath() string {
@@ -150,6 +151,23 @@ func InitWalletDB(dataPath string) {
 	`)
 }
 
+func InitUsageDB(dataPath string) {
+	UsageDB = Open(filepath.Join(dataPath, "usage.db"))
+	Exec(UsageDB, `
+		CREATE TABLE IF NOT EXISTS domain_usage (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			domain TEXT NOT NULL,
+			date TEXT NOT NULL,
+			total_seconds INTEGER NOT NULL DEFAULT 0,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(user_id, domain, date)
+		)
+	`)
+	Exec(UsageDB, `CREATE INDEX IF NOT EXISTS idx_domain_usage_user_date ON domain_usage(user_id, date)`)
+	Exec(UsageDB, `CREATE INDEX IF NOT EXISTS idx_domain_usage_user_domain ON domain_usage(user_id, domain)`)
+}
+
 func InsertSampleData() {
 	var count int
 
@@ -178,6 +196,7 @@ func InitAll(dataPath string) {
 	InitHistoryDB(dataPath)
 	InitWalletDB(dataPath)
 	InitScreenshotDB(dataPath)
+	InitUsageDB(dataPath)
 	InsertSampleData()
 }
 
@@ -199,5 +218,8 @@ func CloseAll() {
 	}
 	if ScreenshotDB != nil {
 		ScreenshotDB.Close()
+	}
+	if UsageDB != nil {
+		UsageDB.Close()
 	}
 }

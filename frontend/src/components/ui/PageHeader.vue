@@ -23,7 +23,7 @@ import { computed } from 'vue'
 interface Props {
   badge: string
   title: string
-  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber'
+  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -36,7 +36,8 @@ const badgeClass = computed(() => {
     cyan: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400',
     violet: 'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400',
     emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400',
-    amber: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+    amber: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400',
+    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400',
   }
   return colors[props.color]
 })

@@ -46,6 +46,9 @@ func main() {
 	r.HandleFunc("/api/history/{id}", handlers.GetHistoryByID).Methods("GET")
 	r.HandleFunc("/api/history/{id}", handlers.DeleteHistory).Methods("DELETE")
 
+	r.HandleFunc("/api/analytics/usage", handlers.BatchUpsertUsage).Methods("POST")
+	r.HandleFunc("/api/analytics/summary", handlers.GetAnalyticsSummary).Methods("GET")
+
 	r.HandleFunc("/api/wallet", handlers.GetWallet).Methods("GET")
 	r.HandleFunc("/api/wallet", handlers.CreateWalletEntry).Methods("POST")
 	r.HandleFunc("/api/wallet/reveal", handlers.RevealWalletPassword).Methods("GET")

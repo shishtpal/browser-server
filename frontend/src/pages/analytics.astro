@@ -1,0 +1,10 @@
+---
+import AnalyticsPage from '../components/AnalyticsPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Usage">
+  <main>
+    <AnalyticsPage client:only="vue" />
+  </main>
+</Layout>

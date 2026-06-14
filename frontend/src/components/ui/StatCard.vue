@@ -12,7 +12,7 @@ interface Props {
   value: string | number
   label: string
   variant?: 'dark' | 'primary' | 'secondary'
-  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber'
+  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,21 +26,24 @@ const cardClass = computed(() => {
     cyan: 'shadow-cyan-500/15',
     violet: 'shadow-violet-500/15',
     emerald: 'shadow-emerald-500/15',
-    amber: 'shadow-amber-500/15'
+    amber: 'shadow-amber-500/15',
+    rose: 'shadow-rose-500/15',
   }
   const primaryBg = {
     indigo: 'bg-indigo-600',
     cyan: 'bg-cyan-500',
     violet: 'bg-violet-600',
     emerald: 'bg-emerald-500',
-    amber: 'bg-amber-500'
+    amber: 'bg-amber-500',
+    rose: 'bg-rose-600',
   }
   const primaryShadows = {
     indigo: 'shadow-indigo-500/20',
     cyan: 'shadow-cyan-500/20',
     violet: 'shadow-violet-500/20',
     emerald: 'shadow-emerald-500/20',
-    amber: 'shadow-amber-500/20'
+    amber: 'shadow-amber-500/20',
+    rose: 'shadow-rose-500/20',
   }
   const variants = {
     dark: `bg-slate-900 ${darkShadows[props.color]} dark:bg-slate-950`,
@@ -56,7 +59,8 @@ const labelClass = computed(() => {
     cyan: 'text-cyan-100',
     violet: 'text-violet-100',
     emerald: 'text-emerald-100',
-    amber: 'text-amber-100'
+    amber: 'text-amber-100',
+    rose: 'text-rose-100',
   }
   const variants = {
     dark: 'text-slate-300',

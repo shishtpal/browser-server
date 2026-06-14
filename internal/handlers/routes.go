@@ -29,6 +29,8 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "POST", Path: "/api/history/import", Description: "Import history from Chrome History SQLite file"},
 		{Method: "GET", Path: "/api/history/{id}", Description: "Get history entry by ID"},
 		{Method: "DELETE", Path: "/api/history/{id}", Description: "Delete history entry by ID"},
+		{Method: "POST", Path: "/api/analytics/usage", Description: "Batch upsert domain usage time entries"},
+		{Method: "GET", Path: "/api/analytics/summary", Description: "Get domain usage summary (filters: user_id, start_date, end_date, group_by, limit)"},
 		{Method: "GET", Path: "/api/wallet", Description: "Get wallet entries without passwords (filter: user_id, website)"},
 		{Method: "POST", Path: "/api/wallet", Description: "Create wallet entry"},
 		{Method: "GET", Path: "/api/wallet/reveal", Description: "Reveal password for a credential (require: user_id, id)"},

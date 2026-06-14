@@ -1,4 +1,4 @@
-export type PanelKey = 'history' | 'todos' | 'wallet'
+export type PanelKey = 'history' | 'todos' | 'wallet' | 'bookmarks'
 
 export type PanelState = 'loading' | 'ready' | 'error'
 

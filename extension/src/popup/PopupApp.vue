@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, useTemplateRef } from 'vue'
 import { faviconUrl } from '@browser-server/shared-utils'
 import { getActiveTabDomain } from '../lib/browser'
+import BookmarksPanel from './BookmarksPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import TodosPanel from './TodosPanel.vue'
 import WalletPanel from './WalletPanel.vue'
@@ -15,15 +16,18 @@ const activeDomain = ref<string | null>(null)
 const historyPanel = useTemplateRef<InstanceType<typeof HistoryPanel>>('historyPanel')
 const todosPanel = useTemplateRef<InstanceType<typeof TodosPanel>>('todosPanel')
 const walletPanel = useTemplateRef<InstanceType<typeof WalletPanel>>('walletPanel')
+const bookmarksPanel = useTemplateRef<InstanceType<typeof BookmarksPanel>>('bookmarksPanel')
 
 const status = reactive<Record<PanelKey, PanelStatus>>({
   history: { count: 0, state: 'loading' },
   todos: { count: 0, state: 'loading' },
   wallet: { count: 0, state: 'loading' },
+  bookmarks: { count: 0, state: 'loading' },
 })
 
 const tabs: { key: PanelKey; label: string }[] = [
   { key: 'history', label: 'History' },
+  { key: 'bookmarks', label: 'Bookmarks' },
   { key: 'todos', label: 'Todos' },
   { key: 'wallet', label: 'Wallet' },
 ]
@@ -46,7 +50,8 @@ function onStatus(key: PanelKey, next: PanelStatus) {
 function refreshActive() {
   if (activePanel.value === 'history') historyPanel.value?.refresh()
   else if (activePanel.value === 'todos') todosPanel.value?.refresh()
-  else walletPanel.value?.refresh()
+  else if (activePanel.value === 'wallet') walletPanel.value?.refresh()
+  else bookmarksPanel.value?.refresh()
 }
 
 function openSettings() {
@@ -131,7 +136,7 @@ onMounted(async () => {
     </header>
 
     <!-- Tabs -->
-    <nav class="grid shrink-0 grid-cols-3 gap-1 border-b border-slate-800 bg-slate-900/40 px-2 py-2">
+    <nav class="grid shrink-0 grid-cols-4 gap-1 border-b border-slate-800 bg-slate-900/40 px-2 py-2">
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -148,13 +153,17 @@ onMounted(async () => {
           <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
           <path d="M12 7v5l4 2" />
         </svg>
+        <!-- Bookmarks icon -->
+        <svg v-else-if="tab.key === 'bookmarks'" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+        </svg>
         <!-- Todos icon -->
         <svg v-else-if="tab.key === 'todos'" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 11l3 3L22 4" />
           <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
         </svg>
         <!-- Wallet icon -->
-        <svg v-else class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg v-else-if="tab.key === 'wallet'" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
           <path d="M21 7H7a2 2 0 0 0 0 4h14v-4z" />
           <circle cx="16" cy="9" r="0.5" fill="currentColor" />
@@ -176,6 +185,11 @@ onMounted(async () => {
         v-show="activePanel === 'history'"
         ref="historyPanel"
         @status="onStatus('history', $event)"
+      />
+      <BookmarksPanel
+        v-show="activePanel === 'bookmarks'"
+        ref="bookmarksPanel"
+        @status="onStatus('bookmarks', $event)"
       />
       <TodosPanel
         v-show="activePanel === 'todos'"

@@ -113,3 +113,12 @@ export interface CreateHistoryInput {
   title: string
   duration?: number
 }
+
+export interface CreateBookmarkInput {
+  user_id: number
+  title: string
+  url: string
+  description?: string
+  tags?: string[]
+  folder_path?: string
+}

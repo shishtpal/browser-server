@@ -28,6 +28,14 @@ export async function getActiveTabDomain(): Promise<string | null> {
   }
 }
 
+export async function getActiveTabInfo(): Promise<{ url: string; title: string } | null> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.url || !isTrackableUrl(tab.url)) {
+    return null
+  }
+  return { url: tab.url, title: tab.title ?? tab.url }
+}
+
 export async function captureVisibleTab(): Promise<string | null> {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({ type: 'captureScreenshot' }, (response?: { dataUrl?: string }) => {

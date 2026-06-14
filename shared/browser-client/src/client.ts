@@ -1,4 +1,6 @@
 import type {
+  BookmarkResponse,
+  CreateBookmarkInput,
   CreateHistoryInput,
   CreateTodoInput,
   History,
@@ -112,6 +114,22 @@ export function createBrowserServerClient(baseUrl: string) {
         `/api/wallet/reveal${buildQuery({ user_id: userId, id })}`,
       )
       return result.password
+    },
+
+    getBookmarks(userId?: number, tags?: string, folderPath?: string): Promise<BookmarkResponse[]> {
+      return apiFetch<BookmarkResponse[]>(
+        normalizedBaseUrl,
+        'GET',
+        `/api/bookmarks${buildQuery({ user_id: userId, tags, folder_path: folderPath })}`,
+      )
+    },
+
+    createBookmark(data: CreateBookmarkInput): Promise<BookmarkResponse> {
+      return apiFetch<BookmarkResponse>(normalizedBaseUrl, 'POST', '/api/bookmarks', data)
+    },
+
+    deleteBookmark(id: number): Promise<void> {
+      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/bookmarks/${id}`)
     },
   }
 }

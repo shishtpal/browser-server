@@ -46,6 +46,7 @@
 
       <BookmarkSearchBar
         v-model:search-query="searchQuery"
+        v-model:search-column="searchColumn"
         v-model:view-mode="viewMode"
         :filtered-count="filteredBookmarks.length"
         :tree-count="treeCount"
@@ -142,6 +143,7 @@ const {
   error,
   activeTagFilter,
   searchQuery,
+  searchColumn,
   newTitle,
   newUrl,
   newDescription,

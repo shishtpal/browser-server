@@ -2,12 +2,15 @@ import { ref, computed, watch, type Ref } from 'vue'
 import { getBookmarks, createBookmark, updateBookmark, deleteBookmark } from '../lib/api'
 import type { BookmarkResponse } from '../types'
 
+export type BookmarkSearchColumn = 'title' | 'url' | 'description' | 'folder' | 'tags' | 'all'
+
 export function useBookmarks(selectedUserId: Ref<number | null>) {
   const bookmarks = ref<BookmarkResponse[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const activeTagFilter = ref<string | null>(null)
   const searchQuery = ref('')
+  const searchColumn = ref<BookmarkSearchColumn>('all')
 
   const newTitle = ref('')
   const newUrl = ref('')
@@ -21,17 +24,25 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
     Array.from(new Set(bookmarks.value.flatMap(b => b.tags))).sort()
   )
 
+  const matchesColumn = (b: BookmarkResponse, col: BookmarkSearchColumn, term: string): boolean => {
+    if (col === 'title') return b.title.toLowerCase().includes(term)
+    if (col === 'url') return b.url.toLowerCase().includes(term)
+    if (col === 'description') return (b.description || '').toLowerCase().includes(term)
+    if (col === 'folder') return (b.folder_path || '').toLowerCase().includes(term)
+    if (col === 'tags') return b.tags.some(t => t.toLowerCase().includes(term))
+    return [b.title, b.url, b.description, b.folder_path, ...b.tags]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(term)
+  }
+
   const filteredBookmarks = computed(() => {
     const q = searchQuery.value.toLowerCase().trim()
     if (!q) return bookmarks.value
+    const col = searchColumn.value
     const terms = q.split(/\s+/).filter(Boolean)
-    return bookmarks.value.filter(b => {
-      const haystack = [b.title, b.url, b.description, b.folder_path, ...b.tags]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return terms.every(t => haystack.includes(t))
-    })
+    return bookmarks.value.filter(b => terms.every(t => matchesColumn(b, col, t)))
   })
 
   const loadBookmarks = async () => {
@@ -124,6 +135,7 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
     error,
     activeTagFilter,
     searchQuery,
+    searchColumn,
     newTitle,
     newUrl,
     newDescription,

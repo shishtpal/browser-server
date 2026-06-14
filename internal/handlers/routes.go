@@ -24,7 +24,6 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "DELETE", Path: "/api/bookmarks/{id}", Description: "Delete bookmark by ID"},
 		{Method: "POST", Path: "/api/bookmarks/import", Description: "Import bookmarks from Chrome HTML export"},
 
-
 		{Method: "GET", Path: "/api/history", Description: "Get browsing history (filter: user_id, url)"},
 		{Method: "POST", Path: "/api/history", Description: "Add history entry"},
 		{Method: "POST", Path: "/api/history/import", Description: "Import history from Chrome History SQLite file"},
@@ -32,7 +31,7 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "DELETE", Path: "/api/history/{id}", Description: "Delete history entry by ID"},
 		{Method: "GET", Path: "/api/wallet", Description: "Get wallet entries without passwords (filter: user_id, website)"},
 		{Method: "POST", Path: "/api/wallet", Description: "Create wallet entry"},
-		{Method: "GET", Path: "/api/wallet/reveal", Description: "Reveal password for a credential (require: user_id, website, username)"},
+		{Method: "GET", Path: "/api/wallet/reveal", Description: "Reveal password for a credential (require: user_id, id)"},
 		{Method: "POST", Path: "/api/wallet/import", Description: "Import passwords from a Chrome-based browser CSV export"},
 		{Method: "GET", Path: "/api/wallet/{id}", Description: "Get wallet entry by ID"},
 		{Method: "PUT", Path: "/api/wallet/{id}", Description: "Update wallet entry by ID"},

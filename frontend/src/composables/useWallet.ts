@@ -78,7 +78,7 @@ export function useWallet(selectedUserId: Ref<number | null>) {
     // Passwords are not included in the list response; fetch on demand.
     if (selectedUserId.value) {
       try {
-        editForm.value.password = await revealWalletPassword(selectedUserId.value, e.website, e.username)
+        editForm.value.password = await revealWalletPassword(selectedUserId.value, e.id)
       } catch {
         editForm.value.password = ''
       }

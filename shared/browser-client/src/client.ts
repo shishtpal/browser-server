@@ -105,11 +105,11 @@ export function createBrowserServerClient(baseUrl: string) {
       return apiFetch<WalletEntry[]>(normalizedBaseUrl, 'GET', `/api/wallet${buildQuery({ user_id: userId, website })}`)
     },
 
-    async revealWalletPassword(userId: number, website: string, username: string): Promise<string> {
+    async revealWalletPassword(userId: number, id: number): Promise<string> {
       const result = await apiFetch<{ password: string }>(
         normalizedBaseUrl,
         'GET',
-        `/api/wallet/reveal${buildQuery({ user_id: userId, website, username })}`,
+        `/api/wallet/reveal${buildQuery({ user_id: userId, id })}`,
       )
       return result.password
     },

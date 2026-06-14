@@ -46,7 +46,7 @@ const fetchPassword = async () => {
   if (revealedPassword.value) return revealedPassword.value
   loading.value = true
   try {
-    revealedPassword.value = await revealWalletPassword(props.userId, props.entry.website, props.entry.username)
+    revealedPassword.value = await revealWalletPassword(props.userId, props.entry.id)
     return revealedPassword.value
   } finally {
     loading.value = false

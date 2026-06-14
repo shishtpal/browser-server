@@ -168,8 +168,8 @@ export function getWallet(userId?: number, website?: string): Promise<WalletEntr
   })
 }
 
-export function revealWalletPassword(userId: number, website: string, username: string): Promise<string> {
-  const params = new URLSearchParams({ user_id: String(userId), website, username })
+export function revealWalletPassword(userId: number, id: number): Promise<string> {
+  const params = new URLSearchParams({ user_id: String(userId), id: String(id) })
   return fetch(`${API_BASE}/api/wallet/reveal?${params.toString()}`).then(async (res) => {
     if (!res.ok) {
       const text = await res.text()

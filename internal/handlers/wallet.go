@@ -45,7 +45,7 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		// Passwords stay hidden by default; they must be requested via the
-		// reveal endpoint for a specific website + username.
+		// reveal endpoint for a specific wallet entry ID.
 		entry.Password = ""
 		wallet = append(wallet, entry)
 	}
@@ -54,25 +54,38 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 // RevealWalletPassword returns the password for a single credential identified
-// by the requested user, website, and username. All three are required so a
-// password can only be requested for a specific domain + username pair.
+// by the requested user and wallet entry ID. The legacy website + username
+// lookup is kept for older clients, but new clients should use ID so credentials
+// with an empty username can still be revealed.
 func RevealWalletPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	userID := helpers.GetUserIDFromQuery(r)
+	id := helpers.GetIDFromPath(r)
+	if id == 0 {
+		id = helpers.GetIDFromQuery(r)
+	}
 	website := r.URL.Query().Get("website")
 	username := r.URL.Query().Get("username")
 
-	if userID == 0 || website == "" || username == "" {
-		http.Error(w, "user_id, website, and username are required", http.StatusBadRequest)
+	if userID == 0 || (id == 0 && (website == "" || username == "")) {
+		http.Error(w, "user_id and id are required", http.StatusBadRequest)
 		return
 	}
 
 	var password string
-	err := db.WalletDB.QueryRow(
-		"SELECT password FROM wallet WHERE user_id = ? AND website = ? AND username = ? LIMIT 1",
-		userID, website, username,
-	).Scan(&password)
+	var err error
+	if id > 0 {
+		err = db.WalletDB.QueryRow(
+			"SELECT password FROM wallet WHERE user_id = ? AND id = ? LIMIT 1",
+			userID, id,
+		).Scan(&password)
+	} else {
+		err = db.WalletDB.QueryRow(
+			"SELECT password FROM wallet WHERE user_id = ? AND website = ? AND username = ? LIMIT 1",
+			userID, website, username,
+		).Scan(&password)
+	}
 
 	if err == sql.ErrNoRows {
 		http.Error(w, "Wallet entry not found", http.StatusNotFound)

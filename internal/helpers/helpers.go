@@ -23,6 +23,15 @@ func GetIDFromPath(r *http.Request) int {
 	return id
 }
 
+func GetIDFromQuery(r *http.Request) int {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		return 0
+	}
+	id, _ := strconv.Atoi(idStr)
+	return id
+}
+
 func ParseTagsFromJSON(tagsJSON string) []string {
 	if tagsJSON == "" {
 		return []string{}

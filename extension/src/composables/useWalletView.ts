@@ -76,7 +76,7 @@ export function useWalletView(client: Ref<BrowserServerClient | null>, userId: R
     if (!client.value || !userId.value) {
       throw new Error('Not ready')
     }
-    return client.value.revealWalletPassword(userId.value, item.website, item.username)
+    return client.value.revealWalletPassword(userId.value, item.id)
   }
 
   return {

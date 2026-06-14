@@ -1,7 +1,9 @@
 import type { History, BrowserServerClient } from '@browser-server/shared-client'
-import { ref, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { summarizeHistory } from './history'
 import { timeAgo } from '@browser-server/shared-utils'
+
+export type HistorySearchColumn = 'title' | 'url' | 'all'
 
 export interface GroupedHistoryEntry {
   url: string
@@ -17,6 +19,8 @@ export function useHistoryView(client: Ref<BrowserServerClient | null>, userId: 
   const stats = ref<string>('Loading…')
   const errorMessage = ref<string | null>(null)
   const isLoading = ref(false)
+  const searchQuery = ref('')
+  const searchColumn = ref<HistorySearchColumn>('all')
 
   function refreshGrouping() {
     const mapped = summarizeHistory(entries.value).map<GroupedHistoryEntry>((entry) => ({
@@ -25,6 +29,20 @@ export function useHistoryView(client: Ref<BrowserServerClient | null>, userId: 
     }))
     grouped.value = mapped
   }
+
+  function matchesColumn(entry: GroupedHistoryEntry, col: HistorySearchColumn, term: string): boolean {
+    if (col === 'title') return entry.title.toLowerCase().includes(term)
+    if (col === 'url') return entry.url.toLowerCase().includes(term)
+    return `${entry.title} ${entry.url}`.toLowerCase().includes(term)
+  }
+
+  const filtered = computed(() => {
+    const q = searchQuery.value.toLowerCase().trim()
+    if (!q) return grouped.value
+    const col = searchColumn.value
+    const terms = q.split(/\s+/).filter(Boolean)
+    return grouped.value.filter((entry) => terms.every((t) => matchesColumn(entry, col, t)))
+  })
 
   async function load(): Promise<void> {
     if (!client.value || !userId.value) {
@@ -65,5 +83,5 @@ export function useHistoryView(client: Ref<BrowserServerClient | null>, userId: 
     await load()
   }
 
-  return { entries, grouped, stats, errorMessage, isLoading, load, clearAll }
+  return { entries, grouped, filtered, stats, errorMessage, isLoading, searchQuery, searchColumn, load, clearAll }
 }

@@ -3,11 +3,15 @@ import { getHistory, createHistory, deleteHistory } from '../lib/api'
 import { formatDuration } from '../lib/utils'
 import type { History } from '../types'
 
+const PAGE_SIZE = 100
+
 export function useHistory(selectedUserId: Ref<number | null>) {
   const historyEntries = ref<History[]>([])
   const isLoading = ref(false)
+  const isLoadingMore = ref(false)
   const error = ref<string | null>(null)
   const urlFilter = ref('')
+  const hasMore = ref(false)
 
   const newUrl = ref('')
   const newTitle = ref('')
@@ -30,11 +34,28 @@ export function useHistory(selectedUserId: Ref<number | null>) {
     isLoading.value = true
     error.value = null
     try {
-      historyEntries.value = await getHistory(selectedUserId.value)
+      const batch = await getHistory(selectedUserId.value, undefined, PAGE_SIZE, 0)
+      historyEntries.value = batch
+      hasMore.value = batch.length >= PAGE_SIZE
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load history'
     } finally {
       isLoading.value = false
+    }
+  }
+
+  const loadMore = async () => {
+    if (!selectedUserId.value || isLoadingMore.value || !hasMore.value) return
+    isLoadingMore.value = true
+    try {
+      const offset = historyEntries.value.length
+      const batch = await getHistory(selectedUserId.value, undefined, PAGE_SIZE, offset)
+      historyEntries.value = [...historyEntries.value, ...batch]
+      hasMore.value = batch.length >= PAGE_SIZE
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to load more history'
+    } finally {
+      isLoadingMore.value = false
     }
   }
 
@@ -69,14 +90,17 @@ export function useHistory(selectedUserId: Ref<number | null>) {
   return {
     historyEntries,
     isLoading,
+    isLoadingMore,
     error,
     urlFilter,
+    hasMore,
     newUrl,
     newTitle,
     newDuration,
     totalDuration,
     filteredHistory,
     loadHistory,
+    loadMore,
     addEntry,
     removeEntry,
   }

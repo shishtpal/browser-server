@@ -76,13 +76,26 @@
             @delete="removeEntry"
           />
         </div>
+
+        <!-- Scroll sentinel + loading more indicator -->
+        <div ref="scrollSentinel" class="flex items-center justify-center py-6">
+          <div v-if="isLoadingMore" class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            Loading more…
+          </div>
+          <span v-else-if="!hasMore && filteredHistory.length > 0" class="text-xs text-slate-400 dark:text-slate-500">
+            All {{ historyEntries.length }} entries loaded
+          </span>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onBeforeUnmount, useTemplateRef } from 'vue'
 import { useUser } from '../composables/useUser'
 import { useHistory } from '../composables/useHistory'
 import PageHeader from './ui/PageHeader.vue'
@@ -105,17 +118,45 @@ const selectedUserId = ref<number | null>(currentUserId.value)
 const {
   historyEntries,
   isLoading,
+  isLoadingMore,
   error,
   urlFilter,
+  hasMore,
   newUrl,
   newTitle,
   newDuration,
   totalDuration,
   filteredHistory,
   loadHistory,
+  loadMore,
   addEntry,
   removeEntry,
 } = useHistory(selectedUserId)
+
+const scrollSentinel = useTemplateRef<HTMLDivElement>('scrollSentinel')
+let observer: IntersectionObserver | null = null
+
+function setupObserver() {
+  observer?.disconnect()
+  if (!scrollSentinel.value) return
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0]?.isIntersecting && hasMore.value && !isLoadingMore.value) {
+        loadMore()
+      }
+    },
+    { rootMargin: '200px' },
+  )
+  observer.observe(scrollSentinel.value)
+}
+
+watch(scrollSentinel, () => {
+  setupObserver()
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+})
 
 watch(selectedUserId, (id) => {
   if (id) {

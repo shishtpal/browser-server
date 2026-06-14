@@ -69,8 +69,8 @@ export function createBrowserServerClient(baseUrl: string) {
       }
     },
 
-    getHistory(userId?: number, url?: string): Promise<History[]> {
-      return apiFetch<History[]>(normalizedBaseUrl, 'GET', `/api/history${buildQuery({ user_id: userId, url })}`)
+    getHistory(userId?: number, url?: string, limit?: number, offset?: number): Promise<History[]> {
+      return apiFetch<History[]>(normalizedBaseUrl, 'GET', `/api/history${buildQuery({ user_id: userId, url, limit, offset })}`)
     },
 
     createHistory(data: CreateHistoryInput): Promise<History> {

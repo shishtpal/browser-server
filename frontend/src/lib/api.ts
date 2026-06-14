@@ -121,8 +121,8 @@ export function importBookmarks(userId: number, file: File): Promise<ImportResul
 
 // ─── History ─────────────────────────────────────────────
 
-export function getHistory(userId?: number, url?: string): Promise<History[]> {
-  return client.getHistory(userId, url)
+export function getHistory(userId?: number, url?: string, limit?: number, offset?: number): Promise<History[]> {
+  return client.getHistory(userId, url, limit, offset)
 }
 
 export function getHistoryEntry(id: number): Promise<History> {

@@ -16,6 +16,8 @@ func GetHistory(w http.ResponseWriter, r *http.Request) {
 
 	userID := helpers.GetUserIDFromQuery(r)
 	urlFilter := r.URL.Query().Get("url")
+	limit := helpers.GetLimitFromQuery(r, 0)
+	offset := helpers.GetOffsetFromQuery(r)
 
 	query := "SELECT id, user_id, url, title, visited_at, duration FROM history WHERE 1=1"
 	args := []interface{}{}
@@ -31,6 +33,15 @@ func GetHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query += " ORDER BY visited_at DESC"
+
+	if limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, limit)
+		if offset > 0 {
+			query += " OFFSET ?"
+			args = append(args, offset)
+		}
+	}
 
 	rows, err := db.HistoryDB.Query(query, args...)
 	if err != nil {

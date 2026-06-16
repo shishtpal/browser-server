@@ -17,8 +17,12 @@ const { settings } = useExtensionSettings()
 const userId = useUserId(computed(() => settings.value))
 const client = computed(() => (settings.value ? createApiClient(settings.value) : null))
 
-const { filtered, items, errorMessage, isLoading, searchQuery, searchColumn, load, addBookmark, deleteBookmark } =
-  useBookmarksView(client, userId)
+const {
+  filtered, paginatedEntries, items, errorMessage, isLoading,
+  searchQuery, searchColumn, activeTag, allTags,
+  currentPage, totalPages, nextPage, prevPage,
+  load, addBookmark, deleteBookmark,
+} = useBookmarksView(client, userId)
 
 defineExpose({ refresh: load })
 
@@ -91,15 +95,17 @@ async function remove(id: number) {
 const isReady = computed(() => Boolean(client.value) && userId.value > 0)
 const showSkeleton = computed(() => isLoading.value && items.value.length === 0)
 
+const totalCount = computed(() => filtered.value.length)
+
 watch(
-  [isReady, isLoading, errorMessage, filtered],
+  [isReady, isLoading, errorMessage, totalCount],
   () => {
     emit('status', {
-      count: filtered.value.length,
+      count: totalCount.value,
       state: errorMessage.value ? 'error' : isLoading.value ? 'loading' : 'ready',
     })
   },
-  { immediate: true, deep: true },
+  { immediate: true },
 )
 
 watch(
@@ -169,6 +175,24 @@ watch(
       </div>
     </div>
 
+    <!-- Tag filter -->
+    <div v-if="allTags.length > 0" class="flex items-center gap-1 overflow-x-auto border-b border-slate-800 px-3 py-1.5">
+      <button
+        type="button"
+        class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
+        :class="!activeTag ? 'bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-300'"
+        @click="activeTag = ''"
+      >All</button>
+      <button
+        v-for="tag in allTags"
+        :key="tag"
+        type="button"
+        class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium transition"
+        :class="activeTag === tag ? 'bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-300'"
+        @click="activeTag = activeTag === tag ? '' : tag"
+      >{{ tag }}</button>
+    </div>
+
     <div class="px-2 py-2">
       <!-- Skeleton -->
       <div v-if="showSkeleton" class="space-y-1">
@@ -201,7 +225,7 @@ watch(
       </div>
 
       <!-- Empty -->
-      <div v-else-if="filtered.length === 0 && !searchQuery" class="flex flex-col items-center gap-3 px-4 py-12 text-center">
+      <div v-else-if="items.length === 0" class="flex flex-col items-center gap-3 px-4 py-12 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800">
           <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
@@ -219,13 +243,17 @@ watch(
           </svg>
         </div>
         <p class="text-sm font-medium text-slate-300">No results</p>
-        <p class="max-w-[260px] text-xs text-slate-500">No bookmarks match "{{ searchQuery }}".</p>
+        <p class="max-w-[260px] text-xs text-slate-500">
+          <template v-if="activeTag && searchQuery">No bookmarks tagged "{{ activeTag }}" matching "{{ searchQuery }}".</template>
+          <template v-else-if="activeTag">No bookmarks tagged "{{ activeTag }}".</template>
+          <template v-else>No bookmarks match "{{ searchQuery }}".</template>
+        </p>
       </div>
 
       <!-- List -->
       <ul v-else class="space-y-0.5">
         <li
-          v-for="bookmark in filtered"
+          v-for="bookmark in paginatedEntries"
           :key="bookmark.id"
           class="group flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 transition hover:bg-slate-800/60"
           :title="`Open ${bookmark.url}`"
@@ -240,6 +268,15 @@ watch(
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium text-slate-100" :title="bookmark.title">{{ bookmark.title }}</p>
             <p class="truncate text-[11px] text-slate-500" :title="bookmark.url">{{ bookmark.url }}</p>
+            <div v-if="bookmark.tags.length > 0" class="mt-1 flex flex-wrap gap-1">
+              <span
+                v-for="tag in bookmark.tags"
+                :key="tag"
+                class="rounded-full bg-slate-800 px-1.5 py-0.5 text-[9px] font-medium text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-300"
+                :title="`Filter by ${tag}`"
+                @click.stop="activeTag = activeTag === tag ? '' : tag"
+              >{{ tag }}</span>
+            </div>
           </div>
           <div class="flex shrink-0 items-center gap-1">
             <!-- Copy button -->
@@ -271,6 +308,35 @@ watch(
           </div>
         </li>
       </ul>
+
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-slate-800 px-2 pt-2.5">
+        <button
+          type="button"
+          :disabled="currentPage <= 1"
+          class="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+          @click="prevPage"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Prev
+        </button>
+        <span class="text-xs tabular-nums text-slate-500">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+        <button
+          type="button"
+          :disabled="currentPage >= totalPages"
+          class="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+          @click="nextPage"
+        >
+          Next
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+      </div>
     </div>
   </section>
 </template>

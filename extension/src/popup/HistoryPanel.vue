@@ -16,7 +16,7 @@ const { settings } = useExtensionSettings()
 const userId = useUserId(computed(() => settings.value))
 const client = computed(() => (settings.value ? createApiClient(settings.value) : null))
 
-const { filtered, errorMessage, isLoading, searchQuery, searchColumn, load } = useHistoryView(client, userId)
+const { filtered, paginatedEntries, errorMessage, isLoading, searchQuery, searchColumn, currentPage, totalPages, nextPage, prevPage, load } = useHistoryView(client, userId)
 
 defineExpose({ refresh: load })
 
@@ -53,15 +53,17 @@ const searchPlaceholder = computed(() => {
 const isReady = computed(() => Boolean(client.value) && userId.value > 0)
 const showSkeleton = computed(() => isLoading.value && filtered.value.length === 0)
 
+const totalCount = computed(() => filtered.value.length)
+
 watch(
-  [isReady, isLoading, errorMessage, filtered],
+  [isReady, isLoading, errorMessage, totalCount],
   () => {
     emit('status', {
-      count: filtered.value.length,
+      count: totalCount.value,
       state: errorMessage.value ? 'error' : isLoading.value ? 'loading' : 'ready',
     })
   },
-  { immediate: true, deep: true },
+  { immediate: true },
 )
 
 // Auto-load as soon as settings (and thus the API client) become available.
@@ -157,7 +159,7 @@ watch(
       <!-- List -->
       <ul v-else class="space-y-0.5">
         <li
-          v-for="entry in filtered"
+          v-for="entry in paginatedEntries"
           :key="entry.url"
           class="group flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 transition hover:bg-slate-800/60"
           :title="`Open ${entry.url}`"
@@ -205,6 +207,35 @@ watch(
           </div>
         </li>
       </ul>
+
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-slate-800 px-2 pt-2.5">
+        <button
+          type="button"
+          :disabled="currentPage <= 1"
+          class="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+          @click="prevPage"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Prev
+        </button>
+        <span class="text-xs tabular-nums text-slate-500">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+        <button
+          type="button"
+          :disabled="currentPage >= totalPages"
+          class="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+          @click="nextPage"
+        >
+          Next
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+      </div>
     </div>
   </section>
 </template>

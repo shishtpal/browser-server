@@ -14,17 +14,17 @@
 
 ## 🔜 Next
 
-- **Health check endpoint**
+- [x] **Health check endpoint**
   - Add `/health` route in `cmd/server/main.go`
   - Return simple JSON status with uptime/build-ready signal
   - Confirm endpoint works without auth and can be used by Docker/CI checks
 
-- **Logging middleware**
+- [x] **Logging middleware**
   - Add middleware for method, path, status code, and request duration
   - Apply middleware centrally in router setup
   - Keep logs readable for local development and future production debugging
 
-- **CORS middleware**
+- [x] **CORS middleware**
   - Allow frontend dev origin during local development
   - Support common methods and headers used by the API
   - Keep configuration simple and environment-aware so production stays locked down
@@ -40,12 +40,11 @@
   - Improve database and parsing error messages without leaking internals
 
 - **Authentication**
-  - Add login and logout endpoints
-  - Introduce session or token-based auth strategy
+  - Introduce token-based auth strategy
   - Protect write routes and any sensitive wallet/user operations
   - Add frontend auth state handling and route guarding
 
-- **Shared frontend/extension code**
+- [x] **Shared frontend/extension code**
   - Use `shared/` for framework-agnostic TypeScript packages only, starting with API client, request/response types, and small pure utilities
   - Keep Vue components, Astro pages, browser-extension runtime code, and app-specific composables inside `frontend/` or `extension/`
   - Expand `shared/browser-client` into the canonical API layer for both apps instead of maintaining duplicate clients

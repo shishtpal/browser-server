@@ -12,6 +12,7 @@ import (
 
 	"browser-server/internal/db"
 	"browser-server/internal/handlers"
+	"browser-server/internal/middleware"
 )
 
 func main() {
@@ -22,6 +23,9 @@ func main() {
 	defer db.CloseAll()
 
 	r := mux.NewRouter()
+
+	r.Use(middleware.Logging)
+	r.Use(middleware.CORS)
 
 	handlers.StartedAt = time.Now()
 	r.HandleFunc("/health", handlers.Health).Methods("GET")

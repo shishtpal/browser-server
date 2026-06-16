@@ -24,7 +24,11 @@ const {
   load, addBookmark, deleteBookmark,
 } = useBookmarksView(client, userId)
 
-defineExpose({ refresh: load })
+defineExpose({
+  refresh: load,
+  clearSearch: () => { searchQuery.value = ''; searchColumn.value = 'all'; activeTag.value = '' },
+  hasActiveSearch: () => Boolean(searchQuery.value) || searchColumn.value !== 'all' || Boolean(activeTag.value),
+})
 
 const copiedUrl = ref<string | null>(null)
 const newTitle = ref('')

@@ -163,5 +163,33 @@ onMounted(() => {
 
       <p :class="statusClass">{{ statusMessage }}</p>
     </section>
+
+    <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+      <h2 class="mb-4 text-lg font-semibold text-slate-200">Keyboard Shortcuts</h2>
+      <p class="mb-4 text-xs text-slate-500">These shortcuts work inside the popup window.</p>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2.5">
+          <span class="text-sm text-slate-300">Switch tabs</span>
+          <div class="flex items-center gap-1.5">
+            <kbd class="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">Ctrl</kbd>
+            <span class="text-xs text-slate-500">+</span>
+            <kbd class="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">1</kbd>
+            <span class="text-xs text-slate-500">–</span>
+            <kbd class="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">5</kbd>
+          </div>
+        </div>
+        <div class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2.5">
+          <span class="text-sm text-slate-300">Clear search / filters</span>
+          <div class="flex items-center gap-1.5">
+            <kbd class="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">Ctrl</kbd>
+            <span class="text-xs text-slate-500">+</span>
+            <kbd class="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">Backspace</kbd>
+          </div>
+        </div>
+      </div>
+      <p class="mt-3 text-[11px] text-slate-500">
+        Tab order: Usage (1), History (2), Bookmarks (3), Todos (4), Wallet (5).
+      </p>
+    </section>
   </main>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PanelKey, PanelStatus } from './types'
-import { computed, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { faviconUrl } from '@browser-server/shared-utils'
 import { createApiClient, useExtensionSettings } from '../composables/composables'
 import { getActiveTabDomain } from '../lib/browser'
@@ -81,12 +81,35 @@ function openSettings() {
   chrome.runtime.openOptionsPage()
 }
 
+function onKeyDown(event: KeyboardEvent) {
+  if (event.ctrlKey && event.key === 'Backspace') {
+    event.preventDefault()
+    const panel = activePanel.value
+    if (panel === 'history') historyPanel.value?.clearSearch()
+    else if (panel === 'bookmarks') bookmarksPanel.value?.clearSearch()
+    return
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key >= '1' && event.key <= '5') {
+    event.preventDefault()
+    const index = Number.parseInt(event.key, 10) - 1
+    if (index < tabs.length) {
+      activePanel.value = tabs[index].key
+    }
+  }
+}
+
 watch(settings, () => {
   if (settings.value) void checkConnection()
 }, { immediate: true })
 
 onMounted(async () => {
   activeDomain.value = await getActiveTabDomain()
+  document.addEventListener('keydown', onKeyDown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeyDown)
 })
 </script>
 

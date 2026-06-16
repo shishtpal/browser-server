@@ -18,7 +18,11 @@ const client = computed(() => (settings.value ? createApiClient(settings.value) 
 
 const { filtered, paginatedEntries, errorMessage, isLoading, searchQuery, searchColumn, currentPage, totalPages, nextPage, prevPage, load } = useHistoryView(client, userId)
 
-defineExpose({ refresh: load })
+defineExpose({
+  refresh: load,
+  clearSearch: () => { searchQuery.value = ''; searchColumn.value = 'all' },
+  hasActiveSearch: () => Boolean(searchQuery.value) || searchColumn.value !== 'all',
+})
 
 const copiedUrl = ref<string | null>(null)
 

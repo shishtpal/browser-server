@@ -3,7 +3,9 @@ import { isTrackableUrl } from './lib/browser'
 import { getSettings } from './lib/settings'
 import { TimeTracker } from './lib/timeTracker'
 
-let lastUrl: string | null = null
+const USAGE_FLUSH_ALARM = 'usage-flush'
+
+let lastRecordedUrl: string | null = null
 const tracker = new TimeTracker()
 
 function extractHostname(url: string): string | null {
@@ -36,38 +38,82 @@ async function postVisit(url: string, title: string | undefined): Promise<void> 
   }
 }
 
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
-  if (changeInfo.url && changeInfo.url !== lastUrl) {
-    lastUrl = changeInfo.url
-    void postVisit(changeInfo.url, tab.title)
-    tracker.startTracking(extractHostname(changeInfo.url))
+function getActiveTab(): Promise<chrome.tabs.Tab | null> {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      resolve(tab ?? null)
+    })
+  })
+}
+
+function isCurrentWindowFocused(): Promise<boolean> {
+  return new Promise((resolve) => {
+    chrome.windows.getCurrent((window) => {
+      resolve(Boolean(window?.focused))
+    })
+  })
+}
+
+async function syncActiveTab(): Promise<void> {
+  const focused = await isCurrentWindowFocused()
+  if (!focused) {
+    tracker.stopTracking()
     return
   }
 
-  if (changeInfo.status === 'complete' && tab.url && tab.url !== lastUrl) {
-    lastUrl = tab.url
+  const tab = await getActiveTab()
+  if (!tab?.url || !isTrackableUrl(tab.url)) {
+    tracker.stopTracking()
+    return
+  }
+
+  if (tab.url !== lastRecordedUrl) {
+    lastRecordedUrl = tab.url
     void postVisit(tab.url, tab.title)
-    tracker.startTracking(extractHostname(tab.url))
+  }
+
+  tracker.startTracking(extractHostname(tab.url))
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!tab.active || tab.id !== tabId) {
+    return
+  }
+
+  if (changeInfo.url || changeInfo.status === 'complete') {
+    void syncActiveTab()
   }
 })
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  chrome.tabs.get(activeInfo.tabId, (tab) => {
-    if (tab.url && tab.url !== lastUrl) {
-      lastUrl = tab.url
-      void postVisit(tab.url, tab.title)
-      tracker.startTracking(extractHostname(tab.url))
-    }
-  })
+  void activeInfo
+  void syncActiveTab()
+})
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    tracker.stopTracking()
+    return
+  }
+
+  void syncActiveTab()
 })
 
 chrome.idle.onStateChanged.addListener((newState) => {
   tracker.handleIdleState(newState)
+  if (newState === 'active') {
+    void syncActiveTab()
+  }
 })
 
 chrome.runtime.onSuspend.addListener(() => {
-  tracker.stopPeriodicFlush()
   void tracker.flush()
+})
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === USAGE_FLUSH_ALARM) {
+    void tracker.flush()
+  }
 })
 
 chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendResponse) => {
@@ -90,5 +136,7 @@ chrome.runtime.onMessage.addListener((message: { type?: string }, _sender, sendR
   return true
 })
 
-void tracker.restore()
-tracker.startPeriodicFlush()
+chrome.idle.setDetectionInterval(15)
+chrome.alarms.create(USAGE_FLUSH_ALARM, { periodInMinutes: 0.5 })
+
+void tracker.restore().then(() => syncActiveTab())

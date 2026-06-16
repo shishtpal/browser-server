@@ -3,7 +3,6 @@ import type { UsageEntry } from '@browser-server/shared-types'
 import { getSettings } from './settings'
 
 const STORAGE_KEY = 'usage_buffer'
-const FLUSH_INTERVAL = 30000
 const MIN_SECONDS = 1
 
 export class TimeTracker {
@@ -11,7 +10,6 @@ export class TimeTracker {
   private activeStartTime: number = 0
   private buffer: UsageEntry[] = []
   private isIdle = false
-  private flushTimer: ReturnType<typeof setInterval> | null = null
 
   startTracking(domain: string | null): void {
     if (!domain) {
@@ -40,24 +38,18 @@ export class TimeTracker {
       return
     }
 
-    const elapsed = Math.floor((Date.now() - this.activeStartTime) / 1000)
+    const now = Date.now()
+    const elapsed = Math.floor((now - this.activeStartTime) / 1000)
     if (elapsed < MIN_SECONDS) {
       return
     }
 
-    const today = new Date().toISOString().slice(0, 10)
-
-    this.buffer.push({
-      domain: this.activeDomain,
-      date: today,
-      seconds: elapsed,
-    })
-
-    this.activeStartTime = Date.now()
+    this.addElapsedEntries(this.activeDomain, this.activeStartTime, now)
+    this.activeStartTime = now
     this.persistBuffer()
   }
 
-  handleIdleState(state: chrome.idle.IdleState): void {
+  handleIdleState(state: 'active' | 'idle' | 'locked'): void {
     if (state === 'idle' || state === 'locked') {
       this.captureElapsed()
       this.isIdle = true
@@ -97,26 +89,10 @@ export class TimeTracker {
     }
   }
 
-  startPeriodicFlush(): void {
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer)
-    }
-    this.flushTimer = setInterval(() => {
-      void this.flush()
-    }, FLUSH_INTERVAL)
-  }
-
-  stopPeriodicFlush(): void {
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer)
-      this.flushTimer = null
-    }
-  }
-
   async restore(): Promise<void> {
     try {
-      const data = await chrome.storage.session.get(STORAGE_KEY)
-      const saved: UsageEntry[] = data[STORAGE_KEY]
+      const data = await chrome.storage.local.get(STORAGE_KEY)
+      const saved = (data as Record<string, UsageEntry[] | undefined>)[STORAGE_KEY]
       if (saved && saved.length > 0) {
         this.buffer = saved
         await this.flush()
@@ -128,9 +104,42 @@ export class TimeTracker {
 
   private persistBuffer(): void {
     try {
-      void chrome.storage.session.set({ [STORAGE_KEY]: this.buffer })
+      void chrome.storage.local.set({ [STORAGE_KEY]: this.buffer })
     } catch {
       // best effort
     }
+  }
+
+  private addElapsedEntries(domain: string, startTime: number, endTime: number): void {
+    let cursor = startTime
+
+    while (cursor < endTime) {
+      const boundary = Math.min(this.nextLocalMidnight(cursor), endTime)
+      const seconds = Math.floor((boundary - cursor) / 1000)
+
+      if (seconds >= MIN_SECONDS) {
+        this.buffer.push({
+          domain,
+          date: this.localDateKey(cursor),
+          seconds,
+        })
+      }
+
+      cursor = boundary
+    }
+  }
+
+  private localDateKey(timestamp: number): string {
+    const d = new Date(timestamp)
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  private nextLocalMidnight(timestamp: number): number {
+    const d = new Date(timestamp)
+    d.setHours(24, 0, 0, 0)
+    return d.getTime()
   }
 }

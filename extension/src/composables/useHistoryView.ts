@@ -11,6 +11,7 @@ export interface GroupedHistoryEntry {
   count: number
   lastVisited: string
   lastVisitedLabel: string
+  totalDuration: number
   _lowerTitle: string
   _lowerUrl: string
   _lowerCombined: string

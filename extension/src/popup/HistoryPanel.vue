@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { faviconUrl, timeAgo } from '@browser-server/shared-utils'
+import { faviconUrl, formatDuration, timeAgo } from '@browser-server/shared-utils'
 import {
   createApiClient,
   useExtensionSettings,
@@ -201,6 +201,13 @@ watch(
                 :title="`${entry.count} visits`"
               >
                 ×{{ entry.count }}
+              </span>
+              <span v-if="entry.totalDuration > 0" class="flex items-center gap-0.5 text-[10px] tabular-nums text-slate-400" :title="`${entry.count} visits, ${formatDuration(entry.totalDuration)} total`">
+                <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                {{ formatDuration(entry.totalDuration) }}
               </span>
               <span class="text-[10px] text-slate-500">{{ timeAgo(entry.lastVisited) }}</span>
             </div>

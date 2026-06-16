@@ -5,6 +5,7 @@ export interface GroupedHistory {
   title: string
   count: number
   lastVisited: string
+  totalDuration: number
 }
 
 export function summarizeHistory(entries: History[]): GroupedHistory[] {
@@ -18,11 +19,13 @@ export function summarizeHistory(entries: History[]): GroupedHistory[] {
         title: entry.title || entry.url,
         count: 1,
         lastVisited: entry.visited_at,
+        totalDuration: entry.duration ?? 0,
       })
       continue
     }
 
     current.count += 1
+    current.totalDuration += entry.duration ?? 0
     if (Date.parse(entry.visited_at) > Date.parse(current.lastVisited)) {
       current.lastVisited = entry.visited_at
       current.title = entry.title || current.title

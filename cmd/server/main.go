@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -21,6 +22,9 @@ func main() {
 	defer db.CloseAll()
 
 	r := mux.NewRouter()
+
+	handlers.StartedAt = time.Now()
+	r.HandleFunc("/health", handlers.Health).Methods("GET")
 
 	r.HandleFunc("/api/routes", handlers.GetRoutes).Methods("POST")
 

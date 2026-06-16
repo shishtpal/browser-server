@@ -5,6 +5,7 @@ import type {
   CreateBookmarkInput,
   CreateHistoryInput,
   CreateTodoInput,
+  HealthResponse,
   History,
   Screenshot,
   Todo,
@@ -63,8 +64,8 @@ export function createBrowserServerClient(baseUrl: string) {
       try {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 3000)
-        const response = await fetch(`${normalizedBaseUrl}/api/routes`, {
-          method: 'POST',
+        const response = await fetch(`${normalizedBaseUrl}/health`, {
+          method: 'GET',
           signal: controller.signal,
         })
         clearTimeout(timeout)
@@ -72,6 +73,10 @@ export function createBrowserServerClient(baseUrl: string) {
       } catch {
         return false
       }
+    },
+
+    async health(): Promise<HealthResponse> {
+      return apiFetch<HealthResponse>(normalizedBaseUrl, 'GET', '/health')
     },
 
     getHistory(userId?: number, url?: string, limit?: number, offset?: number): Promise<History[]> {

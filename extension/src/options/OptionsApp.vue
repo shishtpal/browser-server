@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { DEFAULT_SETTINGS, resetSettings, saveSettings } from '../lib/settings'
+import { createApiClient } from '../composables/useApiClient'
 
 const form = reactive({
   apiBase: DEFAULT_SETTINGS.apiBase,
@@ -11,6 +12,8 @@ const form = reactive({
 const statusMessage = ref<string>('')
 const statusKind = ref<'ok' | 'err' | 'idle'>('idle')
 const isSaving = ref(false)
+const isTesting = ref(false)
+const connectionStatus = ref<'idle' | 'online' | 'offline'>('idle')
 
 let statusTimer: number | undefined
 
@@ -82,7 +85,30 @@ async function handleSave() {
 async function handleReset() {
   const defaults = await resetSettings()
   Object.assign(form, defaults)
+  connectionStatus.value = 'idle'
   showStatus('Reset to defaults.', 'ok')
+}
+
+async function testConnection() {
+  const apiBase = form.apiBase.trim()
+  if (!apiBase) {
+    showStatus('Enter a server URL first.', 'err')
+    return
+  }
+
+  isTesting.value = true
+  connectionStatus.value = 'idle'
+  try {
+    const client = createApiClient({ apiBase, userId: form.userId, autoCapture: form.autoCapture })
+    const reachable = await client.ping()
+    connectionStatus.value = reachable ? 'online' : 'offline'
+    showStatus(reachable ? 'Server is reachable.' : 'Cannot reach server.', reachable ? 'ok' : 'err')
+  } catch {
+    connectionStatus.value = 'offline'
+    showStatus('Connection failed.', 'err')
+  } finally {
+    isTesting.value = false
+  }
 }
 
 onMounted(() => {
@@ -141,6 +167,28 @@ onMounted(() => {
             </span>
           </span>
         </label>
+      </div>
+
+      <div class="mt-6 flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-3">
+        <span
+          class="inline-block h-2.5 w-2.5 rounded-full"
+          :class="connectionStatus === 'idle'
+            ? 'bg-slate-600'
+            : connectionStatus === 'online'
+              ? 'bg-emerald-400'
+              : 'bg-rose-500'"
+        />
+        <span class="flex-1 text-sm text-slate-400">
+          {{ connectionStatus === 'idle' ? 'Not tested' : connectionStatus === 'online' ? 'Server reachable' : 'Server unreachable' }}
+        </span>
+        <button
+          type="button"
+          :disabled="isTesting"
+          class="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          @click="testConnection"
+        >
+          {{ isTesting ? 'Testing…' : 'Test Connection' }}
+        </button>
       </div>
 
       <div class="mt-6 flex gap-3">

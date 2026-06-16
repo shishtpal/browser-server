@@ -1,3 +1,8 @@
+export interface HealthResponse {
+  status: string
+  uptime_seconds: number
+}
+
 export interface Todo {
   id: number
   user_id: number

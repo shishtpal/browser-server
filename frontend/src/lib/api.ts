@@ -6,6 +6,7 @@ import type {
   BookmarkResponse,
   CreateHistoryInput,
   CreateTodoInput,
+  HealthResponse,
   History,
   HistoryImportResult,
   ImportResult,
@@ -19,6 +20,16 @@ import type {
 const API_BASE = 'http://localhost:8080'
 
 const client = createBrowserServerClient(API_BASE)
+
+// ─── Health ─────────────────────────────────────────────
+
+export function checkHealth(): Promise<HealthResponse> {
+  return client.health()
+}
+
+export async function isServerOnline(): Promise<boolean> {
+  return client.ping()
+}
 
 // ─── Todos ───────────────────────────────────────────────
 

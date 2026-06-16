@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import ServerStatus from '../components/ServerStatus.vue'
 
 interface Props {
   title?: string
@@ -75,7 +76,8 @@ const isActive = (href: string) => {
               >{item.label}</a>
             ))
           }
-          <div class="ml-1">
+          <div class="ml-1 flex items-center gap-2">
+            <ServerStatus client:only="vue" />
             <ThemeToggle client:only="vue" />
           </div>
         </div>

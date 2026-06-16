@@ -123,6 +123,12 @@ export interface CreateBookmarkInput {
   folder_path?: string
 }
 
+export interface UpdateWalletInput {
+  username?: string
+  password?: string
+  description?: string
+}
+
 export interface UsageEntry {
   domain: string
   date: string

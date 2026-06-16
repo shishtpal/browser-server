@@ -147,25 +147,80 @@ func GetWalletByID(w http.ResponseWriter, r *http.Request) {
 func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 	id := helpers.GetIDFromPath(r)
 
-	var entry models.WalletEntry
-	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
+	var existing models.WalletEntry
+	err := db.WalletDB.QueryRow(
+		"SELECT id, user_id, username, password, website, description, created_at, updated_at FROM wallet WHERE id = ?",
+		id,
+	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, "Wallet entry not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	_, err := db.WalletDB.Exec("UPDATE wallet SET user_id = ?, username = ?, password = ?, website = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-		entry.UserID, entry.Username, entry.Password, entry.Website, entry.Description, id)
+	setClauses := []string{"updated_at = CURRENT_TIMESTAMP"}
+	args := []interface{}{}
 
+	if v, ok := updates["username"]; ok {
+		if s, isStr := v.(string); isStr && s != "" {
+			setClauses = append(setClauses, "username = ?")
+			args = append(args, s)
+		}
+	}
+	if v, ok := updates["password"]; ok {
+		if s, isStr := v.(string); isStr && s != "" {
+			setClauses = append(setClauses, "password = ?")
+			args = append(args, s)
+		}
+	}
+	if v, ok := updates["description"]; ok {
+		if s, isStr := v.(string); isStr {
+			setClauses = append(setClauses, "description = ?")
+			args = append(args, s)
+		}
+	}
+
+	query := "UPDATE wallet SET " + joinStrings(setClauses, ", ") + " WHERE id = ?"
+	args = append(args, id)
+
+	if _, err := db.WalletDB.Exec(query, args...); err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	err = db.WalletDB.QueryRow(
+		"SELECT id, user_id, username, password, website, description, created_at, updated_at FROM wallet WHERE id = ?",
+		id,
+	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
-	entry.ID = id
-	entry.UpdatedAt = time.Now()
+	existing.Password = ""
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(entry)
+	json.NewEncoder(w).Encode(existing)
+}
+
+func joinStrings(parts []string, sep string) string {
+	result := ""
+	for i, part := range parts {
+		if i > 0 {
+			result += sep
+		}
+		result += part
+	}
+	return result
 }
 
 func DeleteWalletEntry(w http.ResponseWriter, r *http.Request) {

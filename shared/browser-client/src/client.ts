@@ -9,6 +9,7 @@ import type {
   Screenshot,
   Todo,
   UpdateTodoInput,
+  UpdateWalletInput,
   UsageBatchRequest,
   UsageBatchResponse,
   WalletEntry,
@@ -133,6 +134,10 @@ export function createBrowserServerClient(baseUrl: string) {
         `/api/wallet/reveal${buildQuery({ user_id: userId, id })}`,
       )
       return result.password
+    },
+
+    updateWallet(id: number, data: UpdateWalletInput): Promise<WalletEntry> {
+      return apiFetch<WalletEntry>(normalizedBaseUrl, 'PUT', `/api/wallet/${id}`, data)
     },
 
     getBookmarks(userId?: number, tags?: string, folderPath?: string): Promise<BookmarkResponse[]> {

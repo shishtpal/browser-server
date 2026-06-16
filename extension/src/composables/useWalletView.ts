@@ -1,4 +1,4 @@
-import type { BrowserServerClient, WalletEntry } from '@browser-server/shared-client'
+import type { BrowserServerClient, UpdateWalletInput, WalletEntry } from '@browser-server/shared-client'
 import { ref, type Ref } from 'vue'
 import { getActiveTabDomain } from '../lib/browser'
 
@@ -79,6 +79,17 @@ export function useWalletView(client: Ref<BrowserServerClient | null>, userId: R
     return client.value.revealWalletPassword(userId.value, item.id)
   }
 
+  async function update(id: number, data: UpdateWalletInput): Promise<void> {
+    if (!client.value) return
+    try {
+      await client.value.updateWallet(id, data)
+      await refresh()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.debug('Update wallet failed', message)
+    }
+  }
+
   return {
     currentDomain,
     domainDisplay,
@@ -90,5 +101,6 @@ export function useWalletView(client: Ref<BrowserServerClient | null>, userId: R
     init,
     refresh,
     reveal,
+    update,
   }
 }

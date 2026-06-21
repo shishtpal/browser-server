@@ -5,6 +5,7 @@ import { createApiClient } from '../composables/useApiClient'
 
 const form = reactive({
   apiBase: DEFAULT_SETTINGS.apiBase,
+  apiToken: DEFAULT_SETTINGS.apiToken,
   userId: DEFAULT_SETTINGS.userId,
   autoCapture: DEFAULT_SETTINGS.autoCapture,
 })
@@ -52,6 +53,7 @@ async function loadForm() {
 
 async function handleSave() {
   const apiBase = form.apiBase.trim()
+  const apiToken = form.apiToken.trim()
   const userId = form.userId.trim()
   const autoCapture = form.autoCapture
 
@@ -75,7 +77,7 @@ async function handleSave() {
 
   isSaving.value = true
   try {
-    await saveSettings({ apiBase, userId, autoCapture })
+    await saveSettings({ apiBase, apiToken, userId, autoCapture })
     showStatus('Settings saved.', 'ok')
   } finally {
     isSaving.value = false
@@ -99,7 +101,7 @@ async function testConnection() {
   isTesting.value = true
   connectionStatus.value = 'idle'
   try {
-    const client = createApiClient({ apiBase, userId: form.userId, autoCapture: form.autoCapture })
+    const client = createApiClient({ apiBase, apiToken: form.apiToken, userId: form.userId, autoCapture: form.autoCapture })
     const reachable = await client.ping()
     connectionStatus.value = reachable ? 'online' : 'offline'
     showStatus(reachable ? 'Server is reachable.' : 'Cannot reach server.', reachable ? 'ok' : 'err')
@@ -137,6 +139,21 @@ onMounted(() => {
           />
           <span class="mt-2 block text-xs text-slate-500">
             Base URL of the running browser-server instance.
+          </span>
+        </label>
+
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium text-slate-300">API Token</span>
+          <input
+            v-model="form.apiToken"
+            type="password"
+            autocomplete="off"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-400 focus:outline-none"
+            placeholder="Paste the token from 'server token generate'"
+          />
+          <span class="mt-2 block text-xs text-slate-500">
+            Required to authenticate with the server. Generate it by running
+            <code class="rounded bg-slate-800 px-1 py-0.5 text-rose-300">server token generate</code>.
           </span>
         </label>
 

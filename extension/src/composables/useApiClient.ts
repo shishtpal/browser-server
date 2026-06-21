@@ -3,7 +3,7 @@ import { computed, type ComputedRef } from 'vue'
 import { createBrowserServerClient, type BrowserServerClient } from '@browser-server/shared-client'
 
 export function createApiClient(settings: ExtensionSettings): BrowserServerClient {
-  return createBrowserServerClient(settings.apiBase)
+  return createBrowserServerClient(settings.apiBase, { getToken: () => settings.apiToken })
 }
 
 export function useUserId(settingsRef: ComputedRef<ExtensionSettings | null>) {

@@ -2,6 +2,7 @@
 import '../styles/global.css'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import ServerStatus from '../components/ServerStatus.vue'
+import ApiTokenSettings from '../components/ApiTokenSettings.vue'
 
 interface Props {
   title?: string
@@ -78,11 +79,13 @@ const isActive = (href: string) => {
           }
           <div class="ml-1 flex items-center gap-2">
             <ServerStatus client:only="vue" />
+            <ApiTokenSettings client:only="vue" />
             <ThemeToggle client:only="vue" />
           </div>
         </div>
 
         <div class="flex items-center gap-2 md:hidden">
+          <ApiTokenSettings client:only="vue" />
           <ThemeToggle client:only="vue" />
           <button id="mobile-menu-btn" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-slate-600 transition hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10" type="button" aria-label="Toggle menu" aria-expanded="false">
             <svg id="menu-icon-open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,5 +1,6 @@
 export interface ExtensionSettings {
   apiBase: string
+  apiToken: string
   userId: string
   autoCapture: boolean
 }
@@ -8,6 +9,7 @@ const SETTINGS_KEY = 'tracker_settings'
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   apiBase: 'http://localhost:8080',
+  apiToken: '',
   userId: '1',
   autoCapture: true,
 }

@@ -23,7 +23,7 @@ async function postVisit(url: string, title: string | undefined): Promise<void> 
   }
 
   const settings = await getSettings()
-  const client = createBrowserServerClient(settings.apiBase)
+  const client = createBrowserServerClient(settings.apiBase, { getToken: () => settings.apiToken })
 
   try {
     await client.createHistory({

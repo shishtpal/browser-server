@@ -17,9 +17,11 @@ import type {
   WalletImportResult,
 } from '@browser-server/shared-types'
 
+import { authHeaders, getToken } from './auth'
+
 const API_BASE = 'http://localhost:8080'
 
-const client = createBrowserServerClient(API_BASE)
+const client = createBrowserServerClient(API_BASE, { getToken })
 
 // ─── Health ─────────────────────────────────────────────
 
@@ -38,7 +40,7 @@ export function getTodos(userId?: number, domain?: string): Promise<Todo[]> {
 }
 
 export function getTodo(id: number): Promise<Todo> {
-  return fetch(`${API_BASE}/api/todos/${id}`).then((res) => {
+  return fetch(`${API_BASE}/api/todos/${id}`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<Todo>
   })
@@ -71,14 +73,14 @@ export function getBookmarks(userId?: number, tags?: string): Promise<BookmarkRe
   if (userId) params.set('user_id', String(userId))
   if (tags) params.set('tags', tags)
   const qs = params.toString()
-  return fetch(`${API_BASE}/api/bookmarks${qs ? `?${qs}` : ''}`).then((res) => {
+  return fetch(`${API_BASE}/api/bookmarks${qs ? `?${qs}` : ''}`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<BookmarkResponse[]>
   })
 }
 
 export function getBookmark(id: number): Promise<BookmarkResponse> {
-  return fetch(`${API_BASE}/api/bookmarks/${id}`).then((res) => {
+  return fetch(`${API_BASE}/api/bookmarks/${id}`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<BookmarkResponse>
   })
@@ -87,7 +89,7 @@ export function getBookmark(id: number): Promise<BookmarkResponse> {
 export function createBookmark(data: { user_id: number; title: string; url: string; description?: string; tags?: string[] }): Promise<BookmarkResponse> {
   return fetch(`${API_BASE}/api/bookmarks`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   }).then((res) => {
     if (!res.ok) {
@@ -102,7 +104,7 @@ export function createBookmark(data: { user_id: number; title: string; url: stri
 export function updateBookmark(id: number, data: Partial<Bookmark>): Promise<BookmarkResponse> {
   return fetch(`${API_BASE}/api/bookmarks/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -111,7 +113,7 @@ export function updateBookmark(id: number, data: Partial<Bookmark>): Promise<Boo
 }
 
 export function deleteBookmark(id: number): Promise<void> {
-  return fetch(`${API_BASE}/api/bookmarks/${id}`, { method: 'DELETE' }).then((res) => {
+  return fetch(`${API_BASE}/api/bookmarks/${id}`, { method: 'DELETE', headers: authHeaders() }).then((res) => {
     if (res.status === 204) return
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   })
@@ -122,6 +124,7 @@ export function importBookmarks(userId: number, file: File): Promise<ImportResul
   formData.append('file', file)
   return fetch(`${API_BASE}/api/bookmarks/import?user_id=${userId}`, {
     method: 'POST',
+    headers: authHeaders(),
     body: formData,
   }).then(async (res) => {
     if (!res.ok) {
@@ -139,7 +142,7 @@ export function getHistory(userId?: number, url?: string, limit?: number, offset
 }
 
 export function getHistoryEntry(id: number): Promise<History> {
-  return fetch(`${API_BASE}/api/history/${id}`).then((res) => {
+  return fetch(`${API_BASE}/api/history/${id}`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<History>
   })
@@ -158,6 +161,7 @@ export function importHistory(userId: number, file: File): Promise<HistoryImport
   formData.append('file', file)
   return fetch(`${API_BASE}/api/history/import?user_id=${userId}`, {
     method: 'POST',
+    headers: authHeaders(),
     body: formData,
   }).then(async (res) => {
     if (!res.ok) {
@@ -175,7 +179,7 @@ export function getWallet(userId?: number, website?: string): Promise<WalletEntr
   if (userId) params.set('user_id', String(userId))
   if (website) params.set('website', website)
   const qs = params.toString()
-  return fetch(`${API_BASE}/api/wallet${qs ? `?${qs}` : ''}`).then((res) => {
+  return fetch(`${API_BASE}/api/wallet${qs ? `?${qs}` : ''}`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<WalletEntry[]>
   })
@@ -183,7 +187,7 @@ export function getWallet(userId?: number, website?: string): Promise<WalletEntr
 
 export function revealWalletPassword(userId: number, id: number): Promise<string> {
   const params = new URLSearchParams({ user_id: String(userId), id: String(id) })
-  return fetch(`${API_BASE}/api/wallet/reveal?${params.toString()}`).then(async (res) => {
+  return fetch(`${API_BASE}/api/wallet/reveal?${params.toString()}`, { headers: authHeaders() }).then(async (res) => {
     if (!res.ok) {
       const text = await res.text()
       throw new Error(text || `Request failed: ${res.status}`)
@@ -197,6 +201,7 @@ export function importWallet(userId: number, file: File): Promise<WalletImportRe
   formData.append('file', file)
   return fetch(`${API_BASE}/api/wallet/import?user_id=${userId}`, {
     method: 'POST',
+    headers: authHeaders(),
     body: formData,
   }).then(async (res) => {
     if (!res.ok) {
@@ -208,7 +213,7 @@ export function importWallet(userId: number, file: File): Promise<WalletImportRe
 }
 
 export function getWalletEntry(id: number): Promise<WalletEntry> {
-  return fetch(`${API_BASE}/api/wallet/${id}`).then((res) => {
+  return fetch(`${API_BASE}/api/wallet/${id}`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<WalletEntry>
   })
@@ -217,7 +222,7 @@ export function getWalletEntry(id: number): Promise<WalletEntry> {
 export function createWalletEntry(data: { user_id: number; website: string; username: string; password: string; description?: string }): Promise<WalletEntry> {
   return fetch(`${API_BASE}/api/wallet`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -228,7 +233,7 @@ export function createWalletEntry(data: { user_id: number; website: string; user
 export function updateWalletEntry(id: number, data: Partial<WalletEntry>): Promise<WalletEntry> {
   return fetch(`${API_BASE}/api/wallet/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -237,7 +242,7 @@ export function updateWalletEntry(id: number, data: Partial<WalletEntry>): Promi
 }
 
 export function deleteWalletEntry(id: number): Promise<void> {
-  return fetch(`${API_BASE}/api/wallet/${id}`, { method: 'DELETE' }).then((res) => {
+  return fetch(`${API_BASE}/api/wallet/${id}`, { method: 'DELETE', headers: authHeaders() }).then((res) => {
     if (res.status === 204) return
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   })
@@ -246,14 +251,14 @@ export function deleteWalletEntry(id: number): Promise<void> {
 // ─── Users ───────────────────────────────────────────────
 
 export function getUsers(): Promise<User[]> {
-  return fetch(`${API_BASE}/api/users`).then((res) => {
+  return fetch(`${API_BASE}/api/users`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<User[]>
   })
 }
 
 export function getUser(id: number): Promise<User> {
-  return fetch(`${API_BASE}/api/users/${id}`).then((res) => {
+  return fetch(`${API_BASE}/api/users/${id}`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json() as Promise<User>
   })
@@ -262,7 +267,7 @@ export function getUser(id: number): Promise<User> {
 export function createUser(data: { username: string; email?: string }): Promise<User> {
   return fetch(`${API_BASE}/api/users`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   }).then((res) => {
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
@@ -271,7 +276,7 @@ export function createUser(data: { username: string; email?: string }): Promise<
 }
 
 export function deleteUser(id: number): Promise<void> {
-  return fetch(`${API_BASE}/api/users/${id}`, { method: 'DELETE' }).then((res) => {
+  return fetch(`${API_BASE}/api/users/${id}`, { method: 'DELETE', headers: authHeaders() }).then((res) => {
     if (res.status === 204) return
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   })

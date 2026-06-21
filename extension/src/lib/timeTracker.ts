@@ -78,7 +78,7 @@ export class TimeTracker {
     this.persistBuffer()
 
     try {
-      const client = createBrowserServerClient(settings.apiBase)
+      const client = createBrowserServerClient(settings.apiBase, { getToken: () => settings.apiToken })
       await client.batchUpsertUsage({
         user_id: Number.parseInt(settings.userId, 10),
         entries,

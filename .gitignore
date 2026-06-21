@@ -1,7 +1,6 @@
 # Binaries
-/bin
-/browser-server
-/browser-server.exe
+*.exe
+bin/
 
 # Data directory
 .data/

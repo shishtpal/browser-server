@@ -39,10 +39,45 @@
   - Replace generic `http.Error` usage where structured responses are better
   - Improve database and parsing error messages without leaking internals
 
-- **Authentication**
-  - Introduce token-based auth strategy
-  - Protect write routes and any sensitive wallet/user operations
-  - Add frontend auth state handling and route guarding
+- **Authentication** — single operator-level API token, no user login
+
+  Design decisions (settled):
+  - **Opaque, long-lived token** stored server-side in a `.server-token` file alongside the Go binary — no JWT, no expiry/refresh
+  - **No login/logout flow** — the token is the sole credential; generated and rotated via a CLI subcommand
+  - **Bearer header transport** (`Authorization: Bearer <token>`) for simpler CORS
+  - **Operator-level, not per-user** — this is a personal/single-operator server; the multiple `users` records are data, not auth principals, so `?user_id=` filtering stays as-is
+  - **Protect everything** behind the token, with `/health` kept public for Docker/CI checks
+  - No user-password hashing needed (there is no login); argon2 is only an *optional* extra for hashing the stored token at rest
+
+  Sub-tasks:
+  - Token generation CLI
+    - Add `server token generate` — create a cryptographically random token (`crypto/rand`), save to `.server-token` next to the binary; refuse to overwrite if one already exists
+    - Add `server token refresh` — regenerate and overwrite the existing token in `.server-token`
+    - Write the file with restrictive permissions; print the token (or a confirmation) to stdout
+    - Resolve the token path relative to the binary, overridable via an env var (consistent with `DATA_PATH`)
+  - Token loading & validation
+    - Load the token from `.server-token` at server startup; fail fast (or warn loudly) if missing
+    - Compare the incoming Bearer token using a constant-time comparison to avoid timing attacks
+    - (Optional) store/verify the token hashed at rest with argon2 instead of plaintext
+  - Auth middleware
+    - Add middleware that reads `Authorization: Bearer <token>` and validates it against the loaded token
+    - Return a consistent `401 Unauthorized` JSON response for missing/invalid tokens
+    - Apply middleware centrally in router setup, consistent with logging/CORS
+    - Exempt `/health` (and static frontend assets) from the auth requirement
+  - Route protection
+    - Require the token on all API routes — reads and writes across todos, bookmarks, history, wallet, users, and `/routes`
+    - Confirm wallet and user endpoints are covered (no read exceptions)
+  - Frontend auth state
+    - Add a settings UI to enter and persist the API token client-side
+    - Attach the token as a Bearer header on every request via the shared client (`shared/browser-client`)
+    - Surface `401` responses clearly (prompt to set/fix the token) and guard the app until a token is present
+  - Shared & extension integration
+    - Add auth-aware methods and a shared token/error type in `shared/browser-client` / `shared/browser-types`
+    - Wire the browser extension to store the same token (extension settings/storage) and send it on all requests
+  - Verification
+    - Confirm requests without a token, or with a wrong token, get `401`; valid token succeeds
+    - Confirm `/health` still works without a token
+    - Add tests for the `token generate`/`refresh` CLI and for the auth middleware
 
 - [x] **Shared frontend/extension code**
   - Use `shared/` for framework-agnostic TypeScript packages only, starting with API client, request/response types, and small pure utilities

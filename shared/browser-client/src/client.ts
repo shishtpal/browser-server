@@ -18,8 +18,32 @@ import type {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
+/** Resolves the current API token (or null/undefined when none is set). */
+export type TokenProvider = () => string | null | undefined
+
+export interface BrowserServerClientOptions {
+  /** Called on every request to obtain the bearer token to send. */
+  getToken?: TokenProvider
+}
+
+/** Error thrown for non-OK API responses, carrying the HTTP status code. */
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, '')
+}
+
+function authHeader(getToken?: TokenProvider): Record<string, string> {
+  const token = getToken?.()
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 function buildQuery(params: Record<string, string | number | undefined>): string {
@@ -35,10 +59,21 @@ function buildQuery(params: Record<string, string | number | undefined>): string
   return query ? `?${query}` : ''
 }
 
-async function apiFetch<T>(baseUrl: string, method: HttpMethod, path: string, body?: unknown): Promise<T> {
+async function apiFetch<T>(
+  baseUrl: string,
+  method: HttpMethod,
+  path: string,
+  body?: unknown,
+  getToken?: TokenProvider,
+): Promise<T> {
+  const headers: Record<string, string> = { ...authHeader(getToken) }
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
@@ -48,7 +83,7 @@ async function apiFetch<T>(baseUrl: string, method: HttpMethod, path: string, bo
 
   if (!response.ok) {
     const text = await response.text()
-    throw new Error(text || `Request failed: ${response.status}`)
+    throw new ApiError(response.status, text || `Request failed: ${response.status}`)
   }
 
   return response.json() as Promise<T>
@@ -56,8 +91,9 @@ async function apiFetch<T>(baseUrl: string, method: HttpMethod, path: string, bo
 
 export type BrowserServerClient = ReturnType<typeof createBrowserServerClient>
 
-export function createBrowserServerClient(baseUrl: string) {
+export function createBrowserServerClient(baseUrl: string, options: BrowserServerClientOptions = {}) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+  const { getToken } = options
 
   return {
     async ping(): Promise<boolean> {
@@ -80,31 +116,31 @@ export function createBrowserServerClient(baseUrl: string) {
     },
 
     getHistory(userId?: number, url?: string, limit?: number, offset?: number): Promise<History[]> {
-      return apiFetch<History[]>(normalizedBaseUrl, 'GET', `/api/history${buildQuery({ user_id: userId, url, limit, offset })}`)
+      return apiFetch<History[]>(normalizedBaseUrl, 'GET', `/api/history${buildQuery({ user_id: userId, url, limit, offset })}`, undefined, getToken)
     },
 
     createHistory(data: CreateHistoryInput): Promise<History> {
-      return apiFetch<History>(normalizedBaseUrl, 'POST', '/api/history', data)
+      return apiFetch<History>(normalizedBaseUrl, 'POST', '/api/history', data, getToken)
     },
 
     deleteHistory(id: number): Promise<void> {
-      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/history/${id}`)
+      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/history/${id}`, undefined, getToken)
     },
 
     getTodos(userId?: number, domain?: string): Promise<Todo[]> {
-      return apiFetch<Todo[]>(normalizedBaseUrl, 'GET', `/api/todos${buildQuery({ user_id: userId, domain })}`)
+      return apiFetch<Todo[]>(normalizedBaseUrl, 'GET', `/api/todos${buildQuery({ user_id: userId, domain })}`, undefined, getToken)
     },
 
     createTodo(data: CreateTodoInput): Promise<Todo> {
-      return apiFetch<Todo>(normalizedBaseUrl, 'POST', '/api/todos', { ...data, completed: false })
+      return apiFetch<Todo>(normalizedBaseUrl, 'POST', '/api/todos', { ...data, completed: false }, getToken)
     },
 
     updateTodo(id: number, data: UpdateTodoInput): Promise<Todo> {
-      return apiFetch<Todo>(normalizedBaseUrl, 'PUT', `/api/todos/${id}`, data)
+      return apiFetch<Todo>(normalizedBaseUrl, 'PUT', `/api/todos/${id}`, data, getToken)
     },
 
     deleteTodo(id: number): Promise<void> {
-      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/todos/${id}`)
+      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/todos/${id}`, undefined, getToken)
     },
 
     async uploadScreenshot(todoId: number, file: Blob): Promise<Screenshot> {
@@ -113,23 +149,28 @@ export function createBrowserServerClient(baseUrl: string) {
 
       const response = await fetch(`${normalizedBaseUrl}/api/screenshots?todo_id=${todoId}`, {
         method: 'POST',
+        headers: authHeader(getToken),
         body: formData,
       })
 
       if (!response.ok) {
         const text = await response.text()
-        throw new Error(text || `Upload failed: ${response.status}`)
+        throw new ApiError(response.status, text || `Upload failed: ${response.status}`)
       }
 
       return response.json() as Promise<Screenshot>
     },
 
     getScreenshotUrl(todoId: number): string {
-      return `${normalizedBaseUrl}/api/screenshots/${todoId}`
+      // Screenshots load via <img src>, which can't set an Authorization
+      // header, so the token is passed as a query param instead.
+      const token = getToken?.()
+      const suffix = token ? `?token=${encodeURIComponent(token)}` : ''
+      return `${normalizedBaseUrl}/api/screenshots/${todoId}${suffix}`
     },
 
     getWallet(userId?: number, website?: string): Promise<WalletEntry[]> {
-      return apiFetch<WalletEntry[]>(normalizedBaseUrl, 'GET', `/api/wallet${buildQuery({ user_id: userId, website })}`)
+      return apiFetch<WalletEntry[]>(normalizedBaseUrl, 'GET', `/api/wallet${buildQuery({ user_id: userId, website })}`, undefined, getToken)
     },
 
     async revealWalletPassword(userId: number, id: number): Promise<string> {
@@ -137,12 +178,14 @@ export function createBrowserServerClient(baseUrl: string) {
         normalizedBaseUrl,
         'GET',
         `/api/wallet/reveal${buildQuery({ user_id: userId, id })}`,
+        undefined,
+        getToken,
       )
       return result.password
     },
 
     updateWallet(id: number, data: UpdateWalletInput): Promise<WalletEntry> {
-      return apiFetch<WalletEntry>(normalizedBaseUrl, 'PUT', `/api/wallet/${id}`, data)
+      return apiFetch<WalletEntry>(normalizedBaseUrl, 'PUT', `/api/wallet/${id}`, data, getToken)
     },
 
     getBookmarks(userId?: number, tags?: string, folderPath?: string): Promise<BookmarkResponse[]> {
@@ -150,19 +193,21 @@ export function createBrowserServerClient(baseUrl: string) {
         normalizedBaseUrl,
         'GET',
         `/api/bookmarks${buildQuery({ user_id: userId, tags, folder_path: folderPath })}`,
+        undefined,
+        getToken,
       )
     },
 
     createBookmark(data: CreateBookmarkInput): Promise<BookmarkResponse> {
-      return apiFetch<BookmarkResponse>(normalizedBaseUrl, 'POST', '/api/bookmarks', data)
+      return apiFetch<BookmarkResponse>(normalizedBaseUrl, 'POST', '/api/bookmarks', data, getToken)
     },
 
     deleteBookmark(id: number): Promise<void> {
-      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/bookmarks/${id}`)
+      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/bookmarks/${id}`, undefined, getToken)
     },
 
     batchUpsertUsage(data: UsageBatchRequest): Promise<UsageBatchResponse> {
-      return apiFetch<UsageBatchResponse>(normalizedBaseUrl, 'POST', '/api/analytics/usage', data)
+      return apiFetch<UsageBatchResponse>(normalizedBaseUrl, 'POST', '/api/analytics/usage', data, getToken)
     },
 
     getAnalyticsSummary(params: AnalyticsSummaryParams): Promise<AnalyticsSummary> {
@@ -170,6 +215,8 @@ export function createBrowserServerClient(baseUrl: string) {
         normalizedBaseUrl,
         'GET',
         `/api/analytics/summary${buildQuery(params as unknown as Record<string, string | number | undefined>)}`,
+        undefined,
+        getToken,
       )
     },
   }

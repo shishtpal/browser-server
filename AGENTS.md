@@ -91,7 +91,7 @@ Requires `CGO_ENABLED=1` for SQLite. Set it persistently in PowerShell:
 ./bin/server.exe
 ```
 
-Serves on `:8080`. All API endpoints live under `/api/` (todos, bookmarks, history, search, wallet, analytics, screenshots, users, routes) and require the API token. `/health` is public. Static frontend is served from `frontend/dist/` relative to the binary.
+Serves on `:8080` by default. Override the port with `server --port 9090` or `PORT=9090 server`; the CLI flag takes precedence over the environment variable. All API endpoints live under `/api/` (todos, bookmarks, history, search, wallet, analytics, screenshots, users, routes) and require the API token. `/health` is public. Static frontend is served from `frontend/dist/` relative to the binary.
 
 ### Token CLI subcommands
 

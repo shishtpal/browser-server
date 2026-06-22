@@ -20,7 +20,7 @@ This is a Go-based REST API server for managing personal data like todos, bookma
     go build
     ./browser-server
     ```
-    The server will start on `http://localhost:8080`.
+    The server will start on `http://localhost:8080` by default. Use `./browser-server --port 9090` or `PORT=9090 ./browser-server` to choose another port; the CLI flag takes precedence.
 
 3.  **Static Frontend:**
     The `GET /` endpoint serves static files from the `frontend/dist/` directory relative to the executable.

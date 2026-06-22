@@ -1,11 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,12 +19,22 @@ import (
 	"browser-server/internal/middleware"
 )
 
+const defaultPort = "8080"
+
 func main() {
 	// CLI subcommands (e.g. `server token generate`) run and exit before the
 	// HTTP server starts.
-	if len(os.Args) > 1 {
-		runCLI(os.Args[1:])
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "token" {
+		runCLI(args)
 		return
+	}
+
+	port, err := resolveServerPort(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
+		printUsage()
+		os.Exit(1)
 	}
 
 	dataPath := db.GetDataPath()
@@ -102,15 +115,51 @@ func main() {
 	staticFileDir := filepath.Join(filepath.Dir(ex), "frontend", "dist")
 	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir(staticFileDir))))
 
-	fmt.Printf("Server starting on localhost:8080\n")
+	fmt.Printf("Server starting on localhost:%s\n", port)
 	fmt.Printf("Database files location: %s\n", dataPath)
 	fmt.Printf("Available routes:\n")
 	fmt.Printf("POST /api/routes - List all routes\n")
 	fmt.Printf("Multi-user API endpoints under /api/ for todos, bookmarks, history, wallet, and users\n")
 	fmt.Printf("\nTo change database location, set DATA_PATH environment variable\n")
 	fmt.Printf("Example: DATA_PATH=/path/to/data ./server\n")
+	fmt.Printf("\nTo change server port, pass --port or set PORT environment variable\n")
+	fmt.Printf("Example: PORT=9090 ./server\n")
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":"+port, r))
+}
+
+func resolveServerPort(args []string) (string, error) {
+	flags := flag.NewFlagSet("server", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+
+	portFlag := flags.String("port", "", "HTTP server port")
+	if err := flags.Parse(args); err != nil {
+		return "", err
+	}
+	if flags.NArg() > 0 {
+		return "", fmt.Errorf("unknown argument: %s", flags.Arg(0))
+	}
+
+	port := os.Getenv("PORT")
+	if *portFlag != "" {
+		port = *portFlag
+	}
+	if port == "" {
+		port = defaultPort
+	}
+
+	return validatePort(port)
+}
+
+func validatePort(port string) (string, error) {
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		return "", fmt.Errorf("invalid port %q: must be an integer", port)
+	}
+	if portNumber < 1 || portNumber > 65535 {
+		return "", fmt.Errorf("invalid port %q: must be between 1 and 65535", port)
+	}
+	return strconv.Itoa(portNumber), nil
 }
 
 // runCLI handles non-server subcommands. Currently:
@@ -157,7 +206,9 @@ func runTokenCLI(args []string) {
 
 func printUsage() {
 	fmt.Fprintf(os.Stderr, "Usage:\n")
-	fmt.Fprintf(os.Stderr, "  server                  Start the HTTP server\n")
+	fmt.Fprintf(os.Stderr, "  server [--port PORT]    Start the HTTP server\n")
 	fmt.Fprintf(os.Stderr, "  server token generate   Generate and save a new API token\n")
 	fmt.Fprintf(os.Stderr, "  server token refresh    Regenerate (rotate) the API token\n")
+	fmt.Fprintf(os.Stderr, "\nEnvironment:\n")
+	fmt.Fprintf(os.Stderr, "  PORT=9090 server        Start the HTTP server on port 9090\n")
 }

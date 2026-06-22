@@ -1,29 +1,39 @@
-import type { History, BrowserServerClient } from '@browser-server/shared-client'
+import type {
+  BrowserServerClient,
+  GroupedHistoryEntry,
+  HistorySearchColumn,
+} from '@browser-server/shared-client'
 import { computed, ref, watch, type Ref } from 'vue'
-import { summarizeHistory } from './history'
 import { timeAgo } from '@browser-server/shared-utils'
 
-export type HistorySearchColumn = 'title' | 'url' | 'all'
+export type { HistorySearchColumn }
 
-export interface GroupedHistoryEntry {
+export interface HistoryView {
   url: string
   title: string
   count: number
+  totalDuration: number
   lastVisited: string
   lastVisitedLabel: string
-  totalDuration: number
-  _lowerTitle: string
-  _lowerUrl: string
-  _lowerCombined: string
 }
 
 const PAGE_SIZE = 100
-const DEBOUNCE_MS = 150
+const DEBOUNCE_MS = 200
+
+function toView(entry: GroupedHistoryEntry): HistoryView {
+  return {
+    url: entry.url,
+    title: entry.title || entry.url,
+    count: entry.count,
+    totalDuration: entry.total_duration,
+    lastVisited: entry.last_visited,
+    lastVisitedLabel: timeAgo(entry.last_visited),
+  }
+}
 
 export function useHistoryView(client: Ref<BrowserServerClient | null>, userId: Ref<number>) {
-  const entries = ref<History[]>([])
-  const grouped = ref<GroupedHistoryEntry[]>([])
-  const stats = ref<string>('Loading…')
+  const paginatedEntries = ref<HistoryView[]>([])
+  const totalCount = ref(0)
   const errorMessage = ref<string | null>(null)
   const isLoading = ref(false)
   const searchQuery = ref('')
@@ -32,104 +42,82 @@ export function useHistoryView(client: Ref<BrowserServerClient | null>, userId: 
 
   const debouncedQuery = ref('')
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  // Guards against an earlier slow request overwriting a newer one.
+  let requestSeq = 0
 
-  watch(searchQuery, (value) => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      debouncedQuery.value = value
-      currentPage.value = 1
-    }, DEBOUNCE_MS)
-  })
-
-  function refreshGrouping() {
-    grouped.value = summarizeHistory(entries.value).map<GroupedHistoryEntry>((entry) => ({
-      ...entry,
-      lastVisitedLabel: timeAgo(entry.lastVisited),
-      _lowerTitle: entry.title.toLowerCase(),
-      _lowerUrl: entry.url.toLowerCase(),
-      _lowerCombined: `${entry.title} ${entry.url}`.toLowerCase(),
-    }))
-  }
-
-  function matchesColumn(entry: GroupedHistoryEntry, col: HistorySearchColumn, term: string): boolean {
-    if (col === 'title') return entry._lowerTitle.includes(term)
-    if (col === 'url') return entry._lowerUrl.includes(term)
-    return entry._lowerCombined.includes(term)
-  }
-
-  const filtered = computed(() => {
-    const q = debouncedQuery.value.toLowerCase().trim()
-    if (!q) return grouped.value
-    const col = searchColumn.value
-    const terms = q.split(/\s+/).filter(Boolean)
-    return grouped.value.filter((entry) => terms.every((t) => matchesColumn(entry, col, t)))
-  })
-
-  const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
-
-  const paginatedEntries = computed(() => {
-    const start = (currentPage.value - 1) * PAGE_SIZE
-    return filtered.value.slice(start, start + PAGE_SIZE)
-  })
-
-  watch(searchColumn, () => {
-    currentPage.value = 1
-  })
-
-  function nextPage() {
-    if (currentPage.value < totalPages.value) currentPage.value++
-  }
-
-  function prevPage() {
-    if (currentPage.value > 1) currentPage.value--
-  }
-
-  function goToPage(page: number) {
-    if (page >= 1 && page <= totalPages.value) currentPage.value = page
-  }
+  const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 
   async function load(): Promise<void> {
     if (!client.value || !userId.value) {
       return
     }
 
+    const seq = ++requestSeq
     isLoading.value = true
     errorMessage.value = null
 
     try {
-      entries.value = await client.value.getHistory(userId.value)
-      refreshGrouping()
-      const totalVisits = grouped.value.reduce((sum, entry) => sum + entry.count, 0)
-      stats.value = `${grouped.value.length} pages · ${totalVisits} visits`
+      const response = await client.value.getGroupedHistory({
+        user_id: userId.value,
+        q: debouncedQuery.value.trim() || undefined,
+        column: searchColumn.value,
+        limit: PAGE_SIZE,
+        offset: (currentPage.value - 1) * PAGE_SIZE,
+      })
+      if (seq !== requestSeq) return // a newer request superseded this one
+      paginatedEntries.value = response.entries.map(toView)
+      totalCount.value = response.total
     } catch (error) {
+      if (seq !== requestSeq) return
       const message = error instanceof Error ? error.message : 'Unknown error'
       errorMessage.value = `Server not reachable. ${message}`
-      stats.value = '0 pages · 0 visits'
-      grouped.value = []
-      entries.value = []
+      paginatedEntries.value = []
+      totalCount.value = 0
     } finally {
-      isLoading.value = false
+      if (seq === requestSeq) isLoading.value = false
     }
   }
 
-  async function clearAll(): Promise<void> {
-    if (!client.value || !userId.value) {
-      return
-    }
+  // Reset to the first page and reload whenever the search changes.
+  watch(searchQuery, (value) => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      debouncedQuery.value = value
+      currentPage.value = 1
+      void load()
+    }, DEBOUNCE_MS)
+  })
 
-    try {
-      await Promise.all(entries.value.map((entry) => client.value!.deleteHistory(entry.id)))
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.debug('Clear history failed', message)
-    }
+  watch(searchColumn, () => {
+    currentPage.value = 1
+    void load()
+  })
 
-    await load()
+  function nextPage() {
+    if (currentPage.value < totalPages.value) {
+      currentPage.value++
+      void load()
+    }
+  }
+
+  function prevPage() {
+    if (currentPage.value > 1) {
+      currentPage.value--
+      void load()
+    }
   }
 
   return {
-    entries, grouped, filtered, paginatedEntries, stats, errorMessage, isLoading,
-    searchQuery, searchColumn, currentPage, totalPages,
-    load, clearAll, nextPage, prevPage, goToPage,
+    paginatedEntries,
+    totalCount,
+    errorMessage,
+    isLoading,
+    searchQuery,
+    searchColumn,
+    currentPage,
+    totalPages,
+    load,
+    nextPage,
+    prevPage,
   }
 }

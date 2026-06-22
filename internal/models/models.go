@@ -66,6 +66,23 @@ type HistoryImportResult struct {
 	Errors   []string `json:"errors"`
 }
 
+// GroupedHistoryEntry is a single URL aggregated across all of its visits.
+type GroupedHistoryEntry struct {
+	URL           string    `json:"url"`
+	Title         string    `json:"title"`
+	Count         int       `json:"count"`
+	TotalDuration int       `json:"total_duration"`
+	LastVisited   time.Time `json:"last_visited"`
+}
+
+// GroupedHistoryResponse is a server-paginated page of grouped history entries.
+type GroupedHistoryResponse struct {
+	Entries []GroupedHistoryEntry `json:"entries"`
+	Total   int                   `json:"total"`
+	Limit   int                   `json:"limit"`
+	Offset  int                   `json:"offset"`
+}
+
 type WalletEntry struct {
 	ID          int       `json:"id"`
 	UserID      int       `json:"user_id"`

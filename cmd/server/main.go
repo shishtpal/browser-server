@@ -73,6 +73,7 @@ func main() {
 
 	api.HandleFunc("/history", handlers.GetHistory).Methods("GET")
 	api.HandleFunc("/history", handlers.CreateHistory).Methods("POST")
+	api.HandleFunc("/history/grouped", handlers.GetGroupedHistory).Methods("GET")
 	api.HandleFunc("/history/import", handlers.ImportHistory).Methods("POST")
 	api.HandleFunc("/history/{id}", handlers.GetHistoryByID).Methods("GET")
 	api.HandleFunc("/history/{id}", handlers.DeleteHistory).Methods("DELETE")

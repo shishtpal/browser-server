@@ -5,6 +5,8 @@ import type {
   CreateBookmarkInput,
   CreateHistoryInput,
   CreateTodoInput,
+  GroupedHistoryParams,
+  GroupedHistoryResponse,
   HealthResponse,
   History,
   Screenshot,
@@ -117,6 +119,16 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
 
     getHistory(userId?: number, url?: string, limit?: number, offset?: number): Promise<History[]> {
       return apiFetch<History[]>(normalizedBaseUrl, 'GET', `/api/history${buildQuery({ user_id: userId, url, limit, offset })}`, undefined, getToken)
+    },
+
+    getGroupedHistory(params: GroupedHistoryParams): Promise<GroupedHistoryResponse> {
+      return apiFetch<GroupedHistoryResponse>(
+        normalizedBaseUrl,
+        'GET',
+        `/api/history/grouped${buildQuery(params as unknown as Record<string, string | number | undefined>)}`,
+        undefined,
+        getToken,
+      )
     },
 
     createHistory(data: CreateHistoryInput): Promise<History> {

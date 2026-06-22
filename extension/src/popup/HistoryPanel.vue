@@ -16,7 +16,7 @@ const { settings } = useExtensionSettings()
 const userId = useUserId(computed(() => settings.value))
 const client = computed(() => (settings.value ? createApiClient(settings.value) : null))
 
-const { filtered, paginatedEntries, errorMessage, isLoading, searchQuery, searchColumn, currentPage, totalPages, nextPage, prevPage, load } = useHistoryView(client, userId)
+const { paginatedEntries, totalCount, errorMessage, isLoading, searchQuery, searchColumn, currentPage, totalPages, nextPage, prevPage, load } = useHistoryView(client, userId)
 
 defineExpose({
   refresh: load,
@@ -55,9 +55,7 @@ const searchPlaceholder = computed(() => {
 })
 
 const isReady = computed(() => Boolean(client.value) && userId.value > 0)
-const showSkeleton = computed(() => isLoading.value && filtered.value.length === 0)
-
-const totalCount = computed(() => filtered.value.length)
+const showSkeleton = computed(() => isLoading.value && paginatedEntries.value.length === 0)
 
 watch(
   [isReady, isLoading, errorMessage, totalCount],
@@ -137,7 +135,7 @@ watch(
       </div>
 
       <!-- Empty -->
-      <div v-else-if="filtered.length === 0 && !searchQuery" class="flex flex-col items-center gap-3 px-4 py-12 text-center">
+      <div v-else-if="paginatedEntries.length === 0 && !searchQuery" class="flex flex-col items-center gap-3 px-4 py-12 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800">
           <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 3v5h5" />
@@ -150,7 +148,7 @@ watch(
       </div>
 
       <!-- No search results -->
-      <div v-else-if="filtered.length === 0" class="flex flex-col items-center gap-3 px-4 py-10 text-center">
+      <div v-else-if="paginatedEntries.length === 0" class="flex flex-col items-center gap-3 px-4 py-10 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800">
           <svg class="h-6 w-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

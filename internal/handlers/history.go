@@ -4,12 +4,117 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"browser-server/internal/db"
 	"browser-server/internal/helpers"
 	"browser-server/internal/models"
 )
+
+const defaultGroupedHistoryLimit = 100
+
+// sqliteTimeFormats mirrors the layouts go-sqlite3 uses to (de)serialize
+// DATETIME values. Aggregates like MAX(visited_at) lose the column's declared
+// type, so the driver hands them back as strings that we parse ourselves.
+var sqliteTimeFormats = []string{
+	"2006-01-02 15:04:05.999999999-07:00",
+	"2006-01-02T15:04:05.999999999-07:00",
+	"2006-01-02 15:04:05.999999999",
+	"2006-01-02T15:04:05.999999999",
+	"2006-01-02 15:04:05",
+	"2006-01-02T15:04:05",
+	"2006-01-02 15:04",
+	"2006-01-02T15:04",
+	"2006-01-02",
+}
+
+func parseSQLiteTime(value string) time.Time {
+	for _, layout := range sqliteTimeFormats {
+		if t, err := time.ParseInLocation(layout, value, time.UTC); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
+// GetGroupedHistory returns history aggregated by URL, searched and paginated
+// entirely on the server so clients never have to load every row at once.
+func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	userID := helpers.GetUserIDFromQuery(r)
+	search := strings.TrimSpace(r.URL.Query().Get("q"))
+	column := r.URL.Query().Get("column") // "all" (default), "title", or "url"
+	limit := helpers.GetLimitFromQuery(r, defaultGroupedHistoryLimit)
+	offset := helpers.GetOffsetFromQuery(r)
+
+	where := "WHERE 1=1"
+	args := []interface{}{}
+
+	if userID > 0 {
+		where += " AND user_id = ?"
+		args = append(args, userID)
+	}
+
+	// Each whitespace-separated term must match (AND), mirroring the previous
+	// client-side search behaviour.
+	for _, term := range strings.Fields(search) {
+		like := "%" + term + "%"
+		switch column {
+		case "title":
+			where += " AND title LIKE ?"
+			args = append(args, like)
+		case "url":
+			where += " AND url LIKE ?"
+			args = append(args, like)
+		default:
+			where += " AND (title LIKE ? OR url LIKE ?)"
+			args = append(args, like, like)
+		}
+	}
+
+	var total int
+	if err := db.HistoryDB.QueryRow("SELECT COUNT(DISTINCT url) FROM history "+where, args...).Scan(&total); err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	// SQLite's bare-column rule means `title` is taken from the row holding
+	// MAX(visited_at), i.e. the most recent visit for that URL.
+	query := "SELECT url, title, COUNT(*), COALESCE(SUM(duration), 0), MAX(visited_at) FROM history " +
+		where + " GROUP BY url ORDER BY MAX(visited_at) DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	rows, err := db.HistoryDB.Query(query, args...)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	entries := []models.GroupedHistoryEntry{}
+	for rows.Next() {
+		var entry models.GroupedHistoryEntry
+		// MAX(visited_at) comes back as a string (aggregates lose the column's
+		// DATETIME type), so scan it as text and parse it ourselves.
+		var lastVisited sql.NullString
+		if err := rows.Scan(&entry.URL, &entry.Title, &entry.Count, &entry.TotalDuration, &lastVisited); err != nil {
+			continue
+		}
+		if lastVisited.Valid {
+			entry.LastVisited = parseSQLiteTime(lastVisited.String)
+		}
+		entries = append(entries, entry)
+	}
+
+	json.NewEncoder(w).Encode(models.GroupedHistoryResponse{
+		Entries: entries,
+		Total:   total,
+		Limit:   limit,
+		Offset:  offset,
+	})
+}
 
 func GetHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

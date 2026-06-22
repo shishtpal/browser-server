@@ -147,6 +147,11 @@ This is a Go-based REST API server for managing personal data like todos, bookma
     http GET http://localhost:8080/history url==google
     ```
 
+-   **Get URL-grouped, searched & paginated history** (server-side; used by the popup so large histories don't load all at once)
+    ```bash
+    http GET http://localhost:8080/history/grouped user_id==1 q==google column==all limit==100 offset==0
+    ```
+
 -   **Get history entry by ID**
     ```bash
     http GET http://localhost:8080/history/1

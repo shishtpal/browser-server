@@ -5,6 +5,9 @@
   "description": "Captures browsing history in real-time, syncing to the local browser-server on localhost:8080.",
   "permissions": ["tabs", "storage", "activeTab", "clipboardWrite", "idle", "alarms"],
   "host_permissions": ["http://*/*", "https://*/*"],
+  "omnibox": {
+    "keyword": "bs"
+  },
   "background": {
     "service_worker": "dist/background.js",
     "type": "module"

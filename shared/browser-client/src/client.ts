@@ -9,6 +9,8 @@ import type {
   GroupedHistoryResponse,
   HealthResponse,
   History,
+  OmniboxSearchParams,
+  OmniboxSearchResult,
   Screenshot,
   Todo,
   UpdateTodoInput,
@@ -115,6 +117,16 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
 
     async health(): Promise<HealthResponse> {
       return apiFetch<HealthResponse>(normalizedBaseUrl, 'GET', '/health')
+    },
+
+    searchOmnibox(params: OmniboxSearchParams): Promise<OmniboxSearchResult[]> {
+      return apiFetch<OmniboxSearchResult[]>(
+        normalizedBaseUrl,
+        'GET',
+        `/api/search/omnibox${buildQuery(params as unknown as Record<string, string | number | undefined>)}`,
+        undefined,
+        getToken,
+      )
     },
 
     getHistory(userId?: number, url?: string, limit?: number, offset?: number): Promise<History[]> {

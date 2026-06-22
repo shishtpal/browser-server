@@ -10,6 +10,7 @@ import (
 func GetRoutes(w http.ResponseWriter, r *http.Request) {
 	routes := []models.Route{
 		{Method: "POST", Path: "/api/routes", Description: "List all available routes"},
+		{Method: "GET", Path: "/api/search/omnibox", Description: "Search bookmark and grouped history suggestions for Chrome omnibox (params: user_id, q, limit)"},
 		{Method: "GET", Path: "/api/todos", Description: "Get all todos (filter: user_id, domain, completed)"},
 		{Method: "POST", Path: "/api/todos", Description: "Create a new todo"},
 		{Method: "GET", Path: "/api/todos/{id}", Description: "Get todo by ID"},

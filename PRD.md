@@ -1,6 +1,6 @@
 # Browser Server
 
-This is a Go-based REST API server for managing personal data like todos, bookmarks, browsing history, and a password wallet.
+This is a Go-based REST API server for managing personal data like todos, bookmarks, browsing history, and a password wallet. API routes are served under `/api/` and require the operator API token, except `/health`.
 
 ## Prerequisites
 
@@ -31,7 +31,17 @@ This is a Go-based REST API server for managing personal data like todos, bookma
 
 -   **List all available routes**
     ```bash
-    http POST http://localhost:8080/routes
+    http POST http://localhost:8080/api/routes "Authorization: Bearer <token>"
+    ```
+
+### Search
+
+-   **Search Chrome omnibox suggestions**
+
+    Returns a mixed list of bookmark and URL-grouped history suggestions. Each item includes `source` (`history` or `bookmark`) so clients can label results. History results include `visit_count`, allowing the extension to show how many times a URL was opened. When both sources match, results are balanced so bookmarks are not hidden behind a full page of history matches.
+
+    ```bash
+    http GET "http://localhost:8080/api/search/omnibox?user_id=1&q=golang&limit=6" "Authorization: Bearer <token>"
     ```
 
 ### Users
@@ -149,7 +159,7 @@ This is a Go-based REST API server for managing personal data like todos, bookma
 
 -   **Get URL-grouped, searched & paginated history** (server-side; used by the popup so large histories don't load all at once)
     ```bash
-    http GET http://localhost:8080/history/grouped user_id==1 q==google column==all limit==100 offset==0
+    http GET http://localhost:8080/api/history/grouped user_id==1 q==google column==all limit==100 offset==0 "Authorization: Bearer <token>"
     ```
 
 -   **Get history entry by ID**

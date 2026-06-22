@@ -54,6 +54,7 @@ func main() {
 	api.Use(middleware.Auth)
 
 	api.HandleFunc("/routes", handlers.GetRoutes).Methods("POST")
+	api.HandleFunc("/search/omnibox", handlers.SearchOmnibox).Methods("GET")
 
 	api.HandleFunc("/todos", handlers.GetTodos).Methods("GET")
 	api.HandleFunc("/todos", handlers.CreateTodo).Methods("POST")

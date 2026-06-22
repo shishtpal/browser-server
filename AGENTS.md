@@ -40,6 +40,7 @@ browser-server/
 │   └── handlers/
 │       ├── health.go           # GET /health (public, no auth)
 │       ├── routes.go           # POST /api/routes endpoint
+│       ├── search.go           # GET /api/search/omnibox combined bookmark/history suggestions
 │       ├── todos.go            # CRUD for /api/todos
 │       ├── bookmarks.go        # CRUD for /api/bookmarks (with tag filtering)
 │       ├── bookmark_import.go  # POST /api/bookmarks/import
@@ -90,7 +91,7 @@ Requires `CGO_ENABLED=1` for SQLite. Set it persistently in PowerShell:
 ./bin/server.exe
 ```
 
-Serves on `:8080`. All API endpoints live under `/api/` (todos, bookmarks, history, wallet, analytics, screenshots, users, routes) and require the API token. `/health` is public. Static frontend is served from `frontend/dist/` relative to the binary.
+Serves on `:8080`. All API endpoints live under `/api/` (todos, bookmarks, history, search, wallet, analytics, screenshots, users, routes) and require the API token. `/health` is public. Static frontend is served from `frontend/dist/` relative to the binary.
 
 ### Token CLI subcommands
 
@@ -120,6 +121,16 @@ Each domain has its own SQLite database file in `.data/`:
 - `usage.db` — user_id, domain, date, total_seconds (unique per user/domain/date)
 
 Bookmark tags are stored as JSON strings in SQLite and parsed/presented as `[]string` in API responses.
+
+## Search / Omnibox
+
+The extension's Chrome omnibox integration uses the keyword `bs` and calls `GET /api/search/omnibox` through the shared client. The endpoint combines:
+- URL-grouped records from `history.db`, with `visit_count` showing how many times each URL was opened.
+- Records from `bookmarks.db`, including bookmark metadata such as tags and folder path.
+
+Results use a normalized `OmniboxSearchResult` shape in `internal/models` and `shared/browser-types`, with `source: "history"` or `source: "bookmark"` so clients can label suggestions clearly. The endpoint is token-protected like the rest of `/api`; the extension reads `apiBase`, `apiToken`, and `userId` from settings and passes the token via `createBrowserServerClient(..., { getToken })`.
+
+When both sources have matches, the omnibox endpoint should preserve a balanced mix so bookmark suggestions are not crowded out by high-volume history matches. If one source has no matches, the other source can use the full result limit.
 
 ## How to Add a New Route
 
@@ -196,6 +207,8 @@ Add any new types to `shared/browser-types/src/index.ts` (re-exported by `fronte
 - [ ] For new domains: SQLite DB init in `internal/db/db.go` (global var + `Init*DB()` + wire into `InitAll`/`CloseAll`)
 - [ ] Go builds without errors (`go build ./cmd/server`)
 - [ ] Web/extension components use the new client method as needed
+
+For cross-domain search endpoints like `/api/search/omnibox`, keep the response type normalized and source-tagged rather than leaking raw domain models. Add the shared client method first and have the extension/frontend call that method instead of duplicating fetch logic.
 
 ## Key Conventions
 

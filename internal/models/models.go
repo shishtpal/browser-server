@@ -83,6 +83,20 @@ type GroupedHistoryResponse struct {
 	Offset  int                   `json:"offset"`
 }
 
+// OmniboxSearchResult is a normalized bookmark/history suggestion for the
+// browser extension omnibox integration.
+type OmniboxSearchResult struct {
+	Source      string     `json:"source"`
+	Title       string     `json:"title"`
+	URL         string     `json:"url"`
+	Description string     `json:"description,omitempty"`
+	Tags        []string   `json:"tags,omitempty"`
+	FolderPath  string     `json:"folder_path,omitempty"`
+	VisitCount  int        `json:"visit_count,omitempty"`
+	LastVisited *time.Time `json:"last_visited,omitempty"`
+	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
+}
+
 type WalletEntry struct {
 	ID          int       `json:"id"`
 	UserID      int       `json:"user_id"`

@@ -4,7 +4,7 @@ Vite + Vue 3 + TailwindCSS Manifest V3 browser extension for Browser Server. Thi
 
 ## What it does
 
-Captures browsing history and per-domain time usage in real time and syncs them to the local server (`localhost:8080`). Provides a popup UI (todos, history, bookmarks, wallet, analytics views) and an options page for settings.
+Captures browsing history and per-domain time usage in real time and syncs them to the local server (`localhost:8080`). Provides a popup UI (todos, history, bookmarks, wallet, analytics views), an options page for settings, and Chrome omnibox suggestions from server-side bookmarks/history.
 
 ## Tech Stack
 
@@ -40,11 +40,11 @@ Three entry points, output to `dist/`:
 
 ```
 extension/
-├── manifest.json         # MV3 manifest (permissions, background, popup, options)
+├── manifest.json         # MV3 manifest (permissions, omnibox keyword, background, popup, options)
 ├── popup.html, options.html
 ├── vite.config.ts
 └── src/
-    ├── background.ts      # Service worker: tab/idle/alarm listeners, history + usage sync
+    ├── background.ts      # Service worker: tab/idle/alarm/omnibox listeners, history + usage sync
     ├── popup/            # Popup UI
     │   ├── main.ts, PopupApp.vue
     │   └── <Domain>Panel.vue   # TodosPanel, HistoryPanel, BookmarksPanel, WalletPanel, AnalyticsPanel
@@ -84,6 +84,16 @@ The same pattern is used directly in `background.ts` and `lib/timeTracker.ts`. *
 ### Background service worker
 
 [`background.ts`](src/background.ts) is event-driven (no persistent state): it listens to `chrome.tabs`, `chrome.windows`, `chrome.idle`, and `chrome.alarms`. History is posted on tab navigation; time usage is buffered by `TimeTracker` and flushed on an alarm. Network failures are swallowed with `console.debug` (server may be offline) — don't throw out of listeners.
+
+### Omnibox search
+
+The manifest defines the Chrome omnibox keyword `bs`. After the user types `bs` and presses Space/Tab, `background.ts` calls `client.searchOmnibox({ user_id, q, limit })`, which hits `GET /api/search/omnibox` with the stored API token. Suggestions must stay clearly labeled by source:
+- History suggestions use `[History]` and include the server-side `visit_count`.
+- Bookmark suggestions use `[Bookmark]` and can include folder path, tags, or description.
+
+The server balances results across bookmark and history matches when both are present, so the extension should render the returned order directly instead of filtering or re-ranking one source away.
+
+Use Chrome's omnibox XML markup carefully: escape user/server text before inserting it into `<match>` or `<dim>` descriptions. If settings are incomplete or the server is offline, return no suggestions and log with `console.debug`; never throw out of an omnibox listener.
 
 ### Popup view-models
 

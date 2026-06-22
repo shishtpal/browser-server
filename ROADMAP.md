@@ -11,6 +11,7 @@
 - **Full build script** — `scripts/build.ps1` builds frontend (bun or npm), Go binary, and copies dist for static serving
 - **Monolith migration** — Refactored ~900-line single file into proper Go module structure
 - **go vet compliance** — All cross-package struct literals use keyed fields
+- **Chrome omnibox server search** — Extension keyword `bs` searches token-protected server bookmarks plus grouped history, with source labels, balanced bookmark/history results, and history visit counts
 
 ## 🔜 Next
 
@@ -104,6 +105,12 @@
     - Frontend and extension compile against the same exported API types
     - Only one maintained API client implementation exists
     - Shared packages stay framework-free and testable in isolation
+
+- [x] **Extension omnibox search**
+  - Add `GET /api/search/omnibox` for combined bookmark and grouped history suggestions
+  - Include `source` labels and history `visit_count` so users can distinguish bookmark/history results
+  - Expose the endpoint through `shared/browser-client` and `shared/browser-types`
+  - Wire the MV3 background service worker to Chrome omnibox keyword `bs`
 
 - **Frontend UI pages**
   - Build todos list with create/update/delete actions

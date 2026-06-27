@@ -22,24 +22,24 @@ func screenshotDir() string {
 func UploadScreenshot(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Failed to parse form")
 		return
 	}
 
 	todoIDStr := r.URL.Query().Get("todo_id")
 	if todoIDStr == "" {
-		http.Error(w, "Missing todo_id", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Missing todo_id")
 		return
 	}
 	todoID, err := strconv.Atoi(todoIDStr)
 	if err != nil {
-		http.Error(w, "Invalid todo_id", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid todo_id")
 		return
 	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Missing file", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Missing file")
 		return
 	}
 	defer file.Close()
@@ -51,20 +51,20 @@ func UploadScreenshot(w http.ResponseWriter, r *http.Request) {
 	outPath := filepath.Join(screenshotDir(), filename)
 	out, err := os.Create(outPath)
 	if err != nil {
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to save file")
 		return
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, file)
 	if err != nil {
-		http.Error(w, "Failed to write file", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to write file")
 		return
 	}
 
 	result, err := db.ScreenshotDB.Exec("INSERT INTO screenshots (todo_id, filename) VALUES (?, ?)", todoID, filename)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -90,7 +90,7 @@ func GetScreenshot(w http.ResponseWriter, r *http.Request) {
 	err := db.ScreenshotDB.QueryRow("SELECT id, todo_id, filename, created_at FROM screenshots WHERE todo_id = ? ORDER BY id DESC LIMIT 1", todoID).
 		Scan(&screenshot.ID, &screenshot.TodoID, &screenshot.Filename, &screenshot.CreatedAt)
 	if err != nil {
-		http.Error(w, "Screenshot not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Screenshot not found")
 		return
 	}
 

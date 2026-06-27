@@ -22,20 +22,20 @@ func ImportBookmarks(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
-		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Failed to parse multipart form")
 		return
 	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Missing 'file' field", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Missing 'file' field")
 		return
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		http.Error(w, "Failed to read file", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Failed to read file")
 		return
 	}
 
@@ -52,7 +52,7 @@ func ImportBookmarks(w http.ResponseWriter, r *http.Request) {
 
 	doc, err := html.Parse(strings.NewReader(string(data)))
 	if err != nil {
-		http.Error(w, "Failed to parse HTML file", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Failed to parse HTML file")
 		return
 	}
 

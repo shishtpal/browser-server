@@ -14,12 +14,12 @@ import (
 func BatchUpsertUsage(w http.ResponseWriter, r *http.Request) {
 	var req models.UsageBatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
 	if req.UserID <= 0 {
-		http.Error(w, "user_id is required", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
 		return
 	}
 
@@ -65,7 +65,7 @@ func GetAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
 	limit := helpers.GetLimitFromQuery(r, 10)
 
 	if userID <= 0 || startDate == "" || endDate == "" {
-		http.Error(w, "user_id, start_date, and end_date are required", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "user_id, start_date, and end_date are required")
 		return
 	}
 
@@ -80,7 +80,7 @@ func GetAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
 		userID, startDate, endDate,
 	).Scan(&totalSeconds)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 

@@ -32,7 +32,7 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.WalletDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	defer rows.Close()
@@ -69,7 +69,7 @@ func RevealWalletPassword(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
 
 	if userID == 0 || (id == 0 && (website == "" || username == "")) {
-		http.Error(w, "user_id and id are required", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "user_id and id are required")
 		return
 	}
 
@@ -88,10 +88,10 @@ func RevealWalletPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err == sql.ErrNoRows {
-		http.Error(w, "Wallet entry not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Wallet entry not found")
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -101,14 +101,23 @@ func RevealWalletPassword(w http.ResponseWriter, r *http.Request) {
 func CreateWalletEntry(w http.ResponseWriter, r *http.Request) {
 	var entry models.WalletEntry
 	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	v := helpers.NewValidator()
+	v.PositiveID("user_id", entry.UserID)
+	v.Required("website", entry.Website)
+	v.Required("password", entry.Password)
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
 
 	result, err := db.WalletDB.Exec("INSERT INTO wallet (user_id, username, password, website, description) VALUES (?, ?, ?, ?, ?)",
 		entry.UserID, entry.Username, entry.Password, entry.Website, entry.Description)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -130,10 +139,10 @@ func GetWalletByID(w http.ResponseWriter, r *http.Request) {
 		Scan(&entry.ID, &entry.UserID, &entry.Username, &entry.Password, &entry.Website, &entry.Description, &entry.CreatedAt, &entry.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		http.Error(w, "Wallet entry not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Wallet entry not found")
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -154,16 +163,16 @@ func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		http.Error(w, "Wallet entry not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Wallet entry not found")
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -193,7 +202,7 @@ func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 	args = append(args, id)
 
 	if _, err := db.WalletDB.Exec(query, args...); err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -202,7 +211,7 @@ func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 		id,
 	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -228,13 +237,13 @@ func DeleteWalletEntry(w http.ResponseWriter, r *http.Request) {
 
 	result, err := db.WalletDB.Exec("DELETE FROM wallet WHERE id = ?", id)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		http.Error(w, "Wallet entry not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Wallet entry not found")
 		return
 	}
 

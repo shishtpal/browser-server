@@ -33,13 +33,13 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseMultipartForm(64 << 20) // 64MB limit for SQLite files
 	if err != nil {
-		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Failed to parse multipart form")
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Missing 'file' field", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Missing 'file' field")
 		return
 	}
 	defer file.Close()
@@ -47,7 +47,7 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 	// Save to a temp file so SQLite can open it
 	tmpDir, err := os.MkdirTemp("", "chrome-history-*")
 	if err != nil {
-		http.Error(w, "Failed to create temp directory", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create temp directory")
 		return
 	}
 	defer os.RemoveAll(tmpDir)
@@ -55,12 +55,12 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 	tmpPath := filepath.Join(tmpDir, header.Filename)
 	tmpFile, err := os.Create(tmpPath)
 	if err != nil {
-		http.Error(w, "Failed to create temp file", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to create temp file")
 		return
 	}
 	if _, err := io.Copy(tmpFile, file); err != nil {
 		tmpFile.Close()
-		http.Error(w, "Failed to write temp file", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to write temp file")
 		return
 	}
 	tmpFile.Close()
@@ -68,7 +68,7 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 	// Open the uploaded SQLite database as read-only
 	chromeDB, err := sql.Open("sqlite3", "file:"+tmpPath+"?mode=ro")
 	if err != nil {
-		http.Error(w, "Failed to open SQLite file. Is this a valid Chrome History file?", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Failed to open SQLite file. Is this a valid Chrome History file?")
 		return
 	}
 	defer chromeDB.Close()
@@ -77,7 +77,7 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 	var tableName string
 	err = chromeDB.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='urls'").Scan(&tableName)
 	if err != nil {
-		http.Error(w, "Not a valid Chrome History file: 'urls' table not found", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Not a valid Chrome History file: 'urls' table not found")
 		return
 	}
 

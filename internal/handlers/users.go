@@ -15,7 +15,7 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.UserDB.Query("SELECT id, username, email FROM users")
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	defer rows.Close()
@@ -36,14 +36,22 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	v := helpers.NewValidator()
+	v.Required("username", user.Username)
+	v.Email("email", user.Email)
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
 
 	result, err := db.UserDB.Exec("INSERT INTO users (username, email) VALUES (?, ?)",
 		user.Username, user.Email)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -62,10 +70,10 @@ func GetUserByID(w http.ResponseWriter, r *http.Request) {
 		Scan(&user.ID, &user.Username, &user.Email)
 
 	if err == sql.ErrNoRows {
-		http.Error(w, "User not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "User not found")
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -78,7 +86,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	_, err := db.UserDB.Exec("DELETE FROM users WHERE id = ?", id)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 

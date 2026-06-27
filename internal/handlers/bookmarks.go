@@ -34,7 +34,7 @@ func GetBookmarks(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.BookmarkDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	defer rows.Close()
@@ -87,7 +87,16 @@ func GetBookmarks(w http.ResponseWriter, r *http.Request) {
 func CreateBookmark(w http.ResponseWriter, r *http.Request) {
 	var bookmark models.BookmarkResponse
 	if err := json.NewDecoder(r.Body).Decode(&bookmark); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	v := helpers.NewValidator()
+	v.PositiveID("user_id", bookmark.UserID)
+	v.Required("title", bookmark.Title)
+	v.URL("url", bookmark.URL)
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
 
@@ -96,7 +105,7 @@ func CreateBookmark(w http.ResponseWriter, r *http.Request) {
 	result, err := db.BookmarkDB.Exec("INSERT INTO bookmarks (user_id, title, url, description, tags, folder_path) VALUES (?, ?, ?, ?, ?, ?)",
 		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -118,10 +127,10 @@ func GetBookmarkByID(w http.ResponseWriter, r *http.Request) {
 		Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.FolderPath, &bookmark.CreatedAt, &bookmark.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		http.Error(w, "Bookmark not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Bookmark not found")
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -146,7 +155,16 @@ func UpdateBookmark(w http.ResponseWriter, r *http.Request) {
 
 	var bookmark models.BookmarkResponse
 	if err := json.NewDecoder(r.Body).Decode(&bookmark); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	v := helpers.NewValidator()
+	v.PositiveID("user_id", bookmark.UserID)
+	v.Required("title", bookmark.Title)
+	v.URL("url", bookmark.URL)
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
 
@@ -156,7 +174,7 @@ func UpdateBookmark(w http.ResponseWriter, r *http.Request) {
 		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath, id)
 
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -172,13 +190,13 @@ func DeleteBookmark(w http.ResponseWriter, r *http.Request) {
 
 	result, err := db.BookmarkDB.Exec("DELETE FROM bookmarks WHERE id = ?", id)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		http.Error(w, "Bookmark not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Bookmark not found")
 		return
 	}
 

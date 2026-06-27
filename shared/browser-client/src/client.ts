@@ -33,12 +33,35 @@ export interface BrowserServerClientOptions {
 /** Error thrown for non-OK API responses, carrying the HTTP status code. */
 export class ApiError extends Error {
   readonly status: number
+  /** Field-level validation errors keyed by JSON field name, when present. */
+  readonly fields?: Record<string, string>
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, fields?: Record<string, string>) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.fields = fields
   }
+}
+
+/**
+ * Builds an ApiError from a raw response body. The server returns a standard
+ * JSON envelope ({ error, fields? }); fall back to the raw text for anything
+ * that isn't that shape.
+ */
+function apiErrorFromBody(status: number, body: string, fallback: string): ApiError {
+  if (body) {
+    try {
+      const parsed = JSON.parse(body) as { error?: string; fields?: Record<string, string> }
+      if (parsed && typeof parsed.error === 'string') {
+        return new ApiError(status, parsed.error, parsed.fields)
+      }
+    } catch {
+      // Not JSON; use the raw text below.
+    }
+    return new ApiError(status, body)
+  }
+  return new ApiError(status, fallback)
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -87,7 +110,7 @@ async function apiFetch<T>(
 
   if (!response.ok) {
     const text = await response.text()
-    throw new ApiError(response.status, text || `Request failed: ${response.status}`)
+    throw apiErrorFromBody(response.status, text, `Request failed: ${response.status}`)
   }
 
   return response.json() as Promise<T>
@@ -179,7 +202,7 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
 
       if (!response.ok) {
         const text = await response.text()
-        throw new ApiError(response.status, text || `Upload failed: ${response.status}`)
+        throw apiErrorFromBody(response.status, text, `Upload failed: ${response.status}`)
       }
 
       return response.json() as Promise<Screenshot>

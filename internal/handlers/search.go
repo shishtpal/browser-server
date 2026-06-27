@@ -44,13 +44,13 @@ func SearchOmnibox(w http.ResponseWriter, r *http.Request) {
 
 	historyResults, err := searchOmniboxHistory(userID, query, limit)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	bookmarkResults, err := searchOmniboxBookmarks(userID, query, limit)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 

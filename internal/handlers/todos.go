@@ -40,7 +40,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.TodoDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	defer rows.Close()
@@ -61,14 +61,22 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var todo models.Todo
 	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	v := helpers.NewValidator()
+	v.PositiveID("user_id", todo.UserID)
+	v.Required("title", todo.Title)
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
 
 	result, err := db.TodoDB.Exec("INSERT INTO todos (user_id, title, description, domain, completed) VALUES (?, ?, ?, ?, ?)",
 		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.Completed)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -90,10 +98,10 @@ func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 		Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		http.Error(w, "Todo not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Todo not found")
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -106,7 +114,15 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	var todo models.Todo
 	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	v := helpers.NewValidator()
+	v.PositiveID("user_id", todo.UserID)
+	v.Required("title", todo.Title)
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
 
@@ -114,7 +130,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.ScreenshotPath, todo.Completed, id)
 
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -130,13 +146,13 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 
 	result, err := db.TodoDB.Exec("DELETE FROM todos WHERE id = ?", id)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		http.Error(w, "Todo not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "Todo not found")
 		return
 	}
 

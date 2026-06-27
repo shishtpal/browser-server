@@ -30,15 +30,17 @@
   - Support common methods and headers used by the API
   - Keep configuration simple and environment-aware so production stays locked down
 
-- **Input validation**
+- [x] **Input validation**
   - Validate required fields for each create/update request
   - Validate URL fields for bookmarks/history and email format for users
   - Return consistent `400 Bad Request` responses for invalid payloads
+  - Implemented via `helpers.Validator` (`internal/helpers/validate.go`); applied to todos, bookmarks, history, wallet, and users create/update handlers
 
-- **Error handling improvements**
+- [x] **Error handling improvements**
   - Standardize JSON error response shape across handlers
   - Replace generic `http.Error` usage where structured responses are better
   - Improve database and parsing error messages without leaking internals
+  - All handlers now return the `{ "error": ..., "fields"?: {...} }` envelope via `helpers.WriteError`/`helpers.WriteValidationError`; the shared client parses it into `ApiError.message`/`ApiError.fields`
 
 - **Authentication** — single operator-level API token, no user login
 

@@ -76,7 +76,7 @@ func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
 
 	var total int
 	if err := db.HistoryDB.QueryRow("SELECT COUNT(DISTINCT url) FROM history "+where, args...).Scan(&total); err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -88,7 +88,7 @@ func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.HistoryDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	defer rows.Close()
@@ -150,7 +150,7 @@ func GetHistory(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.HistoryDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	defer rows.Close()
@@ -171,7 +171,15 @@ func GetHistory(w http.ResponseWriter, r *http.Request) {
 func CreateHistory(w http.ResponseWriter, r *http.Request) {
 	var entry models.History
 	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	v := helpers.NewValidator()
+	v.PositiveID("user_id", entry.UserID)
+	v.URL("url", entry.URL)
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
 
@@ -182,7 +190,7 @@ func CreateHistory(w http.ResponseWriter, r *http.Request) {
 	result, err := db.HistoryDB.Exec("INSERT INTO history (user_id, url, title, visited_at, duration) VALUES (?, ?, ?, ?, ?)",
 		entry.UserID, entry.URL, entry.Title, entry.VisitedAt, entry.Duration)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -202,10 +210,10 @@ func GetHistoryByID(w http.ResponseWriter, r *http.Request) {
 		Scan(&entry.ID, &entry.UserID, &entry.URL, &entry.Title, &entry.VisitedAt, &entry.Duration)
 
 	if err == sql.ErrNoRows {
-		http.Error(w, "History entry not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "History entry not found")
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
@@ -218,13 +226,13 @@ func DeleteHistory(w http.ResponseWriter, r *http.Request) {
 
 	result, err := db.HistoryDB.Exec("DELETE FROM history WHERE id = ?", id)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		http.Error(w, "History entry not found", http.StatusNotFound)
+		helpers.WriteError(w, http.StatusNotFound, "History entry not found")
 		return
 	}
 

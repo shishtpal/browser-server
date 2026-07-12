@@ -10,17 +10,11 @@
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@browser-server/shared-client": "link:..\\shared\\browser-client",
-    "@browser-server/shared-types": "link:..\\shared\\browser-types",
-    "@browser-server/shared-utils": "link:..\\shared\\browser-utils",
-    "vue": "^3.5.38"
+    "@browser-server/extension-core": "workspace:*"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.0",
     "@types/chrome": "^0.1.43",
     "@types/node": "^24.6.1",
-    "@vitejs/plugin-vue": "^6.0.1",
-    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vue-tsc": "^3.0.8"

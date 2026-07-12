@@ -7,6 +7,12 @@
   </head>
   <body class="min-h-screen bg-slate-950 text-slate-100">
     <div id="app"></div>
-    <script type="module" src="/src/options/main.ts"></script>
+    <script type="module">
+      import { setBrowserApi } from '@browser-server/extension-core'
+      import { ChromeAdapter } from './src/adapter'
+
+      setBrowserApi(new ChromeAdapter())
+      await import('../shared/browser-extension-core/src/options/main.ts')
+    </script>
   </body>
 </html>

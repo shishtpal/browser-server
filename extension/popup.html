@@ -7,6 +7,12 @@
   </head>
   <body class="bg-slate-950 text-slate-100">
     <div id="app"></div>
-    <script type="module" src="/src/popup/main.ts"></script>
+    <script type="module">
+      import { setBrowserApi } from '@browser-server/extension-core'
+      import { ChromeAdapter } from './src/adapter'
+
+      setBrowserApi(new ChromeAdapter())
+      await import('../shared/browser-extension-core/src/popup/main.ts')
+    </script>
   </body>
 </html>

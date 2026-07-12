@@ -1,6 +1,7 @@
 packages:
   - frontend
   - extension
+  - extension-firefox
   - shared/*
 
 overrides:

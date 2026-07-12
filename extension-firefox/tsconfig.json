@@ -1,0 +1,12 @@
+{
+  "extends": "@browser-server/extension-core/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "webextension-polyfill"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "popup.html",
+    "options.html",
+    "vite.config.ts"
+  ]
+}

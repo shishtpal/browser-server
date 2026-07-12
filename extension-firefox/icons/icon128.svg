@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e94560"/>
+      <stop offset="100%" stop-color="#c23152"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="innerGlow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#fff" flood-opacity="0.10" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="128" height="128" rx="22" fill="url(#bg)" filter="url(#shadow)"/>
+  <g transform="translate(24,16)" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" filter="url(#innerGlow)">
+    <circle cx="40" cy="48" r="36"/>
+    <polyline points="40,24 40,48 60,56"/>
+  </g>
+  <!-- small arrow indicator on bottom-right -->
+  <g transform="translate(80,80)" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
+    <polyline points="0,12 8,4 16,12"/>
+    <line x1="8" y1="4" x2="8" y2="24"/>
+  </g>
+</svg>

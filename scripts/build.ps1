@@ -54,12 +54,5 @@ New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
 Copy-Item -Path "$FrontendDist\*" -Destination $TargetDir -Recurse -Force
 Write-Host "Frontend copied to: $TargetDir" -ForegroundColor Green
 
-Write-Host "`n==> Building Chrome extension..." -ForegroundColor Cyan
-Set-Location -LiteralPath $ProjectRoot
-pnpm --filter @browser-server/extension build
-
-Write-Host "`n==> Building Firefox extension..." -ForegroundColor Cyan
-pnpm --filter @browser-server/extension-firefox build
-
 Write-Host "`n==> Build complete!" -ForegroundColor Green
 Write-Host "Run: $GoOutput" -ForegroundColor Yellow

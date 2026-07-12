@@ -1,0 +1,33 @@
+{
+  "name": "@browser-server/extension-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "type-check": "vue-tsc --noEmit"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./background": "./src/background.ts",
+    "./vite.config.base": "./vite.config.base.ts",
+    "./tsconfig.json": "./tsconfig.json"
+  },
+  "dependencies": {
+    "@browser-server/shared-client": "workspace:*",
+    "@browser-server/shared-types": "workspace:*",
+    "@browser-server/shared-utils": "workspace:*",
+    "vue": "^3.5.38"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^24.6.1",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "fast-check": "^3.23.2",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4",
+    "vite": "^8.0.16",
+    "vue-tsc": "^3.0.8"
+  },
+  "packageManager": "pnpm@11.6.0"
+}

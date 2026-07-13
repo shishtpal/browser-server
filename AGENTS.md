@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Browser Server is a Go-based REST API server with an Astro + Vue frontend and a companion browser extension. It manages personal data: todos, bookmarks, browsing history, a password wallet, screenshots, and domain usage analytics. Data is stored in SQLite databases under `.data/`.
+Browser Server is a Go-based REST API server with an Astro + Vue frontend and Chromium and Firefox browser extensions. It manages personal data: todos, bookmarks, browsing history, a password wallet, screenshots, and domain usage analytics. Data is stored in SQLite databases under `.data/`.
 
-It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `frontend/`, `extension/`, and `shared/*` are TypeScript workspace packages.
+It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `frontend/`, `extension/`, `extension-firefox/`, and `shared/*` are TypeScript workspace packages.
 
 ## Sub-project guidance
 
@@ -13,12 +13,24 @@ This root `AGENTS.md` covers the Go backend and cross-cutting concerns. Each fro
 - [`frontend/AGENTS.md`](frontend/AGENTS.md) — Astro + Vue web app
 - [`extension/AGENTS.md`](extension/AGENTS.md) — Vite + Vue browser extension
 
+## Git Repository Workflow
+
+- Canonical repository: `https://github.com/shishtpal/browser-server.git`.
+- Start work from an up-to-date `main`: fetch the remote, then create a focused branch such as `feat/short-description`, `fix/short-description`, or `docs/short-description`.
+- Before editing, inspect `git status` and preserve unrelated user or agent changes. Never discard, overwrite, or stage files outside the requested work.
+- Keep commits focused and use the repository's Conventional Commit-style subjects: `feat(scope): ...`, `fix(scope): ...`, `docs(scope): ...`, `refactor(scope): ...`, or `chore(scope): ...`.
+- Run checks appropriate to the changed area before committing. At minimum, use `go test ./...` and `go vet ./...` for backend changes, the package build for frontend changes, and `type-check` plus the package build for extension changes.
+- Review both `git diff` and `git diff --cached` so commits contain only intended changes.
+- Never commit generated output, dependencies, runtime data, or secrets: `bin/`, `dist/`, `node_modules/`, `.data/`, `.server-token`, `.env`, and local logs.
+- Push feature branches and open pull requests against `main`; do not force-push or rewrite shared branch history.
+- For fork-based work, use the fork as `origin` and add this repository as `upstream`: `git remote add upstream https://github.com/shishtpal/browser-server.git`.
+
 ## Tech Stack
 
 - **Backend**: Go 1.25, gorilla/mux, mattn/go-sqlite3 (CGO required)
 - **Frontend (web)**: Astro 6, Vue 3, TailwindCSS 4
-- **Extension**: Vite 8, Vue 3, TailwindCSS 4, Manifest V3
-- **Shared packages**: framework-free TypeScript (`shared/browser-types`, `shared/browser-client`, `shared/browser-utils`)
+- **Extensions**: Vite 8, Vue 3, TailwindCSS 4, Manifest V3 (Chromium and Firefox wrappers)
+- **Shared packages**: framework-free API types/client/utilities plus shared Vue extension code in `shared/browser-extension-core`
 - **Package manager**: pnpm 11 (workspace defined in `pnpm-workspace.yaml`)
 - **Build**: PowerShell script (`scripts/build.ps1`), `CGO_ENABLED=1` required
 - **Auth**: opaque operator-level API token (Bearer header), generated via `server token generate`
@@ -52,15 +64,18 @@ browser-server/
 │       ├── analytics.go        # Domain usage upsert + summary
 │       └── users.go            # Read/create for /api/users
 ├── frontend/                   # Astro + Vue web app (see frontend/AGENTS.md)
-├── extension/                  # Vite + Vue browser extension (see extension/AGENTS.md)
-├── shared/                     # Framework-free TS workspace packages
+├── extension/                  # Chromium extension wrapper (see extension/AGENTS.md)
+├── extension-firefox/          # Firefox extension wrapper
+├── shared/                     # Shared TypeScript workspace packages
 │   ├── browser-types/          # Domain models, DTOs, shared error/auth types
 │   ├── browser-client/         # createBrowserServerClient() — the canonical API layer
-│   └── browser-utils/          # Pure helpers (date/duration formatting, favicon, etc.)
+│   ├── browser-utils/          # Pure helpers (date/duration formatting, favicon, etc.)
+│   └── browser-extension-core/ # Shared Vue extension UI and runtime logic
 ├── scripts/build.ps1           # Full build: builds frontend, then Go binary, copies dist into bin/
 ├── bin/                        # Build output
 ├── pnpm-workspace.yaml         # pnpm workspace config
 ├── go.mod / go.sum
+├── README.md                   # Setup, usage, extension, and development guide
 ├── PRD.md                      # Product requirements and API documentation
 ├── AGENTS.md                   # This file
 └── ROADMAP.md                  # What's done and what's next

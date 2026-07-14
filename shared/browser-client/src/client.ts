@@ -5,6 +5,7 @@ import type {
   CreateBookmarkInput,
   CreateHistoryInput,
   CreateTodoInput,
+  CreateWalletInput,
   GroupedHistoryParams,
   GroupedHistoryResponse,
   HealthResponse,
@@ -218,6 +219,10 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
 
     getWallet(userId?: number, website?: string): Promise<WalletEntry[]> {
       return apiFetch<WalletEntry[]>(normalizedBaseUrl, 'GET', `/api/wallet${buildQuery({ user_id: userId, website })}`, undefined, getToken)
+    },
+
+    createWallet(data: CreateWalletInput): Promise<WalletEntry> {
+      return apiFetch<WalletEntry>(normalizedBaseUrl, 'POST', '/api/wallet', data, getToken)
     },
 
     async revealWalletPassword(userId: number, id: number): Promise<string> {

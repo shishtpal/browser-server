@@ -128,6 +128,15 @@ export interface WalletImportResult {
   errors: string[]
 }
 
+export interface CreateWalletInput {
+  user_id: number
+  website: string
+  login_provider?: string
+  username: string
+  password: string
+  description?: string
+}
+
 export interface User {
   id: number
   username: string

@@ -8,6 +8,7 @@
       </div>
     </div>
     <h3 class="mt-3 text-sm font-black text-slate-900 transition-colors dark:text-white">{{ entry.website }}</h3>
+    <p class="mt-0.5 text-xs font-black text-emerald-700 transition-colors dark:text-emerald-400">{{ entry.login_provider }}</p>
     <p class="mt-0.5 text-xs font-semibold text-slate-600 transition-colors dark:text-slate-400">{{ entry.username }}</p>
     <div class="mt-2 flex flex-wrap items-center gap-2">
       <span class="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-slate-600 transition-colors dark:bg-slate-700 dark:text-slate-300">{{ revealed ? revealedPassword : '••••••••' }}</span>

@@ -5,6 +5,7 @@ import { getActiveTabDomain } from '../lib/browser'
 export interface WalletItemView {
   id: number
   website: string
+  loginProvider: string
   username: string
   description: string
 }
@@ -22,6 +23,7 @@ export function useWalletView(client: Ref<BrowserServerClient | null>, userId: R
     return {
       id: entry.id,
       website: entry.website,
+      loginProvider: entry.login_provider || 'Password',
       username: entry.username,
       description: entry.description,
     }

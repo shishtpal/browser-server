@@ -80,12 +80,12 @@ func ImportWallet(w http.ResponseWriter, r *http.Request) {
 
 		username := field(record, idx["username"])
 		password := field(record, idx["password"])
-		website := field(record, idx["name"])
 		link := field(record, idx["url"])
+		website := hostFromURL(link)
 		note := field(record, idx["note"])
 
 		if website == "" {
-			website = hostFromURL(link)
+			website = field(record, idx["name"])
 		}
 		if website == "" {
 			website = link
@@ -103,8 +103,8 @@ func ImportWallet(w http.ResponseWriter, r *http.Request) {
 		}
 
 		_, err = db.WalletDB.Exec(
-			"INSERT INTO wallet (user_id, username, password, website, description) VALUES (?, ?, ?, ?, ?)",
-			userID, username, password, website, note,
+			"INSERT INTO wallet (user_id, username, password, website, login_provider, description) VALUES (?, ?, ?, ?, ?, ?)",
+			userID, username, password, website, "Password", note,
 		)
 		if err != nil {
 			if len(errors) < 10 {

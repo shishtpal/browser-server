@@ -5,8 +5,8 @@
   "description": "Browser Server extension built with Vite, TypeScript, Vue 3, and Tailwind CSS v4.",
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build",
+    "dev": "vite build && vite build --mode content && vite build --watch",
+    "build": "vite build && vite build --mode content",
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {

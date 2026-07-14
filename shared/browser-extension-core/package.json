@@ -9,6 +9,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./background": "./src/background.ts",
+    "./content-script": "./src/contentScript.ts",
     "./vite.config.base": "./vite.config.base.ts",
     "./tsconfig.json": "./tsconfig.json"
   },

@@ -7,15 +7,16 @@ export function useWallet(selectedUserId: Ref<number | null>) {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const websiteFilter = ref('')
-  const searchColumn = ref<'website' | 'username' | 'description' | 'all'>('website')
+  const searchColumn = ref<'website' | 'login_provider' | 'username' | 'description' | 'all'>('website')
 
   const newWebsite = ref('')
+  const newLoginProvider = ref('Password')
   const newUsername = ref('')
   const newPassword = ref('')
   const newDescription = ref('')
 
   const editing = ref<WalletEntry | null>(null)
-  const editForm = ref({ website: '', username: '', password: '', description: '' })
+  const editForm = ref({ website: '', login_provider: 'Password', username: '', password: '', description: '' })
 
   const filteredEntries = computed(() => {
     if (!websiteFilter.value.trim()) return walletEntries.value
@@ -24,10 +25,12 @@ export function useWallet(selectedUserId: Ref<number | null>) {
     return walletEntries.value.filter(e => {
       if (col === 'all') {
         return e.website.toLowerCase().includes(q) ||
+               e.login_provider.toLowerCase().includes(q) ||
                e.username.toLowerCase().includes(q) ||
                e.description.toLowerCase().includes(q)
       }
       if (col === 'website') return e.website.toLowerCase().includes(q)
+      if (col === 'login_provider') return e.login_provider.toLowerCase().includes(q)
       if (col === 'username') return e.username.toLowerCase().includes(q)
       if (col === 'description') return e.description.toLowerCase().includes(q)
       return false
@@ -48,16 +51,20 @@ export function useWallet(selectedUserId: Ref<number | null>) {
   }
 
   const addEntry = async () => {
-    if (!selectedUserId.value || !newWebsite.value.trim() || !newUsername.value.trim() || !newPassword.value) return
+    const provider = newLoginProvider.value.trim() || 'Password'
+    if (!selectedUserId.value || !newWebsite.value.trim() || !newUsername.value.trim()) return
+    if (provider.toLowerCase() === 'password' && !newPassword.value) return
     try {
       await createWalletEntry({
         user_id: selectedUserId.value,
         website: newWebsite.value.trim(),
+        login_provider: provider,
         username: newUsername.value.trim(),
         password: newPassword.value,
         description: newDescription.value.trim() || undefined,
       })
       newWebsite.value = ''
+      newLoginProvider.value = 'Password'
       newUsername.value = ''
       newPassword.value = ''
       newDescription.value = ''
@@ -71,6 +78,7 @@ export function useWallet(selectedUserId: Ref<number | null>) {
     editing.value = e
     editForm.value = {
       website: e.website,
+      login_provider: e.login_provider,
       username: e.username,
       password: '',
       description: e.description,
@@ -113,6 +121,7 @@ export function useWallet(selectedUserId: Ref<number | null>) {
     websiteFilter,
     searchColumn,
     newWebsite,
+    newLoginProvider,
     newUsername,
     newPassword,
     newDescription,

@@ -21,6 +21,7 @@ interface RowState {
 
 const rows = reactive<Record<number, RowState>>({})
 const editingId = ref<number | null>(null)
+const editLoginProvider = ref('')
 const editUsername = ref('')
 const editPassword = ref('')
 const isSaving = ref(false)
@@ -84,18 +85,21 @@ function flashCopied(state: RowState, which: 'username' | 'password') {
 
 async function startEdit(item: WalletItemView) {
   editingId.value = item.id
+  editLoginProvider.value = item.loginProvider
   editUsername.value = item.username
   editPassword.value = await ensurePassword(item)
 }
 
 function cancelEdit() {
   editingId.value = null
+  editLoginProvider.value = ''
   editUsername.value = ''
   editPassword.value = ''
 }
 
 async function saveEdit(item: WalletItemView) {
   const changes: Record<string, string> = {}
+  if (editLoginProvider.value !== item.loginProvider) changes.login_provider = editLoginProvider.value
   if (editUsername.value !== item.username) changes.username = editUsername.value
   const currentPassword = rowState(item.id).password
   if (editPassword.value !== currentPassword) changes.password = editPassword.value
@@ -198,6 +202,12 @@ watch(
         <template v-if="editingId === item.id">
           <div class="min-w-0 space-y-2">
             <p class="truncate text-sm font-medium text-slate-100" :title="item.website">{{ item.website }}</p>
+            <input
+              v-model="editLoginProvider"
+              type="text"
+              class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-500/20"
+              placeholder="Login provider"
+            />
             <div class="flex items-center gap-2 text-xs">
               <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -246,6 +256,7 @@ watch(
         <template v-else>
           <div class="min-w-0">
             <p class="truncate text-sm font-medium text-slate-100" :title="item.website">{{ item.website }}</p>
+            <p class="mt-1 truncate text-xs font-medium text-emerald-400" :title="item.loginProvider">{{ item.loginProvider }}</p>
             <div class="mt-1 flex items-center gap-2 text-xs">
               <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />

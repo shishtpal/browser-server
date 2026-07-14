@@ -1,5 +1,5 @@
 import { createBrowserServerClient } from '@browser-server/shared-client'
-import type { OmniboxSearchResult } from '@browser-server/shared-types'
+import type { OmniboxSearchResult, WalletEntry } from '@browser-server/shared-types'
 import { getBrowserApi } from './browserApi'
 import { isTrackableUrl } from './lib/browser'
 import { getSettings } from './lib/settings'
@@ -20,6 +20,35 @@ function extractHostname(url: string): string | null {
   } catch {
     return null
   }
+}
+
+function normalizeHostname(value: string): string | null {
+  try {
+    const url = new URL(value.includes('://') ? value : `https://${value}`)
+    return url.hostname.toLowerCase().replace(/^www\./, '') || null
+  } catch {
+    return null
+  }
+}
+
+function walletEntryMatchesHostname(entry: WalletEntry, hostname: string): boolean {
+  const savedHostname = normalizeHostname(entry.website)
+  const currentHostname = normalizeHostname(hostname)
+  if (!savedHostname || !currentHostname) return false
+  return currentHostname === savedHostname
+}
+
+async function getLoginProviderAccounts(hostname: string) {
+  const settings = await getSettings()
+  const userId = Number.parseInt(settings.userId, 10)
+  if (!settings.apiToken || Number.isNaN(userId)) return []
+
+  const client = createBrowserServerClient(settings.apiBase, { getToken: () => settings.apiToken })
+  const entries = await client.getWallet(userId)
+  return entries.filter((entry) => walletEntryMatchesHostname(entry, hostname)).map((entry) => ({
+    loginProvider: entry.login_provider || 'Password',
+    username: entry.username,
+  }))
 }
 
 async function postVisit(url: string, title: string | undefined): Promise<void> {
@@ -233,27 +262,36 @@ export function initBackground(): void {
   })
 
   api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (
-      typeof message !== 'object' ||
-      message === null ||
-      !('type' in message) ||
-      message.type !== 'captureScreenshot'
-    ) {
+    if (typeof message !== 'object' || message === null || !('type' in message)) {
       return false
     }
 
-    void api.tabs.query({ active: true, currentWindow: true }).then(async (tabs) => {
-      const windowId = tabs[0]?.windowId
-      if (windowId === undefined) {
-        sendResponse({ dataUrl: null })
-        return
-      }
+    if (message.type === 'captureScreenshot') {
+      void api.tabs.query({ active: true, currentWindow: true }).then(async (tabs) => {
+        const windowId = tabs[0]?.windowId
+        if (windowId === undefined) {
+          sendResponse({ dataUrl: null })
+          return
+        }
 
-      const dataUrl = await api.tabs.captureVisibleTab(windowId, { format: 'png' })
-      sendResponse({ dataUrl })
-    })
+        const dataUrl = await api.tabs.captureVisibleTab(windowId, { format: 'png' })
+        sendResponse({ dataUrl })
+      })
+      return true
+    }
 
-    return true
+    if (message.type === 'getLoginProviders' && 'hostname' in message && typeof message.hostname === 'string') {
+      void getLoginProviderAccounts(message.hostname)
+        .then((accounts) => sendResponse({ accounts }))
+        .catch((error) => {
+          const detail = error instanceof Error ? error.message : String(error)
+          console.debug('Wallet provider lookup failed (server offline?)', detail)
+          sendResponse({ accounts: [] })
+        })
+      return true
+    }
+
+    return false
   })
 
   api.idle.setDetectionInterval(15)

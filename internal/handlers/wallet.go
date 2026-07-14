@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"browser-server/internal/db"
@@ -17,7 +18,7 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 	userID := helpers.GetUserIDFromQuery(r)
 	websiteFilter := r.URL.Query().Get("website")
 
-	query := "SELECT id, user_id, username, password, website, description, created_at, updated_at FROM wallet WHERE 1=1"
+	query := "SELECT id, user_id, username, password, website, login_provider, description, created_at, updated_at FROM wallet WHERE 1=1"
 	args := []interface{}{}
 
 	if userID > 0 {
@@ -40,7 +41,7 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 	wallet := []models.WalletEntry{}
 	for rows.Next() {
 		var entry models.WalletEntry
-		err := rows.Scan(&entry.ID, &entry.UserID, &entry.Username, &entry.Password, &entry.Website, &entry.Description, &entry.CreatedAt, &entry.UpdatedAt)
+		err := rows.Scan(&entry.ID, &entry.UserID, &entry.Username, &entry.Password, &entry.Website, &entry.LoginProvider, &entry.Description, &entry.CreatedAt, &entry.UpdatedAt)
 		if err != nil {
 			continue
 		}
@@ -48,6 +49,10 @@ func GetWallet(w http.ResponseWriter, r *http.Request) {
 		// reveal endpoint for a specific wallet entry ID.
 		entry.Password = ""
 		wallet = append(wallet, entry)
+	}
+	if err := rows.Err(); err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
 	}
 
 	json.NewEncoder(w).Encode(wallet)
@@ -104,18 +109,23 @@ func CreateWalletEntry(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
+	entry.LoginProvider = strings.TrimSpace(entry.LoginProvider)
+	if entry.LoginProvider == "" {
+		entry.LoginProvider = "Password"
+	}
 
 	v := helpers.NewValidator()
 	v.PositiveID("user_id", entry.UserID)
 	v.Required("website", entry.Website)
-	v.Required("password", entry.Password)
+	if strings.EqualFold(entry.LoginProvider, "Password") {
+		v.Required("password", entry.Password)
+	}
 	if !v.OK() {
 		helpers.WriteValidationError(w, v.Fields())
 		return
 	}
-
-	result, err := db.WalletDB.Exec("INSERT INTO wallet (user_id, username, password, website, description) VALUES (?, ?, ?, ?, ?)",
-		entry.UserID, entry.Username, entry.Password, entry.Website, entry.Description)
+	result, err := db.WalletDB.Exec("INSERT INTO wallet (user_id, username, password, website, login_provider, description) VALUES (?, ?, ?, ?, ?, ?)",
+		entry.UserID, entry.Username, entry.Password, entry.Website, entry.LoginProvider, entry.Description)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
@@ -135,8 +145,8 @@ func GetWalletByID(w http.ResponseWriter, r *http.Request) {
 	id := helpers.GetIDFromPath(r)
 
 	var entry models.WalletEntry
-	err := db.WalletDB.QueryRow("SELECT id, user_id, username, password, website, description, created_at, updated_at FROM wallet WHERE id = ?", id).
-		Scan(&entry.ID, &entry.UserID, &entry.Username, &entry.Password, &entry.Website, &entry.Description, &entry.CreatedAt, &entry.UpdatedAt)
+	err := db.WalletDB.QueryRow("SELECT id, user_id, username, password, website, login_provider, description, created_at, updated_at FROM wallet WHERE id = ?", id).
+		Scan(&entry.ID, &entry.UserID, &entry.Username, &entry.Password, &entry.Website, &entry.LoginProvider, &entry.Description, &entry.CreatedAt, &entry.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		helpers.WriteError(w, http.StatusNotFound, "Wallet entry not found")
@@ -158,9 +168,9 @@ func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 
 	var existing models.WalletEntry
 	err := db.WalletDB.QueryRow(
-		"SELECT id, user_id, username, password, website, description, created_at, updated_at FROM wallet WHERE id = ?",
+		"SELECT id, user_id, username, password, website, login_provider, description, created_at, updated_at FROM wallet WHERE id = ?",
 		id,
-	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
+	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.LoginProvider, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		helpers.WriteError(w, http.StatusNotFound, "Wallet entry not found")
@@ -178,6 +188,29 @@ func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 
 	setClauses := []string{"updated_at = CURRENT_TIMESTAMP"}
 	args := []interface{}{}
+	nextProvider := existing.LoginProvider
+	nextPassword := existing.Password
+	passwordChanged := false
+	providerChanged := false
+
+	if v, ok := updates["password"]; ok {
+		if s, isStr := v.(string); isStr {
+			nextPassword = s
+			passwordChanged = true
+		}
+	}
+	if v, ok := updates["login_provider"]; ok {
+		if s, isStr := v.(string); isStr && strings.TrimSpace(s) != "" {
+			nextProvider = strings.TrimSpace(s)
+			providerChanged = true
+		}
+	}
+	if strings.EqualFold(nextProvider, "Password") && nextPassword == "" {
+		v := helpers.NewValidator()
+		v.Required("password", nextPassword)
+		helpers.WriteValidationError(w, v.Fields())
+		return
+	}
 
 	if v, ok := updates["username"]; ok {
 		if s, isStr := v.(string); isStr && s != "" {
@@ -185,11 +218,19 @@ func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 			args = append(args, s)
 		}
 	}
-	if v, ok := updates["password"]; ok {
-		if s, isStr := v.(string); isStr && s != "" {
-			setClauses = append(setClauses, "password = ?")
-			args = append(args, s)
+	if passwordChanged {
+		setClauses = append(setClauses, "password = ?")
+		args = append(args, nextPassword)
+	}
+	if v, ok := updates["website"]; ok {
+		if s, isStr := v.(string); isStr && strings.TrimSpace(s) != "" {
+			setClauses = append(setClauses, "website = ?")
+			args = append(args, strings.TrimSpace(s))
 		}
+	}
+	if providerChanged {
+		setClauses = append(setClauses, "login_provider = ?")
+		args = append(args, nextProvider)
 	}
 	if v, ok := updates["description"]; ok {
 		if s, isStr := v.(string); isStr {
@@ -207,9 +248,9 @@ func UpdateWalletEntry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.WalletDB.QueryRow(
-		"SELECT id, user_id, username, password, website, description, created_at, updated_at FROM wallet WHERE id = ?",
+		"SELECT id, user_id, username, password, website, login_provider, description, created_at, updated_at FROM wallet WHERE id = ?",
 		id,
-	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
+	).Scan(&existing.ID, &existing.UserID, &existing.Username, &existing.Password, &existing.Website, &existing.LoginProvider, &existing.Description, &existing.CreatedAt, &existing.UpdatedAt)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return

@@ -219,7 +219,7 @@ export function getWalletEntry(id: number): Promise<WalletEntry> {
   })
 }
 
-export function createWalletEntry(data: { user_id: number; website: string; username: string; password: string; description?: string }): Promise<WalletEntry> {
+export function createWalletEntry(data: { user_id: number; website: string; username: string; password: string; login_provider?: string; description?: string }): Promise<WalletEntry> {
   return fetch(`${API_BASE}/api/wallet`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },

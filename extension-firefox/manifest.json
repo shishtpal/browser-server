@@ -17,6 +17,13 @@
   "background": {
     "scripts": ["dist/background.js"]
   },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["dist/contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_popup": "dist/popup.html",
     "default_icon": {

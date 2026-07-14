@@ -98,14 +98,15 @@ type OmniboxSearchResult struct {
 }
 
 type WalletEntry struct {
-	ID          int       `json:"id"`
-	UserID      int       `json:"user_id"`
-	Username    string    `json:"username"`
-	Password    string    `json:"password"`
-	Website     string    `json:"website"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID            int       `json:"id"`
+	UserID        int       `json:"user_id"`
+	Username      string    `json:"username"`
+	Password      string    `json:"password"`
+	Website       string    `json:"website"`
+	LoginProvider string    `json:"login_provider"`
+	Description   string    `json:"description"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type WalletImportResult struct {

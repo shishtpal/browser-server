@@ -6,6 +6,22 @@ import { fileURLToPath } from 'node:url'
 const rootDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig(({ mode }) => {
+  if (mode === 'content') {
+    return mergeConfig(createBaseConfig(rootDir), {
+      build: {
+        outDir: 'dist',
+        emptyOutDir: false,
+        rollupOptions: {
+          input: resolve(rootDir, 'src/contentScript.ts'),
+          output: {
+            format: 'iife',
+            entryFileNames: 'contentScript.js',
+          },
+        },
+      },
+    })
+  }
+
   if (mode === 'background') {
     return mergeConfig(createBaseConfig(rootDir), {
       build: {

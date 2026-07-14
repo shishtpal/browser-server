@@ -116,6 +116,7 @@ export interface WalletEntry {
   username: string
   password: string
   website: string
+  login_provider: string
   description: string
   created_at: string
   updated_at: string
@@ -174,6 +175,8 @@ export interface CreateBookmarkInput {
 export interface UpdateWalletInput {
   username?: string
   password?: string
+  website?: string
+  login_provider?: string
   description?: string
 }
 

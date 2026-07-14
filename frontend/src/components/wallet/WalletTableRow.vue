@@ -1,6 +1,7 @@
 <template>
   <tr class="transition hover:bg-emerald-50/60 dark:hover:bg-emerald-900/20">
     <td class="px-3 py-3 text-sm font-black text-slate-900 transition-colors dark:text-white">{{ entry.website }}</td>
+    <td class="px-3 py-3 text-sm font-semibold text-emerald-700 transition-colors dark:text-emerald-400">{{ entry.login_provider }}</td>
     <td class="px-3 py-3 text-sm font-semibold text-slate-600 transition-colors dark:text-slate-400">{{ entry.username }}</td>
     <td class="px-3 py-3 text-sm font-mono text-slate-600 transition-colors dark:text-slate-400">
       <span class="rounded-md bg-gray-100 px-2 py-1 transition-colors dark:bg-slate-700">{{ revealed ? revealedPassword : '••••••••' }}</span>

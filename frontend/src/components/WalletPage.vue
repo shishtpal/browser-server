@@ -19,9 +19,10 @@
     <div v-else-if="selectedUserId">
       <form @submit.prevent="addEntry" class="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors dark:border-white/10 dark:bg-slate-800/90">
         <div class="flex items-center gap-2">
-          <InputField v-model="newWebsite" type="text" placeholder="Website" required flex color="emerald" />
+          <InputField v-model="newWebsite" type="text" placeholder="Website domain" required flex color="emerald" />
+          <InputField v-model="newLoginProvider" type="text" placeholder="Provider (Google, GitHub, Password...)" required flex color="emerald" />
           <InputField v-model="newUsername" type="text" placeholder="Username" required flex color="emerald" />
-          <InputField v-model="newPassword" type="password" placeholder="Password" required flex color="emerald" />
+          <InputField v-model="newPassword" type="password" placeholder="Password (optional for provider login)" flex color="emerald" />
           <InputField v-model="newDescription" type="text" placeholder="Description" class="hidden lg:block" flex color="emerald" />
           <Button type="submit" variant="gradient-emerald" size="sm">Add</Button>
         </div>
@@ -40,6 +41,7 @@
           class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-emerald-400 dark:focus:ring-emerald-900/30"
         >
           <option value="website">Website</option>
+          <option value="login_provider">Login provider</option>
           <option value="username">Username</option>
           <option value="description">Description</option>
           <option value="all">All columns</option>
@@ -61,6 +63,7 @@
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
               <tr>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Website</th>
+                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Provider</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Username</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Password</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Description</th>
@@ -97,8 +100,9 @@
     <Modal :open="!!editing" title="Edit wallet entry" description="Update saved credentials." @close="editing = null">
       <div v-if="editing" class="grid gap-3">
         <input v-model="editForm.website" type="text" placeholder="Website" required class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30" />
+        <input v-model="editForm.login_provider" type="text" placeholder="Login provider" required class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30" />
         <input v-model="editForm.username" type="text" placeholder="Username" required class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30" />
-        <input v-model="editForm.password" type="text" placeholder="Password" required class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30" />
+        <input v-model="editForm.password" type="text" placeholder="Password (optional for provider login)" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30" />
         <input v-model="editForm.description" type="text" placeholder="Description" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30" />
       </div>
       <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -138,6 +142,7 @@ const {
   websiteFilter,
   searchColumn,
   newWebsite,
+  newLoginProvider,
   newUsername,
   newPassword,
   newDescription,
@@ -154,6 +159,7 @@ const {
 const searchPlaceholder = computed(() => {
   const labels: Record<string, string> = {
     website: 'Search by website URL...',
+    login_provider: 'Search by login provider...',
     username: 'Search by username...',
     description: 'Search description...',
     all: 'Search all columns...',

@@ -144,11 +144,13 @@ func InitWalletDB(dataPath string) {
 			username TEXT NOT NULL,
 			password TEXT NOT NULL,
 			website TEXT NOT NULL,
+			login_provider TEXT NOT NULL DEFAULT 'Password',
 			description TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
+	migrateColumn(WalletDB, "wallet", "login_provider", "TEXT NOT NULL DEFAULT 'Password'")
 }
 
 func InitUsageDB(dataPath string) {

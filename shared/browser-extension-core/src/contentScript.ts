@@ -4,6 +4,7 @@ export interface LoginProviderAccount {
 }
 
 type SendMessage = (message: unknown) => Promise<unknown>
+const BANNER_TIMEOUT_MS = 5_000
 
 function isProviderResponse(value: unknown): value is { accounts: LoginProviderAccount[] } {
   return (
@@ -30,7 +31,6 @@ function showProviderBanner(accounts: LoginProviderAccount[]): void {
   close.type = 'button'
   close.setAttribute('aria-label', 'Dismiss login provider message')
   close.textContent = '×'
-  close.addEventListener('click', () => host.remove())
 
   for (const account of accounts) {
     const item = document.createElement('li')
@@ -57,6 +57,12 @@ function showProviderBanner(accounts: LoginProviderAccount[]): void {
   panel.append(title, close, list)
   shadow.append(style, panel)
   document.documentElement.append(host)
+
+  const timeoutId = window.setTimeout(() => host.remove(), BANNER_TIMEOUT_MS)
+  close.addEventListener('click', () => {
+    window.clearTimeout(timeoutId)
+    host.remove()
+  })
 }
 
 export async function initLoginProviderContentScript(sendMessage: SendMessage): Promise<void> {

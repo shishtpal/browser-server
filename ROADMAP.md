@@ -1,137 +1,167 @@
-# ROADMAP.md
+# Browser Server Roadmap
 
-## ✅ Done
+Browser Server is evolving into a privacy-first, self-hosted browser companion. The roadmap prioritizes trust and data reliability before adding features that improve daily use and discovery.
 
-- **Go REST API** — Full CRUD for 5 domains: todos, bookmarks, browsing history, password wallet, users
-- **Modular project structure** — `cmd/server/main.go` entry point, `internal/` packages for db, models, helpers, handlers
-- **SQLite storage** — 5 separate `.data/*.db` files, auto-created with schema on first run
-- **Tag-based bookmark filtering** — Tags stored as JSON strings in SQLite, filtered client-side, exposed as `[]string` in API
-- **`/routes` endpoint** — Self-documenting API route listing via POST
-- **Static frontend serving** — Astro + Vue + TailwindCSS frontend served from `frontend/dist/`
-- **Full build script** — `scripts/build.ps1` builds frontend (bun or npm), Go binary, and copies dist for static serving
-- **Monolith migration** — Refactored ~900-line single file into proper Go module structure
-- **go vet compliance** — All cross-package struct literals use keyed fields
-- **Chrome omnibox server search** — Extension keyword `bs` searches token-protected server bookmarks plus grouped history, with source labels, balanced bookmark/history results, and history visit counts
+## Product principles
 
-## 🔜 Next
+- **Private by default** — personal data remains self-hosted and protected at rest and in transit.
+- **Reliable without constant connectivity** — browser activity must not disappear when the server is offline.
+- **Easy to operate** — installation, updates, backups, and recovery should not require database expertise.
+- **Useful every day** — new features should strengthen capture, retrieval, and action rather than add unrelated data domains.
+- **Shared contracts** — the web app and browser extensions use the canonical shared types and API client.
 
-- [x] **Health check endpoint**
-  - Add `/health` route in `cmd/server/main.go`
-  - Return simple JSON status with uptime/build-ready signal
-  - Confirm endpoint works without auth and can be used by Docker/CI checks
+## Completed foundation
 
-- [x] **Logging middleware**
-  - Add middleware for method, path, status code, and request duration
-  - Apply middleware centrally in router setup
-  - Keep logs readable for local development and future production debugging
+- [x] Go REST API for todos, bookmarks, browsing history, wallet entries, users, screenshots, and usage analytics
+- [x] Modular Go project structure with domain handlers and separate SQLite databases
+- [x] Astro, Vue, and TailwindCSS web app with pages for all primary domains
+- [x] Chromium and Firefox extensions with shared Vue UI and runtime logic
+- [x] Automatic history capture and per-domain usage tracking
+- [x] Bookmark, history, and wallet imports with duplicate handling
+- [x] Todo screenshot capture and storage
+- [x] Combined bookmark/history omnibox search with balanced source results
+- [x] Shared TypeScript packages for API types, client methods, utilities, and extension code
+- [x] Operator-level Bearer-token authentication with token generation and rotation
+- [x] Public health endpoint plus logging and CORS middleware
+- [x] Structured API errors and request validation
+- [x] Configurable server port, token path, and data directory
+- [x] Static frontend bundling through the PowerShell build script
 
-- [x] **CORS middleware**
-  - Allow frontend dev origin during local development
-  - Support common methods and headers used by the API
-  - Keep configuration simple and environment-aware so production stays locked down
+## Phase 1 — Quality and security baseline
 
-- [x] **Input validation**
-  - Validate required fields for each create/update request
-  - Validate URL fields for bookmarks/history and email format for users
-  - Return consistent `400 Bad Request` responses for invalid payloads
-  - Implemented via `helpers.Validator` (`internal/helpers/validate.go`); applied to todos, bookmarks, history, wallet, and users create/update handlers
+These tasks reduce the risk of regressions before storage and synchronization behavior changes.
 
-- [x] **Error handling improvements**
-  - Standardize JSON error response shape across handlers
-  - Replace generic `http.Error` usage where structured responses are better
-  - Improve database and parsing error messages without leaking internals
-  - All handlers now return the `{ "error": ..., "fields"?: {...} }` envelope via `helpers.WriteError`/`helpers.WriteValidationError`; the shared client parses it into `ApiError.message`/`ApiError.fields`
+### Automated tests
 
-- **Authentication** — single operator-level API token, no user login
+- [ ] Add unit tests for validation, query helpers, token handling, and pure utilities
+- [ ] Add handler-level tests for authentication, structured errors, and CRUD operations
+- [ ] Add integration tests for imports, bookmark tags, grouped history, search, and analytics
+- [ ] Add migration tests using databases created by older application versions
+- [ ] Add focused tests for extension synchronization queues and retry behavior
 
-  Design decisions (settled):
-  - **Opaque, long-lived token** stored server-side in a `.server-token` file alongside the Go binary — no JWT, no expiry/refresh
-  - **No login/logout flow** — the token is the sole credential; generated and rotated via a CLI subcommand
-  - **Bearer header transport** (`Authorization: Bearer <token>`) for simpler CORS
-  - **Operator-level, not per-user** — this is a personal/single-operator server; the multiple `users` records are data, not auth principals, so `?user_id=` filtering stays as-is
-  - **Protect everything** behind the token, with `/health` kept public for Docker/CI checks
-  - No user-password hashing needed (there is no login); argon2 is only an *optional* extra for hashing the stored token at rest
+### Continuous integration
 
-  Sub-tasks:
-  - Token generation CLI
-    - Add `server token generate` — create a cryptographically random token (`crypto/rand`), save to `.server-token` next to the binary; refuse to overwrite if one already exists
-    - Add `server token refresh` — regenerate and overwrite the existing token in `.server-token`
-    - Write the file with restrictive permissions; print the token (or a confirmation) to stdout
-    - Resolve the token path relative to the binary, overridable via an env var (consistent with `DATA_PATH`)
-  - Token loading & validation
-    - Load the token from `.server-token` at server startup; fail fast (or warn loudly) if missing
-    - Compare the incoming Bearer token using a constant-time comparison to avoid timing attacks
-    - (Optional) store/verify the token hashed at rest with argon2 instead of plaintext
-  - Auth middleware
-    - Add middleware that reads `Authorization: Bearer <token>` and validates it against the loaded token
-    - Return a consistent `401 Unauthorized` JSON response for missing/invalid tokens
-    - Apply middleware centrally in router setup, consistent with logging/CORS
-    - Exempt `/health` (and static frontend assets) from the auth requirement
-  - Route protection
-    - Require the token on all API routes — reads and writes across todos, bookmarks, history, wallet, users, and `/routes`
-    - Confirm wallet and user endpoints are covered (no read exceptions)
-  - Frontend auth state
-    - Add a settings UI to enter and persist the API token client-side
-    - Attach the token as a Bearer header on every request via the shared client (`shared/browser-client`)
-    - Surface `401` responses clearly (prompt to set/fix the token) and guard the app until a token is present
-  - Shared & extension integration
-    - Add auth-aware methods and a shared token/error type in `shared/browser-client` / `shared/browser-types`
-    - Wire the browser extension to store the same token (extension settings/storage) and send it on all requests
-  - Verification
-    - Confirm requests without a token, or with a wrong token, get `401`; valid token succeeds
-    - Confirm `/health` still works without a token
-    - Add tests for the `token generate`/`refresh` CLI and for the auth middleware
+- [ ] Run `go test ./...`, `go vet ./...`, and the Go build in GitHub Actions
+- [ ] Run frontend and extension type checks and production builds
+- [ ] Fail on API type drift or package build failures
+- [ ] Keep release publishing separate from required pull-request checks
 
-- [x] **Shared frontend/extension code**
-  - Use `shared/` for framework-agnostic TypeScript packages only, starting with API client, request/response types, and small pure utilities
-  - Keep Vue components, Astro pages, browser-extension runtime code, and app-specific composables inside `frontend/` or `extension/`
-  - Expand `shared/browser-client` into the canonical API layer for both apps instead of maintaining duplicate clients
-  - Move duplicated types from `frontend/src/types.ts` into shared package exports and have both apps import from the same source
-  - Add auth-aware client methods and shared error/result types after auth and error response formats are defined
-  - Prefer an incremental migration: move types first, then API functions, then any reusable pure helpers
-  - Avoid sharing UI too early; only extract design tokens or headless utilities later if duplication becomes real
-  - Proposed package layout:
-    - `shared/browser-types` — Domain models, request/response DTOs, auth/session types, import result types, shared error shapes
-    - `shared/browser-client` — `createBrowserServerClient(baseUrl, options)`, per-domain API methods, auth-aware fetch wrapper, query helpers
-    - `shared/browser-utils` — Pure helpers such as date formatting, URL normalization, tag serialization/parsing, environment-agnostic mappers
-  - Ownership boundaries:
-    - `frontend/` keeps Astro routes, Vue components, page-level composables, and presentation-specific view models
-    - `extension/` keeps Chrome/browser API wrappers, popup/options state, storage/settings integration, and background-script logic
-    - `shared/` must not import Vue, Astro, or browser-extension APIs
-  - Migration sequence:
-    - Phase 1: extract shared domain and API types from `frontend/src/types.ts`
-    - Phase 2: replace duplicated frontend API functions with imports from `shared/browser-client`
-    - Phase 3: add auth/session handling and shared error parsing after backend auth is stable
-    - Phase 4: extract only truly duplicated pure helpers from app code into `shared/browser-utils`
-  - Success criteria:
-    - Frontend and extension compile against the same exported API types
-    - Only one maintained API client implementation exists
-    - Shared packages stay framework-free and testable in isolation
+### Encrypted password wallet
 
-- [x] **Extension omnibox search**
-  - Add `GET /api/search/omnibox` for combined bookmark and grouped history suggestions
-  - Include `source` labels and history `visit_count` so users can distinguish bookmark/history results
-  - Expose the endpoint through `shared/browser-client` and `shared/browser-types`
-  - Wire the MV3 background service worker to Chrome omnibox keyword `bs`
+The wallet must not be promoted for sensitive credentials until encryption at rest is complete.
 
-- **Frontend UI pages**
-  - Build todos list with create/update/delete actions
-  - Build bookmarks grid with tag filtering and bookmark form
-  - Build history timeline/table with sorting and filtering
-  - Build wallet table with secure create/edit flows
-  - Build user management page and shared layout/navigation
+- [ ] Derive a vault key from a master password using Argon2id
+- [ ] Encrypt passwords with authenticated encryption such as XChaCha20-Poly1305 or AES-GCM
+- [ ] Never store or log the master password or derived plaintext key
+- [ ] Add explicit vault lock, unlock, timeout, and locked-start behavior
+- [ ] Migrate existing plaintext entries without silently losing data
+- [ ] Keep wallet metadata hidden where practical while preserving useful website matching
+- [ ] Ensure exports and backups do not expose plaintext credentials by default
+- [ ] Document the threat model, recovery limitations, and safe deployment expectations
 
-- **Tests**
-  - Add unit tests for helper functions and handler-level validation logic
-  - Add integration tests for key CRUD API flows
-  - Add test coverage for auth, error responses, and bookmark tag behavior
+## Phase 2 — Data safety and dependable synchronization
 
-- **Docker support**
-  - Add Dockerfile for Go server and bundled frontend assets
-  - Ensure SQLite data path is configurable via environment variables/volume mount
-  - Verify container build and local run workflow
+### Backup, export, and restore
 
-- **CI/CD**
-  - Add GitHub Actions workflow for Go build and frontend build
-  - Run tests and fail fast on lint/build errors
-  - Optionally publish artifacts or binaries after successful main-branch builds
+- [ ] Add a consistent server-side backup operation for every SQLite database and screenshot file
+- [ ] Provide one-click backup download and restore from the web app
+- [ ] Validate backup format and application compatibility before restoring
+- [ ] Support encrypted backups, including wallet data
+- [ ] Add scheduled backups with configurable retention
+- [ ] Show backup date, size, status, and restore warnings
+- [ ] Document manual recovery for damaged or partially restored data directories
+
+### Durable offline synchronization
+
+- [ ] Persist unsent history events in extension storage instead of discarding failed requests
+- [ ] Generalize the existing usage buffer pattern into a durable write queue
+- [ ] Retry automatically with bounded exponential backoff after the server reconnects
+- [ ] Preserve ordering where it affects behavior and make retried writes idempotent
+- [ ] Set queue size and age limits with clear retention behavior
+- [ ] Distinguish connectivity, authentication, validation, and permanent server failures
+- [ ] Show last successful sync, pending item count, and failed item count in the extension
+- [ ] Add **Sync now** and safe retry/discard controls
+
+## Phase 3 — Installation and operations
+
+### Docker and first-run setup
+
+- [ ] Add a multi-stage Dockerfile for the frontend and Go server
+- [ ] Add Docker Compose with persistent data and token volumes
+- [ ] Include health checks, restart policy, and documented environment configuration
+- [ ] Add a first-run setup flow for server URL, token, user, and connection testing
+- [ ] Document safe remote access through a private network or trusted reverse proxy
+- [ ] Provide upgrade and rollback instructions that preserve user data
+
+### Release automation
+
+- [ ] Build versioned binaries and extension packages for supported platforms
+- [ ] Publish checksums and concise release notes
+- [ ] Surface the running version in the health response or settings UI
+- [ ] Warn before upgrades that require a data migration or backup
+
+## Phase 4 — Faster capture and retrieval
+
+### Unified search and command palette
+
+- [ ] Search bookmarks, grouped history, todos, and non-secret wallet metadata through one API
+- [ ] Return a normalized, source-labeled result model with relevance and recency signals
+- [ ] Add a web command palette with keyboard navigation
+- [ ] Add quick actions such as open URL, create todo, complete todo, and copy username
+- [ ] Extend omnibox search without removing source labels or balanced bookmark/history results
+- [ ] Keep search local and avoid sending personal data to third-party services
+
+### One-click browser capture
+
+- [x] Add context-menu actions for **Save bookmark** and **Create todo from page**
+- [x] Add configurable keyboard shortcuts for common capture actions
+- [x] Pre-fill the current title, URL, domain, and selected text
+- [x] Optionally attach a screenshot to a new todo
+- [x] Detect duplicate bookmarks before creating another copy
+- [x] Show immediate success or queued-for-sync feedback
+
+### Bookmark cleanup and organization
+
+- [ ] Detect duplicate URLs across folders and normalized URL variants
+- [ ] Find dead links and redirects without overwhelming remote websites
+- [ ] Offer bulk delete, move, tag, and merge operations
+- [ ] Identify untagged and uncategorized bookmarks
+- [ ] Add optional local folder and tag suggestions based on existing organization
+- [ ] Require confirmation and provide a preview before destructive bulk changes
+
+## Phase 5 — Actionable productivity insights
+
+### Goals, limits, and focus sessions
+
+- [ ] Let users classify domains as productive, neutral, or distracting
+- [ ] Add daily and weekly browsing-time goals
+- [ ] Add configurable domain limits and optional browser notifications
+- [ ] Add focus sessions with temporary distracting-site alerts or blocking
+- [ ] Show progress against goals in the web app and extension popup
+- [ ] Keep controls opt-in and allow pause, snooze, and per-domain exceptions
+
+### Reports and retention controls
+
+- [ ] Add weekly summaries with trends, top domains, and goal progress
+- [ ] Compare periods without exposing raw browsing data externally
+- [ ] Add configurable history and analytics retention windows
+- [ ] Allow users to exclude domains from capture and delete their existing records
+- [ ] Export analytics in a portable format such as CSV or JSON
+
+## Phase 6 — Optional intelligence
+
+Only pursue these features after backups, encryption, reliable sync, and core search are stable.
+
+- [ ] Suggest bookmark tags and folders using local rules first
+- [ ] Detect stale bookmarks and repeated browsing patterns
+- [ ] Generate optional local activity summaries
+- [ ] Require explicit consent before using any remote AI provider
+- [ ] Clearly display what data would leave the server and allow the feature to remain fully disabled
+
+## Not currently planned
+
+- Public social features or shared activity feeds
+- Mandatory cloud accounts or hosted synchronization
+- Advertising, behavioral profiling, or sale of browsing data
+- Additional CRUD domains without a clear connection to browser capture, retrieval, or productivity
+- Public internet exposure as the default deployment model

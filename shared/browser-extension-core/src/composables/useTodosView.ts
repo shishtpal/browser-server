@@ -6,10 +6,13 @@ import { timeAgo } from '@browser-server/shared-utils'
 export interface TodoView {
   id: number
   title: string
+  description: string
   completed: boolean
   hasScreenshot: boolean
   screenshotUrl: string | null
+  screenshotPath: string
   updatedAtLabel: string
+  createdAtLabel: string
   domain: string
 }
 
@@ -23,10 +26,13 @@ function toView(todo: Todo, client: BrowserServerClient): TodoView {
   return {
     id: todo.id,
     title: todo.title,
+    description: todo.description,
     completed: todo.completed,
     hasScreenshot: Boolean(todo.screenshot_path),
     screenshotUrl: todo.screenshot_path ? client.getScreenshotUrl(todo.id) : null,
+    screenshotPath: todo.screenshot_path,
     updatedAtLabel: timeAgo(todo.updated_at),
+    createdAtLabel: timeAgo(todo.created_at),
     domain: todo.domain,
   }
 }
@@ -42,6 +48,7 @@ export function useTodosView(
   const items = ref<TodoView[]>([])
   const stats = ref<string>('0 todos · 0 done')
   const errorMessage = ref<string | null>(null)
+  const actionError = ref<string | null>(null)
   const isLoading = ref(false)
   const total = ref(0)
   const completed = ref(0)
@@ -125,16 +132,17 @@ export function useTodosView(
     }
   }
 
-  async function add(title: string) {
+  async function add(title: string, description = '') {
     const trimmed = title.trim()
     if (!trimmed || !currentDomain.value || !client.value || !userId.value) {
-      return
+      return false
     }
 
     try {
       const todo = await client.value.createTodo({
         user_id: userId.value,
         title: trimmed,
+        description: description.trim() || undefined,
         domain: currentDomain.value,
       })
 
@@ -143,25 +151,47 @@ export function useTodosView(
       }
 
       setPreview(null)
+      actionError.value = null
       await refresh()
+      return true
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      domainDisplay.value = `Failed to add todo: ${message}`
+      actionError.value = `Failed to add todo: ${message}`
+      return false
+    }
+  }
+
+  async function update(id: number, changes: { title?: string; description?: string; completed?: boolean }) {
+    if (!client.value || !userId.value) {
+      return false
+    }
+
+    const todo = items.value.find((item) => item.id === id)
+    if (!todo) {
+      return false
+    }
+
+    try {
+      await client.value.updateTodo(id, {
+        user_id: userId.value,
+        title: changes.title?.trim() || todo.title,
+        description: changes.description?.trim() ?? todo.description,
+        domain: todo.domain,
+        screenshot_path: todo.screenshotPath,
+        completed: changes.completed ?? todo.completed,
+      })
+      actionError.value = null
+      await refresh()
+      return true
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      actionError.value = `Failed to update todo: ${message}`
+      return false
     }
   }
 
   async function toggle(id: number, completed: boolean) {
-    if (!client.value || !userId.value) {
-      return
-    }
-
-    try {
-      await client.value.updateTodo(id, { user_id: userId.value, completed })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.debug('Toggle failed', message)
-    }
-    await refresh()
+    await update(id, { completed })
   }
 
   async function remove(id: number) {
@@ -171,9 +201,10 @@ export function useTodosView(
 
     try {
       await client.value.deleteTodo(id)
+      actionError.value = null
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.debug('Delete failed', message)
+      actionError.value = `Failed to delete todo: ${message}`
     }
     await refresh()
   }
@@ -186,9 +217,10 @@ export function useTodosView(
     try {
       const todos: Todo[] = await client.value.getTodos(userId.value, currentDomain.value)
       await Promise.all(todos.map((todo: Todo) => client.value!.deleteTodo(todo.id)))
+      actionError.value = null
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.debug('Clear todos failed', message)
+      actionError.value = `Failed to clear todos: ${message}`
     }
     await refresh()
   }
@@ -207,9 +239,11 @@ export function useTodosView(
     completed,
     isLoading,
     errorMessage,
+    actionError,
     init,
     refresh,
     add,
+    update,
     toggle,
     remove,
     clearAll,

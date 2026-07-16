@@ -102,10 +102,29 @@ func CreateBookmark(w http.ResponseWriter, r *http.Request) {
 
 	tagsJSON := helpers.TagsToJSON(bookmark.Tags)
 
-	result, err := db.BookmarkDB.Exec("INSERT INTO bookmarks (user_id, title, url, description, tags, folder_path) VALUES (?, ?, ?, ?, ?, ?)",
-		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath)
+	result, err := db.BookmarkDB.Exec(`
+		INSERT INTO bookmarks (user_id, title, url, description, tags, folder_path, capture_id)
+		VALUES (?, ?, ?, ?, ?, ?, NULLIF(?, ''))
+		ON CONFLICT(user_id, capture_id) DO NOTHING`,
+		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath, bookmark.CaptureID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	if rowsAffected, _ := result.RowsAffected(); rowsAffected == 0 && bookmark.CaptureID != "" {
+		var tags string
+		err = db.BookmarkDB.QueryRow(`
+			SELECT id, title, url, description, tags, folder_path, created_at, updated_at
+			FROM bookmarks WHERE user_id = ? AND capture_id = ?`,
+			bookmark.UserID, bookmark.CaptureID,
+		).Scan(&bookmark.ID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &tags, &bookmark.FolderPath, &bookmark.CreatedAt, &bookmark.UpdatedAt)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+		bookmark.Tags = helpers.ParseTagsFromJSON(tags)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(bookmark)
 		return
 	}
 

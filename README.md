@@ -19,6 +19,7 @@ The project includes:
 - Todo screenshot capture and storage
 - Domain usage analytics
 - Combined bookmark/history search through the extension omnibox keyword `bs`
+- One-click bookmark and todo capture from the page context menu or keyboard shortcuts
 - Bearer-token authentication for every `/api/*` endpoint
 - Configurable data directory and server port
 - Separate local SQLite databases for each domain
@@ -164,6 +165,8 @@ In either extension's options page, configure:
 - Automatic capture preferences
 
 In Chromium, type `bs` in the address bar and press Space or Tab to search the server's bookmarks and grouped history.
+
+To capture the current page, right-click the page or selected text and open the **Browser Server** menu. You can save a bookmark, create a todo, or create a todo with a screenshot. Selected text and the source URL are included automatically. The default shortcuts are `Alt+Shift+B` for a bookmark and `Alt+Shift+T` for a todo; these can be changed from the browser's extension-shortcut settings. Captures made while the server is unavailable are stored locally and retried automatically.
 
 ## Development
 

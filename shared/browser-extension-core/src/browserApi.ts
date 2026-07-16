@@ -8,6 +8,20 @@
  *   - ChromeAdapter  (extension/src/adapter.ts)   → chrome.*
  *   - FirefoxAdapter (extension-firefox/src/adapter.ts) → browser.*
  */
+export interface BrowserTab {
+  id?: number
+  url?: string
+  title?: string
+  windowId?: number
+  active?: boolean
+}
+
+export interface ContextMenuClickInfo {
+  menuItemId: string | number
+  pageUrl?: string
+  selectionText?: string
+}
+
 export interface BrowserApi {
   storage: {
     local: {
@@ -22,15 +36,7 @@ export interface BrowserApi {
   }
 
   tabs: {
-    query(queryInfo: { active?: boolean; currentWindow?: boolean }): Promise<
-      Array<{
-        id?: number
-        url?: string
-        title?: string
-        windowId?: number
-        active?: boolean
-      }>
-    >
+    query(queryInfo: { active?: boolean; currentWindow?: boolean }): Promise<BrowserTab[]>
     update(updateProperties: { url?: string }): Promise<void>
     create(createProperties: { url: string; active: boolean }): Promise<void>
     captureVisibleTab(windowId: number, options: { format: string }): Promise<string>
@@ -88,7 +94,38 @@ export interface BrowserApi {
     }
   }
 
+  contextMenus: {
+    removeAll(): Promise<void>
+    create(properties: {
+      id: string
+      parentId?: string
+      title: string
+      contexts: Array<'page' | 'selection'>
+    }): void
+    onClicked: {
+      addListener(callback: (info: ContextMenuClickInfo, tab?: BrowserTab) => void): void
+    }
+  }
+
+  commands: {
+    onCommand: {
+      addListener(callback: (command: string, tab?: BrowserTab) => void): void
+    }
+  }
+
+  notifications: {
+    create(options: {
+      type: 'basic'
+      iconUrl: string
+      title: string
+      message: string
+    }): Promise<string>
+  }
+
   runtime: {
+    onInstalled: {
+      addListener(callback: () => void): void
+    }
     onMessage: {
       addListener(
         callback: (

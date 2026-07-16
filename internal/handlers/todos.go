@@ -73,10 +73,26 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := db.TodoDB.Exec("INSERT INTO todos (user_id, title, description, domain, completed) VALUES (?, ?, ?, ?, ?)",
-		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.Completed)
+	result, err := db.TodoDB.Exec(`
+		INSERT INTO todos (user_id, title, description, domain, capture_id, completed)
+		VALUES (?, ?, ?, ?, NULLIF(?, ''), ?)
+		ON CONFLICT(user_id, capture_id) DO NOTHING`,
+		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.CaptureID, todo.Completed)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	if rowsAffected, _ := result.RowsAffected(); rowsAffected == 0 && todo.CaptureID != "" {
+		err = db.TodoDB.QueryRow(
+			"SELECT id, screenshot_path, completed, created_at, updated_at FROM todos WHERE user_id = ? AND capture_id = ?",
+			todo.UserID, todo.CaptureID,
+		).Scan(&todo.ID, &todo.ScreenshotPath, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(todo)
 		return
 	}
 

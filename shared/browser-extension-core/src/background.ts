@@ -2,6 +2,7 @@ import { createBrowserServerClient } from '@browser-server/shared-client'
 import type { OmniboxSearchResult, WalletEntry } from '@browser-server/shared-types'
 import { getBrowserApi } from './browserApi'
 import { isTrackableUrl } from './lib/browser'
+import { initOneClickCapture } from './lib/oneClickCapture'
 import { getSettings } from './lib/settings'
 import { TimeTracker } from './lib/timeTracker'
 
@@ -296,6 +297,7 @@ export function initBackground(): void {
 
   api.idle.setDetectionInterval(15)
   api.alarms.create(USAGE_FLUSH_ALARM, { periodInMinutes: 0.5 })
+  initOneClickCapture()
 
   void tracker.restore().then(() => syncActiveTab())
 }

@@ -79,6 +79,7 @@ func InitTodoDB(dataPath string) {
 			title TEXT NOT NULL,
 			description TEXT,
 			domain TEXT DEFAULT '',
+			capture_id TEXT,
 			screenshot_path TEXT DEFAULT '',
 			completed BOOLEAN DEFAULT FALSE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -87,7 +88,9 @@ func InitTodoDB(dataPath string) {
 	`)
 	// migration: add new columns to existing databases
 	migrateColumn(TodoDB, "todos", "domain", "TEXT DEFAULT ''")
+	migrateColumn(TodoDB, "todos", "capture_id", "TEXT")
 	migrateColumn(TodoDB, "todos", "screenshot_path", "TEXT DEFAULT ''")
+	Exec(TodoDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_todos_user_capture ON todos(user_id, capture_id)`)
 }
 
 func InitBookmarkDB(dataPath string) {
@@ -101,10 +104,13 @@ func InitBookmarkDB(dataPath string) {
 			description TEXT,
 			tags TEXT DEFAULT '[]',
 			folder_path TEXT DEFAULT '',
+			capture_id TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
+	migrateColumn(BookmarkDB, "bookmarks", "capture_id", "TEXT")
+	Exec(BookmarkDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_capture ON bookmarks(user_id, capture_id)`)
 }
 
 func InitHistoryDB(dataPath string) {
@@ -130,9 +136,12 @@ func InitScreenshotDB(dataPath string) {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			todo_id INTEGER NOT NULL,
 			filename TEXT NOT NULL,
+			capture_id TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
+	migrateColumn(ScreenshotDB, "screenshots", "capture_id", "TEXT")
+	Exec(ScreenshotDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_screenshots_todo_capture ON screenshots(todo_id, capture_id)`)
 }
 
 func InitWalletDB(dataPath string) {

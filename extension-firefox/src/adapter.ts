@@ -1,4 +1,4 @@
-import type { BrowserApi } from '@browser-server/extension-core'
+import type { BrowserApi, BrowserTab, ContextMenuClickInfo } from '@browser-server/extension-core'
 import type browserType from 'webextension-polyfill'
 
 declare const browser: typeof browserType
@@ -109,7 +109,38 @@ export class FirefoxAdapter implements BrowserApi {
     },
   }
 
+  contextMenus = {
+    removeAll: () => browser.menus.removeAll(),
+    create: (properties: {
+      id: string
+      parentId?: string
+      title: string
+      contexts: Array<'page' | 'selection'>
+    }) => {
+      browser.menus.create(properties)
+    },
+    onClicked: {
+      addListener: (callback: (info: ContextMenuClickInfo, tab?: BrowserTab) => void) =>
+        browser.menus.onClicked.addListener((info, tab) => callback(info, tab)),
+    },
+  }
+
+  commands = {
+    onCommand: {
+      addListener: (callback: (command: string, tab?: BrowserTab) => void) =>
+        browser.commands.onCommand.addListener((command, tab) => callback(command, tab)),
+    },
+  }
+
+  notifications = {
+    create: (options: { type: 'basic'; iconUrl: string; title: string; message: string }) =>
+      browser.notifications.create(options),
+  }
+
   runtime = {
+    onInstalled: {
+      addListener: (callback: () => void) => browser.runtime.onInstalled.addListener(callback),
+    },
     onMessage: {
       addListener: (
         callback: (

@@ -1,4 +1,4 @@
-import type { BrowserApi } from '@browser-server/extension-core'
+import type { BrowserApi, BrowserTab, ContextMenuClickInfo } from '@browser-server/extension-core'
 
 export class ChromeAdapter implements BrowserApi {
   storage = {
@@ -53,7 +53,48 @@ export class ChromeAdapter implements BrowserApi {
     onInputEntered: chrome.omnibox.onInputEntered,
   }
 
+  contextMenus = {
+    removeAll: () => new Promise<void>((resolve, reject) => {
+      chrome.contextMenus.removeAll(() => {
+        const error = chrome.runtime.lastError
+        if (error) reject(new Error(error.message))
+        else resolve()
+      })
+    }),
+    create: (properties: {
+      id: string
+      parentId?: string
+      title: string
+      contexts: Array<'page' | 'selection'>
+    }) => {
+      chrome.contextMenus.create(properties as chrome.contextMenus.CreateProperties)
+    },
+    onClicked: {
+      addListener: (callback: (info: ContextMenuClickInfo, tab?: BrowserTab) => void) =>
+        chrome.contextMenus.onClicked.addListener((info, tab) => callback(info, tab)),
+    },
+  }
+
+  commands = {
+    onCommand: {
+      addListener: (callback: (command: string, tab?: BrowserTab) => void) =>
+        chrome.commands.onCommand.addListener((command, tab) => callback(command, tab)),
+    },
+  }
+
+  notifications = {
+    create: (options: { type: 'basic'; iconUrl: string; title: string; message: string }) =>
+      new Promise<string>((resolve, reject) => {
+        chrome.notifications.create(options, (notificationId) => {
+          const error = chrome.runtime.lastError
+          if (error) reject(new Error(error.message))
+          else resolve(notificationId)
+        })
+      }),
+  }
+
   runtime = {
+    onInstalled: chrome.runtime.onInstalled,
     onMessage: chrome.runtime.onMessage,
     onSuspend: chrome.runtime.onSuspend,
     sendMessage: (message: unknown) => chrome.runtime.sendMessage(message),

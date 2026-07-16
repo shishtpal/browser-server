@@ -6,13 +6,23 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "browser-history-tracker@browser-server",
-      "strict_min_version": "109.0"
+      "strict_min_version": "126.0"
     }
   },
-  "permissions": ["tabs", "storage", "activeTab", "clipboardWrite", "idle", "alarms"],
+  "permissions": ["tabs", "storage", "activeTab", "clipboardWrite", "idle", "alarms", "menus", "notifications"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "omnibox": {
     "keyword": "bs"
+  },
+  "commands": {
+    "save-page-bookmark": {
+      "suggested_key": { "default": "Alt+Shift+B" },
+      "description": "Save the current page as a Browser Server bookmark"
+    },
+    "create-page-todo": {
+      "suggested_key": { "default": "Alt+Shift+T" },
+      "description": "Create a Browser Server todo from the current page"
+    }
   },
   "background": {
     "scripts": ["dist/background.js"]

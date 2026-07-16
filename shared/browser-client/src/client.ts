@@ -191,11 +191,11 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
       return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/todos/${id}`, undefined, getToken)
     },
 
-    async uploadScreenshot(todoId: number, file: Blob): Promise<Screenshot> {
+    async uploadScreenshot(todoId: number, file: Blob, captureId?: string): Promise<Screenshot> {
       const formData = new FormData()
       formData.append('file', file, 'screenshot.png')
 
-      const response = await fetch(`${normalizedBaseUrl}/api/screenshots?todo_id=${todoId}`, {
+      const response = await fetch(`${normalizedBaseUrl}/api/screenshots${buildQuery({ todo_id: todoId, capture_id: captureId })}`, {
         method: 'POST',
         headers: authHeader(getToken),
         body: formData,

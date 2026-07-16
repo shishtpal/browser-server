@@ -19,6 +19,20 @@ func screenshotDir() string {
 	return filepath.Join(db.GetDataPath(), "screenshots")
 }
 
+func attachScreenshotToTodo(todoID int, filename string) (bool, error) {
+	result, err := db.TodoDB.Exec("UPDATE todos SET screenshot_path = ? WHERE id = ?", filename, todoID)
+	if err != nil {
+		return false, err
+	}
+	rowsAffected, err := result.RowsAffected()
+	return rowsAffected > 0, err
+}
+
+func removeOrphanedScreenshot(screenshotID int, filename string) {
+	db.ScreenshotDB.Exec("DELETE FROM screenshots WHERE id = ?", screenshotID)
+	os.Remove(filepath.Join(screenshotDir(), filename))
+}
+
 func UploadScreenshot(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
@@ -35,6 +49,29 @@ func UploadScreenshot(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid todo_id")
 		return
+	}
+	captureID := r.URL.Query().Get("capture_id")
+	if captureID != "" {
+		var existing models.Screenshot
+		err = db.ScreenshotDB.QueryRow(
+			"SELECT id, todo_id, filename, created_at FROM screenshots WHERE todo_id = ? AND capture_id = ?",
+			todoID, captureID,
+		).Scan(&existing.ID, &existing.TodoID, &existing.Filename, &existing.CreatedAt)
+		if err == nil {
+			attached, attachErr := attachScreenshotToTodo(todoID, existing.Filename)
+			if attachErr != nil {
+				helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+				return
+			}
+			if !attached {
+				removeOrphanedScreenshot(existing.ID, existing.Filename)
+				helpers.WriteError(w, http.StatusNotFound, "Todo not found")
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(existing)
+			return
+		}
 	}
 
 	file, _, err := r.FormFile("file")
@@ -54,23 +91,62 @@ func UploadScreenshot(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to save file")
 		return
 	}
-	defer out.Close()
 
-	_, err = io.Copy(out, file)
-	if err != nil {
+	_, copyErr := io.Copy(out, file)
+	closeErr := out.Close()
+	if copyErr != nil || closeErr != nil {
+		os.Remove(outPath)
 		helpers.WriteError(w, http.StatusInternalServerError, "Failed to write file")
 		return
 	}
 
-	result, err := db.ScreenshotDB.Exec("INSERT INTO screenshots (todo_id, filename) VALUES (?, ?)", todoID, filename)
+	result, err := db.ScreenshotDB.Exec(`
+		INSERT INTO screenshots (todo_id, filename, capture_id)
+		VALUES (?, ?, NULLIF(?, ''))
+		ON CONFLICT(todo_id, capture_id) DO NOTHING`, todoID, filename, captureID)
 	if err != nil {
+		os.Remove(outPath)
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	if rowsAffected, _ := result.RowsAffected(); rowsAffected == 0 && captureID != "" {
+		os.Remove(outPath)
+		var existing models.Screenshot
+		err = db.ScreenshotDB.QueryRow(
+			"SELECT id, todo_id, filename, created_at FROM screenshots WHERE todo_id = ? AND capture_id = ?",
+			todoID, captureID,
+		).Scan(&existing.ID, &existing.TodoID, &existing.Filename, &existing.CreatedAt)
+		if err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+		attached, attachErr := attachScreenshotToTodo(todoID, existing.Filename)
+		if attachErr != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+		if !attached {
+			removeOrphanedScreenshot(existing.ID, existing.Filename)
+			helpers.WriteError(w, http.StatusNotFound, "Todo not found")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(existing)
 		return
 	}
 
 	screenshotID, _ := result.LastInsertId()
 
-	db.TodoDB.Exec("UPDATE todos SET screenshot_path = ? WHERE id = ?", filename, todoID)
+	attached, err := attachScreenshotToTodo(todoID, filename)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	if !attached {
+		removeOrphanedScreenshot(int(screenshotID), filename)
+		helpers.WriteError(w, http.StatusNotFound, "Todo not found")
+		return
+	}
 
 	screenshot := models.Screenshot{
 		ID:       int(screenshotID),

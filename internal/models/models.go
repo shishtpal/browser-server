@@ -8,6 +8,7 @@ type Todo struct {
 	Title          string    `json:"title"`
 	Description    string    `json:"description"`
 	Domain         string    `json:"domain"`
+	CaptureID      string    `json:"capture_id,omitempty"`
 	ScreenshotPath string    `json:"screenshot_path"`
 	Completed      bool      `json:"completed"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -41,6 +42,7 @@ type BookmarkResponse struct {
 	Description string    `json:"description"`
 	Tags        []string  `json:"tags"`
 	FolderPath  string    `json:"folder_path"`
+	CaptureID   string    `json:"capture_id,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

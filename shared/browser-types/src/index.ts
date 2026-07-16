@@ -154,6 +154,7 @@ export interface CreateTodoInput {
   title: string
   description?: string
   domain?: string
+  capture_id?: string
 }
 
 export interface UpdateTodoInput {
@@ -179,6 +180,7 @@ export interface CreateBookmarkInput {
   description?: string
   tags?: string[]
   folder_path?: string
+  capture_id?: string
 }
 
 export interface UpdateWalletInput {

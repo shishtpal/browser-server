@@ -7,6 +7,7 @@
     "src/**/*.ts",
     "popup.html",
     "options.html",
+    "history.html",
     "vite.config.ts"
   ]
 }

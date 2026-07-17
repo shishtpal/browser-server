@@ -10,6 +10,7 @@ import type {
   GroupedHistoryResponse,
   HealthResponse,
   History,
+  HistoryDomainSummary,
   OmniboxSearchParams,
   OmniboxSearchResult,
   Screenshot,
@@ -162,6 +163,16 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
         normalizedBaseUrl,
         'GET',
         `/api/history/grouped${buildQuery(params as unknown as Record<string, string | number | undefined>)}`,
+        undefined,
+        getToken,
+      )
+    },
+
+    getHistoryDomains(userId?: number, query?: string): Promise<HistoryDomainSummary[]> {
+      return apiFetch<HistoryDomainSummary[]>(
+        normalizedBaseUrl,
+        'GET',
+        `/api/history/domains${buildQuery({ user_id: userId, q: query })}`,
         undefined,
         getToken,
       )

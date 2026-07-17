@@ -46,6 +46,7 @@ func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
 	userID := helpers.GetUserIDFromQuery(r)
 	search := strings.TrimSpace(r.URL.Query().Get("q"))
 	column := r.URL.Query().Get("column") // "all" (default), "title", or "url"
+	domain := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("domain")))
 	limit := helpers.GetLimitFromQuery(r, defaultGroupedHistoryLimit)
 	offset := helpers.GetOffsetFromQuery(r)
 
@@ -55,6 +56,10 @@ func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
 	if userID > 0 {
 		where += " AND user_id = ?"
 		args = append(args, userID)
+	}
+	if domain != "" {
+		where += " AND domain = ?"
+		args = append(args, domain)
 	}
 
 	// Each whitespace-separated term must match (AND), mirroring the previous
@@ -114,6 +119,56 @@ func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
 		Limit:   limit,
 		Offset:  offset,
 	})
+}
+
+// GetHistoryDomains returns every hostname represented in history, ordered by
+// visit count so the most-used domain appears first.
+func GetHistoryDomains(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	userID := helpers.GetUserIDFromQuery(r)
+	search := strings.TrimSpace(r.URL.Query().Get("q"))
+	where := "WHERE domain <> ''"
+	args := []interface{}{}
+	if userID > 0 {
+		where += " AND user_id = ?"
+		args = append(args, userID)
+	}
+	if search != "" {
+		where += " AND domain LIKE ?"
+		args = append(args, "%"+strings.ToLower(search)+"%")
+	}
+
+	query := "SELECT domain, COUNT(*), COUNT(DISTINCT url), COALESCE(SUM(duration), 0), MAX(visited_at) " +
+		"FROM history " + where + " GROUP BY domain" +
+		" ORDER BY COUNT(*) DESC, MAX(visited_at) DESC"
+	rows, err := db.HistoryDB.Query(query, args...)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	defer rows.Close()
+
+	domains := []models.HistoryDomainSummary{}
+	for rows.Next() {
+		var domain models.HistoryDomainSummary
+		var lastVisited sql.NullString
+		if err := rows.Scan(
+			&domain.Domain,
+			&domain.VisitCount,
+			&domain.URLCount,
+			&domain.TotalDuration,
+			&lastVisited,
+		); err != nil {
+			continue
+		}
+		if lastVisited.Valid {
+			domain.LastVisited = parseSQLiteTime(lastVisited.String)
+		}
+		domains = append(domains, domain)
+	}
+
+	json.NewEncoder(w).Encode(domains)
 }
 
 func GetHistory(w http.ResponseWriter, r *http.Request) {
@@ -186,9 +241,10 @@ func CreateHistory(w http.ResponseWriter, r *http.Request) {
 	if entry.VisitedAt.IsZero() {
 		entry.VisitedAt = time.Now()
 	}
+	domain := helpers.URLHostname(entry.URL)
 
-	result, err := db.HistoryDB.Exec("INSERT INTO history (user_id, url, title, visited_at, duration) VALUES (?, ?, ?, ?, ?)",
-		entry.UserID, entry.URL, entry.Title, entry.VisitedAt, entry.Duration)
+	result, err := db.HistoryDB.Exec("INSERT INTO history (user_id, url, domain, title, visited_at, duration) VALUES (?, ?, ?, ?, ?, ?)",
+		entry.UserID, entry.URL, domain, entry.Title, entry.VisitedAt, entry.Duration)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return

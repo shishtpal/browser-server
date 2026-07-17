@@ -26,7 +26,8 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "POST", Path: "/api/bookmarks/import", Description: "Import bookmarks from Chrome HTML export"},
 
 		{Method: "GET", Path: "/api/history", Description: "Get browsing history (filter: user_id, url)"},
-		{Method: "GET", Path: "/api/history/grouped", Description: "Get URL-grouped, searched, paginated history (params: user_id, q, column, limit, offset)"},
+		{Method: "GET", Path: "/api/history/grouped", Description: "Get URL-grouped, searched, paginated history (params: user_id, domain, q, column, limit, offset)"},
+		{Method: "GET", Path: "/api/history/domains", Description: "Get history domain summaries ordered by visit count (params: user_id, q)"},
 		{Method: "POST", Path: "/api/history", Description: "Add history entry"},
 		{Method: "POST", Path: "/api/history/import", Description: "Import history from Chrome History SQLite file"},
 		{Method: "GET", Path: "/api/history/{id}", Description: "Get history entry by ID"},

@@ -86,10 +86,19 @@ export interface GroupedHistoryResponse {
 
 export interface GroupedHistoryParams {
   user_id?: number
+  domain?: string
   q?: string
   column?: HistorySearchColumn
   limit?: number
   offset?: number
+}
+
+export interface HistoryDomainSummary {
+  domain: string
+  visit_count: number
+  url_count: number
+  total_duration: number
+  last_visited: string
 }
 
 export interface OmniboxSearchResult {

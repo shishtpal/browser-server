@@ -83,3 +83,13 @@ func validURL(value string) bool {
 	}
 	return u.Host != ""
 }
+
+// URLHostname returns a normalized hostname for an HTTP(S) URL. Ports and
+// credentials are intentionally excluded so all variants group as one domain.
+func URLHostname(value string) string {
+	u, err := url.Parse(value)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
+	}
+	return strings.ToLower(u.Hostname())
+}

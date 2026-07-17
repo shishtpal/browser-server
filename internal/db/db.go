@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	"browser-server/internal/helpers"
 )
 
 var (
@@ -120,11 +122,49 @@ func InitHistoryDB(dataPath string) {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
 			url TEXT NOT NULL,
+			domain TEXT NOT NULL DEFAULT '',
 			title TEXT,
 			visited_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			duration INTEGER DEFAULT 0
 		)
 	`)
+	migrateColumn(HistoryDB, "history", "domain", "TEXT NOT NULL DEFAULT ''")
+	backfillHistoryDomains()
+	Exec(HistoryDB, `CREATE INDEX IF NOT EXISTS idx_history_user_domain ON history(user_id, domain)`)
+}
+
+func backfillHistoryDomains() {
+	rows, err := HistoryDB.Query("SELECT id, url FROM history WHERE domain = ''")
+	if err != nil {
+		return
+	}
+	type update struct {
+		id     int
+		domain string
+	}
+	updates := []update{}
+	for rows.Next() {
+		var id int
+		var rawURL string
+		if err := rows.Scan(&id, &rawURL); err == nil {
+			if domain := helpers.URLHostname(rawURL); domain != "" {
+				updates = append(updates, update{id: id, domain: domain})
+			}
+		}
+	}
+	rows.Close()
+	tx, err := HistoryDB.Begin()
+	if err != nil {
+		return
+	}
+	for _, item := range updates {
+		if _, err := tx.Exec("UPDATE history SET domain = ? WHERE id = ?", item.domain, item.id); err != nil {
+			log.Printf("Failed to backfill history domain: %v", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		log.Printf("Failed to commit history domain backfill: %v", err)
+	}
 }
 
 func InitScreenshotDB(dataPath string) {

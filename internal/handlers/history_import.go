@@ -144,10 +144,11 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 			skipped++
 			continue
 		}
+		domain := helpers.URLHostname(url)
 
 		_, err := db.HistoryDB.Exec(
-			"INSERT INTO history (user_id, url, title, visited_at, duration) VALUES (?, ?, ?, ?, ?)",
-			userID, url, title, visitedAt, 0,
+			"INSERT INTO history (user_id, url, domain, title, visited_at, duration) VALUES (?, ?, ?, ?, ?, ?)",
+			userID, url, domain, title, visitedAt, 0,
 		)
 		if err != nil {
 			if len(errors) < 10 {

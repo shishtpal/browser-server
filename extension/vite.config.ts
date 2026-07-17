@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
         input: {
           popup: resolve(rootDir, 'popup.html'),
           options: resolve(rootDir, 'options.html'),
+          history: resolve(rootDir, 'history.html'),
           background: resolve(rootDir, 'src/background.ts'),
         },
       },

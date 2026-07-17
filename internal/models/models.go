@@ -85,6 +85,15 @@ type GroupedHistoryResponse struct {
 	Offset  int                   `json:"offset"`
 }
 
+// HistoryDomainSummary aggregates all history visits for one hostname.
+type HistoryDomainSummary struct {
+	Domain        string    `json:"domain"`
+	VisitCount    int       `json:"visit_count"`
+	URLCount      int       `json:"url_count"`
+	TotalDuration int       `json:"total_duration"`
+	LastVisited   time.Time `json:"last_visited"`
+}
+
 // OmniboxSearchResult is a normalized bookmark/history suggestion for the
 // browser extension omnibox integration.
 type OmniboxSearchResult struct {

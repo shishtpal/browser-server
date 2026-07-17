@@ -5,6 +5,7 @@ export interface ExtensionSettings {
   apiToken: string
   userId: string
   autoCapture: boolean
+  unsafePreview: boolean
 }
 
 const SETTINGS_KEY = 'tracker_settings'
@@ -14,6 +15,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   apiToken: '',
   userId: '1',
   autoCapture: true,
+  unsafePreview: false,
 }
 
 export async function getSettings(): Promise<ExtensionSettings> {

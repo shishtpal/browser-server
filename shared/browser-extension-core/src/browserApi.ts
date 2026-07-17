@@ -141,6 +141,18 @@ export interface BrowserApi {
     sendMessage(message: unknown): Promise<unknown>
     openOptionsPage(): void
   }
+
+  declarativeNetRequest?: {
+    updateSessionRules(options: {
+      removeRuleIds?: number[]
+      addRules?: Array<{
+        id: number
+        priority: number
+        condition: Record<string, unknown>
+        action: Record<string, unknown>
+      }>
+    }): Promise<void>
+  }
 }
 
 // ---------------------------------------------------------------------------

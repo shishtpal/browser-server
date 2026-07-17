@@ -9,6 +9,7 @@ const form = reactive({
   apiToken: DEFAULT_SETTINGS.apiToken,
   userId: DEFAULT_SETTINGS.userId,
   autoCapture: DEFAULT_SETTINGS.autoCapture,
+  unsafePreview: DEFAULT_SETTINGS.unsafePreview,
 })
 
 const statusMessage = ref<string>('')
@@ -57,6 +58,7 @@ async function handleSave() {
   const apiToken = form.apiToken.trim()
   const userId = form.userId.trim()
   const autoCapture = form.autoCapture
+  const unsafePreview = form.unsafePreview
 
   if (!apiBase) {
     showStatus('Server URL is required.', 'err')
@@ -78,7 +80,7 @@ async function handleSave() {
 
   isSaving.value = true
   try {
-    await saveSettings({ apiBase, apiToken, userId, autoCapture })
+    await saveSettings({ apiBase, apiToken, userId, autoCapture, unsafePreview })
     showStatus('Settings saved.', 'ok')
   } finally {
     isSaving.value = false
@@ -102,7 +104,7 @@ async function testConnection() {
   isTesting.value = true
   connectionStatus.value = 'idle'
   try {
-    const client = createApiClient({ apiBase, apiToken: form.apiToken, userId: form.userId, autoCapture: form.autoCapture })
+    const client = createApiClient({ apiBase, apiToken: form.apiToken, userId: form.userId, autoCapture: form.autoCapture, unsafePreview: form.unsafePreview })
     const reachable = await client.ping()
     connectionStatus.value = reachable ? 'online' : 'offline'
     showStatus(reachable ? 'Server is reachable.' : 'Cannot reach server.', reachable ? 'ok' : 'err')
@@ -182,6 +184,21 @@ onMounted(() => {
             <span class="block text-sm font-medium text-slate-200">Auto-capture screenshots</span>
             <span class="mt-1 block text-xs text-slate-500">
               Capture the active tab when you open the Todos view.
+            </span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-3">
+          <input
+            v-model="form.unsafePreview"
+            type="checkbox"
+            class="mt-1 h-4 w-4 accent-rose-500"
+          />
+          <span>
+            <span class="block text-sm font-medium text-slate-200">Unsafe preview mode</span>
+            <span class="mt-1 block text-xs text-slate-500">
+              Strip anti-framing headers (X-Frame-Options, CSP) to preview more sites in the History Browser.
+              This reduces security protections and may not work for sites that enforce framing restrictions in JavaScript.
             </span>
           </span>
         </label>

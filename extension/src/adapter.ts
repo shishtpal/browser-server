@@ -100,4 +100,21 @@ export class ChromeAdapter implements BrowserApi {
     sendMessage: (message: unknown) => chrome.runtime.sendMessage(message),
     openOptionsPage: () => chrome.runtime.openOptionsPage(),
   }
+
+  declarativeNetRequest = chrome.declarativeNetRequest
+    ? {
+        updateSessionRules: (options: {
+          removeRuleIds?: number[]
+          addRules?: Array<{
+            id: number
+            priority: number
+            condition: Record<string, unknown>
+            action: Record<string, unknown>
+          }>
+        }) =>
+          chrome.declarativeNetRequest.updateSessionRules(
+            options as chrome.declarativeNetRequest.UpdateRuleOptions,
+          ),
+      }
+    : undefined
 }

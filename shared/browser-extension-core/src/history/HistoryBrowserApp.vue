@@ -9,6 +9,7 @@ import { useExtensionSettings } from '../composables/useExtensionSettings'
 const PAGE_SIZE = 100
 const MIN_PANEL_WIDTH = 220
 const DIVIDER_WIDTH = 6
+const UNSAFE_PREVIEW_RULE_ID = 99999
 
 const { settings } = useExtensionSettings()
 const userId = useUserId(computed(() => settings.value))
@@ -30,11 +31,126 @@ const browser = ref<HTMLElement | null>(null)
 const firstWidth = ref(280)
 const secondWidth = ref(430)
 const resizing = ref(false)
+const unsafePreviewActive = ref(false)
 let linkFilterTimer: ReturnType<typeof setTimeout> | undefined
 let domainRequest = 0
 let linksRequest = 0
 let resizeObserver: ResizeObserver | undefined
 let stopResize: (() => void) | undefined
+
+/**
+ * Convert YouTube watch/shorts URLs to their official embed format.
+ * Returns the original URL for non-YouTube URLs.
+ */
+function toEmbedUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const hostname = parsed.hostname.replace(/^www\./, '')
+
+    if (hostname === 'youtube.com' || hostname === 'm.youtube.com') {
+      // /watch?v=VIDEO_ID
+      const videoId = parsed.searchParams.get('v')
+      if (videoId && parsed.pathname === '/watch') {
+        return `https://www.youtube.com/embed/${videoId}`
+      }
+      // /shorts/VIDEO_ID
+      const shortsMatch = parsed.pathname.match(/^\/shorts\/([a-zA-Z0-9_-]+)/)
+      if (shortsMatch) {
+        return `https://www.youtube.com/embed/${shortsMatch[1]}`
+      }
+      // /embed/VIDEO_ID — already an embed URL
+      if (parsed.pathname.startsWith('/embed/')) {
+        return url
+      }
+    }
+
+    if (hostname === 'youtu.be') {
+      // youtu.be/VIDEO_ID
+      const videoId = parsed.pathname.slice(1)
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`
+      }
+    }
+  } catch {
+    // Invalid URL, return as-is
+  }
+  return url
+}
+
+/**
+ * Install a temporary session rule that strips X-Frame-Options and CSP
+ * response headers for the given hostname. Only effective when the
+ * declarativeNetRequest API is available.
+ */
+async function installUnsafePreviewRule(hostname: string): Promise<void> {
+  const dnr = getBrowserApi().declarativeNetRequest
+  if (!dnr) return
+
+  await dnr.updateSessionRules({
+    removeRuleIds: [UNSAFE_PREVIEW_RULE_ID],
+    addRules: [
+      {
+        id: UNSAFE_PREVIEW_RULE_ID,
+        priority: 1,
+        condition: {
+          requestDomains: [hostname],
+          resourceTypes: ['sub_frame'],
+        },
+        action: {
+          type: 'modifyHeaders',
+          responseHeaders: [
+            { header: 'x-frame-options', operation: 'remove' },
+            { header: 'content-security-policy', operation: 'remove' },
+            { header: 'content-security-policy-report-only', operation: 'remove' },
+          ],
+        },
+      },
+    ],
+  })
+}
+
+/**
+ * Remove the unsafe preview session rule.
+ */
+async function removeUnsafePreviewRule(): Promise<void> {
+  const dnr = getBrowserApi().declarativeNetRequest
+  if (!dnr) return
+
+  await dnr.updateSessionRules({
+    removeRuleIds: [UNSAFE_PREVIEW_RULE_ID],
+  })
+}
+
+const unsafePreviewEnabled = computed(() => Boolean(settings.value?.unsafePreview))
+const hasDnrSupport = computed(() => Boolean(getBrowserApi().declarativeNetRequest))
+
+/**
+ * The actual URL loaded in the iframe: applies YouTube embed conversion,
+ * and may be the original URL if unsafe preview is handling headers.
+ */
+const previewUrl = computed(() => {
+  if (!selectedEntry.value) return ''
+  return toEmbedUrl(selectedEntry.value.url)
+})
+
+async function toggleUnsafePreview() {
+  unsafePreviewActive.value = !unsafePreviewActive.value
+
+  if (!unsafePreviewActive.value) {
+    await removeUnsafePreviewRule()
+    return
+  }
+
+  // Install rule for current entry's hostname
+  if (selectedEntry.value) {
+    try {
+      const hostname = new URL(selectedEntry.value.url).hostname
+      await installUnsafePreviewRule(hostname)
+    } catch {
+      // Invalid URL
+    }
+  }
+}
 
 const filteredDomains = computed(() => {
   const query = domainFilter.value.trim().toLowerCase()
@@ -115,6 +231,16 @@ function selectDomain(domain: string) {
 
 function selectEntry(entry: GroupedHistoryEntry) {
   selectedEntry.value = entry
+
+  // Update DNR rule for the new entry's hostname when unsafe preview is on
+  if (unsafePreviewActive.value) {
+    try {
+      const hostname = new URL(entry.url).hostname
+      void installUnsafePreviewRule(hostname)
+    } catch {
+      // Invalid URL
+    }
+  }
 }
 
 function openInTab(url: string) {
@@ -216,6 +342,7 @@ onBeforeUnmount(() => {
   if (linkFilterTimer) clearTimeout(linkFilterTimer)
   stopResize?.()
   resizeObserver?.disconnect()
+  void removeUnsafePreviewRule()
 })
 </script>
 
@@ -295,9 +422,19 @@ onBeforeUnmount(() => {
               <p class="truncate text-sm font-medium">{{ selectedEntry.title || selectedEntry.url }}</p>
               <p class="truncate text-[11px] text-slate-500">{{ selectedEntry.url }}</p>
             </div>
+            <button
+              v-if="unsafePreviewEnabled && hasDnrSupport"
+              type="button"
+              class="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition"
+              :class="unsafePreviewActive ? 'bg-amber-600 text-white hover:bg-amber-500' : 'border border-slate-700 text-slate-400 hover:border-amber-500 hover:text-amber-300'"
+              :title="unsafePreviewActive ? 'Unsafe preview active — click to disable' : 'Strip anti-framing headers for this preview'"
+              @click="toggleUnsafePreview"
+            >
+              {{ unsafePreviewActive ? '⚠ Unsafe On' : '🔓 Unsafe Preview' }}
+            </button>
             <button type="button" class="shrink-0 rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-400" @click="openInTab(selectedEntry.url)">Open in tab</button>
           </div>
-          <iframe :key="selectedEntry.url" :src="selectedEntry.url" :title="`Preview of ${selectedEntry.title || selectedEntry.url}`" sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts" class="min-h-0 flex-1 bg-white" :class="{ 'pointer-events-none': resizing }" />
+          <iframe :key="previewUrl + (unsafePreviewActive ? '?unsafe' : '')" :src="previewUrl" :title="`Preview of ${selectedEntry.title || selectedEntry.url}`" sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts" class="min-h-0 flex-1 bg-white" :class="{ 'pointer-events-none': resizing }" />
         </template>
         <div v-else class="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
           <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-slate-600">
@@ -305,6 +442,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="text-sm font-medium text-slate-300">Select a link for quick view</p>
           <p class="max-w-sm text-xs leading-5 text-slate-600">Some websites prevent embedded previews. Use “Open in tab” when a page does not load here.</p>
+          <p v-if="unsafePreviewEnabled && hasDnrSupport" class="max-w-sm text-xs leading-5 text-amber-500/80">Unsafe preview mode is enabled — anti-framing headers will be stripped when toggled on.</p>
         </div>
       </section>
     </div>

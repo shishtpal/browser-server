@@ -164,4 +164,18 @@ export class FirefoxAdapter implements BrowserApi {
       void browser.runtime.openOptionsPage()
     },
   }
+
+  declarativeNetRequest = typeof browser.declarativeNetRequest !== 'undefined'
+    ? {
+        updateSessionRules: (options: {
+          removeRuleIds?: number[]
+          addRules?: Array<{
+            id: number
+            priority: number
+            condition: Record<string, unknown>
+            action: Record<string, unknown>
+          }>
+        }) => browser.declarativeNetRequest.updateSessionRules(options as Parameters<typeof browser.declarativeNetRequest.updateSessionRules>[0]),
+      }
+    : undefined
 }

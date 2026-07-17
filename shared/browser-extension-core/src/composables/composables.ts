@@ -1,5 +1,6 @@
 export { useBookmarksView } from './useBookmarksView'
 export { useHistoryView } from './useHistoryView'
+export { useHistoryBrowser } from './useHistoryBrowser'
 export { useTodosView } from './useTodosView'
 export { useWalletView } from './useWalletView'
 export { useAnalyticsView } from './useAnalyticsView'

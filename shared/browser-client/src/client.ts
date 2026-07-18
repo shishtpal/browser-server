@@ -17,6 +17,7 @@ import type {
   Todo,
   UpdateTodoInput,
   UpdateWalletInput,
+  UpdateBookmarkInput,
   UsageBatchRequest,
   UsageBatchResponse,
   WalletEntry,
@@ -263,6 +264,10 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
 
     createBookmark(data: CreateBookmarkInput): Promise<BookmarkResponse> {
       return apiFetch<BookmarkResponse>(normalizedBaseUrl, 'POST', '/api/bookmarks', data, getToken)
+    },
+
+    updateBookmark(id: number, data: UpdateBookmarkInput): Promise<BookmarkResponse> {
+      return apiFetch<BookmarkResponse>(normalizedBaseUrl, 'PUT', `/api/bookmarks/${id}`, data, getToken)
     },
 
     deleteBookmark(id: number): Promise<void> {

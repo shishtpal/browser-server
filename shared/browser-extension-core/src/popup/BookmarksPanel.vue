@@ -81,6 +81,11 @@ function openUrl(url: string) {
   getBrowserApi().tabs.create({ url, active: true })
 }
 
+function openBookmarksGraph() {
+  const url = new URL('bookmarks-graph.html', window.location.href).href
+  void getBrowserApi().tabs.create({ url, active: true })
+}
+
 async function copyUrl(url: string) {
   try {
     await navigator.clipboard.writeText(url)
@@ -177,6 +182,22 @@ watch(
             class="w-full rounded-lg border border-slate-700 bg-slate-900 py-1.5 pl-8 pr-3 text-xs text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-rose-400 focus:ring-2 focus:ring-rose-500/20"
           />
         </div>
+        <button
+          type="button"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 text-slate-400 transition hover:border-rose-400 hover:text-rose-300"
+          title="Open bookmarks graph"
+          aria-label="Open bookmarks graph"
+          @click="openBookmarksGraph"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="5" cy="5" r="2" />
+            <circle cx="19" cy="5" r="2" />
+            <circle cx="5" cy="19" r="2" />
+            <circle cx="19" cy="19" r="2" />
+            <path d="M10.5 10.5 6.5 6.5M13.5 10.5 17.5 6.5M10.5 13.5 6.5 17.5M13.5 13.5 17.5 17.5" />
+          </svg>
+        </button>
       </div>
     </div>
 

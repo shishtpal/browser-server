@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
           popup: resolve(rootDir, 'popup.html'),
           options: resolve(rootDir, 'options.html'),
           history: resolve(rootDir, 'history.html'),
+          bookmarksGraph: resolve(rootDir, 'bookmarks-graph.html'),
         },
       },
     },

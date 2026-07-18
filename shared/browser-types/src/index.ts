@@ -192,6 +192,15 @@ export interface CreateBookmarkInput {
   capture_id?: string
 }
 
+export interface UpdateBookmarkInput {
+  user_id: number
+  title: string
+  url: string
+  description?: string
+  tags?: string[]
+  folder_path?: string
+}
+
 export interface UpdateWalletInput {
   username?: string
   password?: string

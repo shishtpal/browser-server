@@ -8,6 +8,7 @@
     "popup.html",
     "options.html",
     "history.html",
+    "bookmarks-graph.html",
     "vite.config.ts"
   ]
 }

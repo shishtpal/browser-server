@@ -126,6 +126,25 @@ export function useBookmarksView(client: Ref<BrowserServerClient | null>, userId
     }
   }
 
+  async function updateBookmark(id: number, data: {
+    user_id: number
+    title: string
+    url: string
+    description?: string
+    tags?: string[]
+    folder_path?: string
+  }): Promise<void> {
+    if (!client.value) return
+    try {
+      await client.value.updateBookmark(id, data)
+      await load()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.debug('Update bookmark failed', message)
+      throw error
+    }
+  }
+
   async function deleteBookmark(id: number): Promise<void> {
     if (!client.value) return
     try {
@@ -141,6 +160,6 @@ export function useBookmarksView(client: Ref<BrowserServerClient | null>, userId
     items, filtered, paginatedEntries, errorMessage, isLoading,
     searchQuery, searchColumn, activeTag, allTags,
     currentPage, totalPages,
-    load, addBookmark, deleteBookmark, nextPage, prevPage, goToPage,
+    load, addBookmark, updateBookmark, deleteBookmark, nextPage, prevPage, goToPage,
   }
 }

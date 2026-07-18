@@ -1,68 +1,73 @@
 import type { BookmarkResponse } from '@browser-server/shared-client'
+import type { Node, Edge } from '@vue-flow/core'
 
-export type GraphNodeType = 'root' | 'folder' | 'bookmark'
+// ─── Node data types ─────────────────────────────────────────────────────────
 
-export interface GraphNode {
-  id: string
-  type: GraphNodeType
-  name: string
+export interface FolderNodeData {
+  type: 'folder'
+  label: string
   path: string
-  bookmark: BookmarkResponse | null
-  children: GraphNode[]
-  /** number of bookmark leaves under this node (folders only) */
+  leafCount: number
+  expanded: boolean
+}
+
+export interface BookmarkNodeData {
+  type: 'bookmark'
+  label: string
+  bookmark: BookmarkResponse
+  faviconUrl: string
+}
+
+export interface RootNodeData {
+  type: 'root'
+  label: string
   leafCount: number
 }
 
-export interface PositionedNode {
-  node: GraphNode
-  x: number
-  y: number
-  /** screen-space angle for radial layout */
-  angle: number
-  depth: number
-}
+export type GraphNodeData = FolderNodeData | BookmarkNodeData | RootNodeData
 
-export interface PositionedEdge {
-  from: PositionedNode
-  to: PositionedNode
-}
+export type GraphNode = Node<GraphNodeData>
+export type GraphEdge = Edge
 
-export interface GraphLayout {
-  nodes: PositionedNode[]
-  edges: PositionedEdge[]
-  /** bounding box of all node centers */
-  bounds: { minX: number; minY: number; maxX: number; maxY: number }
+// ─── Internal tree structure ─────────────────────────────────────────────────
+
+export interface TreeNode {
+  id: string
+  name: string
+  path: string
+  type: 'root' | 'folder' | 'bookmark'
+  bookmark: BookmarkResponse | null
+  children: TreeNode[]
+  leafCount: number
 }
 
 const UNFILED_KEY = '__unfiled__'
 
 /**
- * Build a nested graph tree from bookmarks grouped by `folder_path`.
- * Mirrors the split-on-"/" hierarchy used by the web app's bookmark tree,
- * but returns a plain recursive structure suitable for graph layout.
+ * Build a tree from the flat bookmark list, grouped by folder_path.
  */
-export function buildGraphTree(bookmarks: BookmarkResponse[]): GraphNode {
-  const root: GraphNode = {
+function buildTree(bookmarks: BookmarkResponse[]): TreeNode {
+  const root: TreeNode = {
     id: 'root',
-    type: 'root',
     name: 'Bookmarks',
     path: '',
+    type: 'root',
     bookmark: null,
     children: [],
     leafCount: 0,
   }
 
-  const folderIndex = new Map<string, GraphNode>()
+  const folderIndex = new Map<string, TreeNode>()
   folderIndex.set('', root)
 
-  function ensureFolder(path: string): GraphNode {
+  function ensureFolder(path: string): TreeNode {
     const existing = folderIndex.get(path)
     if (existing) return existing
     const parts = path.split('/').filter(Boolean)
     const name = parts[parts.length - 1] ?? path
     const parentPath = parts.slice(0, -1).join('/')
     const parent = ensureFolder(parentPath)
-    const node: GraphNode = {
+    const node: TreeNode = {
       id: `folder:${path}`,
       type: 'folder',
       name,
@@ -76,9 +81,8 @@ export function buildGraphTree(bookmarks: BookmarkResponse[]): GraphNode {
     return node
   }
 
-  // Unfiled bucket for bookmarks with no folder_path.
-  let unfiled: GraphNode | null = null
-  function getUnfiled(): GraphNode {
+  let unfiled: TreeNode | null = null
+  function getUnfiled(): TreeNode {
     if (unfiled) return unfiled
     unfiled = {
       id: `folder:${UNFILED_KEY}`,
@@ -97,7 +101,7 @@ export function buildGraphTree(bookmarks: BookmarkResponse[]): GraphNode {
   for (const b of bookmarks) {
     const folderPath = b.folder_path?.trim() ?? ''
     const parent = folderPath ? ensureFolder(folderPath) : getUnfiled()
-    const leaf: GraphNode = {
+    const leaf: TreeNode = {
       id: `bookmark:${b.id}`,
       type: 'bookmark',
       name: b.title || b.url,
@@ -109,10 +113,11 @@ export function buildGraphTree(bookmarks: BookmarkResponse[]): GraphNode {
     parent.children.push(leaf)
   }
 
-  // Compute leaf counts bottom-up and drop empty folders.
-  function pruneAndCount(node: GraphNode): number {
-    node.children = node.children.filter((c) => c.type === 'bookmark' || pruneAndCount(c) > 0)
-    // Keep folder ordering stable; bookmarks after sub-folders for readability.
+  // Compute leaf counts and sort
+  function computeLeafCount(node: TreeNode): number {
+    node.children = node.children.filter(
+      (c) => c.type === 'bookmark' || computeLeafCount(c) > 0,
+    )
     node.children.sort((a, b) => {
       if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
       return a.name.localeCompare(b.name)
@@ -124,10 +129,9 @@ export function buildGraphTree(bookmarks: BookmarkResponse[]): GraphNode {
     node.leafCount = leaves
     return leaves
   }
-  pruneAndCount(root)
+  computeLeafCount(root)
 
-  // Collapse a lone Unfiled bucket: if it's the only top-level folder, hoist
-  // its bookmarks directly under root for a cleaner graph.
+  // Collapse lone Unfiled bucket
   if (root.children.length === 1 && root.children[0].id === `folder:${UNFILED_KEY}`) {
     root.children = root.children[0].children
   }
@@ -135,96 +139,163 @@ export function buildGraphTree(bookmarks: BookmarkResponse[]): GraphNode {
   return root
 }
 
+// ─── Layout ──────────────────────────────────────────────────────────────────
+
 export interface LayoutOptions {
-  /** pixels between radial rings */
-  ringGap?: number
-  /** minimum angular slice (radians) per leaf */
-  minLeafAngle?: number
-  /** starting radius for first ring */
-  baseRadius?: number
+  /** horizontal gap between tree levels */
+  levelGap?: number
+  /** vertical gap between sibling nodes */
+  nodeGap?: number
 }
 
 /**
- * Radial layered ("mind-map") layout: root at center, folders on concentric
- * rings, bookmarks as leaves on the outer ring. Each subtree is allotted an
- * angular slice proportional to its leaf count so siblings never overlap.
+ * Convert the internal tree into Vue Flow nodes and edges.
+ * Only shows expanded folders and their direct children.
+ * When no folders are expanded (initial state), shows root + top-level folders only.
  */
-export function layoutTree(root: GraphNode, options: LayoutOptions = {}): GraphLayout {
-  const ringGap = options.ringGap ?? 220
-  const baseRadius = options.baseRadius ?? 0
-  const minLeafAngle = options.minLeafAngle ?? 0.08
+export function buildFlowGraph(
+  bookmarks: BookmarkResponse[],
+  expandedFolders: Set<string>,
+  options: LayoutOptions = {},
+): { nodes: GraphNode[]; edges: GraphEdge[]; tree: TreeNode } {
+  const tree = buildTree(bookmarks)
+  const levelGap = options.levelGap ?? 300
+  const nodeGap = options.nodeGap ?? 80
 
-  const nodes: PositionedNode[] = []
-  const edges: PositionedEdge[] = []
+  const nodes: GraphNode[] = []
+  const edges: GraphEdge[] = []
 
-  const rootPos: PositionedNode = {
-    node: root,
-    x: 0,
-    y: 0,
-    angle: 0,
-    depth: 0,
-  }
-  nodes.push(rootPos)
+  // Track the Y position for each level for vertical distribution
+  let globalY = 0
 
-  function totalLeafWeight(node: GraphNode): number {
-    return Math.max(1, node.leafCount || node.children.length || 1)
-  }
+  function layoutNode(treeNode: TreeNode, depth: number, parentId: string | null): void {
+    const x = depth * levelGap
+    const y = globalY
+    globalY += nodeGap
 
-  function placeChildren(
-    parent: PositionedNode,
-    startAngle: number,
-    endAngle: number,
-  ) {
-    const children = parent.node.children
-    if (children.length === 0) return
+    if (treeNode.type === 'root') {
+      nodes.push({
+        id: treeNode.id,
+        type: 'root',
+        position: { x, y },
+        data: {
+          type: 'root',
+          label: treeNode.name,
+          leafCount: treeNode.leafCount,
+        } as RootNodeData,
+      })
+    } else if (treeNode.type === 'folder') {
+      const isExpanded = expandedFolders.has(treeNode.id)
+      nodes.push({
+        id: treeNode.id,
+        type: 'folder',
+        position: { x, y },
+        data: {
+          type: 'folder',
+          label: treeNode.name,
+          path: treeNode.path,
+          leafCount: treeNode.leafCount,
+          expanded: isExpanded,
+        } as FolderNodeData,
+      })
+    } else {
+      // bookmark
+      const b = treeNode.bookmark!
+      nodes.push({
+        id: treeNode.id,
+        type: 'bookmark',
+        position: { x, y },
+        data: {
+          type: 'bookmark',
+          label: treeNode.name,
+          bookmark: b,
+          faviconUrl: `https://www.google.com/s2/favicons?domain=${new URL(b.url).hostname}&sz=32`,
+        } as BookmarkNodeData,
+      })
+    }
 
-    const depth = parent.depth + 1
-    const radius = baseRadius + depth * ringGap
-    const span = endAngle - startAngle
-    const totalWeight = children.reduce(
-      (sum, c) => sum + (c.type === 'bookmark' ? 1 : totalLeafWeight(c)),
-      0,
-    )
-    let cursor = startAngle
+    if (parentId) {
+      edges.push({
+        id: `${parentId}->${treeNode.id}`,
+        source: parentId,
+        target: treeNode.id,
+        type: 'smoothstep',
+        animated: treeNode.type === 'folder',
+      })
+    }
 
-    for (const child of children) {
-      const weight = child.type === 'bookmark' ? 1 : totalLeafWeight(child)
-      const slice = Math.max(span * (weight / totalWeight), minLeafAngle)
-      const mid = cursor + slice / 2
-      const x = parent.x + Math.cos(mid) * radius
-      const y = parent.y + Math.sin(mid) * radius
-      const childPos: PositionedNode = { node: child, x, y, angle: mid, depth }
-      nodes.push(childPos)
-      edges.push({ from: parent, to: childPos })
-
-      if (child.type === 'folder') {
-        // Recurse, reserving the inner part of the slice for grandchildren.
-        placeChildren(childPos, mid - slice / 2, mid + slice / 2)
+    // Determine which children to show
+    if (treeNode.type === 'root') {
+      // Always show top-level children (folders)
+      for (const child of treeNode.children) {
+        if (child.type === 'folder') {
+          layoutNode(child, depth + 1, treeNode.id)
+        } else if (child.type === 'bookmark') {
+          // Bookmarks directly under root (no folder) — only show if root is considered expanded
+          layoutNode(child, depth + 1, treeNode.id)
+        }
       }
-      cursor += slice
+    } else if (treeNode.type === 'folder' && expandedFolders.has(treeNode.id)) {
+      for (const child of treeNode.children) {
+        layoutNode(child, depth + 1, treeNode.id)
+      }
     }
   }
 
-  placeChildren(rootPos, 0, Math.PI * 2)
+  layoutNode(tree, 0, null)
 
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const n of nodes) {
-    if (n.x < minX) minX = n.x
-    if (n.y < minY) minY = n.y
-    if (n.x > maxX) maxX = n.x
-    if (n.y > maxY) maxY = n.y
-  }
-
-  return {
-    nodes,
-    edges,
-    bounds: { minX, minY, maxX, maxY },
-  }
+  return { nodes, edges, tree }
 }
 
-export function buildLayout(bookmarks: BookmarkResponse[], options?: LayoutOptions): GraphLayout {
-  return layoutTree(buildGraphTree(bookmarks), options)
+/**
+ * Get all folder IDs from a bookmark set (for expand-all functionality).
+ */
+export function getAllFolderIds(bookmarks: BookmarkResponse[]): string[] {
+  const tree = buildTree(bookmarks)
+  const ids: string[] = []
+  function collect(node: TreeNode): void {
+    if (node.type === 'folder') ids.push(node.id)
+    for (const child of node.children) collect(child)
+  }
+  collect(tree)
+  return ids
+}
+
+/**
+ * Build a folder-only tree (no bookmark leaves) for the sidebar panel.
+ */
+export interface FolderTreeNode {
+  id: string
+  name: string
+  path: string
+  leafCount: number
+  children: FolderTreeNode[]
+}
+
+export function buildFolderTree(bookmarks: BookmarkResponse[]): FolderTreeNode[] {
+  const tree = buildTree(bookmarks)
+
+  function toFolderTree(node: TreeNode): FolderTreeNode | null {
+    if (node.type === 'bookmark') return null
+    const children: FolderTreeNode[] = []
+    for (const child of node.children) {
+      const folderChild = toFolderTree(child)
+      if (folderChild) children.push(folderChild)
+    }
+    return {
+      id: node.id,
+      name: node.name,
+      path: node.path,
+      leafCount: node.leafCount,
+      children,
+    }
+  }
+
+  // Return the root's folder children (skip root itself for the sidebar)
+  const folders: FolderTreeNode[] = []
+  for (const child of tree.children) {
+    const f = toFolderTree(child)
+    if (f) folders.push(f)
+  }
+  return folders
 }

@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import type { BookmarkResponse } from '@browser-server/shared-client'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { Controls } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
 import { useBookmarksGraph } from './useBookmarksGraph'
-import BookmarksGraphCanvas from './BookmarksGraphCanvas.vue'
+import FolderNode from './FolderNode.vue'
+import BookmarkNode from './BookmarkNode.vue'
+import RootNode from './RootNode.vue'
 import BookmarkInspector from './BookmarkInspector.vue'
 import BookmarkEditDialog from './BookmarkEditDialog.vue'
+import FolderTreePanel from './FolderTreePanel.vue'
 
 const {
   isReady,
@@ -12,42 +19,66 @@ const {
   errorMessage,
   bookmarks,
   allTags,
-  layout,
-  selection,
+  nodes,
+  edges,
+  folderTree,
+  expandedFolders,
   searchQuery,
   activeTag,
+  selectedBookmark,
   load,
   refresh,
-  select,
-  clearSelection,
+  toggleFolder,
+  expandAll,
+  collapseAll,
+  selectBookmark,
   updateBookmark,
   moveBookmark,
   deleteBookmark,
   cleanup,
 } = useBookmarksGraph()
 
-const canvas = ref<InstanceType<typeof BookmarksGraphCanvas> | null>(null)
+const { fitView, onNodesInitialized } = useVueFlow()
+
 const editing = ref<BookmarkResponse | null>(null)
+const showInspector = ref(false)
+const hasFittedOnce = ref(false)
 
-const selectedNode = computed(() => selection.value.node)
-const selectedId = computed(() => selection.value.node?.node.id ?? null)
-const nodeCount = computed(() => layout.value.nodes.filter((n) => n.node.type === 'bookmark').length)
+// Fit the view only on the very first render — never again after that
+onNodesInitialized(() => {
+  if (!hasFittedOnce.value) {
+    hasFittedOnce.value = true
+    fitView({ padding: 0.2 })
+  }
+})
 
-function onSelect(node: typeof selectedNode.value) {
-  if (node) select(node)
+function onNodeDoubleClick(event: { node: { id: string; type: string; data: unknown } }) {
+  const node = event.node
+  if (node.type === 'folder') {
+    toggleFolder(node.id)
+  } else if (node.type === 'bookmark') {
+    const data = node.data as { bookmark: BookmarkResponse }
+    selectBookmark(data.bookmark)
+    showInspector.value = true
+  }
 }
 
-function onBackground() {
-  clearSelection()
-}
-
-async function onDropBookmark(bookmarkId: number, folderPath: string) {
-  await moveBookmark(bookmarkId, folderPath)
+function onNodeClick(event: { node: { id: string; type: string; data: unknown } }) {
+  const node = event.node
+  if (node.type === 'bookmark') {
+    const data = node.data as { bookmark: BookmarkResponse }
+    selectBookmark(data.bookmark)
+    showInspector.value = true
+  } else if (node.type === 'folder') {
+    // Single-click on folder also toggles
+    toggleFolder(node.id)
+  }
 }
 
 function requestEdit() {
-  const b = selectedNode.value?.node.bookmark
-  if (b) editing.value = b
+  if (selectedBookmark.value) {
+    editing.value = selectedBookmark.value
+  }
 }
 
 async function onSaveEdit(bookmark: BookmarkResponse, payload: {
@@ -73,52 +104,34 @@ async function onSaveEdit(bookmark: BookmarkResponse, payload: {
 }
 
 async function onDelete() {
-  const b = selectedNode.value?.node.bookmark
+  const b = selectedBookmark.value
   if (!b) return
   if (!confirm('Delete this bookmark?')) return
   await deleteBookmark(b.id)
-  clearSelection()
+  selectBookmark(null)
+  showInspector.value = false
 }
 
-async function onMoveFromInspector() {
-  const sel = selection.value
-  if (sel.kind === 'bookmark' && sel.node?.node.bookmark) {
-    const target = prompt('Move bookmark to folder path (leave blank for Unfiled):', sel.node.node.path || '')
-    if (target === null) return
-    await moveBookmark(sel.node.node.bookmark.id, target.trim())
-  } else if (sel.kind === 'folder' && sel.node) {
-    const target = prompt('Enter bookmark id to move into this folder:', '')
-    if (!target) return
-    const id = Number.parseInt(target, 10)
-    if (Number.isNaN(id)) return
-    await moveBookmark(id, sel.node.node.path)
-  }
+async function onMove() {
+  const b = selectedBookmark.value
+  if (!b) return
+  const target = prompt('Move bookmark to folder (leave blank for Unfiled):', b.folder_path || '')
+  if (target === null) return
+  await moveBookmark(b.id, target.trim())
 }
 
-function fit() {
-  canvas.value?.fit()
-}
-function zoomIn() {
-  canvas.value?.zoomIn()
-}
-function zoomOut() {
-  canvas.value?.zoomOut()
+function closeInspector() {
+  showInspector.value = false
+  selectBookmark(null)
 }
 
 onMounted(() => {
-  if (isReady.value) void load().then(() => nextTick(fit))
+  if (isReady.value) void load()
 })
 
 watch(isReady, (ready) => {
-  if (ready) void load().then(() => nextTick(fit))
+  if (ready) void load()
 })
-
-watch(
-  () => bookmarks.value.length,
-  (count, prev) => {
-    if (count > 0 && (prev === 0 || prev === undefined)) void nextTick(fit)
-  },
-)
 
 onBeforeUnmount(() => {
   cleanup()
@@ -127,48 +140,70 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="flex h-screen min-w-[760px] flex-col overflow-hidden bg-slate-950 text-slate-100">
-    <header class="flex h-14 shrink-0 items-center justify-between border-b border-slate-800 px-5">
+    <!-- Header -->
+    <header class="flex h-14 shrink-0 items-center justify-between border-b border-slate-800/80 bg-slate-900/50 px-5 backdrop-blur">
       <div class="min-w-0">
-        <h1 class="text-base font-semibold">Bookmarks Graph</h1>
-        <p class="text-xs text-slate-500">Mind-map view of bookmarks grouped by folder</p>
+        <h1 class="text-base font-semibold tracking-tight">Bookmarks Graph</h1>
+        <p class="text-[11px] text-slate-500">Interactive mind-map · double-click folders to expand</p>
       </div>
       <div class="flex items-center gap-2">
-        <div class="hidden items-center gap-1 rounded-lg border border-slate-700 px-1 sm:flex">
-          <button type="button" class="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-800 hover:text-white" title="Zoom out" @click="zoomOut">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /></svg>
-          </button>
-          <button type="button" class="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-800 hover:text-white" title="Zoom in" @click="zoomIn">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
-          <button type="button" class="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-800 hover:text-white" title="Fit to screen" @click="fit">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" /></svg>
-          </button>
-        </div>
-        <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-white" @click="refresh">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-700/80 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-500 hover:text-white"
+          @click="expandAll"
+        >
+          Expand All
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-slate-700/80 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:border-slate-500 hover:text-white"
+          @click="collapseAll"
+        >
+          Collapse All
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/20"
+          @click="refresh"
+        >
           Refresh
         </button>
       </div>
     </header>
 
+    <!-- Not configured -->
     <div v-if="!isReady" class="flex flex-1 items-center justify-center text-sm text-slate-400">
       Configure a server URL, API token, and user ID in extension settings first.
     </div>
 
+    <!-- Main content -->
     <div v-else class="flex min-h-0 flex-1 overflow-hidden">
+      <!-- Folder tree sidebar -->
+      <FolderTreePanel
+        :folders="folderTree"
+        :expanded-folders="expandedFolders"
+        @toggle="toggleFolder"
+      />
+
+      <!-- Graph panel -->
       <div class="relative min-w-0 flex-1 overflow-hidden">
+        <!-- Filter bar floating overlay -->
         <div class="pointer-events-none absolute left-4 top-4 z-10 flex flex-col gap-2">
-          <div class="pointer-events-auto flex w-64 items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/90 px-2 py-1.5 backdrop-blur">
-            <svg class="h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <!-- Search -->
+          <div class="pointer-events-auto flex w-72 items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-900/95 px-3 py-2 shadow-lg backdrop-blur">
+            <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               v-model="searchQuery"
               type="search"
-              placeholder="Filter bookmarks…"
+              placeholder="Search bookmarks…"
               class="w-full bg-transparent text-xs text-slate-100 outline-none placeholder:text-slate-600"
             />
           </div>
-          <div v-if="allTags.length" class="pointer-events-auto flex max-w-64 flex-wrap gap-1 rounded-lg border border-slate-700 bg-slate-900/90 px-2 py-1.5 backdrop-blur">
+
+          <!-- Tags -->
+          <div v-if="allTags.length" class="pointer-events-auto flex max-w-72 flex-wrap gap-1 rounded-xl border border-slate-700/80 bg-slate-900/95 px-3 py-2 shadow-lg backdrop-blur">
             <button
               type="button"
               class="rounded-full px-2 py-0.5 text-[10px] font-semibold transition"
@@ -186,45 +221,141 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <!-- Loading state -->
         <div v-if="isLoading && bookmarks.length === 0" class="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
-          Loading bookmarks…
+          <div class="flex flex-col items-center gap-3">
+            <div class="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-rose-500"></div>
+            <span>Loading bookmarks…</span>
+          </div>
         </div>
-        <div v-else-if="bookmarks.length === 0" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
-          <svg class="h-8 w-8 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" /></svg>
-          <p>No bookmarks yet.</p>
+
+        <!-- Empty state -->
+        <div v-else-if="bookmarks.length === 0" class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-slate-500">
+          <svg class="h-12 w-12 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+          </svg>
+          <p class="font-medium text-slate-400">No bookmarks yet</p>
+          <p class="text-xs text-slate-600">Start saving bookmarks using the extension toolbar.</p>
         </div>
-        <div v-else-if="nodeCount === 0" class="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+
+        <!-- No filter results -->
+        <div v-else-if="nodes.length === 0" class="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
           No bookmarks match the current filter.
         </div>
 
-        <BookmarksGraphCanvas
+        <!-- Vue Flow graph -->
+        <VueFlow
           v-else
-          ref="canvas"
-          :layout="layout"
-          :selected-id="selectedId"
-          @select="onSelect"
-          @background="onBackground"
-          @drop-bookmark="onDropBookmark"
-        />
+          :nodes="nodes"
+          :edges="edges"
+          :default-viewport="{ zoom: 0.8, x: 50, y: 50 }"
+          :min-zoom="0.2"
+          :max-zoom="3"
+          :pan-on-scroll="true"
+          :zoom-on-scroll="true"
+          :nodes-draggable="true"
+          :nodes-connectable="false"
+          :edges-updatable="false"
+          class="h-full w-full"
+          @node-double-click="onNodeDoubleClick"
+          @node-click="onNodeClick"
+        >
+          <!-- Custom node types -->
+          <template #node-root="rootProps">
+            <RootNode :data="rootProps.data" />
+          </template>
+          <template #node-folder="folderProps">
+            <FolderNode :id="folderProps.id" :data="folderProps.data" @toggle="toggleFolder" />
+          </template>
+          <template #node-bookmark="bookmarkProps">
+            <BookmarkNode :data="bookmarkProps.data" @select="(b) => { selectBookmark(b); showInspector = true }" />
+          </template>
 
-        <div class="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-slate-900/80 px-2.5 py-1 text-[10px] text-slate-500 backdrop-blur">
-          Drag background to pan · wheel to zoom · drag a bookmark onto a folder to move it
+          <!-- Background pattern -->
+          <Background :gap="24" :size="1" pattern-color="rgba(51, 65, 85, 0.3)" />
+
+          <!-- Controls -->
+          <Controls position="bottom-right" />
+
+          <!-- MiniMap -->
+          <MiniMap position="bottom-left" pannable zoomable />
+        </VueFlow>
+
+        <!-- Hint -->
+        <div class="pointer-events-none absolute bottom-3 right-32 rounded-lg bg-slate-900/80 px-2.5 py-1 text-[10px] text-slate-500 backdrop-blur">
+          Double-click folder to expand · Click bookmark to inspect · Scroll to zoom
         </div>
       </div>
 
+      <!-- Inspector sidebar -->
       <BookmarkInspector
-        :node="selectedNode"
+        v-if="showInspector"
+        :bookmark="selectedBookmark"
         @edit="requestEdit"
         @delete="onDelete"
-        @move="onMoveFromInspector"
-        @close="clearSelection"
+        @move="onMove"
+        @close="closeInspector"
       />
     </div>
 
+    <!-- Error toast -->
     <div v-if="errorMessage" class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg border border-rose-500/30 bg-rose-950 px-4 py-2 text-xs text-rose-200 shadow-xl">
       {{ errorMessage }}
     </div>
 
+    <!-- Edit modal -->
     <BookmarkEditDialog :bookmark="editing" @close="editing = null" @save="onSaveEdit" />
   </main>
 </template>
+
+<style>
+@import '@vue-flow/core/dist/style.css';
+@import '@vue-flow/core/dist/theme-default.css';
+@import '@vue-flow/controls/dist/style.css';
+@import '@vue-flow/minimap/dist/style.css';
+
+/* Override Vue Flow defaults for dark theme */
+.vue-flow {
+  --vf-node-bg: transparent;
+  --vf-node-text: #e2e8f0;
+  --vf-connection-stroke: rgb(244 63 94 / 0.5);
+  --vf-handle: #64748b;
+}
+
+.vue-flow__edge-path {
+  stroke: rgb(71 85 105 / 0.6);
+  stroke-width: 2;
+}
+
+.vue-flow__edge.animated .vue-flow__edge-path {
+  stroke: rgb(251 191 36 / 0.4);
+}
+
+.vue-flow__minimap {
+  background: rgb(15 23 42 / 0.9);
+  border: 1px solid rgb(51 65 85 / 0.5);
+  border-radius: 0.75rem;
+}
+
+.vue-flow__controls {
+  background: rgb(15 23 42 / 0.9);
+  border: 1px solid rgb(51 65 85 / 0.5);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.vue-flow__controls-button {
+  background: transparent;
+  border-bottom-color: rgb(51 65 85 / 0.3);
+  fill: #94a3b8;
+}
+
+.vue-flow__controls-button:hover {
+  background: rgb(30 41 59);
+  fill: #f1f5f9;
+}
+
+.vue-flow__background pattern circle {
+  fill: rgb(51 65 85 / 0.4);
+}
+</style>

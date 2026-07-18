@@ -11,3 +11,4 @@ overrides:
 allowBuilds:
   esbuild: false
   sharp: false
+  vue-demi: false

@@ -1,14 +1,7 @@
 import type { BookmarkResponse } from '@browser-server/shared-client'
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { createApiClient, useExtensionSettings, useUserId, useBookmarksView } from '../composables/composables'
-import { buildLayout, type GraphLayout, type PositionedNode } from './buildGraph'
-
-export type SelectionKind = 'bookmark' | 'folder' | 'root' | null
-
-export interface GraphSelection {
-  kind: SelectionKind
-  node: PositionedNode | null
-}
+import { buildFlowGraph, buildFolderTree, getAllFolderIds, type GraphNode, type GraphEdge, type FolderTreeNode } from './buildGraph'
 
 export interface UseBookmarksGraphReturn {
   isReady: ComputedRef<boolean>
@@ -16,14 +9,19 @@ export interface UseBookmarksGraphReturn {
   errorMessage: Ref<string | null>
   bookmarks: Ref<BookmarkResponse[]>
   allTags: ComputedRef<string[]>
-  layout: ComputedRef<GraphLayout>
-  selection: Ref<GraphSelection>
+  nodes: ComputedRef<GraphNode[]>
+  edges: ComputedRef<GraphEdge[]>
+  folderTree: ComputedRef<FolderTreeNode[]>
+  expandedFolders: Ref<Set<string>>
   searchQuery: Ref<string>
   activeTag: Ref<string>
+  selectedBookmark: Ref<BookmarkResponse | null>
   load(): Promise<void>
   refresh(): Promise<void>
-  select(node: PositionedNode | null): void
-  clearSelection(): void
+  toggleFolder(folderId: string): void
+  expandAll(): void
+  collapseAll(): void
+  selectBookmark(bookmark: BookmarkResponse | null): void
   updateBookmark(id: number, data: {
     user_id: number
     title: string
@@ -38,10 +36,8 @@ export interface UseBookmarksGraphReturn {
 }
 
 /**
- * Graph view-model. Reuses `useBookmarksView` as the data layer (load,
- * filter, create/update/delete) and layers graph-specific concerns on top:
- * radial layout computed from the filtered set, selection state, and a
- * `moveBookmark` helper that updates only `folder_path`.
+ * Graph view-model using Vue Flow. Handles data fetching, filtering,
+ * folder expand/collapse state, and bookmark CRUD operations.
  */
 export function useBookmarksGraph(): UseBookmarksGraphReturn {
   const { settings } = useExtensionSettings()
@@ -61,22 +57,45 @@ export function useBookmarksGraph(): UseBookmarksGraphReturn {
     deleteBookmark,
   } = useBookmarksView(client, userId)
 
-  const selection = ref<GraphSelection>({ kind: null, node: null })
+  const expandedFolders = ref<Set<string>>(new Set())
+  const selectedBookmark = ref<BookmarkResponse | null>(null)
 
   const isReady = computed(() => Boolean(client.value) && userId.value > 0)
 
-  const layout = computed(() => buildLayout(filtered.value))
-
-  function select(node: PositionedNode | null): void {
-    if (!node) {
-      selection.value = { kind: null, node: null }
-      return
+  // When searching/filtering, auto-expand all folders so results are visible
+  const effectiveExpanded = computed(() => {
+    if (searchQuery.value.trim() || activeTag.value) {
+      return new Set(getAllFolderIds(filtered.value))
     }
-    selection.value = { kind: node.node.type, node }
+    return expandedFolders.value
+  })
+
+  const graphData = computed(() => buildFlowGraph(filtered.value, effectiveExpanded.value))
+
+  const nodes = computed(() => graphData.value.nodes)
+  const edges = computed(() => graphData.value.edges)
+  const folderTree = computed(() => buildFolderTree(filtered.value))
+
+  function toggleFolder(folderId: string): void {
+    const next = new Set(expandedFolders.value)
+    if (next.has(folderId)) {
+      next.delete(folderId)
+    } else {
+      next.add(folderId)
+    }
+    expandedFolders.value = next
   }
 
-  function clearSelection(): void {
-    selection.value = { kind: null, node: null }
+  function expandAll(): void {
+    expandedFolders.value = new Set(getAllFolderIds(filtered.value))
+  }
+
+  function collapseAll(): void {
+    expandedFolders.value = new Set()
+  }
+
+  function selectBookmark(bookmark: BookmarkResponse | null): void {
+    selectedBookmark.value = bookmark
   }
 
   async function moveBookmark(id: number, folderPath: string): Promise<void> {
@@ -97,12 +116,12 @@ export function useBookmarksGraph(): UseBookmarksGraphReturn {
   }
 
   function cleanup(): void {
-    // Watchers live in useBookmarksView/useExtensionSettings; nothing local
-    // to dispose. Kept for symmetry with useHistoryBrowser.
+    // Nothing to dispose — Vue's reactivity handles teardown.
   }
 
   watch([client, userId], () => {
-    clearSelection()
+    expandedFolders.value = new Set()
+    selectedBookmark.value = null
     if (isReady.value) void load()
   }, { immediate: true })
 
@@ -112,14 +131,19 @@ export function useBookmarksGraph(): UseBookmarksGraphReturn {
     errorMessage,
     bookmarks: items,
     allTags,
-    layout,
-    selection,
+    nodes,
+    edges,
+    folderTree,
+    expandedFolders,
     searchQuery,
     activeTag,
+    selectedBookmark,
     load,
     refresh,
-    select,
-    clearSelection,
+    toggleFolder,
+    expandAll,
+    collapseAll,
+    selectBookmark,
     updateBookmark,
     moveBookmark,
     deleteBookmark,

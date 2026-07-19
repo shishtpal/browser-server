@@ -70,7 +70,7 @@ $env:CGO_ENABLED = "1"
 
 # Create the operator token (first run only)
 ./bin/server.exe token generate
-# Put the token inside of `.server-token` file, along with go binary
+# Put the token inside of `.bs-token` file, along with go binary
 
 # Start the server
 ./bin/server.exe
@@ -83,7 +83,7 @@ The build output is arranged as follows because the server resolves its static a
 ```text
 bin/
 ├── server.exe
-├── .server-token
+├── .bs-token
 ├── .data/
 └── frontend/dist/
 ```
@@ -97,7 +97,7 @@ The token and data directories are created when their corresponding commands run
 | `--port PORT` | `9191` | Server port; takes precedence over `PORT` |
 | `PORT` | `9191` | Server port when `--port` is not supplied |
 | `DATA_PATH` | `.data/` beside the executable | SQLite databases and screenshot files |
-| `SERVER_TOKEN_PATH` | `.server-token` beside the executable | Operator token file |
+| `SERVER_TOKEN_PATH` | `.bs-token` beside the executable | Operator token file |
 
 Examples:
 
@@ -105,7 +105,7 @@ Examples:
 ./bin/server.exe --port 9090
 
 $env:DATA_PATH = "D:\BrowserServerData"
-$env:SERVER_TOKEN_PATH = "D:\BrowserServerData\.server-token"
+$env:SERVER_TOKEN_PATH = "D:\BrowserServerData\.bs-token"
 ./bin/server.exe
 ```
 
@@ -234,7 +234,7 @@ For changes you intend to contribute, use a fork and a short-lived branch instea
    git push -u origin feat/short-description
    ```
 
-Keep pull requests focused and explain what changed, why it changed, and which checks passed. Never commit generated output or local secrets, including `bin/`, `dist/`, `node_modules/`, `.data/`, `.server-token`, or `.env` files.
+Keep pull requests focused and explain what changed, why it changed, and which checks passed. Never commit generated output or local secrets, including `bin/`, `dist/`, `node_modules/`, `.data/`, `.bs-token`, or `.env` files.
 
 ## Repository layout
 

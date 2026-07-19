@@ -21,7 +21,7 @@ This root `AGENTS.md` covers the Go backend and cross-cutting concerns. Each fro
 - Keep commits focused and use the repository's Conventional Commit-style subjects: `feat(scope): ...`, `fix(scope): ...`, `docs(scope): ...`, `refactor(scope): ...`, or `chore(scope): ...`.
 - Run checks appropriate to the changed area before committing. At minimum, use `go test ./...` and `go vet ./...` for backend changes, the package build for frontend changes, and `type-check` plus the package build for extension changes.
 - Review both `git diff` and `git diff --cached` so commits contain only intended changes.
-- Never commit generated output, dependencies, runtime data, or secrets: `bin/`, `dist/`, `node_modules/`, `.data/`, `.server-token`, `.env`, and local logs.
+- Never commit generated output, dependencies, runtime data, or secrets: `bin/`, `dist/`, `node_modules/`, `.data/`, `.bs-token`, `.env`, and local logs.
 - Push feature branches and open pull requests against `main`; do not force-push or rewrite shared branch history.
 - For fork-based work, use the fork as `origin` and add this repository as `upstream`: `git remote add upstream https://github.com/shishtpal/browser-server.git`.
 
@@ -41,7 +41,7 @@ This root `AGENTS.md` covers the Go backend and cross-cutting concerns. Each fro
 browser-server/
 ├── cmd/server/main.go          # Entry point — CLI subcommands, router setup, static serving
 ├── internal/
-│   ├── auth/token.go           # API token: generate/refresh/load/validate (.server-token file)
+│   ├── auth/token.go           # API token: generate/refresh/load/validate (.bs-token file)
 │   ├── db/db.go                # SQLite connection management, schema init, sample data
 │   ├── models/models.go        # Shared structs (Todo, Bookmark, History, WalletEntry, User, Route)
 │   ├── helpers/helpers.go      # Query param parsing, path ID extraction, JSON tag conversion
@@ -110,14 +110,14 @@ Serves on `:9191` by default. Override the port with `server --port 9090` or `PO
 
 ### Token CLI subcommands
 
-- `server token generate` — create a random token, save to `.server-token` next to the binary (refuses to overwrite).
+- `server token generate` — create a random token, save to `.bs-token` next to the binary (refuses to overwrite).
 - `server token refresh` — regenerate (rotate) the token, overwriting the existing file.
 
 ## Authentication
 
 Auth is a single **operator-level API token** — there is no user login/registration. See [`internal/auth/token.go`](internal/auth/token.go) and [`internal/middleware/auth.go`](internal/middleware/auth.go).
 
-- The token is an opaque random hex string stored in `.server-token` alongside the binary (path overridable via `SERVER_TOKEN_PATH`).
+- The token is an opaque random hex string stored in `.bs-token` alongside the binary (path overridable via `SERVER_TOKEN_PATH`).
 - `auth.Load()` reads it into memory at startup; if missing, the server still starts but every `/api` request returns `503` until a token is generated.
 - The `middleware.Auth` middleware is applied to the `/api` subrouter only. It accepts the token via `Authorization: Bearer <token>`, or via a `?token=` query param (needed for `<img>`-loaded screenshots that can't set headers). Comparison is constant-time.
 - Responses: `401` for missing/invalid token, `503` when no token is configured. `/health` is intentionally left public.
@@ -233,4 +233,4 @@ For cross-domain search endpoints like `/api/search/omnibox`, keep the response 
 - User filtering is done via `?user_id=` query parameter
 - Cross-package struct literals use keyed fields (go vet compliance)
 - Sample data is inserted on first run if tables are empty
-- `DATA_PATH` env var overrides the default `.data/` location; `SERVER_TOKEN_PATH` overrides the `.server-token` location
+- `DATA_PATH` env var overrides the default `.data/` location; `SERVER_TOKEN_PATH` overrides the `.bs-token` location

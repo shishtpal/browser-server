@@ -1,6 +1,6 @@
 // Package auth manages the single operator-level API token used to protect the
 // server's API routes. The token is an opaque, long-lived secret stored in a
-// .server-token file alongside the binary and presented by clients via the
+// .bs-token file alongside the binary and presented by clients via the
 // Authorization: Bearer <token> header.
 package auth
 
@@ -16,7 +16,7 @@ import (
 	"sync"
 )
 
-const tokenFileName = ".server-token"
+const tokenFileName = ".bs-token"
 
 // tokenBytes is the number of random bytes in a generated token (hex-encoded to
 // twice this many characters).
@@ -27,7 +27,7 @@ var (
 	current string // the in-memory expected token, loaded at startup
 )
 
-// TokenPath returns the path to the .server-token file. It honors the
+// TokenPath returns the path to the .bs-token file. It honors the
 // SERVER_TOKEN_PATH environment variable, otherwise it resolves the file next
 // to the running binary (consistent with how DATA_PATH defaults work).
 func TokenPath() (string, error) {

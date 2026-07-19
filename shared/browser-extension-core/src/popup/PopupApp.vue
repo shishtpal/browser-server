@@ -82,6 +82,12 @@ function openSettings() {
   getBrowserApi().runtime.openOptionsPage()
 }
 
+function openWebApp() {
+  if (settings.value?.apiBase) {
+    void getBrowserApi().tabs.create({ url: settings.value.apiBase, active: true })
+  }
+}
+
 function onKeyDown(event: KeyboardEvent) {
   if (event.ctrlKey && event.key === 'Backspace') {
     event.preventDefault()
@@ -136,6 +142,18 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            title="Open Web App"
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            @click="openWebApp"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6" />
+              <path d="M10 14 21 3" />
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            </svg>
+          </button>
           <button
             type="button"
             title="Refresh"
@@ -202,7 +220,7 @@ onBeforeUnmount(() => {
         <div class="min-w-0 flex-1">
           <p class="text-xs font-semibold text-rose-300">Browser server is not running</p>
           <p class="mt-0.5 text-[11px] text-rose-400/80">
-            Start <span class="font-mono">{{ settings?.apiBase ?? 'localhost:8080' }}</span> to sync your data.
+            Start <button type="button" class="font-mono underline decoration-rose-400/30 underline-offset-2 hover:text-rose-300" @click="openWebApp">{{ settings?.apiBase ?? 'localhost:8080' }}</button> to sync your data.
           </p>
           <button
             type="button"

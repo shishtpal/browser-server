@@ -5,6 +5,7 @@ import { dataUrlToBlob, isTrackableUrl } from './browser'
 import { getSettings, type ExtensionSettings } from './settings'
 
 const MENU_ROOT = 'browser-server-capture'
+const MENU_OPEN_WEB = 'browser-server-open-web'
 const MENU_BOOKMARK = 'browser-server-save-bookmark'
 const MENU_TODO = 'browser-server-create-todo'
 const MENU_TODO_SCREENSHOT = 'browser-server-create-todo-screenshot'
@@ -335,6 +336,7 @@ async function createContextMenus(): Promise<void> {
   const menus = getBrowserApi().contextMenus
   await menus.removeAll()
   menus.create({ id: MENU_ROOT, title: 'Browser Server', contexts: ['page', 'selection'] })
+  menus.create({ id: MENU_OPEN_WEB, parentId: MENU_ROOT, title: 'Open Web App', contexts: ['page', 'selection'] })
   menus.create({ id: MENU_BOOKMARK, parentId: MENU_ROOT, title: 'Save page as bookmark', contexts: ['page', 'selection'] })
   menus.create({ id: MENU_TODO, parentId: MENU_ROOT, title: 'Create todo from page', contexts: ['page', 'selection'] })
   menus.create({ id: MENU_TODO_SCREENSHOT, parentId: MENU_ROOT, title: 'Create todo with screenshot', contexts: ['page', 'selection'] })
@@ -349,6 +351,13 @@ export function initOneClickCapture(): void {
 
   api.contextMenus.onClicked.addListener((info: ContextMenuClickInfo, tab?: BrowserTab) => {
     switch (String(info.menuItemId)) {
+      case MENU_OPEN_WEB:
+        void getSettings().then((settings) => {
+          if (settings.apiBase) {
+            void api.tabs.create({ url: settings.apiBase, active: true })
+          }
+        })
+        break
       case MENU_BOOKMARK:
         void captureTab('bookmark', tab, info.selectionText).catch((error) => notify('Capture failed', errorMessage(error)))
         break

@@ -133,7 +133,17 @@ onMounted(() => {
 
       <div class="space-y-5">
         <label class="block">
-          <span class="mb-2 block text-sm font-medium text-slate-300">Server URL</span>
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-300">Server URL</span>
+            <button
+              v-if="form.apiBase"
+              type="button"
+              class="text-xs text-rose-400 hover:text-rose-300 hover:underline"
+              @click="getBrowserApi().tabs.create({ url: form.apiBase, active: true })"
+            >
+              Open Web App
+            </button>
+          </div>
           <input
             v-model="form.apiBase"
             type="text"

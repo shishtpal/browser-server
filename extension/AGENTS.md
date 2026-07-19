@@ -4,7 +4,7 @@ Vite + Vue 3 + TailwindCSS Manifest V3 browser extension for Browser Server. Thi
 
 ## What it does
 
-Captures browsing history and per-domain time usage in real time and syncs them to the local server (`localhost:8080`). Provides a popup UI (todos, history, bookmarks, wallet, analytics views), an options page for settings, and Chrome omnibox suggestions from server-side bookmarks/history.
+Captures browsing history and per-domain time usage in real time and syncs them to the local server (`localhost:9191`). Provides a popup UI (todos, history, bookmarks, wallet, analytics views), an options page for settings, and Chrome omnibox suggestions from server-side bookmarks/history.
 
 ## Tech Stack
 

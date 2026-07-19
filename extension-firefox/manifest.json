@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Browser History Tracker",
   "version": "1.1.0",
-  "description": "Captures browsing history in real-time, syncing to the local browser-server on localhost:8080.",
+  "description": "Captures browsing history in real-time, syncing to the local browser-server on localhost:9191.",
   "browser_specific_settings": {
     "gecko": {
       "id": "browser-history-tracker@browser-server",

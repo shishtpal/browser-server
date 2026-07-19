@@ -78,7 +78,7 @@ A composable (e.g. [`composables/useTodos.ts`](src/composables/useTodos.ts)) ret
 - Prefer functions exported from [`lib/api.ts`](src/lib/api.ts) — they wrap the shared client (`createBrowserServerClient(API_BASE, { getToken })`).
 - New endpoints belong in the **shared client** (`shared/browser-client`) first, then a thin re-export here.
 - Any raw `fetch` in `lib/api.ts` MUST include the auth header: `headers: { ...authHeaders() }` (JSON) or `headers: authHeaders()` (GET/DELETE/FormData). Otherwise requests get `401`.
-- `API_BASE` is `http://localhost:8080`.
+- `API_BASE` is `http://localhost:9191`.
 
 ### Authentication / token
 

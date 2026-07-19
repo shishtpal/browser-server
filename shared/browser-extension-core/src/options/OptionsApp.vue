@@ -148,7 +148,7 @@ onMounted(() => {
             v-model="form.apiBase"
             type="text"
             class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-400 focus:outline-none"
-            placeholder="http://localhost:8080"
+            placeholder="http://localhost:9191"
           />
           <span class="mt-2 block text-xs text-slate-500">
             Base URL of the running browser-server instance.

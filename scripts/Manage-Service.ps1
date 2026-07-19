@@ -4,7 +4,7 @@
     Create, start, and stop a Windows service for a given executable command.
 
 .DESCRIPTION
-    Manages a Windows service wrapping: server.exe --port=8080
+    Manages a Windows service wrapping: server.exe --port=9191
     Uses NSSM (Non-Sucking Service Manager) if available, otherwise falls back
     to sc.exe with a wrapper approach via PowerShell's built-in service cmdlets.
 
@@ -34,11 +34,11 @@ param(
 
     [string]$ExePath = "D:\Codings\lang-Go\browser-server\bin\server.exe",
 
-    [string]$ServiceArgs = "--port=8080",
+    [string]$ServiceArgs = "--port=9191",
 
     [string]$DisplayName = "My Browser Server Service",
 
-    [string]$Description = "Runs server.exe --port=8080 as a Windows service"
+    [string]$Description = "Runs server.exe --port=9191 as a Windows service"
 )
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

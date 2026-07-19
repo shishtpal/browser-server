@@ -32,7 +32,7 @@ func TestValidatorPositiveID(t *testing.T) {
 func TestValidatorURL(t *testing.T) {
 	cases := map[string]bool{
 		"https://example.com":     true,
-		"http://localhost:8080/x": true,
+		"http://localhost:9191/x": true,
 		"ftp://example.com":       false,
 		"example.com":             false,
 		"":                        false,
@@ -52,7 +52,7 @@ func TestURLHostname(t *testing.T) {
 		"https://Example.com/path":                "example.com",
 		"https://user:pass@example.com:8443/path": "example.com",
 		"https://example.com?section=history":     "example.com",
-		"http://[::1]:8080/path":                  "::1",
+		"http://[::1]:9191/path":                  "::1",
 		"chrome://history":                        "",
 		"not a URL":                               "",
 	}

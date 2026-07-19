@@ -220,7 +220,7 @@ onBeforeUnmount(() => {
         <div class="min-w-0 flex-1">
           <p class="text-xs font-semibold text-rose-300">Browser server is not running</p>
           <p class="mt-0.5 text-[11px] text-rose-400/80">
-            Start <button type="button" class="font-mono underline decoration-rose-400/30 underline-offset-2 hover:text-rose-300" @click="openWebApp">{{ settings?.apiBase ?? 'localhost:8080' }}</button> to sync your data.
+            Start <button type="button" class="font-mono underline decoration-rose-400/30 underline-offset-2 hover:text-rose-300" @click="openWebApp">{{ settings?.apiBase ?? 'localhost:9191' }}</button> to sync your data.
           </p>
           <button
             type="button"

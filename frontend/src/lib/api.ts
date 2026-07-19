@@ -28,7 +28,7 @@ import type {
 
 import { authHeaders, getToken } from './auth'
 
-const API_BASE = 'http://localhost:8080'
+const API_BASE = 'http://localhost:9191'
 
 const client = createBrowserServerClient(API_BASE, { getToken })
 

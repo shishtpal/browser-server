@@ -20,7 +20,7 @@ import (
 	"browser-server/internal/middleware"
 )
 
-const defaultPort = "8080"
+const defaultPort = "9191"
 
 func main() {
 	// CLI subcommands (e.g. `server token generate`) run and exit before the

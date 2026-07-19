@@ -40,7 +40,7 @@
     <td v-show="!editing" class="px-3 py-3 text-right">
       <div class="flex justify-end gap-1">
         <button type="button" @click="emit('startEdit', todo)" class="rounded-lg px-2.5 py-1.5 text-xs font-black text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400">Edit</button>
-        <button type="button" @click="emit('delete', todo.id)" class="rounded-lg px-2.5 py-1.5 text-xs font-black text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400">Delete</button>
+        <button type="button" @click="confirmDelete" class="rounded-lg px-2.5 py-1.5 text-xs font-black text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400">Delete</button>
       </div>
     </td>
   </tr>
@@ -81,4 +81,10 @@ watch(() => props.editing, (val) => {
     localDescription.value = props.initialDescription ?? props.todo.description
   }
 })
+
+function confirmDelete() {
+  if (window.confirm(`Delete "${props.todo.title}"?`)) {
+    emit('delete', props.todo.id)
+  }
+}
 </script>

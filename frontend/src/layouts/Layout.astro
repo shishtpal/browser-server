@@ -10,17 +10,24 @@ interface Props {
 const { title } = Astro.props
 const pageTitle = title ? `${title} | Browser Server` : 'Browser Server'
 const activePath = Astro.url.pathname
-const navItems = [
-  { href: '/', label: 'Todos' },
-  { href: '/bookmarks/', label: 'Bookmarks' },
-  { href: '/history/', label: 'History' },
-  { href: '/wallet/', label: 'Wallet' },
-  { href: '/analytics/', label: 'Usage' },
-  { href: '/chat/', label: 'Chat' },
+
+const primaryNav = [
+  { href: '/', label: 'Todos', icon: 'check' },
+  { href: '/bookmarks/', label: 'Bookmarks', icon: 'bookmark' },
+  { href: '/history/', label: 'History', icon: 'clock' },
+  { href: '/wallet/', label: 'Wallet', icon: 'lock' },
+  { href: '/analytics/', label: 'Usage', icon: 'chart' },
+  { href: '/chat/', label: 'Chat', icon: 'chat' },
+]
+
+const secondaryNav = [
   { href: '/users/', label: 'Users' },
   { href: '/contact/', label: 'Contact' },
   { href: '/about/', label: 'About' },
 ]
+
+const allNav = [...primaryNav, ...secondaryNav]
+
 const isActive = (href: string) => {
   if (href === '/') return activePath === '/'
   const p = activePath.endsWith('/') ? activePath : activePath + '/'
@@ -55,61 +62,121 @@ const isActive = (href: string) => {
     </div>
 
     <header class="sticky top-0 z-50 border-b border-gray-200/80 bg-white/80 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-slate-950/80">
-      <nav class="mx-auto flex w-full max-w-full items-center justify-between px-4 py-2 sm:px-6 lg:px-10 xl:px-12" aria-label="Main navigation">
-        <a href="/" class="group flex items-center gap-2">
-          <span class="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-indigo-400 via-violet-400 to-cyan-300 text-sm font-black text-white shadow-lg shadow-indigo-500/25 transition group-hover:scale-105">B</span>
-          <span class="hidden sm:block">
-            <span class="block text-xs font-semibold tracking-wide text-slate-900 transition-colors dark:text-white">Browser Server</span>
-            <span class="block text-[10px] text-slate-500 transition-colors dark:text-slate-400">Personal data hub</span>
-          </span>
+      <nav class="mx-auto flex w-full max-w-full items-center gap-1 px-3 py-1.5 sm:px-5 lg:px-8" aria-label="Main navigation">
+        <!-- Logo -->
+        <a href="/" class="group mr-3 flex shrink-0 items-center gap-2">
+          <span class="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-400 text-[11px] font-black text-white shadow-md shadow-indigo-500/20 transition-transform group-hover:scale-110">B</span>
+          <span class="hidden text-[13px] font-bold tracking-tight text-slate-900 dark:text-white sm:block">Browser Server</span>
         </a>
 
-        <div class="hidden items-center gap-0.5 md:flex">
+        <!-- Primary nav (desktop) -->
+        <div class="hidden flex-1 items-center gap-0.5 md:flex">
           {
-            navItems.map(item => (
+            primaryNav.map(item => (
               <a
                 href={item.href}
-                class={[
-                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
+                class:list={[
+                  'group relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-all',
                   isActive(item.href)
-                    ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 dark:bg-white/10 dark:text-white dark:ring-white/10 dark:shadow-white/5'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white'
+                    ? 'bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white'
+                ]}
+              >
+                <svg class="h-3.5 w-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  {item.icon === 'check' && <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />}
+                  {item.icon === 'bookmark' && <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />}
+                  {item.icon === 'clock' && <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
+                  {item.icon === 'lock' && <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>}
+                  {item.icon === 'chart' && <path d="M18 20V10M12 20V4M6 20v-6" />}
+                  {item.icon === 'chat' && <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />}
+                </svg>
+                {item.label}
+              </a>
+            ))
+          }
+
+          <!-- Secondary nav separator + links -->
+          <span class="mx-1.5 h-4 w-px bg-slate-200 dark:bg-white/10"></span>
+          {
+            secondaryNav.map(item => (
+              <a
+                href={item.href}
+                class:list={[
+                  'rounded-md px-2 py-1.5 text-[11px] font-medium transition-all',
+                  isActive(item.href)
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-slate-300'
                 ]}
               >{item.label}</a>
             ))
           }
-          <div class="ml-1 flex items-center gap-2">
-            <ServerStatus client:only="vue" />
-            <ApiTokenSettings client:only="vue" />
-            <ThemeToggle client:only="vue" />
-          </div>
         </div>
 
-        <div class="flex items-center gap-2 md:hidden">
+        <!-- Right widgets -->
+        <div class="ml-auto flex items-center gap-1.5">
+          <div class="hidden md:block">
+            <ServerStatus client:only="vue" />
+          </div>
           <ApiTokenSettings client:only="vue" />
           <ThemeToggle client:only="vue" />
-          <button id="mobile-menu-btn" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-slate-600 transition hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10" type="button" aria-label="Toggle menu" aria-expanded="false">
-            <svg id="menu-icon-open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <!-- Mobile menu button -->
+          <button
+            id="mobile-menu-btn"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-100 md:hidden dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/10"
+            type="button"
+            aria-label="Open menu"
+            aria-expanded="false"
+          >
+            <svg id="menu-icon-open" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            <svg id="menu-icon-close" class="hidden h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg id="menu-icon-close" class="hidden h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
       </nav>
 
-      <div id="mobile-menu" class="hidden border-t border-gray-200/80 bg-white/95 px-4 py-3 shadow-2xl dark:border-white/10 dark:bg-slate-950/95 md:hidden">
-        <div class="mx-auto grid max-w-7xl gap-2">
+      <!-- Mobile menu -->
+      <div id="mobile-menu" class="hidden border-t border-slate-200/80 bg-white/98 px-3 pb-3 pt-2 dark:border-white/10 dark:bg-slate-950/98 md:hidden">
+        <div class="mb-2">
+          <ServerStatus client:only="vue" />
+        </div>
+        <div class="grid grid-cols-2 gap-1.5">
           {
-            navItems.map(item => (
+            primaryNav.map(item => (
               <a
                 href={item.href}
-                class={[
-                  'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                class:list={[
+                  'flex items-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-semibold transition',
                   isActive(item.href)
-                    ? 'bg-gradient-to-r from-indigo-500/15 to-cyan-400/10 text-slate-900 ring-1 ring-slate-900/10 dark:from-indigo-500/25 dark:to-cyan-400/20 dark:text-white dark:ring-white/10'
-                    : 'text-slate-700 hover:bg-gray-100 dark:text-white/90 dark:hover:bg-white/10 dark:hover:text-white'
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10'
+                ]}
+              >
+                <svg class="h-4 w-4 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  {item.icon === 'check' && <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />}
+                  {item.icon === 'bookmark' && <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />}
+                  {item.icon === 'clock' && <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
+                  {item.icon === 'lock' && <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>}
+                  {item.icon === 'chart' && <path d="M18 20V10M12 20V4M6 20v-6" />}
+                  {item.icon === 'chat' && <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />}
+                </svg>
+                {item.label}
+              </a>
+            ))
+          }
+        </div>
+        <div class="mt-2 flex gap-1.5 border-t border-slate-100 pt-2 dark:border-white/5">
+          {
+            secondaryNav.map(item => (
+              <a
+                href={item.href}
+                class:list={[
+                  'flex-1 rounded-lg px-3 py-2 text-center text-[12px] font-medium transition',
+                  isActive(item.href)
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                    : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10'
                 ]}
               >{item.label}</a>
             ))
@@ -137,10 +204,10 @@ const isActive = (href: string) => {
     }
 
     btn.addEventListener('click', () => {
-      const open = menu.classList.toggle('hidden')
-      iconOpen.classList.toggle('hidden', !open)
-      iconClose.classList.toggle('hidden', open)
-      btn.setAttribute('aria-expanded', String(open))
+      const isHidden = menu.classList.toggle('hidden')
+      iconOpen.classList.toggle('hidden', !isHidden)
+      iconClose.classList.toggle('hidden', isHidden)
+      btn.setAttribute('aria-expanded', String(!isHidden))
     })
 
     menu.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu))

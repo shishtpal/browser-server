@@ -20,12 +20,22 @@ type Tool struct {
 	Execute     func(context.Context, json.RawMessage) (any, error)
 }
 
-type Registry struct{ tools map[string]Tool }
+type Registry struct {
+	tools map[string]Tool
+	shell ShellInfo
+}
 
 func New() *Registry {
-	r := &Registry{tools: map[string]Tool{}}
+	shell := DetectShell()
+	r := &Registry{tools: map[string]Tool{}, shell: shell}
 	r.add(Tool{Name: "get_current_time", Description: "Get the current server time", Schema: json.RawMessage(`{"type":"object","properties":{"timezone":{"type":"string"}},"additionalProperties":false}`), Execute: currentTime})
 	r.add(Tool{Name: "search_bookmarks", Description: "Search the local bookmark database", Schema: json.RawMessage(`{"type":"object","properties":{"user_id":{"type":"integer","minimum":1},"query":{"type":"string","maxLength":200},"limit":{"type":"integer","minimum":1,"maximum":20}},"required":["user_id","query"],"additionalProperties":false}`), Execute: searchBookmarks})
+	r.add(Tool{
+		Name:        "execute_command",
+		Description: fmt.Sprintf("Execute a shell command on the server. The server is running on %s with %s. Generate commands using %s syntax. Use this to run system commands, check file contents, list directories, manage processes, etc. Commands time out after 30 seconds max.", shell.Platform, shell.Name, shell.Name),
+		Schema:      json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","description":"The shell command to execute. Use ` + shell.Name + ` syntax.","maxLength":4096},"working_dir":{"type":"string","description":"Optional working directory for the command. Defaults to the server binary directory."},"timeout_seconds":{"type":"integer","description":"Timeout in seconds (1-30). Defaults to 10.","minimum":1,"maximum":30}},"required":["command"],"additionalProperties":false}`),
+		Execute:     executeCommand(shell),
+	})
 	return r
 }
 func (r *Registry) add(t Tool) { r.tools[t.Name] = t }

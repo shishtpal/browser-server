@@ -262,7 +262,7 @@ func validate(cfg *Config) error {
 	if cfg.Tools.MaxIterations <= 0 || cfg.Tools.MaxIterations > 20 {
 		return fmt.Errorf("tools.max_iterations must be between 1 and 20")
 	}
-	known := map[string]bool{"get_current_time": true, "search_bookmarks": true}
+	known := map[string]bool{"get_current_time": true, "search_bookmarks": true, "execute_command": true}
 	for _, name := range cfg.Tools.Allowed {
 		if !known[name] {
 			return fmt.Errorf("tools.allowed contains unknown tool %q", name)

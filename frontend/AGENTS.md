@@ -29,13 +29,14 @@ The full release build is driven by `../scripts/build.ps1`, which runs the front
 frontend/src/
 ├── pages/            # Astro routes (.astro) + content (faqs.md). One per nav item.
 │   ├── index.astro   # Todos (home)
-│   ├── bookmarks.astro, history.astro, wallet.astro, analytics.astro, users.astro
+│   ├── bookmarks.astro, history.astro, wallet.astro, analytics.astro, users.astro, chat.astro
 │   ├── about.astro, contact.astro, 404.astro
 ├── layouts/Layout.astro   # Shared shell: nav, theme, header widgets
 ├── components/       # Vue components
-│   ├── <Domain>Page.vue   # Top-level page component per domain (TodoPage, WalletPage, …)
+│   ├── <Domain>Page.vue   # Top-level page component per domain (TodoPage, WalletPage, ChatPage, …)
 │   ├── todos/, bookmarks/, history/, wallet/   # Per-domain sub-components
-│   ├── ui/           # Reusable presentational components (Button, Modal, InputField, …)
+│   ├── chat/         # AI chat sub-components and composables (see below)
+│   ├── ui/           # Reusable presentational components (Button, Modal, ErrorBanner, InputField, …)
 │   ├── ServerStatus.vue, ThemeToggle.vue, ApiTokenSettings.vue   # Header widgets
 ├── composables/      # use<Domain>() — state + data-loading logic (Vue composition API)
 ├── lib/
@@ -44,6 +45,30 @@ frontend/src/
 │   └── utils.ts      # App-specific helpers
 └── types.ts          # Re-exports @browser-server/shared-types
 ```
+
+### Chat module (`components/chat/`)
+
+The AI chat UI is fully modular, split into focused sub-components and composables:
+
+```
+components/chat/
+├── ChatTopBar.vue          # Provider/model selects, YOLO mode toggle, mobile sidebar button
+├── ChatSidebar.vue         # Desktop conversation list with search and actions
+├── ChatMobileDrawer.vue    # Mobile drawer wrapping conversation list
+├── ChatMessageList.vue     # Scrollable message container, empty-state suggestions, typing indicator
+├── ChatBubble.vue          # Renders user, assistant (markdown), and tool messages
+├── ChatInput.vue           # Auto-resizing textarea with send/stop controls
+├── ChatRegenerateButton.vue# Regenerate the last assistant response
+├── ChatDisabledState.vue   # Placeholder when bs-ai-config.json is missing
+├── ChatCopyToast.vue       # Clipboard feedback toast
+├── markdown.ts             # Markdown rendering utility
+└── composables/
+    ├── useChatConfig.ts        # AI config, provider/model state, YOLO mode persistence
+    ├── useChatConversations.ts # Conversation CRUD, search/filter, rename/delete modals
+    └── useChatMessaging.ts     # Send, stream (SSE), tool decisions, regenerate, stop
+```
+
+`ChatPage.vue` composes these pieces and delegates business logic to the composables, keeping the top-level component focused on wiring.
 
 ## Conventions
 
@@ -72,6 +97,8 @@ A composable (e.g. [`composables/useTodos.ts`](src/composables/useTodos.ts)) ret
 - a `load*()` that sets `isLoading`, calls the API, and traps errors into `error`
 - mutating actions (`add*`, `update*`, `remove*`) that call the API then re-`load`
 - `watch` user/filter refs to reload
+
+For complex pages like AI chat, composables can live inside the component's own directory (e.g. `components/chat/composables/`) when they are tightly coupled to a single page. The same return-refs-plus-actions pattern applies; the location just reflects scope.
 
 ### API access
 

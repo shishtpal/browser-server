@@ -1,11 +1,12 @@
 # Browser Server
 
-Browser Server is a self-hosted personal-data service with a web app and browser extensions. It stores todos, bookmarks, browsing history, password-wallet entries, screenshots, and per-domain usage analytics in local SQLite databases.
+Browser Server is a self-hosted personal-data service with a web app and browser extensions. It stores todos, bookmarks, browsing history, password-wallet entries, screenshots, per-domain usage analytics, and AI chat conversations in local SQLite databases.
 
 The project includes:
 
 - A Go REST API protected by a single operator API token
 - An Astro + Vue web interface
+- An AI chat interface with multi-provider LLM support and server-side tool calling
 - Chromium and Firefox extensions for history capture, usage tracking, popup access, and omnibox search
 - Shared TypeScript packages for API types, client code, utilities, and extension UI/runtime code
 
@@ -18,6 +19,7 @@ The project includes:
 - Bookmark and browser-history imports
 - Todo screenshot capture and storage
 - Domain usage analytics
+- AI chat with streaming responses, configurable providers (OpenRouter, OpenAI, etc.), and server-side tool calling
 - Combined bookmark/history search through the extension omnibox keyword `bs`
 - One-click bookmark and todo capture from the page context menu or keyboard shortcuts
 - Bearer-token authentication for every `/api/*` endpoint
@@ -98,6 +100,7 @@ The token and data directories are created when their corresponding commands run
 | `PORT` | `9191` | Server port when `--port` is not supplied |
 | `DATA_PATH` | `.data/` beside the executable | SQLite databases and screenshot files |
 | `SERVER_TOKEN_PATH` | `.bs-token` beside the executable | Operator token file |
+| `bs-ai-config.json` | beside the executable | AI chat configuration (see [AI Chat](#ai-chat)) |
 
 Examples:
 
@@ -167,6 +170,47 @@ In either extension's options page, configure:
 In Chromium, type `bs` in the address bar and press Space or Tab to search the server's bookmarks and grouped history.
 
 To capture the current page, right-click the page or selected text and open the **Browser Server** menu. You can save a bookmark, create a todo, or create a todo with a screenshot. Selected text and the source URL are included automatically. The default shortcuts are `Alt+Shift+B` for a bookmark and `Alt+Shift+T` for a todo; these can be changed from the browser's extension-shortcut settings. Captures made while the server is unavailable are stored locally and retried automatically.
+
+## AI Chat
+
+The server includes an optional AI chat feature that connects to OpenAI-compatible LLM providers (OpenRouter, OpenAI, etc.) and supports streaming responses with server-side tool calling.
+
+### Setup
+
+1. Create `bs-ai-config.json` next to the server binary:
+
+```json
+{
+  "default_provider": "openrouter",
+  "providers": {
+    "openrouter": {
+      "type": "openai_compatible",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key": "env:OPENROUTER_API_KEY",
+      "models": [
+        { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true },
+        { "id": "anthropic/claude-sonnet-4", "label": "Claude Sonnet 4", "supports_tools": true }
+      ]
+    }
+  },
+  "tools": { "enabled": true, "allowed": ["get_current_time", "search_bookmarks"], "max_iterations": 5 },
+  "chat": { "system_prompt": "You are a helpful assistant.", "stream": true, "temperature": 0.7 }
+}
+```
+
+2. Set the API key environment variable (e.g. `$env:OPENROUTER_API_KEY = "sk-..."`) and restart the server.
+
+The web app will show the AI Chat page once the config is detected. If the file is missing, the chat page displays a "disabled" state with instructions.
+
+### Key features
+
+- Multiple provider and model selection from the web UI
+- Streaming responses via SSE (Server-Sent Events)
+- Server-side tools the model can call (with user approval or auto-approve "YOLO mode")
+- Conversation history persisted in SQLite
+- Regenerate previous responses, stop in-progress generation
+
+API key values starting with `env:` are resolved from environment variables at runtime so secrets stay out of config files.
 
 ## Development
 
@@ -240,7 +284,7 @@ Keep pull requests focused and explain what changed, why it changed, and which c
 
 ```text
 cmd/server/                    Go entry point and router
-internal/                      Auth, database, handlers, middleware, and models
+internal/                      Auth, database, handlers, middleware, models, and AI module
 frontend/                      Astro + Vue web app
 extension/                     Chromium extension wrapper
 extension-firefox/             Firefox extension wrapper
@@ -249,13 +293,14 @@ shared/browser-types/          Shared domain and API types
 shared/browser-utils/          Framework-free utilities
 shared/browser-extension-core/ Shared Vue extension UI and runtime logic
 scripts/build.ps1              Web app + Go release build
+bs-ai-config.json              AI chat configuration (providers, models, tools)
 PRD.md                         Detailed product and API documentation
 ROADMAP.md                     Completed and planned work
 ```
 
 ## Data and backups
 
-By default, data lives in `.data/` beside the running executable. The directory contains separate databases such as `todos.db`, `bookmarks.db`, `history.db`, `wallet.db`, and `usage.db`, plus uploaded screenshots.
+By default, data lives in `.data/` beside the running executable. The directory contains separate databases such as `todos.db`, `bookmarks.db`, `history.db`, `wallet.db`, `usage.db`, and `bs-ai.db` (AI conversations), plus uploaded screenshots.
 
 Stop the server before copying the data directory for a simple consistent backup. Back up the token file separately if clients should continue using the same credential after a restore.
 

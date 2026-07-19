@@ -8,11 +8,11 @@ Captures browsing history and per-domain time usage in real time and syncs them 
 
 ## Tech Stack
 
-- **Vite 8** — multi-entry build (popup, options, background service worker)
+- **Vite 8** — multi-entry build (popup, options, background service worker, content script)
 - **Vue 3** (`<script setup lang="ts">`) for popup + options UIs
-- **TailwindCSS 4** via `@tailwindcss/vite`; styles in `src/styles/tailwind.css`
+- **TailwindCSS 4** via `@tailwindcss/vite`; styles in shared core
 - **Manifest V3** — service-worker background script, `chrome.*` APIs
-- **Shared workspace packages** — `@browser-server/shared-client`, `@browser-server/shared-types`, `@browser-server/shared-utils`
+- **Shared workspace packages** — `@browser-server/shared-client`, `@browser-server/shared-types`, `@browser-server/shared-utils`, `@browser-server/extension-core`
 - **`@types/chrome`** for the extension APIs
 
 ## Commands
@@ -29,51 +29,81 @@ Load the unpacked extension by pointing Chrome at the `extension/` directory (th
 
 ## Build outputs (`vite.config.ts`)
 
-Three entry points, output to `dist/`:
-- `popup` → `popup.html` (from `popup.html`)
-- `options` → `options.html` (from `options.html`)
-- `background` → `dist/background.js` (fixed name, referenced by the manifest service worker)
+Main build has 5 entry points, output to `dist/`:
+- `popup` → `dist/popup.html`
+- `options` → `dist/options.html`
+- `history` → `dist/history.html` (full-page history browser)
+- `bookmarksGraph` → `dist/bookmarks-graph.html` (bookmark graph visualization)
+- `background` → `dist/background.js` (service worker, fixed name for manifest)
 
-`manifest.json` references `dist/background.js`, `dist/popup.html`, `dist/options.html`. If you add an entry point, update both `vite.config.ts` `rollupOptions.input` and `manifest.json`.
+A separate `content` mode build produces `dist/contentScript.js` (IIFE, no module).
+
+`manifest.json` references these outputs. If you add an entry point, update both `vite.config.ts` `rollupOptions.input` and `manifest.json`.
 
 ## Structure
+
+This extension is a **thin wrapper** around the shared `@browser-server/extension-core` package (`shared/browser-extension-core/`). The wrapper provides a Chrome-specific `BrowserApi` adapter; all business logic, UI components, composables, and background orchestration live in the shared core (used by both the Chromium and Firefox extensions).
 
 ```
 extension/
 ├── manifest.json         # MV3 manifest (permissions, omnibox keyword, background, popup, options)
-├── popup.html, options.html
+├── popup.html, options.html, history.html, bookmarks-graph.html
 ├── vite.config.ts
 └── src/
-    ├── background.ts      # Service worker: tab/idle/alarm/omnibox listeners, history + usage sync
-    ├── popup/            # Popup UI
-    │   ├── main.ts, PopupApp.vue
-    │   └── <Domain>Panel.vue   # TodosPanel, HistoryPanel, BookmarksPanel, WalletPanel, AnalyticsPanel
-    ├── options/          # OptionsApp.vue + main.ts (settings page)
-    ├── composables/      # use<Domain>View() — popup view-model logic
-    │   ├── useApiClient.ts      # createApiClient(settings) → shared client w/ token
-    │   └── useExtensionSettings.ts
-    ├── lib/
-    │   ├── settings.ts   # ExtensionSettings type + chrome.storage.local persistence
-    │   ├── browser.ts    # chrome.* wrappers (active tab, screenshot capture, etc.)
-    │   └── timeTracker.ts # Per-domain time accumulation + flush to /api/analytics/usage
-    └── styles/tailwind.css
+    ├── adapter.ts         # ChromeAdapter — implements BrowserApi interface for chrome.* APIs
+    ├── background.ts      # Wires ChromeAdapter → initBackground() from extension-core
+    └── contentScript.ts   # Wires content script from extension-core
+```
+
+### Shared extension core (`shared/browser-extension-core/`)
+
+All real logic lives here and is shared between Chromium and Firefox wrappers:
+
+```
+shared/browser-extension-core/src/
+├── background.ts          # initBackground(): tab/idle/alarm/omnibox listeners, history + usage sync
+├── browserApi.ts          # BrowserApi interface — abstraction over chrome/browser APIs
+├── contentScript.ts       # Content script entry
+├── composables/           # use<Domain>View() — popup view-model logic
+│   ├── useApiClient.ts, useExtensionSettings.ts
+│   ├── useTodosView.ts, useBookmarksView.ts, useHistoryView.ts, useWalletView.ts, useAnalyticsView.ts
+│   └── useHistoryBrowser.ts
+├── popup/                 # PopupApp.vue + domain panels (TodosPanel, BookmarksPanel, etc.)
+├── options/               # OptionsApp.vue + main.ts (settings page)
+├── history/               # Full-page history browser UI
+├── bookmarks-graph/       # Full-page bookmark graph visualization
+├── lib/
+│   ├── settings.ts        # ExtensionSettings type + storage persistence
+│   ├── browser.ts         # BrowserApi wrappers (active tab, screenshot capture, etc.)
+│   ├── timeTracker.ts     # Per-domain time accumulation + flush to /api/analytics/usage
+│   └── oneClickCapture.ts # Context-menu and keyboard-shortcut capture logic
+└── styles/tailwind.css
 ```
 
 ## Conventions
 
+### Architecture: thin wrapper + shared core
+
+The Chromium extension (`extension/`) and Firefox extension (`extension-firefox/`) are both thin wrappers. Each provides:
+1. A browser-specific `BrowserApi` adapter (e.g. `ChromeAdapter` using `chrome.*` APIs)
+2. An entry point that wires the adapter and calls `initBackground()` from the shared core
+3. A manifest and HTML entry points
+
+All business logic, Vue components, composables, and library code live in `shared/browser-extension-core/` and must remain browser-agnostic (access browser APIs only through the `BrowserApi` interface).
+
 ### Settings drive everything
 
-User config lives in [`lib/settings.ts`](src/lib/settings.ts) as `ExtensionSettings` (`apiBase`, `apiToken`, `userId`, `autoCapture`), persisted to `chrome.storage.local` under the `tracker_settings` key. Always go through `getSettings()` / `saveSettings()`; never read `chrome.storage` ad hoc. When adding a field, update `ExtensionSettings`, `DEFAULT_SETTINGS`, and the options form in `OptionsApp.vue`.
+User config lives in `ExtensionSettings` (`apiBase`, `apiToken`, `userId`, `autoCapture`), defined in the shared core's [`lib/settings.ts`](../shared/browser-extension-core/src/lib/settings.ts) and persisted to browser storage under the `tracker_settings` key. Always go through `getSettings()` / `saveSettings()`; never read storage ad hoc. When adding a field, update `ExtensionSettings`, `DEFAULT_SETTINGS`, and the options form in `OptionsApp.vue`.
 
 ### API access via the shared client
 
-Create a client with [`composables/useApiClient.ts`](src/composables/useApiClient.ts):
+Create a client with the shared core's [`composables/useApiClient.ts`](../shared/browser-extension-core/src/composables/useApiClient.ts):
 
 ```ts
 createBrowserServerClient(settings.apiBase, { getToken: () => settings.apiToken })
 ```
 
-The same pattern is used directly in `background.ts` and `lib/timeTracker.ts`. **Always pass `getToken`** so the `Authorization: Bearer` header is sent — without it, every request gets `401`. New endpoints go in the shared client (`shared/browser-client`), not duplicated here.
+The same pattern is used in `background.ts` and `lib/timeTracker.ts`. **Always pass `getToken`** so the `Authorization: Bearer` header is sent — without it, every request gets `401`. New endpoints go in the shared client (`shared/browser-client`), not duplicated here.
 
 ### Authentication / token
 
@@ -83,7 +113,7 @@ The same pattern is used directly in `background.ts` and `lib/timeTracker.ts`. *
 
 ### Background service worker
 
-[`background.ts`](src/background.ts) is event-driven (no persistent state): it listens to `chrome.tabs`, `chrome.windows`, `chrome.idle`, and `chrome.alarms`. History is posted on tab navigation; time usage is buffered by `TimeTracker` and flushed on an alarm. Network failures are swallowed with `console.debug` (server may be offline) — don't throw out of listeners.
+The extension's [`background.ts`](src/background.ts) simply wires the `ChromeAdapter` and calls `initBackground()` from the shared core. The actual logic lives in [`shared/browser-extension-core/src/background.ts`](../shared/browser-extension-core/src/background.ts) and is event-driven (no persistent state): it listens to tab, window, idle, and alarm events via the `BrowserApi` interface. History is posted on tab navigation; time usage is buffered by `TimeTracker` and flushed on an alarm. Network failures are swallowed with `console.debug` (server may be offline) — don't throw out of listeners.
 
 ### Omnibox search
 
@@ -97,8 +127,23 @@ Use Chrome's omnibox XML markup carefully: escape user/server text before insert
 
 ### Popup view-models
 
-Each popup panel has a `use<Domain>View()` composable that takes the client + userId refs and exposes view state + actions, mapping domain models to view shapes (e.g. `TodoView`). Keep `chrome.*` calls in `lib/browser.ts`, not in components.
+Each popup panel has a `use<Domain>View()` composable in the shared core that takes the client + userId refs and exposes view state + actions, mapping domain models to view shapes (e.g. `TodoView`). Keep browser API calls in `lib/browser.ts` (through the `BrowserApi` interface), not in components.
 
 ### Styling
 
-TailwindCSS 4 utilities; the popup/options use a dark slate theme. Reuse existing panel/option markup patterns rather than introducing new component primitives.
+TailwindCSS 4 utilities via the shared core's `styles/tailwind.css`; the popup/options use a dark slate theme. Reuse existing panel/option markup patterns rather than introducing new component primitives.
+
+## Modifying the extension
+
+Most changes belong in `shared/browser-extension-core/`, not in this wrapper:
+
+| Change type | Where to edit |
+|---|---|
+| Add a popup panel / option | `shared/browser-extension-core/src/popup/` or `options/` |
+| Add a composable | `shared/browser-extension-core/src/composables/` |
+| Change background logic | `shared/browser-extension-core/src/background.ts` |
+| Add a new browser API call | `shared/browser-extension-core/src/browserApi.ts` (interface) + `extension/src/adapter.ts` (Chrome impl) + `extension-firefox/src/adapter.ts` (Firefox impl) |
+| Add a Vite entry point | `vite.config.ts` `rollupOptions.input` + `manifest.json` |
+| Add a new permission | `manifest.json` |
+
+After changes, run `pnpm build` and `pnpm type-check` in this directory to verify.

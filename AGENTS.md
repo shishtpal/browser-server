@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Browser Server is a Go-based REST API server with an Astro + Vue frontend and Chromium and Firefox browser extensions. It manages personal data: todos, bookmarks, browsing history, a password wallet, screenshots, and domain usage analytics. Data is stored in SQLite databases under `.data/`.
+Browser Server is a Go-based REST API server with an Astro + Vue frontend and Chromium and Firefox browser extensions. It manages personal data: todos, bookmarks, browsing history, a password wallet, screenshots, domain usage analytics, and AI-powered chat conversations. Data is stored in SQLite databases under `.data/`.
 
 It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `frontend/`, `extension/`, `extension-firefox/`, and `shared/*` are TypeScript workspace packages.
 
@@ -49,6 +49,13 @@ browser-server/
 │   │   ├── auth.go             # Bearer-token auth middleware (401/503)
 │   │   ├── cors.go             # CORS middleware
 │   │   └── logging.go          # Request logging middleware
+│   ├── ai/                     # AI chat module (self-contained, registered via aiapi.Init())
+│   │   ├── api/handlers.go    # HTTP handlers for /api/ai/* + module init & route registration
+│   │   ├── chat/service.go    # Conversation orchestration, streaming, tool-call loops
+│   │   ├── config/config.go   # Load & parse bs-ai-config.json
+│   │   ├── provider/          # LLM provider abstraction (OpenAI-compatible endpoint)
+│   │   ├── store/store.go     # SQLite persistence for conversations & messages (.data/bs-ai.db)
+│   │   └── tools/registry.go  # Server-side tool definitions and execution
 │   └── handlers/
 │       ├── health.go           # GET /health (public, no auth)
 │       ├── routes.go           # POST /api/routes endpoint
@@ -75,6 +82,7 @@ browser-server/
 ├── bin/                        # Build output
 ├── pnpm-workspace.yaml         # pnpm workspace config
 ├── go.mod / go.sum
+├── bs-ai-config.json           # AI chat configuration (providers, models, tools, logging)
 ├── README.md                   # Setup, usage, extension, and development guide
 ├── PRD.md                      # Product requirements and API documentation
 ├── AGENTS.md                   # This file
@@ -134,8 +142,84 @@ Each domain has its own SQLite database file in `.data/`:
 - `wallet.db` — user_id, username, password, website, description, timestamps
 - `screenshots.db` — todo_id, filename, created_at (image files live in `.data/screenshots/`)
 - `usage.db` — user_id, domain, date, total_seconds (unique per user/domain/date)
+- `bs-ai.db` — AI conversations, messages, and tool-call logs (managed by `internal/ai/store`)
 
 Bookmark tags are stored as JSON strings in SQLite and parsed/presented as `[]string` in API responses.
+
+## AI Chat
+
+The AI chat module lives in `internal/ai/` and is self-contained — it manages its own config, database, providers, and tools. It is initialized in `cmd/server/main.go` via `aiapi.Init()` and registers its routes on the authenticated `/api` subrouter.
+
+### Configuration (`bs-ai-config.json`)
+
+Place `bs-ai-config.json` next to the server binary. The module reads it at startup; if the file is missing or has `"enabled": false` the feature is reported as disabled to the frontend. Key sections:
+
+```jsonc
+{
+  "default_provider": "openrouter",
+  "providers": {
+    "<name>": {
+      "type": "openai_compatible",
+      "base_url": "https://...",
+      "api_key": "env:ENV_VAR_NAME",   // resolved from environment at runtime
+      "models": [
+        { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true }
+      ]
+    }
+  },
+  "tools": { "enabled": true, "allowed": ["get_current_time", "search_bookmarks"], "max_iterations": 5 },
+  "chat": { "system_prompt": "...", "max_history_messages": 30, "stream": true, "temperature": 0.7 },
+  "logging": { "enabled": true, "db_path": ".data/bs-ai.db", "retention_days": 60 }
+}
+```
+
+API keys that start with `env:` are resolved from the corresponding environment variable.
+
+### Architecture
+
+| Package | Responsibility |
+|---------|---------------|
+| `ai/config` | Parses `bs-ai-config.json`, resolves env-based keys, exposes typed config |
+| `ai/provider` | LLM abstraction; currently supports OpenAI-compatible (OpenRouter, OpenAI, etc.) |
+| `ai/store` | SQLite persistence for conversations + messages |
+| `ai/tools` | Registry of server-side tools the model can invoke (e.g. `get_current_time`, `search_bookmarks`) |
+| `ai/chat` | Orchestration: builds prompts, streams completions, handles multi-turn tool-call loops |
+| `ai/api` | HTTP handlers for all `/api/ai/*` routes + the `Init()` / `Register()` / `Close()` lifecycle |
+
+### API endpoints
+
+All under `/api/ai/` (token-protected):
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/ai/config` | Sanitized config (no secrets) + model catalog for the frontend |
+| GET | `/ai/conversations` | List conversations (params: `q`, `limit`) |
+| POST | `/ai/conversations` | Create a conversation |
+| GET | `/ai/conversations/{id}` | Get conversation with all messages |
+| PATCH | `/ai/conversations/{id}` | Rename or change model |
+| DELETE | `/ai/conversations/{id}` | Delete conversation |
+| POST | `/ai/conversations/{id}/messages` | Send a user message (supports SSE streaming) |
+| POST | `/ai/conversations/{id}/tool-calls/{callID}` | Approve or reject a pending tool call |
+| POST | `/ai/conversations/{id}/stop` | Cancel active generation |
+| POST | `/ai/conversations/{id}/regenerate` | Supersede last response and regenerate |
+
+The `/messages` endpoint supports both synchronous JSON responses and SSE streaming (controlled by the `stream` body field). During streaming, tool calls that require user approval pause the stream until the frontend submits a decision via the `/tool-calls/{callID}` endpoint.
+
+### Frontend integration
+
+The web app's chat page is at `frontend/src/components/ChatPage.vue` and is composed of:
+- `chat/ChatTopBar.vue` — provider/model selects, YOLO mode toggle
+- `chat/ChatSidebar.vue` — conversation list with search
+- `chat/ChatMessageList.vue` — scrollable messages with empty-state suggestions
+- `chat/ChatBubble.vue` — renders user, assistant (markdown), and tool messages
+- `chat/ChatInput.vue` — auto-resizing textarea with send/stop
+- `chat/ChatRegenerateButton.vue` — regenerate the last assistant response
+- `chat/ChatMobileDrawer.vue` — mobile conversation list
+- `chat/ChatDisabledState.vue` — placeholder when AI is not configured
+- `chat/ChatCopyToast.vue` — clipboard feedback toast
+- `chat/composables/useChatConfig.ts` — config, provider/model state, YOLO mode
+- `chat/composables/useChatConversations.ts` — conversation CRUD, rename/delete
+- `chat/composables/useChatMessaging.ts` — send, stream, tool decisions, regenerate, stop
 
 ## Search / Omnibox
 

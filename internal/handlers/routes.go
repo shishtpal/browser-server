@@ -10,6 +10,15 @@ import (
 func GetRoutes(w http.ResponseWriter, r *http.Request) {
 	routes := []models.Route{
 		{Method: "POST", Path: "/api/routes", Description: "List all available routes"},
+		{Method: "GET", Path: "/api/ai/config", Description: "Get sanitized AI configuration and model catalog"},
+		{Method: "GET", Path: "/api/ai/conversations", Description: "List AI conversations (params: q, limit)"},
+		{Method: "POST", Path: "/api/ai/conversations", Description: "Create an AI conversation"},
+		{Method: "GET", Path: "/api/ai/conversations/{id}", Description: "Get an AI conversation with messages"},
+		{Method: "PATCH", Path: "/api/ai/conversations/{id}", Description: "Rename or change model for an AI conversation"},
+		{Method: "DELETE", Path: "/api/ai/conversations/{id}", Description: "Delete an AI conversation"},
+		{Method: "POST", Path: "/api/ai/conversations/{id}/messages", Description: "Send a message to an AI conversation"},
+		{Method: "POST", Path: "/api/ai/conversations/{id}/stop", Description: "Cancel active AI generation for a conversation"},
+		{Method: "POST", Path: "/api/ai/conversations/{id}/regenerate", Description: "Supersede and regenerate the latest AI response"},
 		{Method: "GET", Path: "/api/search/omnibox", Description: "Search bookmark and grouped history suggestions for Chrome omnibox (params: user_id, q, limit)"},
 		{Method: "GET", Path: "/api/todos", Description: "Get all todos (filter: user_id, domain, completed)"},
 		{Method: "POST", Path: "/api/todos", Description: "Create a new todo"},

@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	aiapi "browser-server/internal/ai/api"
 	"browser-server/internal/auth"
 	"browser-server/internal/db"
 	"browser-server/internal/handlers"
@@ -43,6 +44,12 @@ func main() {
 	db.InitAll(dataPath)
 	defer db.CloseAll()
 
+	aiModule, err := aiapi.Init()
+	if err != nil {
+		log.Fatalf("Failed to initialize AI module: %v", err)
+	}
+	defer aiModule.Close()
+
 	if err := auth.Load(); err != nil {
 		if os.IsNotExist(err) {
 			log.Printf("WARNING: no API token found. Run 'server token generate' to create one; all /api requests will return 503 until then.")
@@ -68,6 +75,7 @@ func main() {
 
 	api.HandleFunc("/routes", handlers.GetRoutes).Methods("POST")
 	api.HandleFunc("/search/omnibox", handlers.SearchOmnibox).Methods("GET")
+	aiModule.Register(api)
 
 	api.HandleFunc("/todos", handlers.GetTodos).Methods("GET")
 	api.HandleFunc("/todos", handlers.CreateTodo).Methods("POST")

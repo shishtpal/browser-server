@@ -1,9 +1,14 @@
 import { createBrowserServerClient } from '@browser-server/shared-client'
 import type {
+  AIConfig,
+  AIConversation,
+  AIConversationDetail,
+  AIStreamEvent,
   AnalyticsSummary,
   AnalyticsSummaryParams,
   Bookmark,
   BookmarkResponse,
+  CreateAIConversationInput,
   CreateHistoryInput,
   CreateTodoInput,
   HealthResponse,
@@ -11,7 +16,11 @@ import type {
   HistoryImportResult,
   ImportResult,
   Screenshot,
+  SendAIMessageInput,
+  SendAIMessageResponse,
+  StopAIGenerationResponse,
   Todo,
+  UpdateAIConversationInput,
   User,
   WalletEntry,
   WalletImportResult,
@@ -286,4 +295,51 @@ export function deleteUser(id: number): Promise<void> {
 
 export function getAnalyticsSummary(params: AnalyticsSummaryParams): Promise<AnalyticsSummary> {
   return client.getAnalyticsSummary(params)
+}
+
+// ─── AI Chat ────────────────────────────────────────────
+
+export function getAIConfig(): Promise<AIConfig> {
+  return client.getAIConfig()
+}
+
+export function listAIConversations(query?: string, limit?: number): Promise<AIConversation[]> {
+  return client.listAIConversations(query, limit)
+}
+
+export function createAIConversation(data: CreateAIConversationInput = {}): Promise<AIConversation> {
+  return client.createAIConversation(data)
+}
+
+export function getAIConversation(id: string): Promise<AIConversationDetail> {
+  return client.getAIConversation(id)
+}
+
+export function updateAIConversation(id: string, data: UpdateAIConversationInput): Promise<AIConversation> {
+  return client.updateAIConversation(id, data)
+}
+
+export function deleteAIConversation(id: string): Promise<void> {
+  return client.deleteAIConversation(id)
+}
+
+export function sendAIMessage(id: string, data: SendAIMessageInput): Promise<SendAIMessageResponse> {
+  return client.sendAIMessage(id, data)
+}
+
+export function sendAIMessageStream(
+  id: string,
+  data: SendAIMessageInput,
+  onEvent: (event: AIStreamEvent) => void,
+  onError?: (err: Error) => void,
+): AbortController {
+  return client.sendAIMessageStream(id, data, onEvent, onError)
+}
+
+export function regenerateAIMessage(id: string): Promise<SendAIMessageResponse> {
+  return client.regenerateAIMessage(id)
+}
+
+export function stopAIGeneration(id: string): Promise<StopAIGenerationResponse> {
+  return client.stopAIGeneration(id)
 }

@@ -1,0 +1,9 @@
+---
+import ChatPage from '../components/ChatPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+<Layout title="Chat">
+  <main>
+    <ChatPage client:only="vue" />
+  </main>
+</Layout>

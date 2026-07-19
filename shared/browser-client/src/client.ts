@@ -1,7 +1,11 @@
 import type {
+  AIConfig,
+  AIConversation,
+  AIConversationDetail,
   AnalyticsSummary,
   AnalyticsSummaryParams,
   BookmarkResponse,
+  CreateAIConversationInput,
   CreateBookmarkInput,
   CreateHistoryInput,
   CreateTodoInput,
@@ -14,7 +18,11 @@ import type {
   OmniboxSearchParams,
   OmniboxSearchResult,
   Screenshot,
+  SendAIMessageInput,
+  SendAIMessageResponse,
+  StopAIGenerationResponse,
   Todo,
+  UpdateAIConversationInput,
   UpdateTodoInput,
   UpdateWalletInput,
   UpdateBookmarkInput,
@@ -23,7 +31,7 @@ import type {
   WalletEntry,
 } from '@browser-server/shared-types'
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 /** Resolves the current API token (or null/undefined when none is set). */
 export type TokenProvider = () => string | null | undefined
@@ -55,9 +63,12 @@ export class ApiError extends Error {
 function apiErrorFromBody(status: number, body: string, fallback: string): ApiError {
   if (body) {
     try {
-      const parsed = JSON.parse(body) as { error?: string; fields?: Record<string, string> }
+      const parsed = JSON.parse(body) as { error?: string | { message?: string }; fields?: Record<string, string> }
       if (parsed && typeof parsed.error === 'string') {
         return new ApiError(status, parsed.error, parsed.fields)
+      }
+      if (parsed && typeof parsed.error === 'object' && typeof parsed.error.message === 'string') {
+        return new ApiError(status, parsed.error.message, parsed.fields)
       }
     } catch {
       // Not JSON; use the raw text below.
@@ -284,6 +295,140 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
         'GET',
         `/api/analytics/summary${buildQuery(params as unknown as Record<string, string | number | undefined>)}`,
         undefined,
+        getToken,
+      )
+    },
+
+    getAIConfig(): Promise<AIConfig> {
+      return apiFetch<AIConfig>(normalizedBaseUrl, 'GET', '/api/ai/config', undefined, getToken)
+    },
+
+    listAIConversations(query?: string, limit?: number): Promise<AIConversation[]> {
+      return apiFetch<AIConversation[]>(
+        normalizedBaseUrl,
+        'GET',
+        `/api/ai/conversations${buildQuery({ q: query, limit })}`,
+        undefined,
+        getToken,
+      )
+    },
+
+    createAIConversation(data: CreateAIConversationInput = {}): Promise<AIConversation> {
+      return apiFetch<AIConversation>(normalizedBaseUrl, 'POST', '/api/ai/conversations', data, getToken)
+    },
+
+    getAIConversation(id: string): Promise<AIConversationDetail> {
+      return apiFetch<AIConversationDetail>(normalizedBaseUrl, 'GET', `/api/ai/conversations/${encodeURIComponent(id)}`, undefined, getToken)
+    },
+
+    updateAIConversation(id: string, data: UpdateAIConversationInput): Promise<AIConversation> {
+      return apiFetch<AIConversation>(normalizedBaseUrl, 'PATCH', `/api/ai/conversations/${encodeURIComponent(id)}`, data, getToken)
+    },
+
+    deleteAIConversation(id: string): Promise<void> {
+      return apiFetch<void>(normalizedBaseUrl, 'DELETE', `/api/ai/conversations/${encodeURIComponent(id)}`, undefined, getToken)
+    },
+
+    sendAIMessage(id: string, data: SendAIMessageInput): Promise<SendAIMessageResponse> {
+      return apiFetch<SendAIMessageResponse>(
+        normalizedBaseUrl,
+        'POST',
+        `/api/ai/conversations/${encodeURIComponent(id)}/messages`,
+        { ...data, stream: false },
+        getToken,
+      )
+    },
+
+    /**
+     * Send a message and consume the SSE stream. Returns an AbortController
+     * that the caller can use to cancel.
+     */
+    sendAIMessageStream(
+      id: string,
+      data: SendAIMessageInput,
+      onEvent: (event: import('@browser-server/shared-types').AIStreamEvent) => void,
+      onError?: (err: Error) => void,
+    ): AbortController {
+      const controller = new AbortController()
+      const url = `${normalizedBaseUrl}/api/ai/conversations/${encodeURIComponent(id)}/messages`
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...authHeader(getToken),
+      }
+
+      fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ...data, stream: true }),
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const text = await response.text()
+            throw apiErrorFromBody(response.status, text, `Stream failed: ${response.status}`)
+          }
+          const reader = response.body?.getReader()
+          if (!reader) throw new Error('No response body')
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let streamEnded = false
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+
+            let eventType = ''
+            for (const line of lines) {
+              if (line.startsWith('event: ')) {
+                eventType = line.slice(7).trim()
+              } else if (line.startsWith('data: ') && eventType) {
+                try {
+                  const parsed = JSON.parse(line.slice(6))
+                  onEvent({ type: eventType, ...parsed } as import('@browser-server/shared-types').AIStreamEvent)
+                } catch {
+                  // skip malformed JSON
+                }
+                // Stop reading after terminal events
+                if (eventType === 'done' || eventType === 'error') {
+                  streamEnded = true
+                }
+                eventType = ''
+              } else if (line === '') {
+                eventType = ''
+              }
+            }
+            if (streamEnded) break
+          }
+          // Release the reader so the connection can be reused/closed
+          reader.cancel().catch(() => {})
+        })
+        .catch((err) => {
+          if (err.name === 'AbortError') return
+          onError?.(err instanceof Error ? err : new Error(String(err)))
+        })
+
+      return controller
+    },
+
+    regenerateAIMessage(id: string): Promise<SendAIMessageResponse> {
+      return apiFetch<SendAIMessageResponse>(
+        normalizedBaseUrl,
+        'POST',
+        `/api/ai/conversations/${encodeURIComponent(id)}/regenerate`,
+        {},
+        getToken,
+      )
+    },
+
+    stopAIGeneration(id: string): Promise<StopAIGenerationResponse> {
+      return apiFetch<StopAIGenerationResponse>(
+        normalizedBaseUrl,
+        'POST',
+        `/api/ai/conversations/${encodeURIComponent(id)}/stop`,
+        {},
         getToken,
       )
     },

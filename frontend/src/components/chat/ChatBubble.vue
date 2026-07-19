@@ -21,7 +21,7 @@
     v-else-if="message.role === 'assistant'"
     class="group relative max-w-[90%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-slate-900"
   >
-    <div v-if="message.status === 'pending'" class="flex items-center gap-2 text-xs text-slate-400">
+    <div v-if="message.status === 'pending' && !message.content" class="flex items-center gap-2 text-xs text-slate-400">
       <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-indigo-400"></span>
       Thinking…
     </div>
@@ -54,16 +54,19 @@
       <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ toolData.name || 'Tool call' }}</span>
       <span
         class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-        :class="message.status === 'error'
-          ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-          : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'"
-      >{{ message.status === 'error' ? 'failed' : 'success' }}</span>
+        :class="toolStatus.className"
+      >{{ toolStatus.label }}</span>
+    </div>
+    <div v-if="message.status === 'pending' && !toolData.decision" class="mt-3 flex items-center gap-2">
+      <button class="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700" type="button" @click="$emit('tool-decision', message.tool_call_id || '', true)">Allow</button>
+      <button class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700" type="button" @click="$emit('tool-decision', message.tool_call_id || '', false)">Reject</button>
+      <span class="text-xs text-slate-500">Review the arguments before allowing this tool.</span>
     </div>
     <details v-if="toolData.args" class="mt-2">
       <summary class="cursor-pointer text-xs font-medium text-slate-500 dark:text-slate-400">Arguments</summary>
       <pre class="mt-1 max-h-32 overflow-auto rounded-md bg-slate-100 p-2 text-xs dark:bg-slate-800">{{ formatJson(toolData.args) }}</pre>
     </details>
-    <details class="mt-2" open>
+    <details v-if="message.status !== 'pending'" class="mt-2" open>
       <summary class="cursor-pointer text-xs font-medium text-slate-500 dark:text-slate-400">Result</summary>
       <pre class="mt-1 max-h-48 overflow-auto rounded-md bg-slate-100 p-2 text-xs dark:bg-slate-800">{{ formatJson(toolData.result) }}</pre>
     </details>
@@ -81,6 +84,7 @@ const props = defineProps<{
 
 defineEmits<{
   copy: [content: string]
+  toolDecision: [callId: string, approved: boolean]
 }>()
 
 const renderedContent = computed(() => renderMarkdown(props.message.content))
@@ -89,20 +93,36 @@ interface ToolData {
   name: string
   args: unknown
   result: unknown
+  decision: 'approved' | 'rejected' | null
 }
 
 const toolData = computed<ToolData>(() => {
-  if (props.message.role !== 'tool') return { name: '', args: null, result: null }
+  if (props.message.role !== 'tool') return { name: '', args: null, result: null, decision: null }
   try {
     const parsed = JSON.parse(props.message.content)
     return {
       name: parsed.tool || '',
       args: parsed.args ?? null,
       result: parsed.result ?? parsed,
+      decision: parsed.decision ?? null,
     }
   } catch {
-    return { name: '', args: null, result: props.message.content }
+    return { name: '', args: null, result: props.message.content, decision: null }
   }
+})
+
+const toolStatus = computed(() => {
+  if (props.message.status === 'pending' && !toolData.value.decision) {
+    return { label: 'approval required', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' }
+  }
+  if (props.message.status === 'pending' || toolData.value.decision === 'approved') {
+    return { label: 'running', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' }
+  }
+  if (props.message.status === 'error') {
+    const result = toolData.value.result as { error?: string } | null
+    return { label: result?.error === 'rejected by user' ? 'rejected' : 'failed', className: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+  }
+  return { label: 'success', className: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' }
 })
 
 function formatJson(value: unknown): string {

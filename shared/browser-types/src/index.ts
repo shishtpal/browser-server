@@ -325,6 +325,7 @@ export interface SendAIMessageInput {
   model?: string
   stream?: boolean
   tools_enabled?: boolean
+  yolo_mode?: boolean
 }
 
 export interface AIUsage {
@@ -345,6 +346,10 @@ export interface StopAIGenerationResponse {
   stopped: boolean
 }
 
+export interface AIToolDecisionResponse {
+  accepted: boolean
+}
+
 /** SSE event types emitted during streaming AI message generation. */
 export type AIStreamEventType = 'delta' | 'tool_call' | 'tool_result' | 'done' | 'error'
 
@@ -358,12 +363,15 @@ export interface AIStreamToolCallEvent {
   type: 'tool_call'
   message_id: string
   tool_call: { id: string; name: string; arguments: string }
+  status: 'pending' | 'approved'
 }
 
 export interface AIStreamToolResultEvent {
   type: 'tool_result'
   message_id: string
+  tool_call: { id: string; name: string; arguments: string }
   content: string
+  status: 'completed' | 'error'
 }
 
 export interface AIStreamDoneEvent {

@@ -19,14 +19,26 @@ import (
 const maxMessageBytes = 512 * 1024
 
 var ErrConflict = errors.New("generation already active")
+var ErrToolCallNotPending = errors.New("tool call is not pending approval")
+
+type toolDecision struct {
+	approved bool
+}
+
+type pendingToolCall struct {
+	conversationID string
+	decision       chan toolDecision
+}
 
 type Service struct {
-	cfg      *aiconfig.Config
-	store    *store.Store
-	clients  map[string]provider.Client
-	activeMu sync.Mutex
-	active   map[string]context.CancelFunc
-	tools    *tools.Registry
+	cfg       *aiconfig.Config
+	store     *store.Store
+	clients   map[string]provider.Client
+	activeMu  sync.Mutex
+	active    map[string]context.CancelFunc
+	tools     *tools.Registry
+	pendingMu sync.Mutex
+	pending   map[string]pendingToolCall
 }
 
 type SubmitRequest struct {
@@ -35,6 +47,7 @@ type SubmitRequest struct {
 	Model        string `json:"model"`
 	Stream       *bool  `json:"stream"`
 	ToolsEnabled bool   `json:"tools_enabled"`
+	YOLOMode     bool   `json:"yolo_mode"`
 }
 
 type SubmitResponse struct {
@@ -50,6 +63,7 @@ type Event struct {
 	MessageID string             `json:"message_id,omitempty"`
 	Content   string             `json:"content,omitempty"`
 	ToolCall  *provider.ToolCall `json:"tool_call,omitempty"`
+	Status    string             `json:"status,omitempty"`
 	Usage     provider.Usage     `json:"usage,omitempty"`
 }
 
@@ -58,7 +72,10 @@ func NewService(cfg *aiconfig.Config, st *store.Store) *Service {
 	for name, item := range cfg.Providers {
 		clients[name] = provider.NewOpenAICompatibleClient(item.BaseURL, item.APIKey, time.Duration(item.RequestTimeoutSeconds)*time.Second)
 	}
-	return &Service{cfg: cfg, store: st, clients: clients, active: map[string]context.CancelFunc{}, tools: tools.New()}
+	return &Service{
+		cfg: cfg, store: st, clients: clients, active: map[string]context.CancelFunc{},
+		tools: tools.New(), pending: map[string]pendingToolCall{},
+	}
 }
 
 func (s *Service) DefaultSelection() (string, string) {
@@ -116,6 +133,9 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	if req.ToolsEnabled && !modelCfg.SupportsTools {
 		return SubmitResponse{}, fmt.Errorf("selected model does not support tools")
 	}
+	if req.ToolsEnabled && !req.YOLOMode && emit == nil {
+		return SubmitResponse{}, fmt.Errorf("manual tool approval requires streaming")
+	}
 	client, ok := s.clients[providerName]
 	if !ok {
 		return SubmitResponse{}, fmt.Errorf("provider client is unavailable")
@@ -159,8 +179,6 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				switch pe.Type {
 				case "text_delta":
 					return emit(Event{Type: "delta", MessageID: assistantMessage.ID, Content: pe.Text})
-				case "tool_call":
-					return emit(Event{Type: "tool_call", MessageID: assistantMessage.ID, ToolCall: pe.ToolCall})
 				}
 				return nil
 			})
@@ -177,18 +195,61 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			break
 		}
 		chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "assistant", ToolCalls: resp.ToolCalls})
-		for _, call := range resp.ToolCalls {
-			if emit != nil {
-				_ = emit(Event{Type: "tool_call", MessageID: assistantMessage.ID, ToolCall: &call})
+		for callIndex, call := range resp.ToolCalls {
+			if call.ID == "" {
+				call.ID = store.NewID("call")
+				resp.ToolCalls[callIndex].ID = call.ID
+				chatReq.Messages[len(chatReq.Messages)-1].ToolCalls[callIndex].ID = call.ID
 			}
-			result, toolErr := s.tools.Execute(generationCtx, call.Name, json.RawMessage(call.Arguments))
+			approved := req.YOLOMode
+			var pending pendingToolCall
+			if !approved {
+				pending, providerErr = s.beginToolApproval(conversationID, call.ID)
+				if providerErr != nil {
+					break
+				}
+			}
+			if emit != nil {
+				status := "approved"
+				if !approved {
+					status = "pending"
+				}
+				if emitErr := emit(Event{Type: "tool_call", MessageID: assistantMessage.ID, ToolCall: &call, Status: status}); emitErr != nil {
+					s.removePendingToolCall(call.ID)
+					providerErr = emitErr
+					break
+				}
+			}
+			if !approved {
+				approved, providerErr = s.waitForToolDecision(generationCtx, call.ID, pending)
+				if providerErr != nil {
+					break
+				}
+			}
+			var result []byte
+			var toolErr error
 			toolStatus := "completed"
+			if approved {
+				result, toolErr = s.tools.Execute(generationCtx, call.Name, json.RawMessage(call.Arguments))
+			} else {
+				toolErr = errors.New("rejected by user")
+			}
 			if toolErr != nil {
 				toolStatus = "error"
-				result = []byte(`{"error":"` + toolErr.Error() + `"}`)
+				result, _ = json.Marshal(map[string]string{"error": toolErr.Error()})
 			}
-			// Store tool content as JSON with metadata for UI display
-			toolContent := `{"tool":"` + call.Name + `","args":` + call.Arguments + `,"result":` + string(result) + `}`
+			var displayArgs any
+			if json.Unmarshal([]byte(call.Arguments), &displayArgs) != nil {
+				displayArgs = call.Arguments
+			}
+			toolContentBytes, marshalErr := json.Marshal(map[string]any{
+				"tool": call.Name, "args": displayArgs, "result": json.RawMessage(result),
+			})
+			if marshalErr != nil {
+				providerErr = marshalErr
+				break
+			}
+			toolContent := string(toolContentBytes)
 			toolMsg, addErr := s.store.AddMessage(generationCtx, conversationID, "tool", toolContent, toolStatus, call.ID)
 			if addErr != nil {
 				providerErr = addErr
@@ -197,7 +258,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			toolMessages = append(toolMessages, toolMsg)
 			chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "tool", ToolCallID: call.ID, Content: string(result)})
 			if emit != nil {
-				_ = emit(Event{Type: "tool_result", MessageID: assistantMessage.ID, Content: toolContent})
+				_ = emit(Event{Type: "tool_result", MessageID: assistantMessage.ID, ToolCall: &call, Content: toolContent, Status: toolStatus})
 			}
 		}
 		if providerErr != nil {
@@ -277,6 +338,49 @@ func (s *Service) Stop(conversationID string) bool {
 	return ok
 }
 
+func (s *Service) DecideToolCall(conversationID, callID string, approved bool) error {
+	s.pendingMu.Lock()
+	pending, ok := s.pending[callID]
+	if ok && pending.conversationID == conversationID {
+		delete(s.pending, callID)
+	} else {
+		ok = false
+	}
+	s.pendingMu.Unlock()
+	if !ok {
+		return ErrToolCallNotPending
+	}
+	pending.decision <- toolDecision{approved: approved}
+	return nil
+}
+
+func (s *Service) beginToolApproval(conversationID, callID string) (pendingToolCall, error) {
+	pending := pendingToolCall{conversationID: conversationID, decision: make(chan toolDecision, 1)}
+	s.pendingMu.Lock()
+	defer s.pendingMu.Unlock()
+	if _, exists := s.pending[callID]; exists {
+		return pendingToolCall{}, fmt.Errorf("duplicate tool call id")
+	}
+	s.pending[callID] = pending
+	return pending, nil
+}
+
+func (s *Service) waitForToolDecision(ctx context.Context, callID string, pending pendingToolCall) (bool, error) {
+	select {
+	case decision := <-pending.decision:
+		return decision.approved, nil
+	case <-ctx.Done():
+		s.removePendingToolCall(callID)
+		return false, ctx.Err()
+	}
+}
+
+func (s *Service) removePendingToolCall(callID string) {
+	s.pendingMu.Lock()
+	delete(s.pending, callID)
+	s.pendingMu.Unlock()
+}
+
 func (s *Service) start(conversationID string, cancel context.CancelFunc) bool {
 	s.activeMu.Lock()
 	defer s.activeMu.Unlock()
@@ -307,17 +411,12 @@ func (s *Service) providerMessages(messages []store.Message) []provider.Message 
 		if message.Role == "assistant" && message.Status != "completed" && message.Status != "cancelled" && message.Status != "error" {
 			continue
 		}
-		pm := provider.Message{Role: message.Role, Content: message.Content}
-		if message.Role == "tool" && message.ToolCallID != "" {
-			pm.ToolCallID = message.ToolCallID
-			// For tool messages, the stored content includes UI metadata. Extract only the result for the provider.
-			var parsed struct {
-				Result json.RawMessage `json:"result"`
-			}
-			if json.Unmarshal([]byte(message.Content), &parsed) == nil && parsed.Result != nil {
-				pm.Content = string(parsed.Result)
-			}
+		// Historical tool results cannot be replayed without their assistant tool-call
+		// envelope. Current-turn calls are appended explicitly by SubmitStream.
+		if message.Role == "tool" {
+			continue
 		}
+		pm := provider.Message{Role: message.Role, Content: message.Content}
 		out = append(out, pm)
 	}
 	return out

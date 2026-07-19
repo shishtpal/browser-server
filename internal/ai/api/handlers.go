@@ -51,6 +51,10 @@ type updateConversationRequest struct {
 	Model    string `json:"model"`
 }
 
+type toolDecisionRequest struct {
+	Approved *bool `json:"approved"`
+}
+
 type conversationDetail struct {
 	Conversation store.Conversation `json:"conversation"`
 	Messages     []store.Message    `json:"messages"`
@@ -119,6 +123,7 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.UpdateConversation)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.DeleteConversation)).Methods("DELETE")
 	r.HandleFunc("/ai/conversations/{id}/messages", m.requireAI(m.SubmitMessage)).Methods("POST")
+	r.HandleFunc("/ai/conversations/{id}/tool-calls/{callID}", m.requireAI(m.DecideToolCall)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/stop", m.requireAI(m.StopGeneration)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/regenerate", m.requireAI(m.Regenerate)).Methods("POST")
 }
@@ -297,6 +302,13 @@ func (m *Module) submitMessageSSE(w http.ResponseWriter, r *http.Request, req ch
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "close")
 	flusher, _ := w.(http.Flusher)
+	// Flush immediately to send the 200 + headers to the client so the
+	// browser's fetch() resolves and begins reading the stream.  Without
+	// this, the request appears "stuck" until the first SSE event arrives
+	// from the LLM provider (which can take several seconds).
+	if flusher != nil {
+		flusher.Flush()
+	}
 	result, err := m.service.SubmitStream(r.Context(), mux.Vars(r)["id"], req, func(event chat.Event) error {
 		writeSSE(w, event.Type, event)
 		if flusher != nil {
@@ -361,6 +373,20 @@ func rWithJSON(r *http.Request, v any) *http.Request {
 func (m *Module) StopGeneration(w http.ResponseWriter, r *http.Request) {
 	stopped := m.service.Stop(mux.Vars(r)["id"])
 	writeJSON(w, http.StatusOK, map[string]bool{"stopped": stopped})
+}
+
+func (m *Module) DecideToolCall(w http.ResponseWriter, r *http.Request) {
+	var req toolDecisionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Approved == nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "approved must be a boolean")
+		return
+	}
+	vars := mux.Vars(r)
+	if err := m.service.DecideToolCall(vars["id"], vars["callID"], *req.Approved); err != nil {
+		writeError(w, http.StatusConflict, "tool_call_not_pending", "Tool call is no longer pending approval")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"accepted": true})
 }
 
 func (m *Module) requireAI(next http.HandlerFunc) http.HandlerFunc {

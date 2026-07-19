@@ -2,6 +2,7 @@ import type {
   AIConfig,
   AIConversation,
   AIConversationDetail,
+  AIToolDecisionResponse,
   AnalyticsSummary,
   AnalyticsSummaryParams,
   BookmarkResponse,
@@ -373,36 +374,36 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
           let buffer = ''
           let streamEnded = false
 
+          const processFrames = () => {
+            let boundary = buffer.indexOf('\n\n')
+            while (boundary >= 0) {
+              const frame = buffer.slice(0, boundary)
+              buffer = buffer.slice(boundary + 2)
+              let eventType = ''
+              const dataLines: string[] = []
+              for (const line of frame.split('\n')) {
+                if (line.startsWith('event:')) eventType = line.slice(6).trim()
+                else if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart())
+              }
+              if (eventType && dataLines.length > 0) {
+                const parsed = JSON.parse(dataLines.join('\n'))
+                onEvent({ type: eventType, ...parsed } as import('@browser-server/shared-types').AIStreamEvent)
+                if (eventType === 'done' || eventType === 'error') streamEnded = true
+              }
+              boundary = buffer.indexOf('\n\n')
+            }
+          }
+
           while (true) {
             const { done, value } = await reader.read()
             if (done) break
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() || ''
-
-            let eventType = ''
-            for (const line of lines) {
-              if (line.startsWith('event: ')) {
-                eventType = line.slice(7).trim()
-              } else if (line.startsWith('data: ') && eventType) {
-                try {
-                  const parsed = JSON.parse(line.slice(6))
-                  onEvent({ type: eventType, ...parsed } as import('@browser-server/shared-types').AIStreamEvent)
-                } catch {
-                  // skip malformed JSON
-                }
-                // Stop reading after terminal events
-                if (eventType === 'done' || eventType === 'error') {
-                  streamEnded = true
-                }
-                eventType = ''
-              } else if (line === '') {
-                eventType = ''
-              }
-            }
+            buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n')
+            processFrames()
             if (streamEnded) break
           }
-          // Release the reader so the connection can be reused/closed
+          buffer += decoder.decode().replace(/\r\n/g, '\n')
+          processFrames()
+          if (!streamEnded) throw new Error('AI stream ended before a terminal event')
           reader.cancel().catch(() => {})
         })
         .catch((err) => {
@@ -419,6 +420,16 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
         'POST',
         `/api/ai/conversations/${encodeURIComponent(id)}/regenerate`,
         {},
+        getToken,
+      )
+    },
+
+    decideAIToolCall(id: string, callId: string, approved: boolean): Promise<AIToolDecisionResponse> {
+      return apiFetch<AIToolDecisionResponse>(
+        normalizedBaseUrl,
+        'POST',
+        `/api/ai/conversations/${encodeURIComponent(id)}/tool-calls/${encodeURIComponent(callId)}`,
+        { approved },
         getToken,
       )
     },

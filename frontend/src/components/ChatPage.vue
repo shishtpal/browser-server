@@ -45,6 +45,15 @@
         <span v-if="selectedModelSupportsTools" class="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 sm:flex dark:bg-amber-900/30 dark:text-amber-300">
           🔧 Tools
         </span>
+        <label
+          v-if="toolsEnabled"
+          class="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"
+          :class="yoloMode ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300' : 'border-slate-200 text-slate-600 dark:border-white/10 dark:text-slate-300'"
+          title="When enabled, tool calls run without asking for approval"
+        >
+          <input v-model="yoloMode" type="checkbox" class="accent-red-600" :disabled="isBusy" />
+          YOLO mode
+        </label>
         <span v-if="activeConversation" class="ml-auto hidden truncate text-xs text-slate-500 sm:block dark:text-slate-400">
           {{ activeConversation.title }}
         </span>
@@ -76,6 +85,7 @@
           :loading="isBusy"
           @suggestion="useSuggestion"
           @copy="copyMessage"
+          @tool-decision="decideToolCall"
         />
 
         <!-- Regenerate button -->
@@ -174,6 +184,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { AIConfig, AIConversation, AIMessage, AIStreamEvent } from '@browser-server/shared-types'
 import {
   createAIConversation,
+  decideAIToolCall,
   deleteAIConversation,
   getAIConfig,
   getAIConversation,
@@ -201,6 +212,7 @@ const error = ref('')
 const isBusy = ref(false)
 const selectedProvider = ref('')
 const selectedModel = ref('')
+const yoloMode = ref(false)
 const showMobileSidebar = ref(false)
 const showCopyToast = ref(false)
 
@@ -249,8 +261,26 @@ const selectedModelSupportsTools = computed(() => {
   return current?.supports_tools ?? false
 })
 
+const toolsEnabled = computed(() => (config.value?.tools?.enabled ?? false) && selectedModelSupportsTools.value)
+
 const visibleMessages = computed(() => {
-  return messages.value.filter((m) => m.status !== 'superseded')
+  const visible = messages.value.filter((m) => m.status !== 'superseded')
+  const ordered: AIMessage[] = []
+  for (let index = 0; index < visible.length; index++) {
+    const message = visible[index]
+    if (message.role !== 'assistant') {
+      ordered.push(message)
+      continue
+    }
+    let next = index + 1
+    while (next < visible.length && visible[next].role === 'tool') {
+      ordered.push(visible[next])
+      next++
+    }
+    ordered.push(message)
+    index = next - 1
+  }
+  return ordered
 })
 
 // ─── Watchers ──────────────────────────────────────────
@@ -262,15 +292,22 @@ watch(selectedProvider, () => {
   }
 })
 
+watch(yoloMode, (enabled) => {
+  localStorage.setItem('ai-yolo-mode', String(enabled))
+})
+
 // ─── Lifecycle ─────────────────────────────────────────
 
 onMounted(async () => {
   window.addEventListener('api-token-changed', reload)
+  yoloMode.value = localStorage.getItem('ai-yolo-mode') === 'true'
   await reload()
 })
 
 onUnmounted(() => {
   window.removeEventListener('api-token-changed', reload)
+  streamController?.abort()
+  streamController = null
 })
 
 // ─── Core actions ──────────────────────────────────────
@@ -358,7 +395,8 @@ async function sendMessage(content?: string) {
     }
     messages.value = [...messages.value, tempAssistantMsg]
 
-    const useStream = config.value?.chat?.stream !== false
+    // Tool approval is interactive and therefore always uses the SSE channel.
+    const useStream = config.value?.chat?.stream !== false || toolsEnabled.value
     const convId = activeConversation.value.id
 
     if (useStream) {
@@ -370,7 +408,8 @@ async function sendMessage(content?: string) {
           provider: selectedProvider.value,
           model: selectedModel.value,
           stream: true,
-          tools_enabled: config.value?.tools?.enabled ?? false,
+          tools_enabled: toolsEnabled.value,
+          yolo_mode: yoloMode.value,
         },
         (event: AIStreamEvent) => {
           switch (event.type) {
@@ -383,12 +422,15 @@ async function sendMessage(content?: string) {
               break
             }
             case 'tool_call': {
-              // Display tool call as a pending tool message
+              if (!event.tool_call || messages.value.some((m) => m.tool_call_id === event.tool_call.id)) break
+              let args: unknown = event.tool_call.arguments
+              try { args = JSON.parse(event.tool_call.arguments) } catch { /* display malformed arguments verbatim */ }
               const toolMsg: AIMessage = {
-                id: 'temp-tool-' + Date.now() + Math.random(),
+                id: 'temp-tool-' + event.tool_call.id,
                 conversation_id: convId,
                 role: 'tool',
-                content: JSON.stringify({ tool: event.tool_call?.name || '', args: event.tool_call?.arguments ? JSON.parse(event.tool_call.arguments) : null, result: null }),
+                content: JSON.stringify({ tool: event.tool_call.name, args, result: null, decision: event.status === 'approved' ? 'approved' : null }),
+                tool_call_id: event.tool_call.id,
                 status: 'pending',
                 created_at: new Date().toISOString(),
               }
@@ -402,28 +444,15 @@ async function sendMessage(content?: string) {
               break
             }
             case 'tool_result': {
-              // Update the last pending tool message with the result
-              const lastPendingTool = [...messages.value].reverse().find((m) => m.role === 'tool' && m.status === 'pending')
-              if (lastPendingTool) {
-                try {
-                  const parsed = JSON.parse(event.content)
-                  const idx = messages.value.findIndex((m) => m.id === lastPendingTool.id)
-                  if (idx >= 0) {
-                    const updated = { ...messages.value[idx], content: event.content, status: parsed.result?.error ? 'error' as const : 'completed' as const }
-                    messages.value = [...messages.value.slice(0, idx), updated, ...messages.value.slice(idx + 1)]
-                  }
-                } catch {
-                  // skip
-                }
+              const idx = messages.value.findIndex((m) => m.tool_call_id === event.tool_call?.id)
+              if (idx >= 0) {
+                const updated = { ...messages.value[idx], content: event.content, status: event.status }
+                messages.value = [...messages.value.slice(0, idx), updated, ...messages.value.slice(idx + 1)]
               }
               break
             }
             case 'done': {
-              const idx = messages.value.findIndex((m) => m.id === tempAssistantId)
-              if (idx >= 0) {
-                const msg = { ...messages.value[idx], status: 'completed' as const, id: event.message_id || messages.value[idx].id }
-                messages.value = [...messages.value.slice(0, idx), msg, ...messages.value.slice(idx + 1)]
-              }
+              void finishStream(convId, text)
               break
             }
             case 'error': {
@@ -433,6 +462,8 @@ async function sendMessage(content?: string) {
                 messages.value = [...messages.value.slice(0, idx), msg, ...messages.value.slice(idx + 1)]
               }
               error.value = event.message || 'AI generation failed'
+              isBusy.value = false
+              streamController = null
               break
             }
           }
@@ -449,19 +480,6 @@ async function sendMessage(content?: string) {
         },
       )
 
-      // Wait briefly then consider it done after no more events
-      // The actual completion is handled by the 'done' event
-      const checkDone = setInterval(() => {
-        const assistant = messages.value.find((m) => m.id === tempAssistantId)
-        if (assistant && (assistant.status === 'completed' || assistant.status === 'error' || assistant.status === 'cancelled')) {
-          clearInterval(checkDone)
-          isBusy.value = false
-          streamController = null
-          // Auto-title on first exchange
-          autoTitle(text)
-          refreshConversations()
-        }
-      }, 200)
     } else {
       // Non-streaming fallback
       const result = await sendAIMessage(convId, {
@@ -469,7 +487,8 @@ async function sendMessage(content?: string) {
         provider: selectedProvider.value,
         model: selectedModel.value,
         stream: false,
-        tools_enabled: config.value?.tools?.enabled ?? false,
+        tools_enabled: toolsEnabled.value,
+        yolo_mode: yoloMode.value,
       })
 
       // Replace temp messages with real ones
@@ -488,6 +507,37 @@ async function sendMessage(content?: string) {
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to send message'
     isBusy.value = false
+  }
+}
+
+async function finishStream(conversationId: string, firstMessage: string) {
+  try {
+    const detail = await getAIConversation(conversationId)
+    if (activeConversation.value?.id === conversationId) messages.value = detail.messages ?? []
+    await autoTitle(firstMessage)
+    await refreshConversations()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to refresh the completed response'
+  } finally {
+    isBusy.value = false
+    streamController = null
+  }
+}
+
+async function decideToolCall(callId: string, approved: boolean) {
+  if (!activeConversation.value) return
+  const index = messages.value.findIndex((message) => message.tool_call_id === callId)
+  if (index < 0) return
+  const original = messages.value[index]
+  try {
+    const content = JSON.parse(original.content)
+    const updated = { ...original, content: JSON.stringify({ ...content, decision: approved ? 'approved' : 'rejected' }) }
+    messages.value = [...messages.value.slice(0, index), updated, ...messages.value.slice(index + 1)]
+    await decideAIToolCall(activeConversation.value.id, callId, approved)
+  } catch (err) {
+    const current = messages.value.findIndex((message) => message.tool_call_id === callId)
+    if (current >= 0) messages.value = [...messages.value.slice(0, current), original, ...messages.value.slice(current + 1)]
+    error.value = err instanceof Error ? err.message : 'Failed to submit tool decision'
   }
 }
 

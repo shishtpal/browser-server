@@ -31,16 +31,41 @@ func NewOpenAICompatibleClient(baseURL, apiKey string, timeout time.Duration) *O
 
 type chatCompletionRequest struct {
 	Model       string           `json:"model"`
-	Messages    []Message        `json:"messages"`
+	Messages    []wireMessage    `json:"messages"`
 	Temperature float64          `json:"temperature,omitempty"`
 	MaxTokens   int              `json:"max_tokens,omitempty"`
 	Stream      bool             `json:"stream"`
 	Tools       []map[string]any `json:"tools,omitempty"`
 }
 
+type wireMessage struct {
+	Role       string         `json:"role"`
+	Content    string         `json:"content,omitempty"`
+	ToolCallID string         `json:"tool_call_id,omitempty"`
+	ToolCalls  []wireToolCall `json:"tool_calls,omitempty"`
+}
+
+type wireToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
 type chatCompletionResponse struct {
 	Choices []struct {
-		Message Message `json:"message"`
+		Message struct {
+			Content   string `json:"content"`
+			ToolCalls []struct {
+				ID       string `json:"id"`
+				Function struct {
+					Name      string `json:"name"`
+					Arguments string `json:"arguments"`
+				} `json:"function"`
+			} `json:"tool_calls"`
+		} `json:"message"`
 	} `json:"choices"`
 	Usage struct {
 		PromptTokens     *int `json:"prompt_tokens"`
@@ -94,18 +119,32 @@ func (c *OpenAICompatibleClient) Complete(ctx context.Context, req ChatRequest) 
 		return ChatResponse{RawRequest: rawRequest, RawResponse: rawResponse, HTTPStatus: resp.StatusCode, Latency: latency}, &Error{Code: "malformed_provider_response", Status: 502}
 	}
 
-	return ChatResponse{
+	result := ChatResponse{
 		Content:     parsed.Choices[0].Message.Content,
 		Usage:       Usage(parsed.Usage),
 		HTTPStatus:  resp.StatusCode,
 		Latency:     latency,
 		RawRequest:  rawRequest,
 		RawResponse: rawResponse,
-	}, nil
+	}
+	for _, call := range parsed.Choices[0].Message.ToolCalls {
+		result.ToolCalls = append(result.ToolCalls, ToolCall{ID: call.ID, Name: call.Function.Name, Arguments: call.Function.Arguments})
+	}
+	return result, nil
 }
 
 func (c *OpenAICompatibleClient) payload(req ChatRequest, stream bool) chatCompletionRequest {
-	p := chatCompletionRequest{Model: req.Model, Messages: req.Messages, Temperature: req.Temperature, MaxTokens: req.MaxOutputTokens, Stream: stream}
+	p := chatCompletionRequest{Model: req.Model, Temperature: req.Temperature, MaxTokens: req.MaxOutputTokens, Stream: stream}
+	for _, message := range req.Messages {
+		wire := wireMessage{Role: message.Role, Content: message.Content, ToolCallID: message.ToolCallID}
+		for _, call := range message.ToolCalls {
+			item := wireToolCall{ID: call.ID, Type: "function"}
+			item.Function.Name = call.Name
+			item.Function.Arguments = call.Arguments
+			wire.ToolCalls = append(wire.ToolCalls, item)
+		}
+		p.Messages = append(p.Messages, wire)
+	}
 	for _, t := range req.Tools {
 		p.Tools = append(p.Tools, map[string]any{"type": "function", "function": map[string]any{"name": t.Name, "description": t.Description, "parameters": json.RawMessage(t.Parameters)}})
 	}
@@ -145,10 +184,12 @@ func (c *OpenAICompatibleClient) Stream(ctx context.Context, req ChatRequest, em
 					} `json:"function"`
 				} `json:"tool_calls"`
 			} `json:"delta"`
+			FinishReason *string `json:"finish_reason"`
 		} `json:"choices"`
 		Usage Usage `json:"usage"`
 	}
 	calls := map[int]*ToolCall{}
+	sawTerminal := false
 	scanner := bufio.NewScanner(res.Body)
 	scanner.Buffer(make([]byte, 4096), 2<<20)
 	for scanner.Scan() {
@@ -158,6 +199,7 @@ func (c *OpenAICompatibleClient) Stream(ctx context.Context, req ChatRequest, em
 		}
 		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
 		if data == "[DONE]" {
+			sawTerminal = true
 			break
 		}
 		var ch chunk
@@ -187,10 +229,23 @@ func (c *OpenAICompatibleClient) Stream(ctx context.Context, req ChatRequest, em
 				v.Name += tc.Function.Name
 				v.Arguments += tc.Function.Arguments
 			}
+			// OpenAI-compatible providers are allowed to terminate a completion
+			// with finish_reason and omit or delay the optional [DONE] sentinel.
+			// Returning here is especially important for tool calls: the chat
+			// service cannot register the pending approval until Stream returns.
+			if choice.FinishReason != nil && *choice.FinishReason != "" {
+				sawTerminal = true
+			}
+		}
+		if sawTerminal {
+			break
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return out, classify(err, res.StatusCode)
+	}
+	if !sawTerminal {
+		return out, &Error{Code: "malformed_provider_stream", Status: 502}
 	}
 	for i := 0; i < len(calls); i++ {
 		if calls[i] != nil {

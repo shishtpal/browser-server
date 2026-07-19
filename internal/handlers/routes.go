@@ -17,6 +17,7 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "PATCH", Path: "/api/ai/conversations/{id}", Description: "Rename or change model for an AI conversation"},
 		{Method: "DELETE", Path: "/api/ai/conversations/{id}", Description: "Delete an AI conversation"},
 		{Method: "POST", Path: "/api/ai/conversations/{id}/messages", Description: "Send a message to an AI conversation"},
+		{Method: "POST", Path: "/api/ai/conversations/{id}/tool-calls/{callID}", Description: "Allow or reject a pending AI tool call"},
 		{Method: "POST", Path: "/api/ai/conversations/{id}/stop", Description: "Cancel active AI generation for a conversation"},
 		{Method: "POST", Path: "/api/ai/conversations/{id}/regenerate", Description: "Supersede and regenerate the latest AI response"},
 		{Method: "GET", Path: "/api/search/omnibox", Description: "Search bookmark and grouped history suggestions for Chrome omnibox (params: user_id, q, limit)"},

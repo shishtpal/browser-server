@@ -4,6 +4,7 @@ import type {
   AIConversation,
   AIConversationDetail,
   AIStreamEvent,
+  AIToolDecisionResponse,
   AnalyticsSummary,
   AnalyticsSummaryParams,
   Bookmark,
@@ -338,6 +339,10 @@ export function sendAIMessageStream(
 
 export function regenerateAIMessage(id: string): Promise<SendAIMessageResponse> {
   return client.regenerateAIMessage(id)
+}
+
+export function decideAIToolCall(id: string, callId: string, approved: boolean): Promise<AIToolDecisionResponse> {
+  return client.decideAIToolCall(id, callId, approved)
 }
 
 export function stopAIGeneration(id: string): Promise<StopAIGenerationResponse> {

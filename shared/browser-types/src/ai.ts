@@ -75,6 +75,7 @@ export interface SendAIMessageInput {
   stream?: boolean
   tools_enabled?: boolean
   yolo_mode?: boolean
+  active_tools?: string[]
 }
 
 export interface AIUsage {

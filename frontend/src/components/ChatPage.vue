@@ -1,5 +1,9 @@
 <template>
-  <div class="grid h-[calc(100vh-57px)] max-w-full grid-cols-1 overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-white lg:grid-cols-[300px_minmax(0,1fr)]">
+  <div
+    class="grid h-[calc(100vh-57px)] max-w-full grid-cols-1 overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-white"
+    :class="gridClass"
+    :style="chatFontStyle"
+  >
     <!-- Desktop sidebar -->
     <ChatSidebar
       class="hidden lg:flex"
@@ -27,10 +31,12 @@
         :yolo-mode="yoloMode"
         :disabled="!config?.enabled || isBusy"
         :title="activeConversation?.title"
+        :show-tools-panel="showToolsPanel"
         @toggle-sidebar="showMobileSidebar = true"
         @update:selected-provider="selectedProvider = $event"
         @update:selected-model="selectedModel = $event"
         @update:yolo-mode="yoloMode = $event"
+        @toggle-tools-panel="showToolsPanel = !showToolsPanel"
       />
 
       <!-- Error banner -->
@@ -66,6 +72,26 @@
         />
       </template>
     </section>
+
+    <!-- Right tools panel (desktop) -->
+    <ChatToolsPanel
+      v-if="showToolsPanel"
+      class="hidden lg:flex"
+      :tools-enabled="userToolsEnabled"
+      :model-supports-tools="selectedModelSupportsTools"
+      :yolo-mode="yoloMode"
+      :available-tools="availableTools"
+      :disabled-tools="disabledTools"
+      :tool-calls="toolCallEntries"
+      :font-family="chatFontFamily"
+      :font-size="chatFontSize"
+      @close="showToolsPanel = false"
+      @update:tools-enabled="userToolsEnabled = $event"
+      @update:yolo-mode="yoloMode = $event"
+      @update:font-family="chatFontFamily = $event"
+      @update:font-size="chatFontSize = $event"
+      @toggle-tool="toggleTool"
+    />
 
     <!-- Mobile sidebar drawer -->
     <ChatMobileDrawer
@@ -109,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getAIConfig, getAIConversation } from '../lib/api'
 import Modal from './ui/Modal.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
@@ -121,6 +147,8 @@ import ChatRegenerateButton from './chat/ChatRegenerateButton.vue'
 import ChatMobileDrawer from './chat/ChatMobileDrawer.vue'
 import ChatDisabledState from './chat/ChatDisabledState.vue'
 import ChatCopyToast from './chat/ChatCopyToast.vue'
+import ChatToolsPanel from './chat/ChatToolsPanel.vue'
+import type { ToolCallEntry } from './chat/ChatToolsPanel.vue'
 import { useChatConfig } from './chat/composables/useChatConfig'
 import { useChatConversations } from './chat/composables/useChatConversations'
 import { useChatMessaging } from './chat/composables/useChatMessaging'
@@ -132,10 +160,15 @@ const {
   selectedProvider,
   selectedModel,
   yoloMode,
+  userToolsEnabled,
+  disabledTools,
   configLabel,
   providerModels,
   selectedModelSupportsTools,
   toolsEnabled,
+  availableTools,
+  activeTools,
+  toggleTool,
   initFromConfig,
   loadPersistedSettings,
 } = useChatConfig()
@@ -183,11 +216,57 @@ const draft = ref('')
 const error = ref('')
 const showMobileSidebar = ref(false)
 const showCopyToast = ref(false)
+const showToolsPanel = ref(false)
+const chatFontFamily = ref(localStorage.getItem('ai-chat-font-family') || 'system-ui')
+const chatFontSize = ref(Number(localStorage.getItem('ai-chat-font-size')) || 14)
 
 const messageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null)
 const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
 
 const providerNames = computed(() => Object.keys(config.value?.providers ?? {}))
+
+// ─── Grid layout ───────────────────────────────────────
+
+const gridClass = computed(() => {
+  if (showToolsPanel.value) {
+    return 'lg:grid-cols-[300px_minmax(0,1fr)_auto]'
+  }
+  return 'lg:grid-cols-[300px_minmax(0,1fr)]'
+})
+
+const chatFontStyle = computed(() => ({
+  fontFamily: chatFontFamily.value,
+  fontSize: chatFontSize.value + 'px',
+}))
+
+watch(chatFontFamily, (v) => localStorage.setItem('ai-chat-font-family', v))
+watch(chatFontSize, (v) => localStorage.setItem('ai-chat-font-size', String(v)))
+
+// ─── Tool call entries for the panel ───────────────────
+
+const toolCallEntries = computed<ToolCallEntry[]>(() => {
+  return messages.value
+    .filter((m) => m.role === 'tool')
+    .map((m) => {
+      let name = 'Tool call'
+      let args: string | undefined
+      let result: string | undefined
+      let status = m.status === 'pending' ? 'pending' : 'completed'
+      try {
+        const parsed = JSON.parse(m.content)
+        name = parsed.tool || name
+        if (parsed.args) args = typeof parsed.args === 'string' ? parsed.args : JSON.stringify(parsed.args, null, 2)
+        if (parsed.result !== null && parsed.result !== undefined) {
+          result = typeof parsed.result === 'string' ? parsed.result : JSON.stringify(parsed.result, null, 2)
+        }
+        if (parsed.decision === 'rejected') status = 'rejected'
+        else if (parsed.result?.error) status = 'error'
+        else if (m.status === 'completed') status = 'completed'
+        else if (m.status === 'error') status = 'error'
+      } catch { /* use defaults */ }
+      return { id: m.tool_call_id || m.id, name, status, args, result }
+    })
+})
 
 // ─── Lifecycle ─────────────────────────────────────────
 
@@ -263,6 +342,7 @@ async function sendMessage(content?: string) {
         toolsEnabled: toolsEnabled.value,
         yoloMode: yoloMode.value,
         streamEnabled: config.value?.chat?.stream !== false,
+        activeTools: activeTools.value,
       },
       async (conversationId, firstMessage) => {
         await refreshConversation(conversationId)

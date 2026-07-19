@@ -1,4 +1,4 @@
-import type { AIConfig, AIConversation, AIMessage, AIStreamEvent } from '@browser-server/shared-types'
+import type { AIConversation, AIMessage, AIStreamEvent } from '@browser-server/shared-types'
 import { computed, ref } from 'vue'
 import {
   decideAIToolCall,
@@ -14,6 +14,7 @@ interface SendOptions {
   toolsEnabled: boolean
   yoloMode: boolean
   streamEnabled: boolean
+  activeTools?: string[]
 }
 
 export function useChatMessaging(
@@ -96,6 +97,7 @@ export function useChatMessaging(
           stream: true,
           tools_enabled: options.toolsEnabled,
           yolo_mode: options.yoloMode,
+          active_tools: options.activeTools,
         },
         (event: AIStreamEvent) => {
           const currentMessages = getMessages()
@@ -178,6 +180,7 @@ export function useChatMessaging(
         stream: false,
         tools_enabled: options.toolsEnabled,
         yolo_mode: options.yoloMode,
+        active_tools: options.activeTools,
       })
 
       const currentMessages = getMessages().filter((m) => m.id !== tempUserId && m.id !== tempAssistantId)

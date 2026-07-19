@@ -42,12 +42,13 @@ type Service struct {
 }
 
 type SubmitRequest struct {
-	Content      string `json:"content"`
-	Provider     string `json:"provider"`
-	Model        string `json:"model"`
-	Stream       *bool  `json:"stream"`
-	ToolsEnabled bool   `json:"tools_enabled"`
-	YOLOMode     bool   `json:"yolo_mode"`
+	Content      string   `json:"content"`
+	Provider     string   `json:"provider"`
+	Model        string   `json:"model"`
+	Stream       *bool    `json:"stream"`
+	ToolsEnabled bool     `json:"tools_enabled"`
+	YOLOMode     bool     `json:"yolo_mode"`
+	ActiveTools  []string `json:"active_tools,omitempty"`
 }
 
 type SubmitResponse struct {
@@ -100,6 +101,28 @@ func (s *Service) ValidateSelection(providerName, modelID string) error {
 		return fmt.Errorf("unknown provider/model selection")
 	}
 	return nil
+}
+
+// resolveActiveTools computes the effective tool list for a request.
+// If the client sends an explicit ActiveTools list, only tools that appear in
+// both ActiveTools and the server's configured allowed list are used.
+// If ActiveTools is empty/nil, the full allowed list is used (backward compat).
+func (s *Service) resolveActiveTools(clientActive []string) []string {
+	allowed := s.cfg.Tools.Allowed
+	if len(clientActive) == 0 {
+		return allowed
+	}
+	allowedSet := make(map[string]bool, len(allowed))
+	for _, name := range allowed {
+		allowedSet[name] = true
+	}
+	var result []string
+	for _, name := range clientActive {
+		if allowedSet[name] {
+			result = append(result, name)
+		}
+	}
+	return result
 }
 
 func (s *Service) Submit(ctx context.Context, conversationID string, req SubmitRequest) (SubmitResponse, error) {
@@ -169,7 +192,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 		MaxOutputTokens: maxOutput,
 	}
 	if req.ToolsEnabled && s.cfg.Tools.Enabled {
-		chatReq.Tools = s.tools.Specs(s.cfg.Tools.Allowed)
+		chatReq.Tools = s.tools.Specs(s.resolveActiveTools(req.ActiveTools))
 	}
 	var resp provider.ChatResponse
 	var providerErr error

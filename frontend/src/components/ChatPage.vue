@@ -22,6 +22,9 @@
     <!-- Main panel -->
     <section class="flex h-full flex-col overflow-hidden">
       <ChatTopBar
+        :profiles="profiles"
+        :selected-profile="selectedProfile"
+        :profile-locked="profileLocked"
         :provider-names="providerNames"
         :selected-provider="selectedProvider"
         :selected-model="selectedModel"
@@ -33,6 +36,7 @@
         :title="activeConversation?.title"
         :show-tools-panel="showToolsPanel"
         @toggle-sidebar="showMobileSidebar = true"
+        @update:selected-profile="selectedProfile = $event"
         @update:selected-provider="selectedProvider = $event"
         @update:selected-model="selectedModel = $event"
         @update:yolo-mode="yoloMode = $event"
@@ -159,6 +163,8 @@ const {
   config,
   selectedProvider,
   selectedModel,
+  selectedProfile,
+  profiles,
   yoloMode,
   userToolsEnabled,
   disabledTools,
@@ -224,6 +230,12 @@ const messageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null)
 const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
 
 const providerNames = computed(() => Object.keys(config.value?.providers ?? {}))
+
+// Profile is locked once the conversation has messages (cannot change mid-conversation)
+const profileLocked = computed(() => {
+  if (!activeConversation.value) return false
+  return messages.value.length > 0
+})
 
 // ─── Grid layout ───────────────────────────────────────
 
@@ -303,7 +315,13 @@ async function startConversation() {
   if (!config.value?.enabled) return
   error.value = ''
   try {
-    await createConversation(selectedProvider.value, selectedModel.value)
+    // Reset profile to empty (Default) for new conversations unless user explicitly chose one
+    // When coming from a locked conversation, the profile selector was disabled,
+    // so selectedProfile still holds the old value — reset it.
+    if (profileLocked.value) {
+      selectedProfile.value = ''
+    }
+    await createConversation(selectedProvider.value, selectedModel.value, selectedProfile.value || undefined)
     nextTick(() => chatInputRef.value?.focus())
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to create conversation'
@@ -316,6 +334,8 @@ async function handleSelectConversation(id: string) {
     const { provider, model } = await selectConversation(id)
     selectedProvider.value = provider
     selectedModel.value = model
+    // Set profile from the conversation (locked once selected)
+    selectedProfile.value = activeConversation.value?.profile || ''
     nextTick(() => messageListRef.value?.scrollToBottom())
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load conversation'

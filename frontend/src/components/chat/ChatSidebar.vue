@@ -43,6 +43,10 @@
         <span class="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
           {{ conversation.model }} · {{ formatRelativeTime(conversation.updated_at) }}
         </span>
+        <span
+          v-if="conversation.profile"
+          class="mt-1 inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+        >{{ conversation.profile }}</span>
         <div class="absolute right-2 top-2 hidden gap-1 group-hover:flex">
           <button
             class="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"

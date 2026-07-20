@@ -1,3 +1,8 @@
+export interface AIProfile {
+  name: string
+  label: string
+}
+
 export interface AIConfig {
   enabled: boolean
   default_provider?: string
@@ -12,6 +17,7 @@ export interface AIConfig {
     stream: boolean
     temperature: number
   }
+  profiles: AIProfile[]
 }
 
 export interface AIProviderConfig {
@@ -33,6 +39,7 @@ export interface AIConversation {
   title: string
   provider: string
   model: string
+  profile: string
   preview?: string
   created_at: string
   updated_at: string
@@ -60,6 +67,7 @@ export interface CreateAIConversationInput {
   title?: string
   provider?: string
   model?: string
+  profile?: string
 }
 
 export interface UpdateAIConversationInput {

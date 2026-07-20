@@ -36,8 +36,8 @@ export function useChatConversations() {
     conversations.value = await listAIConversations(undefined, 50)
   }
 
-  async function createConversation(provider: string, model: string): Promise<AIConversation> {
-    const conversation = await createAIConversation({ provider, model })
+  async function createConversation(provider: string, model: string, profile?: string): Promise<AIConversation> {
+    const conversation = await createAIConversation({ provider, model, profile })
     conversations.value = [conversation, ...conversations.value]
     activeConversation.value = conversation
     messages.value = []

@@ -9,6 +9,19 @@
       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
 
+    <!-- Profile selector -->
+    <select
+      v-if="profiles.length > 0"
+      :value="selectedProfile"
+      class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-900"
+      :disabled="disabled || profileLocked"
+      :title="profileLocked ? 'Profile is locked for this conversation' : 'Select a system prompt profile'"
+      @change="$emit('update:selectedProfile', ($event.target as HTMLSelectElement).value)"
+    >
+      <option value="">Default</option>
+      <option v-for="profile in profiles" :key="profile.name" :value="profile.name">{{ profile.label }}</option>
+    </select>
+
     <select
       :value="selectedProvider"
       class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-900"
@@ -61,6 +74,8 @@
 </template>
 
 <script setup lang="ts">
+import type { AIProfile } from '@browser-server/shared-types'
+
 interface ModelInfo {
   id: string
   label?: string
@@ -69,6 +84,9 @@ interface ModelInfo {
 }
 
 defineProps<{
+  profiles: AIProfile[]
+  selectedProfile: string
+  profileLocked: boolean
   providerNames: string[]
   selectedProvider: string
   selectedModel: string
@@ -83,6 +101,7 @@ defineProps<{
 
 defineEmits<{
   'toggle-sidebar': []
+  'update:selectedProfile': [value: string]
   'update:selectedProvider': [value: string]
   'update:selectedModel': [value: string]
   'update:yoloMode': [value: boolean]

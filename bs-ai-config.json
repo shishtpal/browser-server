@@ -45,7 +45,7 @@
       "git_pull",
       "git_merge"
     ],
-    "max_iterations": 5
+    "max_iterations": 50
   },
   "logging": {
     "enabled": true,

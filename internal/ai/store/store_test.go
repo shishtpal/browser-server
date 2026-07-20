@@ -13,7 +13,7 @@ func TestBeginFinishAndDelete(t *testing.T) {
 	}
 	defer s.Close()
 	ctx := context.Background()
-	c, err := s.CreateConversation(ctx, "test", "p", "m")
+	c, err := s.CreateConversation(ctx, "test", "p", "m", "")
 	if err != nil {
 		t.Fatal(err)
 	}

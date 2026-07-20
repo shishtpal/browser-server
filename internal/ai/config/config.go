@@ -259,8 +259,8 @@ func validate(cfg *Config) error {
 			return fmt.Errorf("provider %q must have exactly one default model", name)
 		}
 	}
-	if cfg.Tools.MaxIterations <= 0 || cfg.Tools.MaxIterations > 20 {
-		return fmt.Errorf("tools.max_iterations must be between 1 and 20")
+	if cfg.Tools.MaxIterations <= 0 || cfg.Tools.MaxIterations > 50 {
+		return fmt.Errorf("tools.max_iterations must be between 1 and 50")
 	}
 	known := map[string]bool{
 		"get_current_time": true, "search_bookmarks": true, "execute_command": true,

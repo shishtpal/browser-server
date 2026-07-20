@@ -24,6 +24,7 @@ type Conversation struct {
 	Title     string    `json:"title"`
 	Provider  string    `json:"provider"`
 	Model     string    `json:"model"`
+	Profile   string    `json:"profile"`
 	Preview   string    `json:"preview,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -158,6 +159,32 @@ func (s *Store) migrate() error {
 			return err
 		}
 	}
+
+	// Incremental migrations keyed by schema_version
+	migrations := []struct {
+		version    int
+		statements []string
+	}{
+		{2, []string{
+			`ALTER TABLE conversations ADD COLUMN profile TEXT NOT NULL DEFAULT ''`,
+		}},
+	}
+	var currentVersion int
+	s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&currentVersion)
+	for _, m := range migrations {
+		if currentVersion >= m.version {
+			continue
+		}
+		for _, stmt := range m.statements {
+			if _, err := s.db.Exec(stmt); err != nil {
+				return fmt.Errorf("migration v%d: %w", m.version, err)
+			}
+		}
+		if _, err := s.db.Exec(`INSERT INTO schema_version (version) VALUES (?)`, m.version); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -169,7 +196,7 @@ func NewID(prefix string) string {
 	return prefix + "_" + hex.EncodeToString(bytes[:])
 }
 
-func (s *Store) CreateConversation(ctx context.Context, title, provider, model string) (Conversation, error) {
+func (s *Store) CreateConversation(ctx context.Context, title, provider, model, profile string) (Conversation, error) {
 	now := time.Now().UTC()
 	title = strings.TrimSpace(title)
 	if title == "" {
@@ -183,11 +210,12 @@ func (s *Store) CreateConversation(ctx context.Context, title, provider, model s
 		Title:     title,
 		Provider:  provider,
 		Model:     model,
+		Profile:   profile,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO conversations (id, title, provider, model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		conversation.ID, conversation.Title, conversation.Provider, conversation.Model, formatTime(now), formatTime(now))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO conversations (id, title, provider, model, profile, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		conversation.ID, conversation.Title, conversation.Provider, conversation.Model, conversation.Profile, formatTime(now), formatTime(now))
 	return conversation, err
 }
 
@@ -199,11 +227,11 @@ func (s *Store) ListConversations(ctx context.Context, query string, limit int) 
 	var err error
 	if strings.TrimSpace(query) != "" {
 		pattern := "%" + strings.TrimSpace(query) + "%"
-		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.created_at, c.updated_at,
+		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.created_at, c.updated_at,
 			COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
 			FROM conversations c WHERE c.title LIKE ? ORDER BY c.updated_at DESC LIMIT ?`, pattern, limit)
 	} else {
-		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.created_at, c.updated_at,
+		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.created_at, c.updated_at,
 			COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
 			FROM conversations c ORDER BY c.updated_at DESC LIMIT ?`, limit)
 	}
@@ -223,7 +251,7 @@ func (s *Store) ListConversations(ctx context.Context, query string, limit int) 
 }
 
 func (s *Store) GetConversation(ctx context.Context, id string) (Conversation, []Message, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, title, provider, model, created_at, updated_at, '' FROM conversations WHERE id = ?`, id)
+	row := s.db.QueryRowContext(ctx, `SELECT id, title, provider, model, profile, created_at, updated_at, '' FROM conversations WHERE id = ?`, id)
 	conversation, err := scanConversation(row)
 	if err != nil {
 		return Conversation{}, nil, err
@@ -449,7 +477,7 @@ type conversationScanner interface {
 func scanConversation(row conversationScanner) (Conversation, error) {
 	var item Conversation
 	var created, updated string
-	if err := row.Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &created, &updated, &item.Preview); err != nil {
+	if err := row.Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &item.Profile, &created, &updated, &item.Preview); err != nil {
 		return Conversation{}, err
 	}
 	item.CreatedAt = parseTime(created)

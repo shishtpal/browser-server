@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,15 +20,17 @@ import (
 
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
+	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/store"
 )
 
 type Module struct {
-	cfg     *aiconfig.Config
-	store   *store.Store
-	service *chat.Service
-	stop    chan struct{}
-	wg      sync.WaitGroup
+	cfg      *aiconfig.Config
+	store    *store.Store
+	service  *chat.Service
+	profiles *profiles.Registry
+	stop     chan struct{}
+	wg       sync.WaitGroup
 }
 
 type errorEnvelope struct {
@@ -43,6 +46,7 @@ type createConversationRequest struct {
 	Title    string `json:"title"`
 	Provider string `json:"provider"`
 	Model    string `json:"model"`
+	Profile  string `json:"profile"`
 }
 
 type updateConversationRequest struct {
@@ -69,7 +73,19 @@ func Init() (*Module, error) {
 	module := &Module{cfg: cfg}
 	if !cfg.Enabled {
 		log.Printf("AI disabled: no config found at %s", cfg.Path)
+		// Still load profiles even if AI is disabled so the config endpoint can report them
+		baseDir := filepath.Dir(cfg.Path)
+		module.profiles, _ = profiles.Load(baseDir)
 		return module, nil
+	}
+	baseDir := filepath.Dir(cfg.Path)
+	profileReg, err := profiles.Load(baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("load profiles: %w", err)
+	}
+	module.profiles = profileReg
+	if len(profileReg.List()) > 0 {
+		log.Printf("AI profiles loaded: %d profile(s) from %s/.profiles/", len(profileReg.List()), baseDir)
 	}
 	dbPath := cfg.ResolvePath(cfg.Logging.DBPath)
 	st, err := store.Open(dbPath)
@@ -81,7 +97,7 @@ func Init() (*Module, error) {
 		return nil, fmt.Errorf("AI retention cleanup: %w", err)
 	}
 	module.store = st
-	module.service = chat.NewService(cfg, st)
+	module.service = chat.NewService(cfg, st, profileReg)
 	module.stop = make(chan struct{})
 	module.wg.Add(1)
 	go func() {
@@ -116,6 +132,14 @@ func (m *Module) Close() error {
 	return m.store.Close()
 }
 
+// Profiles returns the loaded profile registry for use by other components.
+func (m *Module) Profiles() *profiles.Registry {
+	if m == nil {
+		return nil
+	}
+	return m.profiles
+}
+
 func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/config", m.Config).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.ListConversations)).Methods("GET")
@@ -129,8 +153,26 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}/regenerate", m.requireAI(m.Regenerate)).Methods("POST")
 }
 
+// configResponse wraps the sanitized config with profile information.
+type configResponse struct {
+	aiconfig.SanitizedConfig
+	Profiles []profileInfo `json:"profiles"`
+}
+
+type profileInfo struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
+}
+
 func (m *Module) Config(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, m.cfg.Sanitized())
+	resp := configResponse{
+		SanitizedConfig: m.cfg.Sanitized(),
+		Profiles:        make([]profileInfo, 0),
+	}
+	for _, p := range m.profiles.List() {
+		resp.Profiles = append(resp.Profiles, profileInfo{Name: p.Name, Label: p.Label})
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (m *Module) ListConversations(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +209,14 @@ func (m *Module) CreateConversation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_model", err.Error())
 		return
 	}
-	conversation, err := m.store.CreateConversation(r.Context(), req.Title, providerName, modelID)
+	// Validate profile if provided
+	if req.Profile != "" {
+		if _, ok := m.profiles.Get(req.Profile); !ok {
+			writeError(w, http.StatusBadRequest, "invalid_profile", fmt.Sprintf("Unknown profile %q", req.Profile))
+			return
+		}
+	}
+	conversation, err := m.store.CreateConversation(r.Context(), req.Title, providerName, modelID, req.Profile)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "store_error", "Failed to create conversation")
 		return

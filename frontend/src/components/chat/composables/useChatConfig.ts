@@ -1,4 +1,4 @@
-import type { AIConfig } from '@browser-server/shared-types'
+import type { AIConfig, AIProfile } from '@browser-server/shared-types'
 import { computed, ref, watch } from 'vue'
 
 export interface AIModelInfo {
@@ -12,9 +12,13 @@ export function useChatConfig() {
   const config = ref<AIConfig | null>(null)
   const selectedProvider = ref('')
   const selectedModel = ref('')
+  const selectedProfile = ref('')
   const yoloMode = ref(false)
   const userToolsEnabled = ref(true)
   const disabledTools = ref<Set<string>>(new Set())
+
+  /** Available profiles from the server config */
+  const profiles = computed<AIProfile[]>(() => config.value?.profiles ?? [])
 
   const configLabel = computed(() => {
     if (!config.value) return 'Loading…'
@@ -101,6 +105,8 @@ export function useChatConfig() {
     config,
     selectedProvider,
     selectedModel,
+    selectedProfile,
+    profiles,
     yoloMode,
     userToolsEnabled,
     disabledTools,

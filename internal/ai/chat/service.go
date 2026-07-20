@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	aiconfig "browser-server/internal/ai/config"
+	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/provider"
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tools"
@@ -34,6 +36,7 @@ type pendingToolCall struct {
 type Service struct {
 	cfg       *aiconfig.Config
 	store     *store.Store
+	profiles  *profiles.Registry
 	clients   map[string]provider.Client
 	activeMu  sync.Mutex
 	active    map[string]context.CancelFunc
@@ -69,13 +72,13 @@ type Event struct {
 	Usage     provider.Usage     `json:"usage,omitempty"`
 }
 
-func NewService(cfg *aiconfig.Config, st *store.Store) *Service {
+func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Registry) *Service {
 	clients := map[string]provider.Client{}
 	for name, item := range cfg.Providers {
 		clients[name] = provider.NewOpenAICompatibleClient(item.BaseURL, item.APIKey, time.Duration(item.RequestTimeoutSeconds)*time.Second)
 	}
 	return &Service{
-		cfg: cfg, store: st, clients: clients, active: map[string]context.CancelFunc{},
+		cfg: cfg, store: st, profiles: profileReg, clients: clients, active: map[string]context.CancelFunc{},
 		tools: tools.New(), pending: map[string]pendingToolCall{},
 	}
 }
@@ -184,7 +187,16 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 		cancel()
 		return SubmitResponse{}, err
 	}
-	providerMessages := s.providerMessages(messages)
+	// Resolve system prompt: use profile content if conversation has one, else config default
+	systemPrompt := s.cfg.Chat.SystemPrompt
+	if conversation.Profile != "" {
+		if content, ok := s.profiles.Get(conversation.Profile); ok {
+			systemPrompt = content
+		} else {
+			log.Printf("WARN: conversation %s references unknown profile %q, using default", conversationID, conversation.Profile)
+		}
+	}
+	providerMessages := s.providerMessages(messages, systemPrompt)
 	maxOutput := modelCfg.MaxOutputTokens
 	chatReq := provider.ChatRequest{
 		Provider:        providerName,
@@ -450,8 +462,8 @@ func (s *Service) finish(conversationID string) {
 	delete(s.active, conversationID)
 }
 
-func (s *Service) providerMessages(messages []store.Message) []provider.Message {
-	out := []provider.Message{{Role: "system", Content: s.cfg.Chat.SystemPrompt}}
+func (s *Service) providerMessages(messages []store.Message, systemPrompt string) []provider.Message {
+	out := []provider.Message{{Role: "system", Content: systemPrompt}}
 	start := 0
 	limit := s.cfg.Chat.MaxHistoryMessages
 	if limit > 0 && len(messages) > limit {

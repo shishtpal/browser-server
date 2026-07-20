@@ -35,12 +35,14 @@
         :disabled="!config?.enabled || isBusy"
         :title="activeConversation?.title"
         :show-tools-panel="showToolsPanel"
+        :show-memory-explorer="showMemoryExplorer"
         @toggle-sidebar="showMobileSidebar = true"
         @update:selected-profile="selectedProfile = $event"
         @update:selected-provider="selectedProvider = $event"
         @update:selected-model="selectedModel = $event"
         @update:yolo-mode="yoloMode = $event"
         @toggle-tools-panel="showToolsPanel = !showToolsPanel"
+        @toggle-memory-explorer="showMemoryExplorer = !showMemoryExplorer"
       />
 
       <!-- Error banner -->
@@ -136,6 +138,15 @@
 
     <!-- Copy toast -->
     <ChatCopyToast :visible="showCopyToast" />
+
+    <!-- Memory Explorer modal -->
+    <ChatMemoryExplorer
+      :open="showMemoryExplorer"
+      :conversation-id="activeConversation?.id ?? ''"
+      :messages="messages"
+      @close="showMemoryExplorer = false"
+      @updated="messages = $event"
+    />
   </div>
 </template>
 
@@ -153,6 +164,7 @@ import ChatMobileDrawer from './chat/ChatMobileDrawer.vue'
 import ChatDisabledState from './chat/ChatDisabledState.vue'
 import ChatCopyToast from './chat/ChatCopyToast.vue'
 import ChatToolsPanel from './chat/ChatToolsPanel.vue'
+import ChatMemoryExplorer from './chat/ChatMemoryExplorer.vue'
 import type { ToolCallEntry } from './chat/ChatToolsPanel.vue'
 import { useChatConfig } from './chat/composables/useChatConfig'
 import { useChatConversations } from './chat/composables/useChatConversations'
@@ -225,6 +237,7 @@ const error = ref('')
 const showMobileSidebar = ref(false)
 const showCopyToast = ref(false)
 const showToolsPanel = ref(false)
+const showMemoryExplorer = ref(false)
 const chatFontFamily = ref(localStorage.getItem('ai-chat-font-family') || 'system-ui')
 const chatFontSize = ref(Number(localStorage.getItem('ai-chat-font-size')) || 14)
 

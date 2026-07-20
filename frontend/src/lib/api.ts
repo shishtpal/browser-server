@@ -3,6 +3,7 @@ import type {
   AIConfig,
   AIConversation,
   AIConversationDetail,
+  AIMessage,
   AIStreamEvent,
   AIToolDecisionResponse,
   AnalyticsSummary,
@@ -347,4 +348,12 @@ export function decideAIToolCall(id: string, callId: string, approved: boolean, 
 
 export function stopAIGeneration(id: string): Promise<StopAIGenerationResponse> {
   return client.stopAIGeneration(id)
+}
+
+export function updateAIMessage(conversationId: string, messageId: string, data: { content: string }): Promise<AIMessage> {
+  return client.updateAIMessage(conversationId, messageId, data)
+}
+
+export function deleteAIMessage(conversationId: string, messageId: string): Promise<void> {
+  return client.deleteAIMessage(conversationId, messageId)
 }

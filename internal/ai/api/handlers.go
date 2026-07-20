@@ -148,6 +148,8 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.UpdateConversation)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.DeleteConversation)).Methods("DELETE")
 	r.HandleFunc("/ai/conversations/{id}/messages", m.requireAI(m.SubmitMessage)).Methods("POST")
+	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.UpdateMessage)).Methods("PATCH")
+	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.DeleteMessage)).Methods("DELETE")
 	r.HandleFunc("/ai/conversations/{id}/tool-calls/{callID}", m.requireAI(m.DecideToolCall)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/stop", m.requireAI(m.StopGeneration)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/regenerate", m.requireAI(m.Regenerate)).Methods("POST")
@@ -446,6 +448,65 @@ func (m *Module) DecideToolCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"accepted": true})
+}
+
+func (m *Module) UpdateMessage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	convID := vars["id"]
+	msgID := vars["msgId"]
+	if m.service.IsActive(convID) {
+		writeError(w, http.StatusConflict, "generation_conflict", "Generation is active")
+		return
+	}
+	var req struct {
+		Content *string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		return
+	}
+	if req.Content == nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Content field is required")
+		return
+	}
+	msg, err := m.store.UpdateMessageContent(r.Context(), msgID, *req.Content)
+	if err != nil {
+		if store.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, "not_found", "Message not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "store_error", "Failed to update message")
+		return
+	}
+	if msg.ConversationID != convID {
+		writeError(w, http.StatusNotFound, "not_found", "Message not found in this conversation")
+		return
+	}
+	writeJSON(w, http.StatusOK, msg)
+}
+
+func (m *Module) DeleteMessage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	convID := vars["id"]
+	msgID := vars["msgId"]
+	if m.service.IsActive(convID) {
+		writeError(w, http.StatusConflict, "generation_conflict", "Generation is active")
+		return
+	}
+	ownerConvID, err := m.store.DeleteMessage(r.Context(), msgID)
+	if err != nil {
+		if store.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, "not_found", "Message not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "store_error", "Failed to delete message")
+		return
+	}
+	if ownerConvID != convID {
+		writeError(w, http.StatusNotFound, "not_found", "Message not found in this conversation")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (m *Module) requireAI(next http.HandlerFunc) http.HandlerFunc {

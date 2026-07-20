@@ -43,6 +43,26 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
       return apiFetch<void>(baseUrl, 'DELETE', `/api/ai/conversations/${encodeURIComponent(id)}`, undefined, getToken)
     },
 
+    updateAIMessage(conversationId: string, messageId: string, data: import('@browser-server/shared-types').UpdateAIMessageInput): Promise<import('@browser-server/shared-types').AIMessage> {
+      return apiFetch<import('@browser-server/shared-types').AIMessage>(
+        baseUrl,
+        'PATCH',
+        `/api/ai/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+        data,
+        getToken,
+      )
+    },
+
+    deleteAIMessage(conversationId: string, messageId: string): Promise<void> {
+      return apiFetch<void>(
+        baseUrl,
+        'DELETE',
+        `/api/ai/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+        undefined,
+        getToken,
+      )
+    },
+
     sendAIMessage(id: string, data: SendAIMessageInput): Promise<SendAIMessageResponse> {
       return apiFetch<SendAIMessageResponse>(
         baseUrl,

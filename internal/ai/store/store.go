@@ -372,6 +372,45 @@ func (s *Store) UpdateMessage(ctx context.Context, id, content, status string) e
 	return nil
 }
 
+// UpdateMessageContent updates only the content of a message (for user editing).
+func (s *Store) UpdateMessageContent(ctx context.Context, id, content string) (Message, error) {
+	res, err := s.db.ExecContext(ctx, `UPDATE messages SET content = ? WHERE id = ?`, content, id)
+	if err != nil {
+		return Message{}, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil || n != 1 {
+		return Message{}, sql.ErrNoRows
+	}
+	var m Message
+	var created string
+	err = s.db.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id,''), status, created_at FROM messages WHERE id = ?`, id).
+		Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.ToolCallID, &m.Status, &created)
+	if err != nil {
+		return Message{}, err
+	}
+	m.CreatedAt = parseTime(created)
+	return m, nil
+}
+
+// DeleteMessage removes a message by ID, returning the conversation_id it belonged to.
+func (s *Store) DeleteMessage(ctx context.Context, id string) (string, error) {
+	var conversationID string
+	err := s.db.QueryRowContext(ctx, `SELECT conversation_id FROM messages WHERE id = ?`, id).Scan(&conversationID)
+	if err != nil {
+		return "", err
+	}
+	res, err := s.db.ExecContext(ctx, `DELETE FROM messages WHERE id = ?`, id)
+	if err != nil {
+		return "", err
+	}
+	n, err := res.RowsAffected()
+	if err != nil || n != 1 {
+		return "", sql.ErrNoRows
+	}
+	return conversationID, nil
+}
+
 // FinishTurn commits terminal message state and its mandatory audit row together.
 func (s *Store) FinishTurn(ctx context.Context, messageID, content, status string, log RequestLog) error {
 	tx, err := s.db.BeginTx(ctx, nil)

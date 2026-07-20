@@ -58,6 +58,19 @@
       {{ title }}
     </span>
 
+    <!-- Memory explorer toggle -->
+    <button
+      class="rounded-lg border p-2 transition"
+      :class="showMemoryExplorer
+        ? 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-300'
+        : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'"
+      type="button"
+      title="Memory Explorer"
+      @click="$emit('toggle-memory-explorer')"
+    >
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    </button>
+
     <!-- Tools panel toggle -->
     <button
       class="hidden rounded-lg border p-2 transition lg:block"
@@ -97,6 +110,7 @@ defineProps<{
   disabled: boolean
   title?: string
   showToolsPanel?: boolean
+  showMemoryExplorer?: boolean
 }>()
 
 defineEmits<{
@@ -106,5 +120,6 @@ defineEmits<{
   'update:selectedModel': [value: string]
   'update:yoloMode': [value: boolean]
   'toggle-tools-panel': []
+  'toggle-memory-explorer': []
 }>()
 </script>

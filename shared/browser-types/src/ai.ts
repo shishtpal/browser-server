@@ -77,6 +77,10 @@ export interface UpdateAIConversationInput {
   model?: string
 }
 
+export interface UpdateAIMessageInput {
+  content: string
+}
+
 export interface SendAIMessageInput {
   content: string
   provider?: string

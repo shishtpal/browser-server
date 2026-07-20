@@ -101,24 +101,58 @@
         </label>
       </section>
 
-      <!-- Available tools -->
+      <!-- Available tools (grouped by category) -->
       <section v-if="toolsEnabled && availableTools.length > 0">
         <h3 class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Available Tools</h3>
-        <div class="space-y-1.5">
-          <label
-            v-for="tool in availableTools"
-            :key="tool"
-            class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2 transition hover:bg-white dark:border-white/10 dark:hover:bg-white/5"
+        <div class="space-y-2.5">
+          <div
+            v-for="group in toolsByCategory"
+            :key="group.category"
+            class="rounded-lg border border-slate-200 overflow-hidden dark:border-white/10"
           >
-            <input
-              type="checkbox"
-              :checked="!disabledTools.has(tool)"
-              class="h-3.5 w-3.5 accent-indigo-600"
-              @change="$emit('toggle-tool', tool, ($event.target as HTMLInputElement).checked)"
-            />
-            <span class="flex-1 truncate text-xs font-semibold text-slate-700 dark:text-slate-300">{{ tool }}</span>
-            <span class="grid h-5 w-5 place-items-center rounded bg-amber-100 text-[10px] dark:bg-amber-900/30">🔧</span>
-          </label>
+            <!-- Category header with bulk toggle -->
+            <div class="flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 dark:bg-slate-800/60">
+              <input
+                type="checkbox"
+                :checked="isCategoryFullyEnabled(group.tools)"
+                :indeterminate="isCategoryPartial(group.tools)"
+                class="h-3.5 w-3.5 accent-indigo-600"
+                @change="toggleCategory(group.tools, ($event.target as HTMLInputElement).checked)"
+              />
+              <button
+                type="button"
+                class="flex flex-1 items-center gap-1.5 text-left"
+                @click="toggleCollapse(group.category)"
+              >
+                <svg
+                  class="h-3 w-3 text-slate-400 transition-transform duration-150"
+                  :class="{ '-rotate-90': collapsed.has(group.category) }"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+                <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300">{{ group.category }}</span>
+                <span class="text-[10px] text-slate-400 dark:text-slate-500">({{ group.tools.length }})</span>
+              </button>
+            </div>
+            <!-- Tools within category -->
+            <div v-show="!collapsed.has(group.category)" class="divide-y divide-slate-100 dark:divide-white/5">
+              <label
+                v-for="tool in group.tools"
+                :key="tool"
+                class="flex items-center gap-2.5 px-3 py-2 transition hover:bg-white dark:hover:bg-white/5 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  :checked="!disabledTools.has(tool)"
+                  class="h-3.5 w-3.5 accent-indigo-600"
+                  @change="$emit('toggle-tool', tool, ($event.target as HTMLInputElement).checked)"
+                />
+                <span class="flex-1 truncate text-xs font-semibold text-slate-700 dark:text-slate-300">{{ tool }}</span>
+                <span class="grid h-5 w-5 place-items-center rounded bg-amber-100 text-[10px] dark:bg-amber-900/30">🔧</span>
+              </label>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -165,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue'
+import { onUnmounted, reactive, ref } from 'vue'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 500
@@ -180,18 +214,19 @@ export interface ToolCallEntry {
   result?: string
 }
 
-defineProps<{
+const props = defineProps<{
   toolsEnabled: boolean
   modelSupportsTools: boolean
   yoloMode: boolean
   availableTools: string[]
+  toolsByCategory: { category: string; tools: string[] }[]
   disabledTools: Set<string>
   toolCalls: ToolCallEntry[]
   fontFamily: string
   fontSize: number
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
   'update:toolsEnabled': [value: boolean]
   'update:yoloMode': [value: boolean]
@@ -199,6 +234,33 @@ defineEmits<{
   'update:fontSize': [value: number]
   'toggle-tool': [name: string, enabled: boolean]
 }>()
+
+// ─── Category grouping logic ───────────────────────────
+
+const collapsed = reactive(new Set<string>())
+
+function toggleCollapse(category: string) {
+  if (collapsed.has(category)) {
+    collapsed.delete(category)
+  } else {
+    collapsed.add(category)
+  }
+}
+
+function isCategoryFullyEnabled(tools: string[]): boolean {
+  return tools.every(t => !props.disabledTools.has(t))
+}
+
+function isCategoryPartial(tools: string[]): boolean {
+  const enabled = tools.filter(t => !props.disabledTools.has(t)).length
+  return enabled > 0 && enabled < tools.length
+}
+
+function toggleCategory(tools: string[], enabled: boolean) {
+  for (const tool of tools) {
+    emit('toggle-tool', tool, enabled)
+  }
+}
 
 // ─── Resize logic ──────────────────────────────────────
 

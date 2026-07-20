@@ -10,6 +10,7 @@ export interface AIConfig {
   tools: {
     enabled: boolean
     allowed: string[]
+    categories: Record<string, string>
     max_iterations: number
   }
   chat: {

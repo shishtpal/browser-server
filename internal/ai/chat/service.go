@@ -89,6 +89,11 @@ func (s *Service) DefaultSelection() (string, string) {
 	return providerName, model.ID
 }
 
+// ToolCategories returns a map of tool name → category for all allowed tools.
+func (s *Service) ToolCategories() map[string]string {
+	return s.tools.Categories(s.cfg.Tools.Allowed)
+}
+
 func (s *Service) ValidateSelection(providerName, modelID string) error {
 	if providerName == "" {
 		providerName = s.cfg.DefaultProvider

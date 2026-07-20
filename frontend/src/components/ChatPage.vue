@@ -85,6 +85,7 @@
       :model-supports-tools="selectedModelSupportsTools"
       :yolo-mode="yoloMode"
       :available-tools="availableTools"
+      :tools-by-category="toolsByCategory"
       :disabled-tools="disabledTools"
       :tool-calls="toolCallEntries"
       :font-family="chatFontFamily"
@@ -173,6 +174,7 @@ const {
   selectedModelSupportsTools,
   toolsEnabled,
   availableTools,
+  toolsByCategory,
   activeTools,
   toggleTool,
   initFromConfig,

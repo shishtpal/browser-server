@@ -42,6 +42,21 @@ export function useChatConfig() {
   /** All tools declared in the server config */
   const availableTools = computed<string[]>(() => config.value?.tools?.allowed ?? [])
 
+  /** Tool name → category mapping from the server */
+  const toolCategories = computed<Record<string, string>>(() => config.value?.tools?.categories ?? {})
+
+  /** Tools grouped by category for UI display */
+  const toolsByCategory = computed<{ category: string; tools: string[] }[]>(() => {
+    const cats = toolCategories.value
+    const map = new Map<string, string[]>()
+    for (const tool of availableTools.value) {
+      const cat = cats[tool] || 'Other'
+      if (!map.has(cat)) map.set(cat, [])
+      map.get(cat)!.push(tool)
+    }
+    return Array.from(map.entries()).map(([category, tools]) => ({ category, tools }))
+  })
+
   /** Tools the user has chosen to keep active (allowed minus user-disabled) */
   const activeTools = computed<string[]>(() =>
     availableTools.value.filter((t) => !disabledTools.value.has(t))
@@ -115,6 +130,8 @@ export function useChatConfig() {
     selectedModelSupportsTools,
     toolsEnabled,
     availableTools,
+    toolCategories,
+    toolsByCategory,
     activeTools,
     toggleTool,
     initFromConfig,

@@ -165,8 +165,12 @@ type profileInfo struct {
 }
 
 func (m *Module) Config(w http.ResponseWriter, r *http.Request) {
+	var categories map[string]string
+	if m.service != nil {
+		categories = m.service.ToolCategories()
+	}
 	resp := configResponse{
-		SanitizedConfig: m.cfg.Sanitized(),
+		SanitizedConfig: m.cfg.Sanitized(categories),
 		Profiles:        make([]profileInfo, 0),
 	}
 	for _, p := range m.profiles.List() {

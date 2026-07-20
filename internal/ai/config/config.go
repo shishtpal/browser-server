@@ -84,9 +84,10 @@ type SanitizedModel struct {
 }
 
 type SanitizedTools struct {
-	Enabled       bool     `json:"enabled"`
-	Allowed       []string `json:"allowed"`
-	MaxIterations int      `json:"max_iterations"`
+	Enabled       bool              `json:"enabled"`
+	Allowed       []string          `json:"allowed"`
+	Categories    map[string]string `json:"categories"`
+	MaxIterations int               `json:"max_iterations"`
 }
 
 type SanitizedChat struct {
@@ -305,7 +306,7 @@ func isLocalHost(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
-func (cfg *Config) Sanitized() SanitizedConfig {
+func (cfg *Config) Sanitized(categories map[string]string) SanitizedConfig {
 	out := SanitizedConfig{
 		Enabled:         cfg.Enabled,
 		DefaultProvider: cfg.DefaultProvider,
@@ -313,6 +314,7 @@ func (cfg *Config) Sanitized() SanitizedConfig {
 		Tools: SanitizedTools{
 			Enabled:       cfg.Tools.Enabled,
 			Allowed:       append([]string{}, cfg.Tools.Allowed...),
+			Categories:    categories,
 			MaxIterations: cfg.Tools.MaxIterations,
 		},
 		Chat: SanitizedChat{
@@ -320,6 +322,9 @@ func (cfg *Config) Sanitized() SanitizedConfig {
 			Stream:             cfg.Chat.Stream,
 			Temperature:        cfg.Chat.Temperature,
 		},
+	}
+	if out.Tools.Categories == nil {
+		out.Tools.Categories = map[string]string{}
 	}
 	for name, provider := range cfg.Providers {
 		sanitized := SanitizedProvider{Type: provider.Type}

@@ -236,9 +236,10 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	}
 	resp, providerErr = complete()
 	var toolMessages []store.Message
+	iterationLimitReached := false
 	for iteration := 0; providerErr == nil && len(resp.ToolCalls) > 0; iteration++ {
 		if iteration >= s.cfg.Tools.MaxIterations {
-			providerErr = &provider.Error{Code: "tool_iteration_limit", Status: 429}
+			iterationLimitReached = true
 			break
 		}
 		chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "assistant", ToolCalls: resp.ToolCalls})
@@ -357,6 +358,18 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	if providerErr != nil && contentToSave == "" {
 		contentToSave = ""
 	}
+	// Graceful stop when iteration limit is reached: save whatever content
+	// we have and notify the user they can continue the conversation.
+	if iterationLimitReached && providerErr == nil {
+		if contentToSave == "" {
+			contentToSave = fmt.Sprintf("\n\n---\n*Tool use limit reached (%d iterations). Send a message to continue where I left off.*", s.cfg.Tools.MaxIterations)
+		} else {
+			contentToSave += fmt.Sprintf("\n\n---\n*Tool use limit reached (%d iterations). Send a message to continue where I left off.*", s.cfg.Tools.MaxIterations)
+		}
+		if emit != nil {
+			_ = emit(Event{Type: "delta", MessageID: assistantMessage.ID, Content: fmt.Sprintf("\n\n---\n*Tool use limit reached (%d iterations). Send a message to continue where I left off.*", s.cfg.Tools.MaxIterations)})
+		}
+	}
 	requestPayload, responsePayload, truncated := boundedPayloads(resp.RawRequest, resp.RawResponse, s.cfg.Logging.LogFullPayload, s.cfg.Logging.MaxPayloadBytes)
 	httpStatus := nullableStatus(resp.HTTPStatus)
 	terminalCtx, terminalCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -474,6 +487,49 @@ func (s *Service) providerMessages(messages []store.Message, systemPrompt string
 	if limit > 0 && len(messages) > limit {
 		start = len(messages) - limit
 	}
+
+	// First pass: identify tool_call_ids present in tool messages so we can
+	// reconstruct assistant+tool pairs from history.
+	toolCallIDs := map[string]bool{}
+	for _, message := range messages[start:] {
+		if message.Role == "tool" && message.ToolCallID != "" && message.Status == "completed" {
+			toolCallIDs[message.ToolCallID] = true
+		}
+	}
+
+	// Second pass: build the provider message list.
+	// For tool messages, we need them paired with an assistant message that
+	// contains the corresponding tool_calls array. Since we only store the
+	// flattened tool result messages (not the raw assistant tool_calls envelope),
+	// we reconstruct a synthetic assistant envelope when we encounter a group
+	// of tool results that follows a non-tool message.
+	//
+	// The sequence in stored messages is:
+	//   user → assistant(content) → tool(call1) → tool(call2) → assistant(next) ...
+	// We need to produce:
+	//   user → assistant{content, tool_calls:[call1,call2]} → tool(call1) → tool(call2) → assistant(next) ...
+	//
+	// Strategy: collect consecutive tool messages, then emit a synthetic
+	// assistant with tool_calls before emitting the tool results.
+
+	type toolGroup struct {
+		calls   []provider.ToolCall
+		results []provider.Message
+	}
+
+	var pendingTools toolGroup
+
+	flushTools := func() {
+		if len(pendingTools.calls) == 0 {
+			return
+		}
+		// Emit a synthetic assistant message with tool_calls
+		out = append(out, provider.Message{Role: "assistant", ToolCalls: pendingTools.calls})
+		// Emit tool result messages
+		out = append(out, pendingTools.results...)
+		pendingTools = toolGroup{}
+	}
+
 	for _, message := range messages[start:] {
 		if message.Role == "system" || message.Status == "superseded" || message.Status == "pending" || strings.TrimSpace(message.Content) == "" {
 			continue
@@ -481,15 +537,64 @@ func (s *Service) providerMessages(messages []store.Message, systemPrompt string
 		if message.Role == "assistant" && message.Status != "completed" && message.Status != "cancelled" && message.Status != "error" {
 			continue
 		}
-		// Historical tool results cannot be replayed without their assistant tool-call
-		// envelope. Current-turn calls are appended explicitly by SubmitStream.
+
 		if message.Role == "tool" {
+			if message.ToolCallID == "" || !toolCallIDs[message.ToolCallID] {
+				continue
+			}
+			// Extract the actual result content from the stored JSON envelope.
+			// Stored format: {"tool":"name","args":...,"result":...,"decision":"approved"}
+			toolContent := extractToolResult(message.Content)
+			pendingTools.calls = append(pendingTools.calls, provider.ToolCall{
+				ID:   message.ToolCallID,
+				Name: extractToolName(message.Content),
+			})
+			pendingTools.results = append(pendingTools.results, provider.Message{
+				Role:       "tool",
+				ToolCallID: message.ToolCallID,
+				Content:    toolContent,
+			})
 			continue
 		}
+
+		// Non-tool message: flush any pending tool group first
+		flushTools()
+
 		pm := provider.Message{Role: message.Role, Content: message.Content}
 		out = append(out, pm)
 	}
+	// Flush any trailing tool group
+	flushTools()
+
 	return out
+}
+
+// extractToolResult extracts the "result" field from the stored tool message JSON.
+// Falls back to the raw content if parsing fails.
+func extractToolResult(content string) string {
+	var envelope struct {
+		Result json.RawMessage `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(content), &envelope); err != nil || envelope.Result == nil {
+		return content
+	}
+	// If the result is a string, unquote it; otherwise return as-is
+	var s string
+	if json.Unmarshal(envelope.Result, &s) == nil {
+		return s
+	}
+	return string(envelope.Result)
+}
+
+// extractToolName extracts the "tool" field from the stored tool message JSON.
+func extractToolName(content string) string {
+	var envelope struct {
+		Tool string `json:"tool"`
+	}
+	if err := json.Unmarshal([]byte(content), &envelope); err != nil {
+		return "unknown"
+	}
+	return envelope.Tool
 }
 
 func boundedPayloads(request, response []byte, enabled bool, max int) (string, string, bool) {

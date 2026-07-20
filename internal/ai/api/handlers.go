@@ -52,7 +52,8 @@ type updateConversationRequest struct {
 }
 
 type toolDecisionRequest struct {
-	Approved *bool `json:"approved"`
+	Approved *bool  `json:"approved"`
+	Comment  string `json:"comment,omitempty"`
 }
 
 type conversationDetail struct {
@@ -377,12 +378,17 @@ func (m *Module) StopGeneration(w http.ResponseWriter, r *http.Request) {
 
 func (m *Module) DecideToolCall(w http.ResponseWriter, r *http.Request) {
 	var req toolDecisionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Approved == nil {
-		writeError(w, http.StatusBadRequest, "invalid_request", "approved must be a boolean")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Request body must be valid JSON")
+		return
+	}
+	if req.Approved == nil && strings.TrimSpace(req.Comment) == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Either approved or comment must be provided")
 		return
 	}
 	vars := mux.Vars(r)
-	if err := m.service.DecideToolCall(vars["id"], vars["callID"], *req.Approved); err != nil {
+	approved := req.Approved != nil && *req.Approved
+	if err := m.service.DecideToolCall(vars["id"], vars["callID"], approved, strings.TrimSpace(req.Comment)); err != nil {
 		writeError(w, http.StatusConflict, "tool_call_not_pending", "Tool call is no longer pending approval")
 		return
 	}

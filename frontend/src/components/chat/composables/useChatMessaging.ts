@@ -196,7 +196,7 @@ export function useChatMessaging(
     }
   }
 
-  async function decideToolCall(callId: string, approved: boolean, onError: (msg: string) => void) {
+  async function decideToolCall(callId: string, approved: boolean, comment: string, onError: (msg: string) => void) {
     const conv = getActiveConversation()
     if (!conv) return
     const currentMessages = getMessages()
@@ -205,9 +205,10 @@ export function useChatMessaging(
     const original = currentMessages[index]
     try {
       const content = JSON.parse(original.content)
-      const updated = { ...original, content: JSON.stringify({ ...content, decision: approved ? 'approved' : 'rejected' }) }
+      const decision = comment ? 'commented' : approved ? 'approved' : 'rejected'
+      const updated = { ...original, content: JSON.stringify({ ...content, decision }) }
       setMessages([...currentMessages.slice(0, index), updated, ...currentMessages.slice(index + 1)])
-      await decideAIToolCall(conv.id, callId, approved)
+      await decideAIToolCall(conv.id, callId, approved, comment || undefined)
     } catch (err) {
       const msgs = getMessages()
       const current = msgs.findIndex((message) => message.tool_call_id === callId)

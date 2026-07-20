@@ -341,8 +341,8 @@ export function regenerateAIMessage(id: string): Promise<SendAIMessageResponse> 
   return client.regenerateAIMessage(id)
 }
 
-export function decideAIToolCall(id: string, callId: string, approved: boolean): Promise<AIToolDecisionResponse> {
-  return client.decideAIToolCall(id, callId, approved)
+export function decideAIToolCall(id: string, callId: string, approved: boolean, comment?: string): Promise<AIToolDecisionResponse> {
+  return client.decideAIToolCall(id, callId, approved, comment)
 }
 
 export function stopAIGeneration(id: string): Promise<StopAIGenerationResponse> {

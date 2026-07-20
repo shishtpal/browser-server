@@ -23,6 +23,7 @@ var ErrToolCallNotPending = errors.New("tool call is not pending approval")
 
 type toolDecision struct {
 	approved bool
+	comment  string
 }
 
 type pendingToolCall struct {
@@ -243,8 +244,9 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 					break
 				}
 			}
+			var comment string
 			if !approved {
-				approved, providerErr = s.waitForToolDecision(generationCtx, call.ID, pending)
+				approved, comment, providerErr = s.waitForToolDecision(generationCtx, call.ID, pending)
 				if providerErr != nil {
 					break
 				}
@@ -252,21 +254,34 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			var result []byte
 			var toolErr error
 			toolStatus := "completed"
-			if approved {
+			decision := "approved"
+			providerToolContent := ""
+			if comment != "" {
+				// User supplied feedback instead of running the tool; feed the
+				// comment back to the model as the tool result so it can adjust.
+				decision = "commented"
+				result, _ = json.Marshal(map[string]string{"comment": comment})
+				providerToolContent = comment
+			} else if approved {
 				result, toolErr = s.tools.Execute(generationCtx, call.Name, json.RawMessage(call.Arguments))
+				if toolErr != nil {
+					toolStatus = "error"
+					result, _ = json.Marshal(map[string]string{"error": toolErr.Error()})
+				}
+				providerToolContent = string(result)
 			} else {
+				decision = "rejected"
 				toolErr = errors.New("rejected by user")
-			}
-			if toolErr != nil {
 				toolStatus = "error"
 				result, _ = json.Marshal(map[string]string{"error": toolErr.Error()})
+				providerToolContent = string(result)
 			}
 			var displayArgs any
 			if json.Unmarshal([]byte(call.Arguments), &displayArgs) != nil {
 				displayArgs = call.Arguments
 			}
 			toolContentBytes, marshalErr := json.Marshal(map[string]any{
-				"tool": call.Name, "args": displayArgs, "result": json.RawMessage(result),
+				"tool": call.Name, "args": displayArgs, "result": json.RawMessage(result), "decision": decision,
 			})
 			if marshalErr != nil {
 				providerErr = marshalErr
@@ -279,7 +294,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				break
 			}
 			toolMessages = append(toolMessages, toolMsg)
-			chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "tool", ToolCallID: call.ID, Content: string(result)})
+			chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "tool", ToolCallID: call.ID, Content: providerToolContent})
 			if emit != nil {
 				_ = emit(Event{Type: "tool_result", MessageID: assistantMessage.ID, ToolCall: &call, Content: toolContent, Status: toolStatus})
 			}
@@ -361,7 +376,7 @@ func (s *Service) Stop(conversationID string) bool {
 	return ok
 }
 
-func (s *Service) DecideToolCall(conversationID, callID string, approved bool) error {
+func (s *Service) DecideToolCall(conversationID, callID string, approved bool, comment string) error {
 	s.pendingMu.Lock()
 	pending, ok := s.pending[callID]
 	if ok && pending.conversationID == conversationID {
@@ -373,7 +388,7 @@ func (s *Service) DecideToolCall(conversationID, callID string, approved bool) e
 	if !ok {
 		return ErrToolCallNotPending
 	}
-	pending.decision <- toolDecision{approved: approved}
+	pending.decision <- toolDecision{approved: approved, comment: comment}
 	return nil
 }
 
@@ -388,13 +403,13 @@ func (s *Service) beginToolApproval(conversationID, callID string) (pendingToolC
 	return pending, nil
 }
 
-func (s *Service) waitForToolDecision(ctx context.Context, callID string, pending pendingToolCall) (bool, error) {
+func (s *Service) waitForToolDecision(ctx context.Context, callID string, pending pendingToolCall) (bool, string, error) {
 	select {
 	case decision := <-pending.decision:
-		return decision.approved, nil
+		return decision.approved, decision.comment, nil
 	case <-ctx.Done():
 		s.removePendingToolCall(callID)
-		return false, ctx.Err()
+		return false, "", ctx.Err()
 	}
 }
 

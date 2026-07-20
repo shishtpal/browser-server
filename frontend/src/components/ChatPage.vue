@@ -260,6 +260,7 @@ const toolCallEntries = computed<ToolCallEntry[]>(() => {
           result = typeof parsed.result === 'string' ? parsed.result : JSON.stringify(parsed.result, null, 2)
         }
         if (parsed.decision === 'rejected') status = 'rejected'
+        else if (parsed.decision === 'commented') status = 'commented'
         else if (parsed.result?.error) status = 'error'
         else if (m.status === 'completed') status = 'completed'
         else if (m.status === 'error') status = 'error'
@@ -356,8 +357,8 @@ async function sendMessage(content?: string) {
   }
 }
 
-async function handleToolDecision(callId: string, approved: boolean) {
-  await decideToolCall(callId, approved, (msg) => { error.value = msg })
+async function handleToolDecision(callId: string, approved: boolean, comment: string) {
+  await decideToolCall(callId, approved, comment, (msg) => { error.value = msg })
 }
 
 async function handleRegenerate() {

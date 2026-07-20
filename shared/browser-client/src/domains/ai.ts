@@ -137,12 +137,12 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
       )
     },
 
-    decideAIToolCall(id: string, callId: string, approved: boolean): Promise<AIToolDecisionResponse> {
+    decideAIToolCall(id: string, callId: string, approved: boolean, comment?: string): Promise<AIToolDecisionResponse> {
       return apiFetch<AIToolDecisionResponse>(
         baseUrl,
         'POST',
         `/api/ai/conversations/${encodeURIComponent(id)}/tool-calls/${encodeURIComponent(callId)}`,
-        { approved },
+        comment ? { approved, comment } : { approved },
         getToken,
       )
     },

@@ -5,7 +5,23 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"browser-server/internal/ai/config"
 )
+
+func TestResolveActiveToolsDistinguishesOmittedAndEmpty(t *testing.T) {
+	s := &Service{cfg: &config.Config{Tools: config.ToolsConfig{Allowed: []string{"read_file", "write_file"}}}}
+	if got := s.resolveActiveTools(nil); len(got) != 2 {
+		t.Fatalf("omitted active tools returned %v, want configured defaults", got)
+	}
+	if got := s.resolveActiveTools([]string{}); len(got) != 0 {
+		t.Fatalf("explicit empty active tools returned %v, want none", got)
+	}
+	got := s.resolveActiveTools([]string{"read_file", "not_allowed"})
+	if len(got) != 1 || got[0] != "read_file" {
+		t.Fatalf("filtered active tools = %v, want [read_file]", got)
+	}
+}
 
 func TestToolDecisionIsScopedAndDelivered(t *testing.T) {
 	s := &Service{pending: map[string]pendingToolCall{}}

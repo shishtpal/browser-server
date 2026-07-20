@@ -107,10 +107,11 @@ func (s *Service) ValidateSelection(providerName, modelID string) error {
 // resolveActiveTools computes the effective tool list for a request.
 // If the client sends an explicit ActiveTools list, only tools that appear in
 // both ActiveTools and the server's configured allowed list are used.
-// If ActiveTools is empty/nil, the full allowed list is used (backward compat).
+// If ActiveTools is nil, the full allowed list is used for backward compatibility.
+// An explicit empty list disables every tool for the request.
 func (s *Service) resolveActiveTools(clientActive []string) []string {
 	allowed := s.cfg.Tools.Allowed
-	if len(clientActive) == 0 {
+	if clientActive == nil {
 		return allowed
 	}
 	allowedSet := make(map[string]bool, len(allowed))
@@ -192,8 +193,13 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 		Temperature:     s.cfg.Chat.Temperature,
 		MaxOutputTokens: maxOutput,
 	}
+	activeToolSet := map[string]bool{}
 	if req.ToolsEnabled && s.cfg.Tools.Enabled {
-		chatReq.Tools = s.tools.Specs(s.resolveActiveTools(req.ActiveTools))
+		activeTools := s.resolveActiveTools(req.ActiveTools)
+		chatReq.Tools = s.tools.Specs(activeTools)
+		for _, name := range activeTools {
+			activeToolSet[name] = true
+		}
 	}
 	var resp provider.ChatResponse
 	var providerErr error
@@ -225,9 +231,10 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				resp.ToolCalls[callIndex].ID = call.ID
 				chatReq.Messages[len(chatReq.Messages)-1].ToolCalls[callIndex].ID = call.ID
 			}
-			approved := req.YOLOMode
+			authorized := activeToolSet[call.Name]
+			approved := authorized && req.YOLOMode
 			var pending pendingToolCall
-			if !approved {
+			if authorized && !approved {
 				pending, providerErr = s.beginToolApproval(conversationID, call.ID)
 				if providerErr != nil {
 					break
@@ -235,7 +242,9 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			}
 			if emit != nil {
 				status := "approved"
-				if !approved {
+				if !authorized {
+					status = "error"
+				} else if !approved {
 					status = "pending"
 				}
 				if emitErr := emit(Event{Type: "tool_call", MessageID: assistantMessage.ID, ToolCall: &call, Status: status}); emitErr != nil {
@@ -245,7 +254,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				}
 			}
 			var comment string
-			if !approved {
+			if authorized && !approved {
 				approved, comment, providerErr = s.waitForToolDecision(generationCtx, call.ID, pending)
 				if providerErr != nil {
 					break
@@ -256,7 +265,13 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			toolStatus := "completed"
 			decision := "approved"
 			providerToolContent := ""
-			if comment != "" {
+			if !authorized {
+				decision = "rejected"
+				toolErr = fmt.Errorf("tool %q is not enabled for this request", call.Name)
+				toolStatus = "error"
+				result, _ = json.Marshal(map[string]string{"error": toolErr.Error()})
+				providerToolContent = string(result)
+			} else if comment != "" {
 				// User supplied feedback instead of running the tool; feed the
 				// comment back to the model as the tool result so it can adjust.
 				decision = "commented"

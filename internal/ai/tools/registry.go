@@ -36,6 +36,12 @@ func New() *Registry {
 		Schema:      json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","description":"The shell command to execute. Use ` + shell.Name + ` syntax.","maxLength":4096},"working_dir":{"type":"string","description":"Optional working directory for the command. Defaults to the server binary directory."},"timeout_seconds":{"type":"integer","description":"Timeout in seconds (1-30). Defaults to 10.","minimum":1,"maximum":30}},"required":["command"],"additionalProperties":false}`),
 		Execute:     executeCommand(shell),
 	})
+	r.add(Tool{Name: "read_file", Description: "Read a UTF-8 text file from the server filesystem (maximum 32 KiB)", Schema: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Path to the file on the server"}},"required":["path"],"additionalProperties":false}`), Execute: readFile})
+	r.add(Tool{Name: "write_file", Description: "Create or overwrite a UTF-8 text file on the server filesystem, creating parent directories as needed", Schema: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Destination path on the server"},"content":{"type":"string","description":"Complete file content"}},"required":["path","content"],"additionalProperties":false}`), Execute: writeFile})
+	r.add(Tool{Name: "list_directory", Description: "List the immediate contents of a directory on the server filesystem", Schema: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Directory path on the server; defaults to the server working directory"}},"additionalProperties":false}`), Execute: listDirectory})
+	r.add(Tool{Name: "delete_file", Description: "Delete a file from the server filesystem", Schema: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Path to the file on the server"}},"required":["path"],"additionalProperties":false}`), Execute: deleteFile})
+	r.add(Tool{Name: "move_file", Description: "Move or rename a file on the server filesystem without overwriting an existing destination, creating parent directories as needed", Schema: json.RawMessage(`{"type":"object","properties":{"source":{"type":"string","description":"Existing source file path"},"destination":{"type":"string","description":"New destination file path"}},"required":["source","destination"],"additionalProperties":false}`), Execute: moveFile})
+	r.add(Tool{Name: "copy_file", Description: "Copy a file on the server filesystem without overwriting an existing destination, creating parent directories as needed", Schema: json.RawMessage(`{"type":"object","properties":{"source":{"type":"string","description":"Existing source file path"},"destination":{"type":"string","description":"New destination file path"}},"required":["source","destination"],"additionalProperties":false}`), Execute: copyFile})
 	return r
 }
 func (r *Registry) add(t Tool) { r.tools[t.Name] = t }
@@ -122,6 +128,9 @@ func strict(raw json.RawMessage, dst any, allowed map[string]bool) error {
 		raw = []byte(`{}`)
 	}
 	if err := json.Unmarshal(raw, &fields); err != nil {
+		return fmt.Errorf("arguments must be a JSON object")
+	}
+	if fields == nil {
 		return fmt.Errorf("arguments must be a JSON object")
 	}
 	for k := range fields {

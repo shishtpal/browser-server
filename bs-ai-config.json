@@ -25,7 +25,17 @@
   },
   "tools": {
     "enabled": true,
-    "allowed": ["get_current_time", "search_bookmarks", "execute_command"],
+    "allowed": [
+      "get_current_time",
+      "search_bookmarks",
+      "execute_command",
+      "read_file",
+      "write_file",
+      "list_directory",
+      "delete_file",
+      "move_file",
+      "copy_file"
+    ],
     "max_iterations": 5
   },
   "logging": {

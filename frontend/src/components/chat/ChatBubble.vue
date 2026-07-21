@@ -4,7 +4,7 @@
     v-if="message.role === 'user'"
     class="group relative ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-slate-900 px-4 py-3 text-white shadow-sm dark:bg-white dark:text-slate-900"
   >
-    <pre class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">{{ message.content }}</pre>
+    <pre class="whitespace-pre-wrap break-words font-sans text-[1em] leading-relaxed">{{ message.content }}</pre>
     <!-- Copy button -->
     <button
       class="absolute right-2 top-2 hidden rounded-md p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white group-hover:block dark:text-slate-400 dark:hover:bg-slate-900/10 dark:hover:text-slate-900"
@@ -21,18 +21,18 @@
     v-else-if="message.role === 'assistant'"
     class="group relative max-w-[90%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-slate-900"
   >
-    <div v-if="message.status === 'pending' && !message.content" class="flex items-center gap-2 text-xs text-slate-400">
+    <div v-if="message.status === 'pending' && !message.content" class="flex items-center gap-2 text-[0.85em] text-slate-400">
       <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-indigo-400"></span>
       Thinking…
     </div>
     <div
       v-else
-      class="prose prose-sm prose-slate max-w-none break-words dark:prose-invert"
+      class="prose prose-slate max-w-none break-words dark:prose-invert prose-p:text-[1em] prose-headings:text-[1.15em]"
       v-html="renderedContent"
       @click="copyCodeBlock"
     ></div>
-    <div v-if="message.status === 'error'" class="mt-2 text-xs text-red-500">Generation failed</div>
-    <div v-if="message.status === 'cancelled'" class="mt-2 text-xs text-amber-500">Stopped</div>
+    <div v-if="message.status === 'error'" class="mt-2 text-[0.85em] text-red-500">Generation failed</div>
+    <div v-if="message.status === 'cancelled'" class="mt-2 text-[0.85em] text-amber-500">Stopped</div>
 
     <!-- Copy button -->
     <button
@@ -51,7 +51,7 @@
     class="w-full max-w-[90%] text-slate-700 dark:text-slate-300"
   >
     <button
-      class="group flex w-full items-center gap-1.5 py-1 text-left text-xs"
+      class="group flex w-full items-center gap-1.5 py-1 text-left text-[0.85em]"
       type="button"
       :aria-expanded="expanded"
       @click="expanded = !expanded"
@@ -77,18 +77,18 @@
 
     <div v-show="expanded" class="mt-2 space-y-2">
       <div v-if="message.status === 'pending' && !toolData.decision" class="rounded border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
-        <p class="mb-2 text-xs text-amber-800 dark:text-amber-200">Review the command or arguments before allowing this tool.</p>
+        <p class="mb-2 text-[0.85em] text-amber-800 dark:text-amber-200">Review the command or arguments before allowing this tool.</p>
         <div class="flex flex-wrap items-center gap-2">
-          <button class="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700" type="button" @click="emit('tool-decision', message.tool_call_id || '', true, '')">Allow</button>
-          <button class="rounded border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:hover:bg-red-950/30" type="button" @click="emit('tool-decision', message.tool_call_id || '', false, '')">Reject</button>
+          <button class="rounded bg-emerald-600 px-3 py-1.5 text-[0.85em] font-semibold text-white transition hover:bg-emerald-700" type="button" @click="emit('tool-decision', message.tool_call_id || '', true, '')">Allow</button>
+          <button class="rounded border border-red-200 bg-white px-3 py-1.5 text-[0.85em] font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:hover:bg-red-950/30" type="button" @click="emit('tool-decision', message.tool_call_id || '', false, '')">Reject</button>
           <input
             v-model="commentDraft"
-            class="min-w-48 flex-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
+            class="min-w-48 flex-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-[0.85em] outline-none focus:border-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Or send feedback instead…"
             @keydown.enter.prevent="submitComment"
           />
           <button
-            class="rounded bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
+            class="rounded bg-slate-700 px-3 py-1.5 text-[0.85em] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
             type="button"
             :disabled="!commentDraft.trim()"
             @click="submitComment"
@@ -96,7 +96,7 @@
         </div>
       </div>
 
-      <div v-if="toolData.decision === 'commented'" class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+      <div v-if="toolData.decision === 'commented'" class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[0.85em] text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
         <span class="font-semibold">Your feedback:</span> {{ feedbackComment }}
       </div>
 
@@ -106,7 +106,7 @@
         class="overflow-hidden rounded border border-slate-200 bg-white dark:border-white/10 dark:bg-slate-900"
       >
         <header class="flex h-7 items-center justify-between border-b border-slate-200 bg-slate-50 px-2.5 dark:border-white/10 dark:bg-slate-800/60">
-          <span class="text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ section.label }}</span>
+          <span class="text-[0.65em] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ section.label }}</span>
           <button
             class="rounded p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-200"
             type="button"
@@ -117,7 +117,7 @@
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2m-6 12h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2Z"/></svg>
           </button>
         </header>
-        <pre class="max-h-64 overflow-auto whitespace-pre-wrap break-words px-2.5 py-2 font-mono text-[11px] leading-[1.55] text-slate-800 dark:text-slate-200">{{ section.content }}</pre>
+        <pre class="max-h-64 overflow-auto whitespace-pre-wrap break-words px-2.5 py-2 font-mono text-[0.8em] leading-[1.55] text-slate-800 dark:text-slate-200">{{ section.content }}</pre>
       </section>
     </div>
   </article>

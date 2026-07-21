@@ -5,7 +5,7 @@
         <textarea
           ref="textareaRef"
           v-model="localValue"
-          class="max-h-48 min-h-[52px] w-full resize-none rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-24 text-sm leading-relaxed outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400 dark:border-white/10 dark:bg-slate-900 dark:placeholder:text-slate-500 dark:focus:border-white/20"
+          class="max-h-48 min-h-[52px] w-full resize-none rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-24 text-[1em] leading-relaxed outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400 dark:border-white/10 dark:bg-slate-900 dark:placeholder:text-slate-500 dark:focus:border-white/20"
           :disabled="disabled"
           placeholder="Message the assistant…"
           rows="1"
@@ -15,7 +15,7 @@
         <div class="absolute bottom-2 right-2 flex items-center gap-1.5">
           <button
             v-if="busy"
-            class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.85em] font-bold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             type="button"
             @click="$emit('stop')"
           >
@@ -31,9 +31,9 @@
           </button>
         </div>
       </div>
-      <p class="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">
-        <kbd class="rounded border border-slate-200 px-1 py-0.5 text-[10px] dark:border-white/10">Enter</kbd> to send ·
-        <kbd class="rounded border border-slate-200 px-1 py-0.5 text-[10px] dark:border-white/10">Shift+Enter</kbd> for new line
+      <p class="mt-2 text-center text-[0.8em] text-slate-400 dark:text-slate-500">
+        <kbd class="rounded border border-slate-200 px-1 py-0.5 text-[0.7em] dark:border-white/10">Enter</kbd> to send ·
+        <kbd class="rounded border border-slate-200 px-1 py-0.5 text-[0.7em] dark:border-white/10">Shift+Enter</kbd> for new line
       </p>
     </form>
   </div>

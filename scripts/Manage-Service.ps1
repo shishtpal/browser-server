@@ -9,7 +9,7 @@
     to sc.exe with a wrapper approach via PowerShell's built-in service cmdlets.
 
 .PARAMETER Action
-    The action to perform: Create | Start | Stop | Remove | Status
+    The action to perform: Create | Start | Stop | Restart | Remove | Status
 
 .PARAMETER ServiceName
     Name of the Windows service (default: "mysBrowserServer")
@@ -21,13 +21,14 @@
     .\Manage-Service.ps1 -Action Create
     .\Manage-Service.ps1 -Action Start
     .\Manage-Service.ps1 -Action Stop
+    .\Manage-Service.ps1 -Action Restart
     .\Manage-Service.ps1 -Action Remove
     .\Manage-Service.ps1 -Action Status
 #>
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("Create", "Start", "Stop", "Remove", "Status")]
+    [ValidateSet("Create", "Start", "Stop", "Restart", "Remove", "Status")]
     [string]$Action,
 
     [string]$ServiceName = "mysBrowserServer",
@@ -189,6 +190,41 @@ function Invoke-Stop {
     }
 }
 
+function Invoke-Restart {
+    Write-Step "Restarting service '$ServiceName'"
+
+    $svc = Get-ServiceStatus
+    if (-not $svc) {
+        Write-Fail "Service '$ServiceName' does not exist. Run -Action Create first."
+        exit 1
+    }
+
+    if ($svc.Status -eq "Running") {
+        Write-Host "   Stopping service..."
+        Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+        Start-Sleep -Seconds 2
+
+        $svc = Get-ServiceStatus
+        if ($svc.Status -ne "Stopped") {
+            Write-Fail "Service did not reach Stopped state. Status: $($svc.Status)"
+            exit 1
+        }
+        Write-OK "Service stopped."
+    }
+
+    Write-Host "   Starting service..."
+    Start-Service -Name $ServiceName -ErrorAction Stop
+    Start-Sleep -Seconds 2
+
+    $svc = Get-ServiceStatus
+    if ($svc.Status -eq "Running") {
+        Write-OK "Service restarted. Status: $($svc.Status)"
+    } else {
+        Write-Fail "Service did not reach Running state. Status: $($svc.Status)"
+        exit 1
+    }
+}
+
 function Invoke-Remove {
     Write-Step "Removing service '$ServiceName'"
 
@@ -247,9 +283,10 @@ function Invoke-Status {
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 switch ($Action) {
-    "Create" { Invoke-Create }
-    "Start"  { Invoke-Start  }
-    "Stop"   { Invoke-Stop   }
-    "Remove" { Invoke-Remove }
-    "Status" { Invoke-Status }
+    "Create"  { Invoke-Create  }
+    "Start"   { Invoke-Start   }
+    "Stop"    { Invoke-Stop    }
+    "Restart" { Invoke-Restart }
+    "Remove"  { Invoke-Remove  }
+    "Status"  { Invoke-Status  }
 }

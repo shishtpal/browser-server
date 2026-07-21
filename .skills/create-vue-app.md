@@ -146,25 +146,18 @@ const counter = useCounterStore()
 </template>
 ```
 
-### 10. Update `tsconfig.json` path alias
-
-Add under `compilerOptions`:
-
-```json
-"baseUrl": ".",
-"paths": { "@/*": ["src/*"] }
-```
-
-### 11. Clean up optional files
+### 10. Clean up optional files
 - Remove `src/assets/main.css` if it's replaced by `src/style.css` (and update references).
 - Remove boilerplate demo code from Vite template that is no longer needed (e.g. `HelloWorld.vue`, old CSS) while keeping things clean.
 - Ensure `src/components/` exists (can be empty initially).
 
-### 12. Save Checkpoint using Git
-- Stage and Commit using git tools with commit message: `Initial Commit`
+### 11. Save Checkpoint using Git
+- Stage and Commit using git tools/cmd with commit message: `Initial Commit`
 
-### 13. Unload Skill
-- Finally deactivate this skill using tool
+### 12. Building Actual App
+- If User has given instructions to build some app
+- Make edits to build it now
+- When you are done, Commit your changes
 
 
 ## Recommended Project Structure
@@ -201,13 +194,5 @@ src/
 After scaffolding, run:
 
 ```bash
-npm run dev
-```
-
-Confirm:
-1. Dev server starts without errors
-2. Browser opens to `http://localhost:5173/#/` (note the `#` — hash routing)
-3. Tailwind classes render correctly
-4. Pinia counter increments on click
-5. `npm run build` completes without TypeScript errors
+npm run build
 ```

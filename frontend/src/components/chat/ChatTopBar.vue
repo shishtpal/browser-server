@@ -58,6 +58,17 @@
       {{ title }}
     </span>
 
+    <button
+      class="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200"
+      type="button"
+      title="Download conversation as Markdown"
+      aria-label="Download conversation as Markdown"
+      :disabled="downloadDisabled"
+      @click="$emit('download')"
+    >
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14a2 2 0 002-2v-3M3 16v3a2 2 0 002 2"/></svg>
+    </button>
+
     <!-- Memory explorer toggle -->
     <button
       class="rounded-lg border p-2 transition"
@@ -109,6 +120,7 @@ defineProps<{
   yoloMode: boolean
   disabled: boolean
   title?: string
+  downloadDisabled?: boolean
   showToolsPanel?: boolean
   showMemoryExplorer?: boolean
 }>()
@@ -119,6 +131,7 @@ defineEmits<{
   'update:selectedProvider': [value: string]
   'update:selectedModel': [value: string]
   'update:yoloMode': [value: boolean]
+  download: []
   'toggle-tools-panel': []
   'toggle-memory-explorer': []
 }>()

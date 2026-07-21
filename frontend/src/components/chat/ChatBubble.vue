@@ -29,6 +29,7 @@
       v-else
       class="prose prose-sm prose-slate max-w-none break-words dark:prose-invert"
       v-html="renderedContent"
+      @click="copyCodeBlock"
     ></div>
     <div v-if="message.status === 'error'" class="mt-2 text-xs text-red-500">Generation failed</div>
     <div v-if="message.status === 'cancelled'" class="mt-2 text-xs text-amber-500">Stopped</div>
@@ -144,6 +145,14 @@ function submitComment() {
   if (!text) return
   emit('tool-decision', props.message.tool_call_id || '', false, text)
   commentDraft.value = ''
+}
+
+function copyCodeBlock(event: MouseEvent) {
+  if (!(event.target instanceof Element)) return
+  const button = event.target.closest<HTMLButtonElement>('[data-copy-code]')
+  if (!button) return
+  const code = button.parentElement?.querySelector<HTMLElement>('code')
+  if (code) emit('copy', code.innerText)
 }
 
 const renderedContent = computed(() => renderMarkdown(props.message.content))

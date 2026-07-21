@@ -34,6 +34,7 @@
         :yolo-mode="yoloMode"
         :disabled="!config?.enabled || isBusy"
         :title="activeConversation?.title"
+        :download-disabled="!activeConversation"
         :show-tools-panel="showToolsPanel"
         :show-memory-explorer="showMemoryExplorer"
         @toggle-sidebar="showMobileSidebar = true"
@@ -41,6 +42,7 @@
         @update:selected-provider="selectedProvider = $event"
         @update:selected-model="selectedModel = $event"
         @update:yolo-mode="yoloMode = $event"
+        @download="downloadConversation"
         @toggle-tools-panel="showToolsPanel = !showToolsPanel"
         @toggle-memory-explorer="showMemoryExplorer = !showMemoryExplorer"
       />
@@ -442,5 +444,42 @@ async function copyMessage(content: string) {
     showCopyToast.value = true
     setTimeout(() => { showCopyToast.value = false }, 2000)
   } catch { /* silent */ }
+}
+
+function downloadConversation() {
+  const conversation = activeConversation.value
+  if (!conversation) return
+
+  const title = conversation.title.replace(/[\r\n]+/g, ' ').trim() || 'AI conversation'
+  const sections = visibleMessages.value.map((message) => {
+    const role = message.role.charAt(0).toUpperCase() + message.role.slice(1)
+    return `## ${role}\n\n${message.content.trim()}`
+  })
+  const markdown = [
+    `# ${title}`,
+    `- **Provider:** ${conversation.provider}`,
+    `- **Model:** ${conversation.model}`,
+    `- **Created:** ${conversation.created_at}`,
+    '',
+    '---',
+    '',
+    ...sections.flatMap((section) => [section, '']),
+  ].join('\n').trimEnd() + '\n'
+
+  const blobUrl = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = `${filenameSafe(title)}.md`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(blobUrl)
+}
+
+function filenameSafe(value: string): string {
+  return value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+    .replace(/[. ]+$/g, '')
+    .slice(0, 100) || 'ai-conversation'
 }
 </script>

@@ -56,7 +56,11 @@
             "ai_update_memory",
             "ai_resolve_references",
             "ai_lazy_memory",
-            "ai_manage_cache"
+            "ai_manage_cache",
+            "list_skills",
+            "activate_skill",
+            "deactivate_skill",
+            "get_active_skills"
         ],
         "max_iterations": 100
     },
@@ -84,5 +88,9 @@
         "max_reference_depth": 5,
         "lazy_loading": true,
         "cache_size_limit_mb": 100
+    },
+    "skills": {
+        "enabled": true,
+        "directory": ".skills"
     }
 }

@@ -9,6 +9,7 @@ import (
 
 	"browser-server/internal/ai/config"
 	"browser-server/internal/ai/provider"
+	"browser-server/internal/ai/skills"
 	"browser-server/internal/db"
 )
 
@@ -27,16 +28,24 @@ type Registry struct {
 	shell ShellInfo
 }
 
-type Options struct{ Memory config.MemoryConfig }
+type Options struct {
+	Memory config.MemoryConfig
+	Skills *skills.Registry
+}
 
 func New(options ...Options) *Registry {
 	shell := DetectShell()
 	r := &Registry{tools: map[string]Tool{}, shell: shell}
 	var memory config.MemoryConfig
+	var skillsReg *skills.Registry
 	if len(options) > 0 {
 		memory = options[0].Memory
+		skillsReg = options[0].Skills
 	}
 	registerMemoryTools(r, newMemoryStore(memory))
+	if skillsReg != nil {
+		RegisterSkillTools(r, skillsReg)
+	}
 	r.add(Tool{Name: "get_current_time", Category: "General", Description: "Get the current server time", Schema: json.RawMessage(`{"type":"object","properties":{"timezone":{"type":"string"}},"additionalProperties":false}`), Execute: currentTime})
 	r.add(Tool{Name: "search_bookmarks", Category: "General", Description: "Search the local bookmark database", Schema: json.RawMessage(`{"type":"object","properties":{"user_id":{"type":"integer","minimum":1},"query":{"type":"string","maxLength":200},"limit":{"type":"integer","minimum":1,"maximum":20}},"required":["user_id","query"],"additionalProperties":false}`), Execute: searchBookmarks})
 	r.add(Tool{

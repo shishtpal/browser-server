@@ -1,4 +1,4 @@
-import type { AIConfig, AIProfile } from '@browser-server/shared-types'
+import type { AIConfig, AIProfile, AISkill } from '@browser-server/shared-types'
 import { computed, ref, watch } from 'vue'
 
 export interface AIModelInfo {
@@ -16,9 +16,13 @@ export function useChatConfig() {
   const yoloMode = ref(false)
   const userToolsEnabled = ref(true)
   const disabledTools = ref<Set<string>>(new Set())
+  const activeSkills = ref<string[]>([])
 
   /** Available profiles from the server config */
   const profiles = computed<AIProfile[]>(() => config.value?.profiles ?? [])
+
+  /** Available skills from the server config */
+  const skills = computed<AISkill[]>(() => config.value?.skills ?? [])
 
   const configLabel = computed(() => {
     if (!config.value) return 'Loading…'
@@ -83,6 +87,10 @@ export function useChatConfig() {
     localStorage.setItem('ai-disabled-tools', JSON.stringify([...set]))
   }, { deep: true })
 
+  watch(activeSkills, (skills) => {
+    localStorage.setItem('ai-active-skills', JSON.stringify(skills))
+  })
+
   function toggleTool(name: string, enabled: boolean) {
     const next = new Set(disabledTools.value)
     if (enabled) {
@@ -91,6 +99,19 @@ export function useChatConfig() {
       next.add(name)
     }
     disabledTools.value = next
+  }
+
+  function toggleSkill(name: string) {
+    const idx = activeSkills.value.indexOf(name)
+    if (idx >= 0) {
+      activeSkills.value = activeSkills.value.filter((s) => s !== name)
+    } else {
+      activeSkills.value = [...activeSkills.value, name]
+    }
+  }
+
+  function setActiveSkills(names: string[]) {
+    activeSkills.value = names
   }
 
   function initFromConfig(cfg: AIConfig) {
@@ -114,6 +135,12 @@ export function useChatConfig() {
         disabledTools.value = new Set(JSON.parse(stored))
       }
     } catch { /* ignore malformed storage */ }
+    try {
+      const stored = localStorage.getItem('ai-active-skills')
+      if (stored) {
+        activeSkills.value = JSON.parse(stored)
+      }
+    } catch { /* ignore malformed storage */ }
   }
 
   return {
@@ -122,6 +149,8 @@ export function useChatConfig() {
     selectedModel,
     selectedProfile,
     profiles,
+    skills,
+    activeSkills,
     yoloMode,
     userToolsEnabled,
     disabledTools,
@@ -134,6 +163,8 @@ export function useChatConfig() {
     toolsByCategory,
     activeTools,
     toggleTool,
+    toggleSkill,
+    setActiveSkills,
     initFromConfig,
     loadPersistedSettings,
   }

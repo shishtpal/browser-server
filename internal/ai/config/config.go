@@ -21,8 +21,14 @@ type Config struct {
 	Providers       map[string]ProviderConfig `json:"providers"`
 	Tools           ToolsConfig               `json:"tools"`
 	Memory          MemoryConfig              `json:"memory"`
+	Skills          SkillsConfig              `json:"skills"`
 	Logging         LoggingConfig             `json:"logging"`
 	Chat            ChatConfig                `json:"chat"`
+}
+
+type SkillsConfig struct {
+	Enabled   bool   `json:"enabled"`
+	Directory string `json:"directory"`
 }
 
 type ProviderConfig struct {
@@ -157,6 +163,9 @@ func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 	}
 	if cfg.Memory.Directory == "" {
 		cfg.Memory.Directory = ".memory"
+	}
+	if cfg.Skills.Directory == "" {
+		cfg.Skills.Directory = ".skills"
 	}
 	if cfg.Memory.PrimaryDir == "" {
 		cfg.Memory.PrimaryDir = "memories"
@@ -313,6 +322,7 @@ func validate(cfg *Config) error {
 		"ai_remember": true, "ai_recall": true, "ai_search_memory": true,
 		"ai_list_memories": true, "ai_forget": true, "ai_update_memory": true,
 		"ai_resolve_references": true, "ai_lazy_memory": true, "ai_manage_cache": true,
+		"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
 	}
 	for _, name := range cfg.Tools.Allowed {
 		if !known[name] {
@@ -321,6 +331,9 @@ func validate(cfg *Config) error {
 	}
 	if filepath.IsAbs(cfg.Memory.Directory) || strings.Contains(cfg.Memory.Directory, "..") {
 		return fmt.Errorf("memory.directory must be a safe relative path")
+	}
+	if filepath.IsAbs(cfg.Skills.Directory) || strings.Contains(cfg.Skills.Directory, "..") {
+		return fmt.Errorf("skills.directory must be a safe relative path")
 	}
 	for _, dir := range []string{cfg.Memory.PrimaryDir, cfg.Memory.RefsDir, cfg.Memory.CacheDir} {
 		if dir == "" || filepath.IsAbs(dir) || strings.Contains(dir, "..") || filepath.Base(dir) != dir {

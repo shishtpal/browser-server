@@ -21,6 +21,7 @@ import (
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/profiles"
+	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
 )
 
@@ -29,6 +30,7 @@ type Module struct {
 	store    *store.Store
 	service  *chat.Service
 	profiles *profiles.Registry
+	skills   *skills.Registry
 	stop     chan struct{}
 	wg       sync.WaitGroup
 }
@@ -87,6 +89,20 @@ func Init() (*Module, error) {
 	if len(profileReg.List()) > 0 {
 		log.Printf("AI profiles loaded: %d profile(s) from %s/.profiles/", len(profileReg.List()), baseDir)
 	}
+	// Load skills
+	var skillReg *skills.Registry
+	if cfg.Skills.Enabled {
+		skillReg, err = skills.Load(baseDir)
+		if err != nil {
+			return nil, fmt.Errorf("load skills: %w", err)
+		}
+		if len(skillReg.List()) > 0 {
+			log.Printf("AI skills loaded: %d skill(s) from %s/.skills/", len(skillReg.List()), baseDir)
+		}
+	} else {
+		skillReg = &skills.Registry{}
+	}
+	module.skills = skillReg
 	dbPath := cfg.ResolvePath(cfg.Logging.DBPath)
 	st, err := store.Open(dbPath)
 	if err != nil {
@@ -97,7 +113,7 @@ func Init() (*Module, error) {
 		return nil, fmt.Errorf("AI retention cleanup: %w", err)
 	}
 	module.store = st
-	module.service = chat.NewService(cfg, st, profileReg)
+	module.service = chat.NewService(cfg, st, profileReg, skillReg)
 	module.stop = make(chan struct{})
 	module.wg.Add(1)
 	go func() {
@@ -142,6 +158,8 @@ func (m *Module) Profiles() *profiles.Registry {
 
 func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/config", m.Config).Methods("GET")
+	r.HandleFunc("/ai/skills", m.requireAI(m.ListSkills)).Methods("GET")
+	r.HandleFunc("/ai/skills/{name}", m.requireAI(m.GetSkill)).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.ListConversations)).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.CreateConversation)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.GetConversation)).Methods("GET")
@@ -155,15 +173,25 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}/regenerate", m.requireAI(m.Regenerate)).Methods("POST")
 }
 
-// configResponse wraps the sanitized config with profile information.
+// configResponse wraps the sanitized config with profile and skill information.
 type configResponse struct {
 	aiconfig.SanitizedConfig
 	Profiles []profileInfo `json:"profiles"`
+	Skills   []skillInfo   `json:"skills"`
 }
 
 type profileInfo struct {
 	Name  string `json:"name"`
 	Label string `json:"label"`
+}
+
+type skillInfo struct {
+	Name        string   `json:"name"`
+	Label       string   `json:"label"`
+	Description string   `json:"description,omitempty"`
+	Category    string   `json:"category,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Tools       []string `json:"tools,omitempty"`
 }
 
 func (m *Module) Config(w http.ResponseWriter, r *http.Request) {
@@ -174,11 +202,72 @@ func (m *Module) Config(w http.ResponseWriter, r *http.Request) {
 	resp := configResponse{
 		SanitizedConfig: m.cfg.Sanitized(categories),
 		Profiles:        make([]profileInfo, 0),
+		Skills:          make([]skillInfo, 0),
 	}
 	for _, p := range m.profiles.List() {
 		resp.Profiles = append(resp.Profiles, profileInfo{Name: p.Name, Label: p.Label})
 	}
+	if m.skills != nil {
+		for _, sk := range m.skills.List() {
+			resp.Skills = append(resp.Skills, skillInfo{
+				Name:        sk.Name,
+				Label:       sk.Label,
+				Description: sk.Description,
+				Category:    sk.Category,
+				Tags:        sk.Tags,
+				Tools:       sk.Tools,
+			})
+		}
+	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (m *Module) ListSkills(w http.ResponseWriter, r *http.Request) {
+	if m.skills == nil {
+		writeJSON(w, http.StatusOK, []skillInfo{})
+		return
+	}
+	out := make([]skillInfo, 0)
+	for _, sk := range m.skills.List() {
+		out = append(out, skillInfo{
+			Name:        sk.Name,
+			Label:       sk.Label,
+			Description: sk.Description,
+			Category:    sk.Category,
+			Tags:        sk.Tags,
+			Tools:       sk.Tools,
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (m *Module) GetSkill(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+	if m.skills == nil {
+		writeError(w, http.StatusNotFound, "not_found", "Skill not found")
+		return
+	}
+	sk, ok := m.skills.Get(name)
+	if !ok {
+		writeError(w, http.StatusNotFound, "not_found", "Skill not found")
+		return
+	}
+	// Return full skill including content for detail view
+	type skillDetail struct {
+		skillInfo
+		Content string `json:"content"`
+	}
+	writeJSON(w, http.StatusOK, skillDetail{
+		skillInfo: skillInfo{
+			Name:        sk.Name,
+			Label:       sk.Label,
+			Description: sk.Description,
+			Category:    sk.Category,
+			Tags:        sk.Tags,
+			Tools:       sk.Tools,
+		},
+		Content: sk.Content,
+	})
 }
 
 func (m *Module) ListConversations(w http.ResponseWriter, r *http.Request) {

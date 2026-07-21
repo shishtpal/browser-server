@@ -15,6 +15,7 @@ interface SendOptions {
   yoloMode: boolean
   streamEnabled: boolean
   activeTools?: string[]
+  skills?: string[]
 }
 
 export function useChatMessaging(
@@ -98,6 +99,7 @@ export function useChatMessaging(
           tools_enabled: options.toolsEnabled,
           yolo_mode: options.yoloMode,
           active_tools: options.activeTools,
+          skills: options.skills?.length ? options.skills : undefined,
         },
         (event: AIStreamEvent) => {
           const currentMessages = getMessages()
@@ -181,6 +183,7 @@ export function useChatMessaging(
         tools_enabled: options.toolsEnabled,
         yolo_mode: options.yoloMode,
         active_tools: options.activeTools,
+        skills: options.skills?.length ? options.skills : undefined,
       })
 
       const currentMessages = getMessages().filter((m) => m.id !== tempUserId && m.id !== tempAssistantId)

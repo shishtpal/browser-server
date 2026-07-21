@@ -54,6 +54,24 @@
       YOLO mode
     </label>
 
+    <!-- Skills toggles -->
+    <div v-if="skills.length > 0" class="flex flex-wrap items-center gap-1.5">
+      <button
+        v-for="skill in skills"
+        :key="skill.name"
+        type="button"
+        class="rounded-full border px-2.5 py-1 text-[11px] font-medium transition"
+        :class="activeSkills.includes(skill.name)
+          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-white/20 dark:hover:text-slate-300'"
+        :title="skill.description || skill.label"
+        :disabled="disabled"
+        @click="$emit('toggle-skill', skill.name)"
+      >
+        {{ skill.label }}
+      </button>
+    </div>
+
     <span v-if="title" class="ml-auto hidden truncate text-xs text-slate-500 sm:block dark:text-slate-400">
       {{ title }}
     </span>
@@ -98,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import type { AIProfile } from '@browser-server/shared-types'
+import type { AIProfile, AISkill } from '@browser-server/shared-types'
 
 interface ModelInfo {
   id: string
@@ -111,6 +129,8 @@ defineProps<{
   profiles: AIProfile[]
   selectedProfile: string
   profileLocked: boolean
+  skills: AISkill[]
+  activeSkills: string[]
   providerNames: string[]
   selectedProvider: string
   selectedModel: string
@@ -131,6 +151,7 @@ defineEmits<{
   'update:selectedProvider': [value: string]
   'update:selectedModel': [value: string]
   'update:yoloMode': [value: boolean]
+  'toggle-skill': [name: string]
   download: []
   'toggle-tools-panel': []
   'toggle-memory-explorer': []

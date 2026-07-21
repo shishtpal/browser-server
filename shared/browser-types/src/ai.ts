@@ -3,6 +3,15 @@ export interface AIProfile {
   label: string
 }
 
+export interface AISkill {
+  name: string
+  label: string
+  description?: string
+  category?: string
+  tags?: string[]
+  tools?: string[]
+}
+
 export interface AIConfig {
   enabled: boolean
   default_provider?: string
@@ -19,6 +28,7 @@ export interface AIConfig {
     temperature: number
   }
   profiles: AIProfile[]
+  skills: AISkill[]
 }
 
 export interface AIProviderConfig {
@@ -41,6 +51,7 @@ export interface AIConversation {
   provider: string
   model: string
   profile: string
+  skills?: string[]
   preview?: string
   created_at: string
   updated_at: string
@@ -89,6 +100,7 @@ export interface SendAIMessageInput {
   tools_enabled?: boolean
   yolo_mode?: boolean
   active_tools?: string[]
+  skills?: string[]
 }
 
 export interface AIUsage {

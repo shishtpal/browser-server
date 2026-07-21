@@ -25,6 +25,8 @@
         :profiles="profiles"
         :selected-profile="selectedProfile"
         :profile-locked="profileLocked"
+        :skills="skills"
+        :active-skills="activeSkills"
         :provider-names="providerNames"
         :selected-provider="selectedProvider"
         :selected-model="selectedModel"
@@ -42,6 +44,7 @@
         @update:selected-provider="selectedProvider = $event"
         @update:selected-model="selectedModel = $event"
         @update:yolo-mode="yoloMode = $event"
+        @toggle-skill="toggleSkill($event)"
         @download="downloadConversation"
         @toggle-tools-panel="showToolsPanel = !showToolsPanel"
         @toggle-memory-explorer="showMemoryExplorer = !showMemoryExplorer"
@@ -180,6 +183,8 @@ const {
   selectedModel,
   selectedProfile,
   profiles,
+  skills,
+  activeSkills,
   yoloMode,
   userToolsEnabled,
   disabledTools,
@@ -191,6 +196,8 @@ const {
   toolsByCategory,
   activeTools,
   toggleTool,
+  toggleSkill,
+  setActiveSkills,
   initFromConfig,
   loadPersistedSettings,
 } = useChatConfig()
@@ -353,6 +360,8 @@ async function handleSelectConversation(id: string) {
     selectedModel.value = model
     // Set profile from the conversation (locked once selected)
     selectedProfile.value = activeConversation.value?.profile || ''
+    // Restore active skills from conversation state
+    setActiveSkills(activeConversation.value?.skills ?? [])
     nextTick(() => messageListRef.value?.scrollToBottom())
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load conversation'
@@ -381,6 +390,7 @@ async function sendMessage(content?: string) {
         yoloMode: yoloMode.value,
         streamEnabled: config.value?.chat?.stream !== false,
         activeTools: activeTools.value,
+        skills: activeSkills.value,
       },
       async (conversationId, firstMessage) => {
         await refreshConversation(conversationId)

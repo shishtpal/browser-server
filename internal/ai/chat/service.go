@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/provider"
+	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tools"
 )
@@ -37,6 +39,7 @@ type Service struct {
 	cfg       *aiconfig.Config
 	store     *store.Store
 	profiles  *profiles.Registry
+	skills    *skills.Registry
 	clients   map[string]provider.Client
 	activeMu  sync.Mutex
 	active    map[string]context.CancelFunc
@@ -53,6 +56,7 @@ type SubmitRequest struct {
 	ToolsEnabled bool     `json:"tools_enabled"`
 	YOLOMode     bool     `json:"yolo_mode"`
 	ActiveTools  []string `json:"active_tools,omitempty"`
+	Skills       []string `json:"skills,omitempty"`
 }
 
 type SubmitResponse struct {
@@ -72,14 +76,14 @@ type Event struct {
 	Usage     provider.Usage     `json:"usage,omitempty"`
 }
 
-func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Registry) *Service {
+func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Registry, skillReg *skills.Registry) *Service {
 	clients := map[string]provider.Client{}
 	for name, item := range cfg.Providers {
 		clients[name] = provider.NewOpenAICompatibleClient(item.BaseURL, item.APIKey, time.Duration(item.RequestTimeoutSeconds)*time.Second)
 	}
 	return &Service{
-		cfg: cfg, store: st, profiles: profileReg, clients: clients, active: map[string]context.CancelFunc{},
-		tools: tools.New(tools.Options{Memory: cfg.Memory}), pending: map[string]pendingToolCall{},
+		cfg: cfg, store: st, profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{},
+		tools: tools.New(tools.Options{Memory: cfg.Memory, Skills: skillReg}), pending: map[string]pendingToolCall{},
 	}
 }
 
@@ -113,12 +117,42 @@ func (s *Service) ValidateSelection(providerName, modelID string) error {
 }
 
 // resolveActiveTools computes the effective tool list for a request.
-// If the client sends an explicit ActiveTools list, only tools that appear in
-// both ActiveTools and the server's configured allowed list are used.
-// If ActiveTools is nil, the full allowed list is used for backward compatibility.
-// An explicit empty list disables every tool for the request.
-func (s *Service) resolveActiveTools(clientActive []string) []string {
+// If skills specify tool whitelists, only their union (intersected with server allowed) is used.
+// If the client sends an explicit ActiveTools list, it's intersected further.
+// Skill meta-tools are always included.
+func (s *Service) resolveActiveTools(clientActive []string, activeSkills []*skills.Skill) []string {
 	allowed := s.cfg.Tools.Allowed
+
+	// If any active skill specifies a tools list, union them to form the base
+	hasToolRestriction := false
+	skillToolSet := make(map[string]bool)
+	for _, skill := range activeSkills {
+		if len(skill.Tools) > 0 {
+			hasToolRestriction = true
+			for _, name := range skill.Tools {
+				skillToolSet[name] = true
+			}
+		}
+	}
+
+	if hasToolRestriction {
+		// Always include skill meta-tools
+		for _, name := range tools.SkillToolNames() {
+			skillToolSet[name] = true
+		}
+		allowedSet := make(map[string]bool, len(allowed))
+		for _, name := range allowed {
+			allowedSet[name] = true
+		}
+		var skillAllowed []string
+		for name := range skillToolSet {
+			if allowedSet[name] {
+				skillAllowed = append(skillAllowed, name)
+			}
+		}
+		allowed = skillAllowed
+	}
+
 	if clientActive == nil {
 		return allowed
 	}
@@ -126,10 +160,32 @@ func (s *Service) resolveActiveTools(clientActive []string) []string {
 	for _, name := range allowed {
 		allowedSet[name] = true
 	}
+	// Always include skill meta-tools even if client didn't list them (only if skills exist)
+	hasSkills := s.skills != nil && len(s.skills.List()) > 0
+	if hasSkills {
+		for _, name := range tools.SkillToolNames() {
+			allowedSet[name] = true
+		}
+	}
 	var result []string
 	for _, name := range clientActive {
 		if allowedSet[name] {
 			result = append(result, name)
+		}
+	}
+	// Ensure skill tools are always present when skills exist
+	if hasSkills {
+		for _, name := range tools.SkillToolNames() {
+			found := false
+			for _, r := range result {
+				if r == name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				result = append(result, name)
+			}
 		}
 	}
 	return result
@@ -201,7 +257,23 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			log.Printf("WARN: conversation %s references unknown profile %q, using default", conversationID, conversation.Profile)
 		}
 	}
-	providerMessages := s.providerMessages(messages, systemPrompt)
+
+	// Initialize session skills from request (user-toggled) or conversation state
+	var sessionSkills []*skills.Skill
+	reqSkills := req.Skills
+	if len(reqSkills) == 0 && len(conversation.Skills) > 0 {
+		reqSkills = conversation.Skills
+	}
+	for _, name := range reqSkills {
+		if sk, ok := s.skills.Get(name); ok {
+			sessionSkills = append(sessionSkills, sk)
+		}
+	}
+
+	// Build the full system prompt with skills preamble + active skill content
+	basePrompt := systemPrompt
+	fullPrompt := s.buildFullPrompt(basePrompt, sessionSkills)
+	providerMessages := s.providerMessages(messages, fullPrompt)
 	maxOutput := modelCfg.MaxOutputTokens
 	chatReq := provider.ChatRequest{
 		Provider:        providerName,
@@ -212,7 +284,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	}
 	activeToolSet := map[string]bool{}
 	if req.ToolsEnabled && s.cfg.Tools.Enabled {
-		activeTools := s.resolveActiveTools(req.ActiveTools)
+		activeTools := s.resolveActiveTools(req.ActiveTools, sessionSkills)
 		chatReq.Tools = s.tools.Specs(activeTools)
 		for _, name := range activeTools {
 			activeToolSet[name] = true
@@ -249,6 +321,27 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				resp.ToolCalls[callIndex].ID = call.ID
 				chatReq.Messages[len(chatReq.Messages)-1].ToolCalls[callIndex].ID = call.ID
 			}
+
+			// Intercept skill meta-tools (they modify session state, not executed by registry)
+			if skillResult, handled := s.handleSkillTool(call, sessionSkills, basePrompt, &chatReq, req.ActiveTools, &activeToolSet); handled {
+				// Update sessionSkills from the handler
+				sessionSkills = s.getUpdatedSessionSkills(call, sessionSkills)
+				toolContentBytes, _ := json.Marshal(map[string]any{
+					"tool": call.Name, "args": json.RawMessage(call.Arguments), "result": json.RawMessage(skillResult), "decision": "approved",
+				})
+				toolMsg, addErr := s.store.AddMessage(generationCtx, conversationID, "tool", string(toolContentBytes), "completed", call.ID)
+				if addErr != nil {
+					providerErr = addErr
+					break
+				}
+				toolMessages = append(toolMessages, toolMsg)
+				chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "tool", ToolCallID: call.ID, Content: string(skillResult)})
+				if emit != nil {
+					_ = emit(Event{Type: "tool_result", MessageID: assistantMessage.ID, ToolCall: &call, Content: string(toolContentBytes), Status: "completed"})
+				}
+				continue
+			}
+
 			authorized := activeToolSet[call.Name]
 			approved := authorized && req.YOLOMode
 			var pending pendingToolCall
@@ -401,6 +494,16 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	if providerErr != nil {
 		cancel()
 		return SubmitResponse{}, providerErr
+	}
+	// Persist final session skills state
+	if len(sessionSkills) > 0 {
+		skillNames := make([]string, len(sessionSkills))
+		for i, sk := range sessionSkills {
+			skillNames[i] = sk.Name
+		}
+		_ = s.store.UpdateConversationSkills(context.Background(), conversationID, skillNames)
+	} else if len(conversation.Skills) > 0 {
+		_ = s.store.UpdateConversationSkills(context.Background(), conversationID, []string{})
 	}
 	return SubmitResponse{
 		ConversationID:   conversationID,
@@ -616,6 +719,197 @@ func (s *Service) IsActive(id string) bool {
 	_, ok := s.active[id]
 	return ok
 }
+
+// buildFullPrompt composes the system prompt from base + skills preamble + active skill content.
+func (s *Service) buildFullPrompt(basePrompt string, activeSkills []*skills.Skill) string {
+	var b strings.Builder
+	b.WriteString(basePrompt)
+
+	// Always include skills preamble so the agent knows what's available
+	b.WriteString(s.skillsPreamble())
+
+	// Append active skill instructions
+	if len(activeSkills) > 0 {
+		b.WriteString("\n\n---\n\n## Active Skills\n")
+		for _, skill := range activeSkills {
+			b.WriteString(fmt.Sprintf("\n### %s\n\n", skill.Label))
+			b.WriteString(skill.Content)
+			b.WriteString("\n")
+		}
+
+		// Collect and inject context documents from all active skills
+		seen := map[string]bool{}
+		var contextFiles []string
+		for _, skill := range activeSkills {
+			for _, path := range skill.Context {
+				if !seen[path] {
+					seen[path] = true
+					contextFiles = append(contextFiles, path)
+				}
+			}
+		}
+		if len(contextFiles) > 0 {
+			b.WriteString("\n## Reference Documents\n")
+			count := 0
+			for _, relPath := range contextFiles {
+				if count >= 5 {
+					break
+				}
+				absPath := s.cfg.ResolvePath(relPath)
+				content, err := os.ReadFile(absPath)
+				if err != nil {
+					continue
+				}
+				if len(content) > 32*1024 {
+					content = content[:32*1024]
+				}
+				b.WriteString(fmt.Sprintf("\n### %s\n```\n%s\n```\n", relPath, string(content)))
+				count++
+			}
+		}
+	}
+
+	return b.String()
+}
+
+// skillsPreamble generates a brief catalog of available skills for the agent.
+func (s *Service) skillsPreamble() string {
+	if s.skills == nil {
+		return ""
+	}
+	list := s.skills.List()
+	if len(list) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n\n## Available Skills\n")
+	b.WriteString("You can activate skills to gain focused instructions and tools using `activate_skill`.\n")
+	b.WriteString("Active skills can be deactivated with `deactivate_skill`. Use `get_active_skills` to check current state.\n\n")
+	for _, sk := range list {
+		b.WriteString(fmt.Sprintf("- **%s** (`%s`): %s", sk.Label, sk.Name, sk.Description))
+		if len(sk.Tools) > 0 {
+			b.WriteString(fmt.Sprintf(" [tools: %s]", strings.Join(sk.Tools, ", ")))
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// handleSkillTool intercepts skill meta-tool calls and returns (result, handled).
+// If handled is true, the caller should skip normal tool execution.
+func (s *Service) handleSkillTool(call provider.ToolCall, sessionSkills []*skills.Skill, basePrompt string, chatReq *provider.ChatRequest, clientActive []string, activeToolSet *map[string]bool) ([]byte, bool) {
+	switch call.Name {
+	case "activate_skill":
+		var args struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			result, _ := json.Marshal(map[string]string{"error": "invalid arguments"})
+			return result, true
+		}
+		skill, ok := s.skills.Get(args.Name)
+		if !ok {
+			result, _ := json.Marshal(map[string]string{"error": fmt.Sprintf("unknown skill %q", args.Name)})
+			return result, true
+		}
+		if containsSkill(sessionSkills, args.Name) {
+			result, _ := json.Marshal(map[string]any{"status": "already_active", "skill": args.Name})
+			return result, true
+		}
+		if len(sessionSkills) >= s.skills.MaxActive() {
+			result, _ := json.Marshal(map[string]string{"error": fmt.Sprintf("maximum %d active skills reached", s.skills.MaxActive())})
+			return result, true
+		}
+		// Will be added by getUpdatedSessionSkills
+		newSkills := append(sessionSkills, skill)
+		chatReq.Messages[0].Content = s.buildFullPrompt(basePrompt, newSkills)
+		newActiveTools := s.resolveActiveTools(clientActive, newSkills)
+		chatReq.Tools = s.tools.Specs(newActiveTools)
+		*activeToolSet = make(map[string]bool, len(newActiveTools))
+		for _, name := range newActiveTools {
+			(*activeToolSet)[name] = true
+		}
+		result, _ := json.Marshal(map[string]any{"status": "activated", "skill": args.Name, "tools_added": skill.Tools})
+		return result, true
+
+	case "deactivate_skill":
+		var args struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+			result, _ := json.Marshal(map[string]string{"error": "invalid arguments"})
+			return result, true
+		}
+		if !containsSkill(sessionSkills, args.Name) {
+			result, _ := json.Marshal(map[string]string{"error": fmt.Sprintf("skill %q is not active", args.Name)})
+			return result, true
+		}
+		newSkills := removeSkill(sessionSkills, args.Name)
+		chatReq.Messages[0].Content = s.buildFullPrompt(basePrompt, newSkills)
+		newActiveTools := s.resolveActiveTools(clientActive, newSkills)
+		chatReq.Tools = s.tools.Specs(newActiveTools)
+		*activeToolSet = make(map[string]bool, len(newActiveTools))
+		for _, name := range newActiveTools {
+			(*activeToolSet)[name] = true
+		}
+		result, _ := json.Marshal(map[string]any{"status": "deactivated", "skill": args.Name})
+		return result, true
+
+	case "get_active_skills":
+		names := make([]string, len(sessionSkills))
+		for i, sk := range sessionSkills {
+			names[i] = sk.Name
+		}
+		result, _ := json.Marshal(map[string]any{"active": names})
+		return result, true
+
+	case "list_skills":
+		// list_skills has a real Execute function in the registry, let it through
+		return nil, false
+	}
+	return nil, false
+}
+
+// getUpdatedSessionSkills returns the updated session skills after a skill tool call.
+func (s *Service) getUpdatedSessionSkills(call provider.ToolCall, current []*skills.Skill) []*skills.Skill {
+	switch call.Name {
+	case "activate_skill":
+		var args struct {
+			Name string `json:"name"`
+		}
+		json.Unmarshal([]byte(call.Arguments), &args)
+		if sk, ok := s.skills.Get(args.Name); ok && !containsSkill(current, args.Name) {
+			return append(current, sk)
+		}
+	case "deactivate_skill":
+		var args struct {
+			Name string `json:"name"`
+		}
+		json.Unmarshal([]byte(call.Arguments), &args)
+		return removeSkill(current, args.Name)
+	}
+	return current
+}
+
+func containsSkill(list []*skills.Skill, name string) bool {
+	for _, sk := range list {
+		if sk.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func removeSkill(list []*skills.Skill, name string) []*skills.Skill {
+	var out []*skills.Skill
+	for _, sk := range list {
+		if sk.Name != name {
+			out = append(out, sk)
+		}
+	}
+	return out
+}
+
 func (s *Service) Close() {
 	s.activeMu.Lock()
 	cancels := make([]context.CancelFunc, 0, len(s.active))

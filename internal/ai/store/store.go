@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -25,6 +26,7 @@ type Conversation struct {
 	Provider  string    `json:"provider"`
 	Model     string    `json:"model"`
 	Profile   string    `json:"profile"`
+	Skills    []string  `json:"skills,omitempty"`
 	Preview   string    `json:"preview,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -168,6 +170,9 @@ func (s *Store) migrate() error {
 		{2, []string{
 			`ALTER TABLE conversations ADD COLUMN profile TEXT NOT NULL DEFAULT ''`,
 		}},
+		{3, []string{
+			`ALTER TABLE conversations ADD COLUMN skills TEXT NOT NULL DEFAULT '[]'`,
+		}},
 	}
 	var currentVersion int
 	s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&currentVersion)
@@ -227,11 +232,11 @@ func (s *Store) ListConversations(ctx context.Context, query string, limit int) 
 	var err error
 	if strings.TrimSpace(query) != "" {
 		pattern := "%" + strings.TrimSpace(query) + "%"
-		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.created_at, c.updated_at,
+		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.created_at, c.updated_at,
 			COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
 			FROM conversations c WHERE c.title LIKE ? ORDER BY c.updated_at DESC LIMIT ?`, pattern, limit)
 	} else {
-		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.created_at, c.updated_at,
+		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.created_at, c.updated_at,
 			COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
 			FROM conversations c ORDER BY c.updated_at DESC LIMIT ?`, limit)
 	}
@@ -251,7 +256,7 @@ func (s *Store) ListConversations(ctx context.Context, query string, limit int) 
 }
 
 func (s *Store) GetConversation(ctx context.Context, id string) (Conversation, []Message, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, title, provider, model, profile, created_at, updated_at, '' FROM conversations WHERE id = ?`, id)
+	row := s.db.QueryRowContext(ctx, `SELECT id, title, provider, model, profile, skills, created_at, updated_at, '' FROM conversations WHERE id = ?`, id)
 	conversation, err := scanConversation(row)
 	if err != nil {
 		return Conversation{}, nil, err
@@ -281,6 +286,14 @@ func (s *Store) UpdateConversation(ctx context.Context, id, title, provider, mod
 	_, err = s.db.ExecContext(ctx, `UPDATE conversations SET title = ?, provider = ?, model = ?, updated_at = ? WHERE id = ?`,
 		current.Title, current.Provider, current.Model, formatTime(current.UpdatedAt), id)
 	return current, err
+}
+
+// UpdateConversationSkills persists the active skills for a conversation.
+func (s *Store) UpdateConversationSkills(ctx context.Context, id string, skills []string) error {
+	data, _ := json.Marshal(skills)
+	_, err := s.db.ExecContext(ctx, `UPDATE conversations SET skills = ?, updated_at = ? WHERE id = ?`,
+		string(data), formatTime(time.Now().UTC()), id)
+	return err
 }
 
 func (s *Store) DeleteConversation(ctx context.Context, id string) error {
@@ -515,14 +528,18 @@ type conversationScanner interface {
 
 func scanConversation(row conversationScanner) (Conversation, error) {
 	var item Conversation
-	var created, updated string
-	if err := row.Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &item.Profile, &created, &updated, &item.Preview); err != nil {
+	var created, updated, skillsJSON string
+	if err := row.Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &item.Profile, &skillsJSON, &created, &updated, &item.Preview); err != nil {
 		return Conversation{}, err
 	}
 	item.CreatedAt = parseTime(created)
 	item.UpdatedAt = parseTime(updated)
 	if len(item.Preview) > 160 {
 		item.Preview = item.Preview[:160]
+	}
+	// Parse skills JSON array
+	if skillsJSON != "" && skillsJSON != "[]" {
+		_ = json.Unmarshal([]byte(skillsJSON), &item.Skills)
 	}
 	return item, nil
 }

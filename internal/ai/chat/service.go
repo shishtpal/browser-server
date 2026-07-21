@@ -79,7 +79,7 @@ func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Regi
 	}
 	return &Service{
 		cfg: cfg, store: st, profiles: profileReg, clients: clients, active: map[string]context.CancelFunc{},
-		tools: tools.New(), pending: map[string]pendingToolCall{},
+		tools: tools.New(tools.Options{Memory: cfg.Memory}), pending: map[string]pendingToolCall{},
 	}
 }
 

@@ -1,67 +1,88 @@
 {
-  "default_provider": "openrouter",
-  "providers": {
-    "openrouter": {
-      "type": "openai_compatible",
-      "base_url": "https://openrouter.ai/api/v1",
-      "api_key": "env:OPENROUTER_API_KEY",
-      "request_timeout_seconds": 120,
-      "models": [
-        {
-          "id": "openai/gpt-4o-mini",
-          "label": "GPT-4o Mini",
-          "supports_tools": true,
-          "default": true,
-          "max_output_tokens": 4096
-        },
-        {
-          "id": "anthropic/claude-sonnet-4",
-          "label": "Claude Sonnet 4",
-          "supports_tools": true,
-          "max_output_tokens": 8192
+    "default_provider": "openrouter",
+    "providers": {
+        "openrouter": {
+            "type": "openai_compatible",
+            "base_url": "https://openrouter.ai/api/v1",
+            "api_key": "env:OPENROUTER_API_KEY",
+            "request_timeout_seconds": 120,
+            "models": [
+                {
+                    "id": "openai/gpt-4o-mini",
+                    "label": "GPT-4o Mini",
+                    "supports_tools": true,
+                    "default": true,
+                    "max_output_tokens": 4096
+                },
+                {
+                    "id": "anthropic/claude-sonnet-4",
+                    "label": "Claude Sonnet 4",
+                    "supports_tools": true,
+                    "max_output_tokens": 8192
+                }
+            ]
         }
-      ]
+    },
+    "tools": {
+        "enabled": true,
+        "allowed": [
+            "get_current_time",
+            "search_bookmarks",
+            "execute_command",
+            "read_file",
+            "write_file",
+            "list_directory",
+            "delete_file",
+            "move_file",
+            "copy_file",
+            "directory_tree",
+            "search_code",
+            "analyze_code",
+            "get_diagnostics",
+            "git_status",
+            "git_diff",
+            "git_log",
+            "git_branch",
+            "git_checkout",
+            "git_commit",
+            "git_push",
+            "git_pull",
+            "git_merge",
+            "ai_remember",
+            "ai_recall",
+            "ai_search_memory",
+            "ai_list_memories",
+            "ai_forget",
+            "ai_update_memory",
+            "ai_resolve_references",
+            "ai_lazy_memory",
+            "ai_manage_cache"
+        ],
+        "max_iterations": 100
+    },
+    "logging": {
+        "enabled": true,
+        "db_path": ".data/bs-ai.db",
+        "retention_days": 60,
+        "log_full_payload": true,
+        "max_payload_bytes": 1048576
+    },
+    "chat": {
+        "system_prompt": "You are `bs` a helpful assistant integrated into browser-server.",
+        "max_history_messages": 30,
+        "stream": true,
+        "temperature": 0.7
+    },
+    "memory": {
+        "directory": ".memory",
+        "primary_dir": "memories",
+        "refs_dir": "refs",
+        "cache_dir": "cache",
+        "max_file_size_kb": 1024,
+        "retention_days": 365,
+        "auto_cleanup": true,
+        "max_reference_depth": 5,
+        "lazy_loading": true,
+        "cache_size_limit_mb": 100
     }
-  },
-  "tools": {
-    "enabled": true,
-    "allowed": [
-      "get_current_time",
-      "search_bookmarks",
-      "execute_command",
-      "read_file",
-      "write_file",
-      "list_directory",
-      "delete_file",
-      "move_file",
-      "copy_file",
-      "directory_tree",
-      "search_code",
-      "analyze_code",
-      "get_diagnostics",
-      "git_status",
-      "git_diff",
-      "git_log",
-      "git_branch",
-      "git_checkout",
-      "git_commit",
-      "git_push",
-      "git_pull",
-      "git_merge"
-    ],
-    "max_iterations": 100
-  },
-  "logging": {
-    "enabled": true,
-    "db_path": ".data/bs-ai.db",
-    "retention_days": 60,
-    "log_full_payload": true,
-    "max_payload_bytes": 1048576
-  },
-  "chat": {
-    "system_prompt": "You are a helpful assistant integrated into browser-server.",
-    "max_history_messages": 30,
-    "stream": true,
-    "temperature": 0.7
-  }
 }

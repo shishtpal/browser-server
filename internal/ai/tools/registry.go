@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"browser-server/internal/ai/config"
 	"browser-server/internal/ai/provider"
 	"browser-server/internal/db"
 )
@@ -26,9 +27,16 @@ type Registry struct {
 	shell ShellInfo
 }
 
-func New() *Registry {
+type Options struct{ Memory config.MemoryConfig }
+
+func New(options ...Options) *Registry {
 	shell := DetectShell()
 	r := &Registry{tools: map[string]Tool{}, shell: shell}
+	var memory config.MemoryConfig
+	if len(options) > 0 {
+		memory = options[0].Memory
+	}
+	registerMemoryTools(r, newMemoryStore(memory))
 	r.add(Tool{Name: "get_current_time", Category: "General", Description: "Get the current server time", Schema: json.RawMessage(`{"type":"object","properties":{"timezone":{"type":"string"}},"additionalProperties":false}`), Execute: currentTime})
 	r.add(Tool{Name: "search_bookmarks", Category: "General", Description: "Search the local bookmark database", Schema: json.RawMessage(`{"type":"object","properties":{"user_id":{"type":"integer","minimum":1},"query":{"type":"string","maxLength":200},"limit":{"type":"integer","minimum":1,"maximum":20}},"required":["user_id","query"],"additionalProperties":false}`), Execute: searchBookmarks})
 	r.add(Tool{

@@ -20,6 +20,7 @@ type Config struct {
 	DefaultProvider string                    `json:"default_provider"`
 	Providers       map[string]ProviderConfig `json:"providers"`
 	Tools           ToolsConfig               `json:"tools"`
+	Memory          MemoryConfig              `json:"memory"`
 	Logging         LoggingConfig             `json:"logging"`
 	Chat            ChatConfig                `json:"chat"`
 }
@@ -44,6 +45,19 @@ type ToolsConfig struct {
 	Enabled       bool     `json:"enabled"`
 	Allowed       []string `json:"allowed"`
 	MaxIterations int      `json:"max_iterations"`
+}
+
+type MemoryConfig struct {
+	Directory         string `json:"directory"`
+	PrimaryDir        string `json:"primary_dir"`
+	RefsDir           string `json:"refs_dir"`
+	CacheDir          string `json:"cache_dir"`
+	MaxFileSizeKB     int    `json:"max_file_size_kb"`
+	RetentionDays     int    `json:"retention_days"`
+	AutoCleanup       bool   `json:"auto_cleanup"`
+	MaxReferenceDepth int    `json:"max_reference_depth"`
+	LazyLoading       bool   `json:"lazy_loading"`
+	CacheSizeLimitMB  int    `json:"cache_size_limit_mb"`
 }
 
 type LoggingConfig struct {
@@ -140,6 +154,30 @@ func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 	}
 	if !nestedPresent(raw, "tools", "max_iterations") {
 		cfg.Tools.MaxIterations = 5
+	}
+	if cfg.Memory.Directory == "" {
+		cfg.Memory.Directory = ".memory"
+	}
+	if cfg.Memory.PrimaryDir == "" {
+		cfg.Memory.PrimaryDir = "memories"
+	}
+	if cfg.Memory.RefsDir == "" {
+		cfg.Memory.RefsDir = "refs"
+	}
+	if cfg.Memory.CacheDir == "" {
+		cfg.Memory.CacheDir = "cache"
+	}
+	if !nestedPresent(raw, "memory", "max_file_size_kb") {
+		cfg.Memory.MaxFileSizeKB = 1024
+	}
+	if !nestedPresent(raw, "memory", "retention_days") {
+		cfg.Memory.RetentionDays = 365
+	}
+	if !nestedPresent(raw, "memory", "max_reference_depth") {
+		cfg.Memory.MaxReferenceDepth = 5
+	}
+	if !nestedPresent(raw, "memory", "cache_size_limit_mb") {
+		cfg.Memory.CacheSizeLimitMB = 100
 	}
 	if cfg.Logging.DBPath == "" {
 		cfg.Logging.DBPath = ".data/bs-ai.db"
@@ -272,11 +310,34 @@ func validate(cfg *Config) error {
 		"git_status": true, "git_diff": true, "git_log": true,
 		"git_branch": true, "git_checkout": true, "git_commit": true,
 		"git_push": true, "git_pull": true, "git_merge": true,
+		"ai_remember": true, "ai_recall": true, "ai_search_memory": true,
+		"ai_list_memories": true, "ai_forget": true, "ai_update_memory": true,
+		"ai_resolve_references": true, "ai_lazy_memory": true, "ai_manage_cache": true,
 	}
 	for _, name := range cfg.Tools.Allowed {
 		if !known[name] {
 			return fmt.Errorf("tools.allowed contains unknown tool %q", name)
 		}
+	}
+	if filepath.IsAbs(cfg.Memory.Directory) || strings.Contains(cfg.Memory.Directory, "..") {
+		return fmt.Errorf("memory.directory must be a safe relative path")
+	}
+	for _, dir := range []string{cfg.Memory.PrimaryDir, cfg.Memory.RefsDir, cfg.Memory.CacheDir} {
+		if dir == "" || filepath.IsAbs(dir) || strings.Contains(dir, "..") || filepath.Base(dir) != dir {
+			return fmt.Errorf("memory subdirectories must be safe names")
+		}
+	}
+	if cfg.Memory.MaxFileSizeKB < 1 || cfg.Memory.MaxFileSizeKB > 10240 {
+		return fmt.Errorf("memory.max_file_size_kb must be between 1 and 10240")
+	}
+	if cfg.Memory.MaxReferenceDepth < 1 || cfg.Memory.MaxReferenceDepth > 20 {
+		return fmt.Errorf("memory.max_reference_depth must be between 1 and 20")
+	}
+	if cfg.Memory.RetentionDays < 1 || cfg.Memory.RetentionDays > 3650 {
+		return fmt.Errorf("memory.retention_days must be between 1 and 3650")
+	}
+	if cfg.Memory.CacheSizeLimitMB < 1 || cfg.Memory.CacheSizeLimitMB > 10240 {
+		return fmt.Errorf("memory.cache_size_limit_mb must be between 1 and 10240")
 	}
 	if cfg.Logging.RetentionDays < 1 || cfg.Logging.RetentionDays > 3650 {
 		return fmt.Errorf("logging.retention_days must be between 1 and 3650")

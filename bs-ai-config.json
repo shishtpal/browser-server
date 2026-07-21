@@ -35,6 +35,7 @@
       "delete_file",
       "move_file",
       "copy_file",
+      "directory_tree",
       "git_status",
       "git_diff",
       "git_log",

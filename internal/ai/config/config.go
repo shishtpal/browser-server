@@ -267,7 +267,8 @@ func validate(cfg *Config) error {
 		"get_current_time": true, "search_bookmarks": true, "execute_command": true,
 		"read_file": true, "write_file": true, "list_directory": true,
 		"delete_file": true, "move_file": true, "copy_file": true,
-		"git_status": true, "git_diff": true, "git_log": true,
+		"directory_tree": true,
+		"git_status":     true, "git_diff": true, "git_log": true,
 		"git_branch": true, "git_checkout": true, "git_commit": true,
 		"git_push": true, "git_pull": true, "git_merge": true,
 	}

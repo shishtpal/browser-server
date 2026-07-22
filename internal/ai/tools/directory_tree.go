@@ -9,6 +9,16 @@ import (
 	"strings"
 )
 
+func registerDirectoryTree(r *Registry) {
+	r.add(Tool{
+		Name:        "directory_tree",
+		Category:    "File Operations",
+		Description: "Generate a tree-style directory listing showing the hierarchical structure of files and folders. Ignores .git and node_modules by default.",
+		Schema:      json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Directory path to generate tree for; defaults to the server working directory"},"max_depth":{"type":"integer","description":"Maximum depth to recurse (1-20, default 5)","minimum":1,"maximum":20},"ignore_patterns":{"type":"array","items":{"type":"string"},"description":"Additional file/directory patterns to ignore (supports glob patterns like *.log). .git and node_modules are always ignored."}},"additionalProperties":false}`),
+		Execute:     directoryTree,
+	})
+}
+
 func directoryTree(_ context.Context, raw json.RawMessage) (any, error) {
 	var a struct {
 		Path           string   `json:"path"`
@@ -30,7 +40,6 @@ func directoryTree(_ context.Context, raw json.RawMessage) (any, error) {
 		a.MaxDepth = 20
 	}
 
-	// Default ignore patterns
 	defaultIgnore := []string{".git", "node_modules"}
 	ignoreSet := make(map[string]bool, len(defaultIgnore)+len(a.IgnorePatterns))
 	for _, p := range defaultIgnore {
@@ -78,7 +87,6 @@ func buildTree(builder *strings.Builder, dir string, maxDepth, currentDepth int,
 		return false
 	}
 
-	// Filter entries based on ignore patterns
 	filtered := make([]os.DirEntry, 0, len(entries))
 	for _, entry := range entries {
 		if shouldIgnore(entry.Name(), ignoreSet) {
@@ -90,7 +98,6 @@ func buildTree(builder *strings.Builder, dir string, maxDepth, currentDepth int,
 	indent := strings.Repeat("  ", currentDepth+1)
 
 	for _, entry := range filtered {
-		// Check output size limit
 		if builder.Len() > maxOutput-512 {
 			builder.WriteString(indent)
 			builder.WriteString("[truncated]\n")
@@ -113,13 +120,10 @@ func buildTree(builder *strings.Builder, dir string, maxDepth, currentDepth int,
 }
 
 // shouldIgnore checks if a name matches any ignore pattern.
-// Supports exact names and glob patterns (e.g. "*.log", "dist*").
 func shouldIgnore(name string, ignoreSet map[string]bool) bool {
-	// Exact match first
 	if ignoreSet[name] {
 		return true
 	}
-	// Glob pattern match
 	for pattern := range ignoreSet {
 		if strings.ContainsAny(pattern, "*?[") {
 			if matched, _ := filepath.Match(pattern, name); matched {

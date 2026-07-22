@@ -12,10 +12,7 @@ import (
 	"time"
 )
 
-const (
-	maxCommandTimeout = 30 * time.Second
-	maxOutputBytes    = 64 * 1024
-)
+const maxCommandTimeout = 30 * time.Second
 
 // ShellInfo describes the shell the server is running under so that the AI
 // model can generate commands appropriate for the user's active terminal.
@@ -25,14 +22,9 @@ type ShellInfo struct {
 }
 
 // DetectShell identifies the parent shell that launched the server process.
-// It checks the SHELL and ComSpec environment variables and the parent process
-// name. The result is baked into the tool description so the LLM knows which
-// shell syntax to use.
 func DetectShell() ShellInfo {
 	info := ShellInfo{Platform: runtime.GOOS}
 
-	// On Windows, check PSModulePath (set inside PowerShell sessions) first,
-	// then fall back to ComSpec.
 	if runtime.GOOS == "windows" {
 		if os.Getenv("PSModulePath") != "" {
 			info.Name = "powershell"
@@ -52,7 +44,6 @@ func DetectShell() ShellInfo {
 		return info
 	}
 
-	// Unix: prefer SHELL env
 	shell := os.Getenv("SHELL")
 	if shell != "" {
 		base := strings.ToLower(shell)
@@ -71,6 +62,19 @@ func DetectShell() ShellInfo {
 
 	info.Name = "bash"
 	return info
+}
+
+func registerExecuteCommand(r *Registry, shell ShellInfo) {
+	r.add(Tool{
+		Name:     "execute_command",
+		Category: "Process Management",
+		Description: fmt.Sprintf(
+			"Execute a shell command on the server. The server is running on %s with %s. Generate commands using %s syntax. Use this to run system commands, check file contents, list directories, manage processes, etc. Commands time out after 30 seconds max.",
+			shell.Platform, shell.Name, shell.Name,
+		),
+		Schema:  json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","description":"The shell command to execute. Use ` + shell.Name + ` syntax.","maxLength":4096},"working_dir":{"type":"string","description":"Optional working directory for the command. Defaults to the server binary directory."},"timeout_seconds":{"type":"integer","description":"Timeout in seconds (1-30). Defaults to 10.","minimum":1,"maximum":30}},"required":["command"],"additionalProperties":false}`),
+		Execute: executeCommand(shell),
+	})
 }
 
 func executeCommand(shell ShellInfo) func(context.Context, json.RawMessage) (any, error) {
@@ -109,7 +113,6 @@ func executeCommand(shell ShellInfo) func(context.Context, json.RawMessage) (any
 		case "cmd":
 			cmd = exec.CommandContext(cmdCtx, "cmd", "/C", a.Command)
 		default:
-			// bash, zsh, fish, etc.
 			cmd = exec.CommandContext(cmdCtx, shell.Name, "-c", a.Command)
 		}
 
@@ -126,7 +129,6 @@ func executeCommand(shell ShellInfo) func(context.Context, json.RawMessage) (any
 		outBytes := stdout.Bytes()
 		errBytes := stderr.Bytes()
 
-		// Truncate output if too large
 		stdoutTruncated := false
 		stderrTruncated := false
 		if len(outBytes) > maxOutputBytes {

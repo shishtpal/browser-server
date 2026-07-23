@@ -27,8 +27,9 @@ type Registry struct {
 
 // Options configures optional subsystems when constructing a Registry.
 type Options struct {
-	Memory config.MemoryConfig
-	Skills *skills.Registry
+	Memory    config.MemoryConfig
+	Skills    *skills.Registry
+	WebSearch config.WebSearchConfig
 }
 
 // New creates a Registry with all built-in tools registered.
@@ -55,6 +56,9 @@ func New(options ...Options) *Registry {
 	registerGetCurrentTime(r)
 	registerSearchBookmarks(r)
 	registerExecuteCommand(r, shell)
+	if len(options) > 0 && options[0].WebSearch.Enabled {
+		registerWebTools(r, options[0].WebSearch)
+	}
 
 	// File operation tools
 	registerReadFile(r)

@@ -20,6 +20,7 @@ type Config struct {
 	DefaultProvider string                    `json:"default_provider"`
 	Providers       map[string]ProviderConfig `json:"providers"`
 	Tools           ToolsConfig               `json:"tools"`
+	WebSearch       WebSearchConfig           `json:"web_search"`
 	Memory          MemoryConfig              `json:"memory"`
 	Skills          SkillsConfig              `json:"skills"`
 	Logging         LoggingConfig             `json:"logging"`
@@ -53,6 +54,45 @@ type ToolsConfig struct {
 	Enabled       bool     `json:"enabled"`
 	Allowed       []string `json:"allowed"`
 	MaxIterations int      `json:"max_iterations"`
+}
+
+type WebSearchConfig struct {
+	Enabled         bool                     `json:"enabled"`
+	DefaultProvider string                   `json:"default_provider"`
+	TimeoutSeconds  int                      `json:"timeout_seconds"`
+	MaxResults      int                      `json:"max_results"`
+	Fallback        bool                     `json:"fallback"`
+	CacheTTLMinutes int                      `json:"cache_ttl_minutes"`
+	CacheMaxEntries int                      `json:"cache_max_entries"`
+	Providers       WebSearchProvidersConfig `json:"providers"`
+}
+
+type WebSearchProvidersConfig struct {
+	Brave      WebSearchAPIProviderConfig `json:"brave"`
+	Tavily     WebSearchAPIProviderConfig `json:"tavily"`
+	Google     WebSearchGoogleConfig      `json:"google"`
+	SearxNG    WebSearchSearxNGConfig     `json:"searxng"`
+	DuckDuckGo WebSearchProviderConfig    `json:"duckduckgo"`
+}
+
+type WebSearchProviderConfig struct {
+	Enabled bool `json:"enabled"`
+}
+
+type WebSearchAPIProviderConfig struct {
+	Enabled bool   `json:"enabled"`
+	APIKey  string `json:"api_key"`
+}
+
+type WebSearchGoogleConfig struct {
+	Enabled        bool   `json:"enabled"`
+	APIKey         string `json:"api_key"`
+	SearchEngineID string `json:"search_engine_id"`
+}
+
+type WebSearchSearxNGConfig struct {
+	Enabled bool   `json:"enabled"`
+	BaseURL string `json:"base_url"`
 }
 
 type MemoryConfig struct {
@@ -163,6 +203,24 @@ func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 	if !nestedPresent(raw, "tools", "max_iterations") {
 		cfg.Tools.MaxIterations = 5
 	}
+	if cfg.WebSearch.DefaultProvider == "" {
+		cfg.WebSearch.DefaultProvider = "auto"
+	}
+	if !nestedPresent(raw, "web_search", "timeout_seconds") {
+		cfg.WebSearch.TimeoutSeconds = 30
+	}
+	if !nestedPresent(raw, "web_search", "max_results") {
+		cfg.WebSearch.MaxResults = 10
+	}
+	if !nestedPresent(raw, "web_search", "fallback") {
+		cfg.WebSearch.Fallback = true
+	}
+	if !nestedPresent(raw, "web_search", "cache_ttl_minutes") {
+		cfg.WebSearch.CacheTTLMinutes = 5
+	}
+	if !nestedPresent(raw, "web_search", "cache_max_entries") {
+		cfg.WebSearch.CacheMaxEntries = 100
+	}
 	if cfg.Memory.Directory == "" {
 		cfg.Memory.Directory = ".memory"
 	}
@@ -261,7 +319,45 @@ func resolveSecrets(cfg *Config) error {
 			cfg.Providers[name] = provider
 		}
 	}
+	var err error
+	if cfg.WebSearch.Providers.Brave.Enabled {
+		cfg.WebSearch.Providers.Brave.APIKey, err = resolveOptionalEnv("web_search provider \"brave\" api_key", cfg.WebSearch.Providers.Brave.APIKey)
+		if err != nil {
+			return err
+		}
+	}
+	if cfg.WebSearch.Providers.Tavily.Enabled {
+		cfg.WebSearch.Providers.Tavily.APIKey, err = resolveOptionalEnv("web_search provider \"tavily\" api_key", cfg.WebSearch.Providers.Tavily.APIKey)
+		if err != nil {
+			return err
+		}
+	}
+	if cfg.WebSearch.Providers.Google.Enabled {
+		cfg.WebSearch.Providers.Google.APIKey, err = resolveOptionalEnv("web_search provider \"google\" api_key", cfg.WebSearch.Providers.Google.APIKey)
+		if err != nil {
+			return err
+		}
+		cfg.WebSearch.Providers.Google.SearchEngineID, err = resolveOptionalEnv("web_search provider \"google\" search_engine_id", cfg.WebSearch.Providers.Google.SearchEngineID)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func resolveOptionalEnv(field, value string) (string, error) {
+	if !strings.HasPrefix(value, "env:") {
+		return value, nil
+	}
+	envName := strings.TrimSpace(strings.TrimPrefix(value, "env:"))
+	if envName == "" {
+		return "", fmt.Errorf("%s env reference is empty", field)
+	}
+	resolved := os.Getenv(envName)
+	if resolved == "" {
+		return "", fmt.Errorf("%s references unset environment variable %q", field, envName)
+	}
+	return resolved, nil
 }
 
 func validate(cfg *Config) error {
@@ -326,6 +422,7 @@ func validate(cfg *Config) error {
 	}
 	known := map[string]bool{
 		"get_current_time": true, "search_bookmarks": true, "execute_command": true,
+		"web_search": true, "web_fetch": true,
 		"read_file": true, "write_file": true, "edit_file": true, "list_directory": true,
 		"delete_file": true, "move_file": true, "copy_file": true,
 		"directory_tree": true,
@@ -342,6 +439,9 @@ func validate(cfg *Config) error {
 		if !known[name] {
 			return fmt.Errorf("tools.allowed contains unknown tool %q", name)
 		}
+	}
+	if err := validateWebSearch(cfg.WebSearch); err != nil {
+		return err
 	}
 	if filepath.IsAbs(cfg.Memory.Directory) || strings.Contains(cfg.Memory.Directory, "..") {
 		return fmt.Errorf("memory.directory must be a safe relative path")
@@ -390,6 +490,55 @@ func validate(cfg *Config) error {
 	probe.Close()
 	os.Remove(probeName)
 	return nil
+}
+
+func validateWebSearch(cfg WebSearchConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if cfg.TimeoutSeconds < 1 || cfg.TimeoutSeconds > 120 {
+		return fmt.Errorf("web_search.timeout_seconds must be between 1 and 120")
+	}
+	if cfg.MaxResults < 1 || cfg.MaxResults > 20 {
+		return fmt.Errorf("web_search.max_results must be between 1 and 20")
+	}
+	if cfg.CacheTTLMinutes < 1 || cfg.CacheTTLMinutes > 1440 {
+		return fmt.Errorf("web_search.cache_ttl_minutes must be between 1 and 1440")
+	}
+	if cfg.CacheMaxEntries < 1 || cfg.CacheMaxEntries > 10000 {
+		return fmt.Errorf("web_search.cache_max_entries must be between 1 and 10000")
+	}
+	available := map[string]bool{
+		"brave":      cfg.Providers.Brave.Enabled,
+		"tavily":     cfg.Providers.Tavily.Enabled,
+		"google":     cfg.Providers.Google.Enabled,
+		"searxng":    cfg.Providers.SearxNG.Enabled,
+		"duckduckgo": cfg.Providers.DuckDuckGo.Enabled,
+	}
+	if cfg.DefaultProvider != "auto" && !available[cfg.DefaultProvider] {
+		return fmt.Errorf("web_search.default_provider %q is not enabled", cfg.DefaultProvider)
+	}
+	if cfg.Providers.Brave.Enabled && strings.TrimSpace(cfg.Providers.Brave.APIKey) == "" {
+		return fmt.Errorf("web_search provider \"brave\" api_key is required")
+	}
+	if cfg.Providers.Tavily.Enabled && strings.TrimSpace(cfg.Providers.Tavily.APIKey) == "" {
+		return fmt.Errorf("web_search provider \"tavily\" api_key is required")
+	}
+	if cfg.Providers.Google.Enabled && (strings.TrimSpace(cfg.Providers.Google.APIKey) == "" || strings.TrimSpace(cfg.Providers.Google.SearchEngineID) == "") {
+		return fmt.Errorf("web_search provider \"google\" api_key and search_engine_id are required")
+	}
+	if cfg.Providers.SearxNG.Enabled {
+		u, err := url.Parse(cfg.Providers.SearxNG.BaseURL)
+		if err != nil || u.Scheme == "" || u.Host == "" || (u.Scheme != "https" && !isLocalHost(u.Hostname())) {
+			return fmt.Errorf("web_search provider \"searxng\" base_url must be a valid HTTPS or local URL")
+		}
+	}
+	for _, enabled := range available {
+		if enabled {
+			return nil
+		}
+	}
+	return fmt.Errorf("web_search must enable at least one provider")
 }
 
 func isLocalHost(host string) bool {

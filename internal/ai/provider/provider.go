@@ -69,7 +69,12 @@ type Error struct {
 	Diagnostic string
 }
 
-func (e *Error) Error() string { return e.Code }
+func (e *Error) Error() string {
+	if e.Diagnostic != "" {
+		return e.Code + ": " + e.Diagnostic
+	}
+	return e.Code
+}
 func SafeError(err error) (string, int, bool) {
 	var e *Error
 	if errors.As(err, &e) {

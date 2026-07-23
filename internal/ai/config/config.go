@@ -36,6 +36,8 @@ type ProviderConfig struct {
 	BaseURL               string        `json:"base_url"`
 	APIKey                string        `json:"api_key"`
 	RequestTimeoutSeconds int           `json:"request_timeout_seconds"`
+	RetryAttempts         int           `json:"retry_attempts"`
+	RetryDelaySeconds     int           `json:"retry_delay_seconds"`
 	Models                []ModelConfig `json:"models"`
 }
 
@@ -213,6 +215,12 @@ func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 		if !providerFieldPresent(raw, name, "request_timeout_seconds") {
 			provider.RequestTimeoutSeconds = 120
 		}
+		if !providerFieldPresent(raw, name, "retry_attempts") {
+			provider.RetryAttempts = 10
+		}
+		if !providerFieldPresent(raw, name, "retry_delay_seconds") {
+			provider.RetryDelaySeconds = 5
+		}
 		cfg.Providers[name] = provider
 	}
 }
@@ -282,6 +290,12 @@ func validate(cfg *Config) error {
 		}
 		if provider.RequestTimeoutSeconds <= 0 || provider.RequestTimeoutSeconds > int((10*time.Minute).Seconds()) {
 			return fmt.Errorf("provider %q request_timeout_seconds must be between 1 and 600", name)
+		}
+		if provider.RetryAttempts < 0 || provider.RetryAttempts > 20 {
+			return fmt.Errorf("provider %q retry_attempts must be between 0 and 20", name)
+		}
+		if provider.RetryDelaySeconds < 1 || provider.RetryDelaySeconds > 300 {
+			return fmt.Errorf("provider %q retry_delay_seconds must be between 1 and 300", name)
 		}
 		if len(provider.Models) == 0 {
 			return fmt.Errorf("provider %q must configure at least one model", name)

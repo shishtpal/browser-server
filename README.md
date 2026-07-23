@@ -187,6 +187,9 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
       "type": "openai_compatible",
       "base_url": "https://openrouter.ai/api/v1",
       "api_key": "env:OPENROUTER_API_KEY",
+      "request_timeout_seconds": 120,
+      "retry_attempts": 10,
+      "retry_delay_seconds": 5,
       "models": [
         { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true },
         { "id": "anthropic/claude-sonnet-4", "label": "Claude Sonnet 4", "supports_tools": true }
@@ -202,10 +205,23 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
 
 The web app will show the AI Chat page once the config is detected. If the file is missing, the chat page displays a "disabled" state with instructions.
 
+### Provider retries
+
+Retry behavior is configured independently for each provider:
+
+| Setting | Default | Valid range | Description |
+| --- | --- | --- | --- |
+| `request_timeout_seconds` | `120` | `1`-`600` | Timeout for each individual provider request |
+| `retry_attempts` | `10` | `0`-`20` | Retries after the initial request; use `0` to disable retries |
+| `retry_delay_seconds` | `5` | `1`-`300` | Fixed delay between retries |
+
+The server retries transient failures such as network errors, timeouts, rate limits (`429`), provider errors (`5xx`), and malformed provider responses. Other `4xx` responses are returned immediately because retrying an invalid request or API key will not resolve it. Streaming requests are retried only before any output is emitted, preventing duplicate partial responses. Stopping a generation also cancels any pending retry delay.
+
 ### Key features
 
 - Multiple provider and model selection from the web UI
 - Streaming responses via SSE (Server-Sent Events)
+- Configurable retries for transient provider failures
 - Server-side tools the model can call (with user approval or auto-approve "YOLO mode")
 - Conversation history persisted in SQLite
 - Regenerate previous responses, stop in-progress generation

@@ -162,6 +162,9 @@ Place `bs-ai-config.json` next to the server binary. The module reads it at star
       "type": "openai_compatible",
       "base_url": "https://...",
       "api_key": "env:ENV_VAR_NAME",   // resolved from environment at runtime
+      "request_timeout_seconds": 120,
+      "retry_attempts": 10,
+      "retry_delay_seconds": 5,
       "models": [
         { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true }
       ]
@@ -174,6 +177,8 @@ Place `bs-ai-config.json` next to the server binary. The module reads it at star
 ```
 
 API keys that start with `env:` are resolved from the corresponding environment variable.
+
+Provider requests retry transient failures (network errors, timeouts, HTTP `429`/`5xx`, and malformed provider responses). `retry_attempts` is the number of retries after the initial request (`0` disables retries; valid range `0`-`20`), and `retry_delay_seconds` is the fixed delay between attempts (valid range `1`-`300`). Both regular and streaming completions use this policy, but a stream is never retried after it has emitted an event because doing so could duplicate output. Retry waits honor context cancellation.
 
 ### Architecture
 

@@ -79,7 +79,13 @@ type Event struct {
 func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Registry, skillReg *skills.Registry) *Service {
 	clients := map[string]provider.Client{}
 	for name, item := range cfg.Providers {
-		clients[name] = provider.NewOpenAICompatibleClient(item.BaseURL, item.APIKey, time.Duration(item.RequestTimeoutSeconds)*time.Second)
+		clients[name] = provider.NewOpenAICompatibleClient(
+			item.BaseURL,
+			item.APIKey,
+			time.Duration(item.RequestTimeoutSeconds)*time.Second,
+			item.RetryAttempts,
+			time.Duration(item.RetryDelaySeconds)*time.Second,
+		)
 	}
 	return &Service{
 		cfg: cfg, store: st, profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{},

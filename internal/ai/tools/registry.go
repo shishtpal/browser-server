@@ -59,6 +59,7 @@ func New(options ...Options) *Registry {
 	// File operation tools
 	registerReadFile(r)
 	registerWriteFile(r)
+	registerEditFile(r)
 	registerListDirectory(r)
 	registerDeleteFile(r)
 	registerMoveFile(r)

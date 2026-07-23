@@ -326,7 +326,7 @@ func validate(cfg *Config) error {
 	}
 	known := map[string]bool{
 		"get_current_time": true, "search_bookmarks": true, "execute_command": true,
-		"read_file": true, "write_file": true, "list_directory": true,
+		"read_file": true, "write_file": true, "edit_file": true, "list_directory": true,
 		"delete_file": true, "move_file": true, "copy_file": true,
 		"directory_tree": true,
 		"search_code":    true, "analyze_code": true, "get_diagnostics": true,

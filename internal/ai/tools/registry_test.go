@@ -23,7 +23,7 @@ func TestStrictToolArguments(t *testing.T) {
 
 func TestFilesystemToolsAreRegistered(t *testing.T) {
 	r := New()
-	names := []string{"read_file", "write_file", "list_directory", "delete_file", "move_file", "copy_file"}
+	names := []string{"read_file", "write_file", "edit_file", "list_directory", "delete_file", "move_file", "copy_file"}
 	if specs := r.Specs(names); len(specs) != len(names) {
 		t.Fatalf("got %d filesystem tool specs, want %d", len(specs), len(names))
 	}

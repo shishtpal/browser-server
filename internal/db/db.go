@@ -84,6 +84,8 @@ func InitTodoDB(dataPath string) {
 			capture_id TEXT,
 			screenshot_path TEXT DEFAULT '',
 			completed BOOLEAN DEFAULT FALSE,
+			pinned BOOLEAN DEFAULT FALSE,
+			archived BOOLEAN DEFAULT FALSE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
@@ -92,6 +94,8 @@ func InitTodoDB(dataPath string) {
 	migrateColumn(TodoDB, "todos", "domain", "TEXT DEFAULT ''")
 	migrateColumn(TodoDB, "todos", "capture_id", "TEXT")
 	migrateColumn(TodoDB, "todos", "screenshot_path", "TEXT DEFAULT ''")
+	migrateColumn(TodoDB, "todos", "pinned", "BOOLEAN DEFAULT FALSE")
+	migrateColumn(TodoDB, "todos", "archived", "BOOLEAN DEFAULT FALSE")
 	migrateColumn(TodoDB, "todos", "priority", "TEXT DEFAULT 'medium'")
 	migrateColumn(TodoDB, "todos", "due_date", "DATETIME")
 	migrateColumn(TodoDB, "todos", "tags", "TEXT DEFAULT '[]'")

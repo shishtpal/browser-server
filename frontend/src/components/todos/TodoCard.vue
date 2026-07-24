@@ -3,8 +3,9 @@
     <div class="flex items-start gap-3">
       <button
         type="button"
+        :disabled="todo.archived"
         @click="$emit('toggle', todo)"
-        class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition"
+        class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition disabled:cursor-default"
         :class="todo.completed ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400 dark:border-slate-600 dark:hover:border-indigo-400'"
       >
         <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,6 +29,7 @@
             <img :src="screenshotUrl" class="h-8 w-14 rounded border border-gray-200 object-cover dark:border-slate-600" />
           </button>
           <span :class="['block truncate text-sm font-black', todo.completed ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-900 dark:text-white']">{{ todo.title }}</span>
+          <span v-if="todo.pinned" class="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-black text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">Pinned</span>
           <TodoPriorityBadge :priority="(todo.priority as any)" />
         </div>
         <p v-if="todo.description" class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400">{{ todo.description }}</p>
@@ -65,7 +67,10 @@
           <circle cx="15" cy="18" r="1.5" />
         </svg>
       </button>
-      <button type="button" @click="$emit('startEdit', todo)" class="rounded px-2 py-1 text-[10px] font-black text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400">Edit</button>
+      <button type="button" @click="$emit('toggle-pin', todo)" class="rounded px-2 py-1 text-[10px] font-black transition" :class="todo.pinned ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10'">{{ todo.pinned ? 'Unpin' : 'Pin' }}</button>
+      <button v-if="todo.archived" type="button" @click="$emit('restore', todo)" class="rounded px-2 py-1 text-[10px] font-black text-emerald-600 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20">Restore</button>
+      <button v-else-if="todo.completed" type="button" @click="$emit('archive', todo)" class="rounded px-2 py-1 text-[10px] font-black text-amber-600 transition hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20">Archive</button>
+      <button v-if="!todo.archived" type="button" @click="$emit('startEdit', todo)" class="rounded px-2 py-1 text-[10px] font-black text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400">Edit</button>
       <button type="button" @click="confirmDelete" class="rounded px-2 py-1 text-[10px] font-black text-red-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400">Delete</button>
     </div>
     </div>
@@ -93,6 +98,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   toggle: [todo: Todo]
+  'toggle-pin': [todo: Todo]
+  archive: [todo: Todo]
+  restore: [todo: Todo]
   startEdit: [todo: Todo]
   saveEdit: [todo: Todo, title: string, description: string, priority: string, dueDate: string | null, tags: string[]]
   cancelEdit: []

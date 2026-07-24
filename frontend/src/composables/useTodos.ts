@@ -21,12 +21,13 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const newTags = ref<string[]>([])
   const newMoreOpen = ref(false)
 
-  const activeFilter = ref<'all' | 'active' | 'completed'>('all')
+  const activeFilter = ref<'all' | 'active' | 'completed' | 'archived'>('all')
   const searchQuery = ref('')
   const filters = [
     { label: 'All', value: 'all' as const },
     { label: 'Active', value: 'active' as const },
     { label: 'Completed', value: 'completed' as const },
+    { label: 'Archived', value: 'archived' as const },
   ]
 
   const editingId = ref<number | null>(null)
@@ -36,9 +37,11 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const editDueDate = ref<string | null>(null)
   const editTags = ref<string[]>([])
 
-  const activeCount = computed(() => todos.value.filter(t => !t.completed).length)
-  const completedCount = computed(() => todos.value.filter(t => t.completed).length)
-  const overdueCount = computed(() => todos.value.filter(t => !t.completed && t.due_date && isOverdue(t)).length)
+  const totalCount = computed(() => todos.value.filter(t => !t.archived).length)
+  const activeCount = computed(() => todos.value.filter(t => !t.archived && !t.completed).length)
+  const completedCount = computed(() => todos.value.filter(t => !t.archived && t.completed).length)
+  const archivedCount = computed(() => todos.value.filter(t => t.archived).length)
+  const overdueCount = computed(() => todos.value.filter(t => !t.archived && !t.completed && t.due_date && isOverdue(t)).length)
 
   const priority = useTodoPriority()
   const dueDate = useTodoDueDate()
@@ -46,6 +49,11 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const baseFiltered = computed(() => {
     let list = todos.value
+    if (activeFilter.value === 'archived') {
+      list = list.filter(t => t.archived)
+    } else {
+      list = list.filter(t => !t.archived)
+    }
     const query = searchQuery.value.trim().toLowerCase()
     if (query) {
       list = list.filter(t =>
@@ -86,8 +94,12 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     isLoading.value = true
     error.value = null
     try {
-      const results = await getTodos(selectedUserId.value, domainFilter?.value ?? undefined)
-      todos.value = results
+      const domain = domainFilter?.value ?? undefined
+      const [current, archived] = await Promise.all([
+        getTodos(selectedUserId.value, domain),
+        getTodos(selectedUserId.value, domain, { archived: true }),
+      ])
+      todos.value = [...current, ...archived]
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load todos'
     } finally {
@@ -133,6 +145,34 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     }
   }
 
+  const togglePinned = async (todo: Todo) => {
+    try {
+      await updateTodo(todo.id, { pinned: !todo.pinned })
+      await loadTodos()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update pin'
+    }
+  }
+
+  const archiveTodo = async (todo: Todo) => {
+    if (!todo.completed) return
+    try {
+      await updateTodo(todo.id, { archived: true })
+      await loadTodos()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to archive todo'
+    }
+  }
+
+  const restoreTodo = async (todo: Todo) => {
+    try {
+      await updateTodo(todo.id, { archived: false })
+      await loadTodos()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to restore todo'
+    }
+  }
+
   const startEdit = (todo: Todo) => {
     editingId.value = todo.id
     editTitle.value = todo.title
@@ -171,7 +211,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     }
   }
 
-  watch(activeFilter, () => { if (selectedUserId.value) loadTodos() })
   if (domainFilter) {
     watch(domainFilter, () => { if (selectedUserId.value) loadTodos() })
   }
@@ -195,13 +234,18 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     editPriority,
     editDueDate,
     editTags,
+    totalCount,
     activeCount,
     completedCount,
+    archivedCount,
     overdueCount,
     displayedTodos,
     loadTodos,
     addTodo,
     toggleTodo,
+    togglePinned,
+    archiveTodo,
+    restoreTodo,
     startEdit,
     cancelEdit,
     saveEdit,

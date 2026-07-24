@@ -11,6 +11,8 @@ type Todo struct {
 	CaptureID      string     `json:"capture_id,omitempty"`
 	ScreenshotPath string     `json:"screenshot_path"`
 	Completed      bool       `json:"completed"`
+	Pinned         bool       `json:"pinned"`
+	Archived       bool       `json:"archived"`
 	Priority       string     `json:"priority"`
 	DueDate        *time.Time `json:"due_date"`
 	Tags           string     `json:"tags"`

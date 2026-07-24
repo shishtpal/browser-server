@@ -8,6 +8,8 @@ export interface Todo {
   domain: string
   screenshot_path: string
   completed: boolean
+  pinned: boolean
+  archived: boolean
   priority: TodoPriority
   due_date: string | null
   tags: string[]
@@ -43,6 +45,8 @@ export interface UpdateTodoInput {
   description?: string
   domain?: string
   completed?: boolean
+  pinned?: boolean
+  archived?: boolean
   screenshot_path?: string
   priority?: TodoPriority
   due_date?: string | null

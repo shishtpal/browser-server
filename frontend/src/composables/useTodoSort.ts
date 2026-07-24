@@ -23,6 +23,8 @@ export function useTodoSort(sourceTodos: Ref<Todo[]>) {
     const dir = sortDir.value === 'asc' ? 1 : -1
 
     list.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+
       let cmp = 0
       switch (field) {
         case 'position':

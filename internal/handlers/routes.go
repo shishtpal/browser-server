@@ -21,7 +21,7 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "POST", Path: "/api/ai/conversations/{id}/stop", Description: "Cancel active AI generation for a conversation"},
 		{Method: "POST", Path: "/api/ai/conversations/{id}/regenerate", Description: "Supersede and regenerate the latest AI response"},
 		{Method: "GET", Path: "/api/search/omnibox", Description: "Search bookmark and grouped history suggestions for Chrome omnibox (params: user_id, q, limit)"},
-		{Method: "GET", Path: "/api/todos", Description: "Get all todos (filter: user_id, domain, completed, priority, tag, parent_id, sort, order)"},
+		{Method: "GET", Path: "/api/todos", Description: "Get active or archived todos (filters: user_id, domain, completed, priority, tag, parent_id, archived; sort, order; pinned first)"},
 		{Method: "POST", Path: "/api/todos", Description: "Create a new todo"},
 		{Method: "GET", Path: "/api/todos/{id}", Description: "Get todo by ID (includes subtasks)"},
 		{Method: "PUT", Path: "/api/todos/{id}", Description: "Update todo by ID"},

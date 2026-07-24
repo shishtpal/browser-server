@@ -2,9 +2,10 @@
   <div class="mx-auto max-w-full px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Task manager" title="Todos" color="indigo">
       <template #stats>
-        <StatCard :value="todos.length" label="Total" variant="dark" color="indigo" />
+        <StatCard :value="totalCount" label="Total" variant="dark" color="indigo" />
         <StatCard :value="activeCount" label="Active" variant="primary" color="indigo" />
         <StatCard :value="completedCount" label="Done" variant="secondary" color="indigo" />
+        <StatCard v-if="archivedCount > 0" :value="archivedCount" label="Archived" variant="secondary" color="indigo" />
         <StatCard v-if="overdueCount > 0" :value="overdueCount" label="Overdue" variant="dark" color="amber" />
       </template>
       <template #actions>
@@ -82,7 +83,14 @@
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadTodos" />
 
     <div v-else-if="selectedUserId">
-      <TodoAddForm class="mb-4" @submit="handleAddTodo" :existing-tags="allTags" />
+      <TodoAddForm v-if="activeFilter !== 'archived'" class="mb-4" @submit="handleAddTodo" :existing-tags="allTags" />
+
+      <div v-else class="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-300">
+        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M7 8V5h10v3m-9 0v11h8V8m-5 4h2" />
+        </svg>
+        <span><strong>Archived todos</strong> are hidden from your normal workspace. Restore one to make it active again.</span>
+      </div>
 
       <div class="mb-4 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -117,8 +125,8 @@
 
       <EmptyState
         v-if="displayedTodos.length === 0"
-        :title="searchQuery ? 'No matching todos' : 'No todos here'"
-        :description="searchQuery ? `Nothing matches “${searchQuery}”. Try another search.` : 'Create your first task above or change the filters.'"
+        :title="searchQuery ? 'No matching todos' : activeFilter === 'archived' ? 'Archive is empty' : 'No todos here'"
+        :description="searchQuery ? `Nothing matches “${searchQuery}”. Try another search.` : activeFilter === 'archived' ? 'Completed todos you archive will appear here.' : 'Create your first task above or change the filters.'"
         :icon="searchQuery ? 'search' : 'default'"
         color="indigo"
       />
@@ -135,7 +143,7 @@
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Tags</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Updated</th>
                 <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Subtasks</th>
-                <th class="w-24 px-3 py-3 text-right text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Actions</th>
+                <th class="w-44 px-3 py-3 text-right text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Actions</th>
               </tr>
             </thead>
             <draggable v-model="listTodos" item-key="id" handle=".drag-handle" @end="onListDragEnd" tag="tbody" class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
@@ -150,6 +158,9 @@
                   :initial-tags="editingId === todo.id ? editTags : []"
                   :expanded="expandedTodoId === todo.id"
                   @toggle="toggleTodo"
+                  @toggle-pin="togglePinned"
+                  @archive="archiveTodo"
+                  @restore="restoreTodo"
                   @toggle-expand="toggleExpand"
                   @start-edit="startEdit"
                   @saveEdit="saveEdit"
@@ -174,6 +185,9 @@
             :todos="displayedTodos"
             :expanded-id="expandedTodoId"
             @toggle="toggleTodo"
+            @toggle-pin="togglePinned"
+            @archive="archiveTodo"
+            @restore="restoreTodo"
             @toggle-expand="toggleExpand"
             @view-screenshot="openScreenshot"
             @start-edit="(t: Todo) => startEdit(t)"
@@ -197,6 +211,9 @@
               :initial-tags="editingId === todo.id ? editTags : []"
               :expanded="expandedTodoId === todo.id"
               @toggle="toggleTodo"
+              @toggle-pin="togglePinned"
+              @archive="archiveTodo"
+              @restore="restoreTodo"
               @toggle-expand="toggleExpand"
               @start-edit="startEdit"
               @saveEdit="saveEdit"
@@ -268,13 +285,18 @@ const {
   editPriority,
   editDueDate,
   editTags,
+  totalCount,
   activeCount,
   completedCount,
+  archivedCount,
   overdueCount,
   displayedTodos,
   loadTodos,
   addTodo,
   toggleTodo,
+  togglePinned,
+  archiveTodo,
+  restoreTodo,
   startEdit,
   cancelEdit,
   saveEdit,

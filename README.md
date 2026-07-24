@@ -181,6 +181,7 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
 
 ```json
 {
+  "cors_enabled": false,
   "default_provider": "openrouter",
   "providers": {
     "openrouter": {
@@ -204,6 +205,9 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
 2. Set the API key environment variable (e.g. `$env:OPENROUTER_API_KEY = "sk-..."`) and restart the server.
 
 The web app will show the AI Chat page once the config is detected. If the file is missing, the chat page displays a "disabled" state with instructions.
+
+Cross-origin API access is disabled by default.
+Set `"cors_enabled": true` and restart the server to enable it, so the frontend development server can call the API from another port.
 
 ### Provider retries
 

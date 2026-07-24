@@ -17,6 +17,7 @@ const defaultConfigFile = "bs-ai-config.json"
 type Config struct {
 	Enabled         bool                      `json:"-"`
 	Path            string                    `json:"-"`
+	CORSEnabled     bool                      `json:"cors_enabled"`
 	DefaultProvider string                    `json:"default_provider"`
 	Providers       map[string]ProviderConfig `json:"providers"`
 	Tools           ToolsConfig               `json:"tools"`
@@ -172,9 +173,10 @@ func Load() (*Config, error) {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &Config{
-				Enabled:   false,
-				Path:      path,
-				Providers: map[string]ProviderConfig{},
+				Enabled:     false,
+				Path:        path,
+				CORSEnabled: true,
+				Providers:   map[string]ProviderConfig{},
 			}, nil
 		}
 		return nil, fmt.Errorf("read AI config: %w", err)
@@ -199,6 +201,9 @@ func Load() (*Config, error) {
 func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 	if cfg.Providers == nil {
 		cfg.Providers = map[string]ProviderConfig{}
+	}
+	if _, present := raw["cors_enabled"]; !present {
+		cfg.CORSEnabled = true
 	}
 	if !nestedPresent(raw, "tools", "max_iterations") {
 		cfg.Tools.MaxIterations = 5

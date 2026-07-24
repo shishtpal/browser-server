@@ -1,4 +1,5 @@
 {
+    "cors_enabled": false,
     "default_provider": "openrouter",
     "providers": {
         "openrouter": {

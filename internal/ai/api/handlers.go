@@ -136,6 +136,10 @@ func Init() (*Module, error) {
 	return module, nil
 }
 
+func (m *Module) CORSEnabled() bool {
+	return m != nil && m.cfg != nil && m.cfg.CORSEnabled
+}
+
 func (m *Module) Close() error {
 	if m == nil || m.store == nil {
 		return nil

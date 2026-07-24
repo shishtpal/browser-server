@@ -63,7 +63,7 @@ func main() {
 	r := mux.NewRouter()
 
 	r.Use(middleware.Logging)
-	r.Use(middleware.CORS)
+	r.Use(middleware.CORS(aiModule.CORSEnabled()))
 
 	handlers.StartedAt = time.Now()
 	// /health stays public for Docker/CI checks.

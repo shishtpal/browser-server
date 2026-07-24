@@ -17,6 +17,8 @@ import type {
   History,
   HistoryImportResult,
   ImportResult,
+  ReorderItem,
+  ReorderTodosInput,
   Screenshot,
   SendAIMessageInput,
   SendAIMessageResponse,
@@ -46,8 +48,8 @@ export async function isServerOnline(): Promise<boolean> {
 
 // ─── Todos ───────────────────────────────────────────────
 
-export function getTodos(userId?: number, domain?: string): Promise<Todo[]> {
-  return client.getTodos(userId, domain)
+export function getTodos(userId?: number, domain?: string, options?: { priority?: string; tag?: string; parent_id?: number; sort?: string; order?: string }): Promise<Todo[]> {
+  return client.getTodos(userId, domain, options)
 }
 
 export function getTodo(id: number): Promise<Todo> {
@@ -67,6 +69,18 @@ export function updateTodo(id: number, data: Partial<Todo>): Promise<Todo> {
 
 export function deleteTodo(id: number): Promise<void> {
   return client.deleteTodo(id)
+}
+
+export function reorderTodos(items: ReorderItem[]): Promise<void> {
+  return client.reorderTodos(items)
+}
+
+export function getSubtasks(todoId: number): Promise<Todo[]> {
+  return client.getSubtasks(todoId)
+}
+
+export function createSubtask(todoId: number, data: CreateTodoInput): Promise<Todo> {
+  return client.createSubtask(todoId, data)
 }
 
 export function uploadScreenshot(todoId: number, file: Blob): Promise<Screenshot> {

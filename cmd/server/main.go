@@ -79,9 +79,12 @@ func main() {
 
 	api.HandleFunc("/todos", handlers.GetTodos).Methods("GET")
 	api.HandleFunc("/todos", handlers.CreateTodo).Methods("POST")
+	api.HandleFunc("/todos/reorder", handlers.ReorderTodos).Methods("POST")
 	api.HandleFunc("/todos/{id}", handlers.GetTodoByID).Methods("GET")
 	api.HandleFunc("/todos/{id}", handlers.UpdateTodo).Methods("PUT")
 	api.HandleFunc("/todos/{id}", handlers.DeleteTodo).Methods("DELETE")
+	api.HandleFunc("/todos/{id}/subtasks", handlers.GetSubtasks).Methods("GET")
+	api.HandleFunc("/todos/{id}/subtasks", handlers.CreateSubtask).Methods("POST")
 
 	api.HandleFunc("/screenshots", handlers.UploadScreenshot).Methods("POST")
 	api.HandleFunc("/screenshots/{id}", handlers.GetScreenshot).Methods("GET")

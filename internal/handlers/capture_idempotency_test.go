@@ -70,7 +70,7 @@ func TestCaptureRetriesAreIdempotent(t *testing.T) {
 	if firstTodoResponse.Code != http.StatusCreated {
 		t.Fatalf("first todo status = %d, want %d: %s", firstTodoResponse.Code, http.StatusCreated, firstTodoResponse.Body.String())
 	}
-	var firstTodo models.Todo
+	var firstTodo models.TodoResponse
 	if err := json.NewDecoder(firstTodoResponse.Body).Decode(&firstTodo); err != nil {
 		t.Fatalf("decode first todo: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestCaptureRetriesAreIdempotent(t *testing.T) {
 	if secondTodoResponse.Code != http.StatusOK {
 		t.Fatalf("second todo status = %d, want %d: %s", secondTodoResponse.Code, http.StatusOK, secondTodoResponse.Body.String())
 	}
-	var secondTodo models.Todo
+	var secondTodo models.TodoResponse
 	if err := json.NewDecoder(secondTodoResponse.Body).Decode(&secondTodo); err != nil {
 		t.Fatalf("decode second todo: %v", err)
 	}

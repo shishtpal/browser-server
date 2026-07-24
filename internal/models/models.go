@@ -3,16 +3,27 @@ package models
 import "time"
 
 type Todo struct {
-	ID             int       `json:"id"`
-	UserID         int       `json:"user_id"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description"`
-	Domain         string    `json:"domain"`
-	CaptureID      string    `json:"capture_id,omitempty"`
-	ScreenshotPath string    `json:"screenshot_path"`
-	Completed      bool      `json:"completed"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             int        `json:"id"`
+	UserID         int        `json:"user_id"`
+	Title          string     `json:"title"`
+	Description    string     `json:"description"`
+	Domain         string     `json:"domain"`
+	CaptureID      string     `json:"capture_id,omitempty"`
+	ScreenshotPath string     `json:"screenshot_path"`
+	Completed      bool       `json:"completed"`
+	Priority       string     `json:"priority"`
+	DueDate        *time.Time `json:"due_date"`
+	Tags           string     `json:"tags"`
+	ParentID       *int       `json:"parent_id"`
+	Position       int        `json:"position"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type TodoResponse struct {
+	Todo
+	Tags     []string       `json:"tags"`
+	Subtasks []TodoResponse `json:"subtasks,omitempty"`
 }
 
 type Screenshot struct {

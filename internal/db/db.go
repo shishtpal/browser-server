@@ -92,7 +92,14 @@ func InitTodoDB(dataPath string) {
 	migrateColumn(TodoDB, "todos", "domain", "TEXT DEFAULT ''")
 	migrateColumn(TodoDB, "todos", "capture_id", "TEXT")
 	migrateColumn(TodoDB, "todos", "screenshot_path", "TEXT DEFAULT ''")
+	migrateColumn(TodoDB, "todos", "priority", "TEXT DEFAULT 'medium'")
+	migrateColumn(TodoDB, "todos", "due_date", "DATETIME")
+	migrateColumn(TodoDB, "todos", "tags", "TEXT DEFAULT '[]'")
+	migrateColumn(TodoDB, "todos", "parent_id", "INTEGER")
+	migrateColumn(TodoDB, "todos", "position", "INTEGER DEFAULT 0")
 	Exec(TodoDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_todos_user_capture ON todos(user_id, capture_id)`)
+	Exec(TodoDB, `CREATE INDEX IF NOT EXISTS idx_todos_parent ON todos(parent_id)`)
+	Exec(TodoDB, `CREATE INDEX IF NOT EXISTS idx_todos_user_parent ON todos(user_id, parent_id, position)`)
 }
 
 func InitBookmarkDB(dataPath string) {

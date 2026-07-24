@@ -22,6 +22,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const newMoreOpen = ref(false)
 
   const activeFilter = ref<'all' | 'active' | 'completed'>('all')
+  const searchQuery = ref('')
   const filters = [
     { label: 'All', value: 'all' as const },
     { label: 'Active', value: 'active' as const },
@@ -45,6 +46,14 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const baseFiltered = computed(() => {
     let list = todos.value
+    const query = searchQuery.value.trim().toLowerCase()
+    if (query) {
+      list = list.filter(t =>
+        t.title.toLowerCase().includes(query)
+        || t.description?.toLowerCase().includes(query)
+        || (t.tags || []).some(tag => tag.toLowerCase().includes(query)),
+      )
+    }
     if (priority.selectedPriority.value) {
       list = list.filter(t => t.priority === priority.selectedPriority.value)
     }
@@ -178,6 +187,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     newTags,
     newMoreOpen,
     activeFilter,
+    searchQuery,
     filters,
     editingId,
     editTitle,

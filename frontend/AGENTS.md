@@ -23,6 +23,10 @@ pnpm preview   # preview the production build
 
 The full release build is driven by `../scripts/build.ps1`, which runs the frontend build and copies `dist/` next to the Go binary for static serving.
 
+```ps1
+.\scripts\build.ps1 -Target Frontend
+```
+
 ## Structure
 
 ```

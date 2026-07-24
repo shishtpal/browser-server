@@ -84,11 +84,42 @@
     <div v-else-if="selectedUserId">
       <TodoAddForm class="mb-4" @submit="handleAddTodo" :existing-tags="allTags" />
 
+      <div class="mb-4 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label class="relative min-w-0 flex-1">
+            <span class="sr-only">Search todos</span>
+            <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+            </svg>
+            <input
+              v-model="searchQuery"
+              type="search"
+              placeholder="Search titles, descriptions, or tags..."
+              class="w-full rounded-xl border border-gray-300 bg-gray-50 py-2.5 pl-10 pr-10 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-indigo-900/30"
+            />
+            <button
+              v-if="searchQuery"
+              type="button"
+              class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-gray-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              aria-label="Clear todo search"
+              @click="searchQuery = ''"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </label>
+          <p class="shrink-0 text-xs font-bold text-slate-500 dark:text-slate-400" aria-live="polite">
+            {{ resultSummary }}
+          </p>
+        </div>
+      </div>
+
       <EmptyState
         v-if="displayedTodos.length === 0"
-        title="No todos here"
-        description="Add your first task above or change the filter."
-        icon="default"
+        :title="searchQuery ? 'No matching todos' : 'No todos here'"
+        :description="searchQuery ? `Nothing matches “${searchQuery}”. Try another search.` : 'Create your first task above or change the filters.'"
+        :icon="searchQuery ? 'search' : 'default'"
         color="indigo"
       />
 
@@ -229,6 +260,7 @@ const {
   newTags,
   newMoreOpen,
   activeFilter,
+  searchQuery,
   filters,
   editingId,
   editTitle,
@@ -334,5 +366,11 @@ const dueDateLabel = computed(() => {
   if (!dueDate.dueDateFilter.value) return ''
   const labels: Record<string, string> = { overdue: 'Overdue', today: 'Today', this_week: 'This week' }
   return labels[dueDate.dueDateFilter.value] || ''
+})
+
+const resultSummary = computed(() => {
+  const count = displayedTodos.value.length
+  if (!searchQuery.value.trim()) return `${count} ${count === 1 ? 'todo' : 'todos'}`
+  return `${count} ${count === 1 ? 'result' : 'results'}`
 })
 </script>

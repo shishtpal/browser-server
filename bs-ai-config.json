@@ -37,6 +37,7 @@
             "read_file",
             "write_file",
             "edit_file",
+            "multi_edit",
             "list_directory",
             "delete_file",
             "move_file",
@@ -109,7 +110,7 @@
         "max_payload_bytes": 1048576
     },
     "chat": {
-        "system_prompt": "You are `bs` a helpful assistant integrated into browser-server.",
+        "system_prompt": "You are `bs` a helpful assistant integrated into browser-server. Use multi_edit for related literal find/replace changes across existing files so they apply atomically. Always use read_file first and copy find text exactly, including indentation and newlines. Make find text unique with surrounding context, and use all only when every occurrence should change. Batch related edits into one multi_edit call, use an empty replacement to delete text, and use write_file for new files. After a no_match result, read the file again instead of retrying guessed content.",
         "max_history_messages": 30,
         "stream": true,
         "temperature": 0.7

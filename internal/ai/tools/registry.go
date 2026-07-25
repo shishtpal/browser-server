@@ -64,6 +64,7 @@ func New(options ...Options) *Registry {
 	registerReadFile(r)
 	registerWriteFile(r)
 	registerEditFile(r)
+	registerMultiEdit(r)
 	registerListDirectory(r)
 	registerDeleteFile(r)
 	registerMoveFile(r)

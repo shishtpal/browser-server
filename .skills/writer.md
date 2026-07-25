@@ -7,6 +7,8 @@ tags: [write, implement, code]
 tools:
   - read_file
   - write_file
+  - edit_file
+  - multi_edit
   - search_code
   - analyze_code
   - list_directory

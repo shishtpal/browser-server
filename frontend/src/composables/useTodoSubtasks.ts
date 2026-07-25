@@ -9,7 +9,7 @@ export function useTodoSubtasks(parentId: Ref<number | null>, userId: Ref<number
 
   const progress: ComputedRef<{ done: number; total: number }> = computed(() => {
     const total = subtasks.value.length
-    const done = subtasks.value.filter(t => t.completed).length
+    const done = subtasks.value.filter(t => t.status === 'completed').length
     return { done, total }
   })
 
@@ -37,10 +37,10 @@ export function useTodoSubtasks(parentId: Ref<number | null>, userId: Ref<number
 
   async function toggleSubtask(subtask: Todo) {
     try {
-      const newCompleted = !subtask.completed
-      await updateTodo(subtask.id, { completed: newCompleted })
+      const newStatus = subtask.status === 'completed' ? 'pending' : 'completed'
+      await updateTodo(subtask.id, { status: newStatus })
       subtasks.value = subtasks.value.map(t =>
-        t.id === subtask.id ? { ...t, completed: newCompleted, updated_at: new Date().toISOString() } : t
+        t.id === subtask.id ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t
       )
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to toggle subtask'

@@ -23,7 +23,7 @@ import type { TodoSortField } from '../../composables/useTodoSort'
 const options = [
   { value: 'position' as TodoSortField, label: 'Position' },
   { value: 'priority' as TodoSortField, label: 'Priority' },
-  { value: 'due_date' as TodoSortField, label: 'Due date' },
+  { value: 'start_date' as TodoSortField, label: 'Date' },
   { value: 'created_at' as TodoSortField, label: 'Created' },
   { value: 'title' as TodoSortField, label: 'Title' },
 ]

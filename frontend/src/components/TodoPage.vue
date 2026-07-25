@@ -154,7 +154,7 @@
                   :initial-title="editingId === todo.id ? editTitle : ''"
                   :initial-description="editingId === todo.id ? editDescription : ''"
                   :initial-priority="editingId === todo.id ? editPriority : ''"
-                  :initial-due-date="editingId === todo.id ? editDueDate : null"
+                  :initial-due-date="editingId === todo.id ? editStartDate : null"
                   :initial-tags="editingId === todo.id ? editTags : []"
                   :expanded="expandedTodoId === todo.id"
                   @toggle="toggleTodo"
@@ -207,7 +207,7 @@
               :initial-title="editingId === todo.id ? editTitle : ''"
               :initial-description="editingId === todo.id ? editDescription : ''"
               :initial-priority="editingId === todo.id ? editPriority : ''"
-              :initial-due-date="editingId === todo.id ? editDueDate : null"
+              :initial-due-date="editingId === todo.id ? editStartDate : null"
               :initial-tags="editingId === todo.id ? editTags : []"
               :expanded="expandedTodoId === todo.id"
               @toggle="toggleTodo"
@@ -273,7 +273,7 @@ const {
   newTitle,
   newDescription,
   newPriority,
-  newDueDate,
+  newDueDate: newStartDate,
   newTags,
   newMoreOpen,
   activeFilter,
@@ -283,7 +283,7 @@ const {
   editTitle,
   editDescription,
   editPriority,
-  editDueDate,
+  editStartDate,
   editTags,
   totalCount,
   activeCount,
@@ -380,7 +380,7 @@ function openScreenshot(todo: Todo) {
   }
 }
 
-function handleAddTodo(data: { title: string; description?: string; priority?: string; due_date?: string | null; tags?: string[] }) {
+function handleAddTodo(data: { title: string; description?: string; priority?: string; start_date?: string | null; end_date?: string | null; domain?: string; color?: string; rrule?: string | null; tags?: string[] }) {
   addTodo(data)
 }
 

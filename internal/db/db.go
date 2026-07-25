@@ -53,14 +53,6 @@ func Exec(db *sql.DB, query string) {
 	}
 }
 
-func migrateColumn(db *sql.DB, table, column, colDef string) {
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?", table, column).Scan(&count)
-	if err == nil && count == 0 {
-		db.Exec("ALTER TABLE " + table + " ADD COLUMN " + column + " " + colDef)
-	}
-}
-
 func InitUserDB(dataPath string) {
 	UserDB = Open(filepath.Join(dataPath, "users.db"))
 	Exec(UserDB, `
@@ -79,28 +71,24 @@ func InitTodoDB(dataPath string) {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
 			title TEXT NOT NULL,
-			description TEXT,
+			description TEXT DEFAULT '',
 			domain TEXT DEFAULT '',
 			capture_id TEXT,
 			screenshot_path TEXT DEFAULT '',
-			completed BOOLEAN DEFAULT FALSE,
 			pinned BOOLEAN DEFAULT FALSE,
-			archived BOOLEAN DEFAULT FALSE,
+			status TEXT DEFAULT 'pending',
+			priority TEXT DEFAULT 'medium',
+			color TEXT DEFAULT '',
+			start_date DATETIME,
+			end_date DATETIME,
+			rrule TEXT DEFAULT '',
+			tags TEXT DEFAULT '[]',
+			parent_id INTEGER,
+			position INTEGER DEFAULT 0,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
-	// migration: add new columns to existing databases
-	migrateColumn(TodoDB, "todos", "domain", "TEXT DEFAULT ''")
-	migrateColumn(TodoDB, "todos", "capture_id", "TEXT")
-	migrateColumn(TodoDB, "todos", "screenshot_path", "TEXT DEFAULT ''")
-	migrateColumn(TodoDB, "todos", "pinned", "BOOLEAN DEFAULT FALSE")
-	migrateColumn(TodoDB, "todos", "archived", "BOOLEAN DEFAULT FALSE")
-	migrateColumn(TodoDB, "todos", "priority", "TEXT DEFAULT 'medium'")
-	migrateColumn(TodoDB, "todos", "due_date", "DATETIME")
-	migrateColumn(TodoDB, "todos", "tags", "TEXT DEFAULT '[]'")
-	migrateColumn(TodoDB, "todos", "parent_id", "INTEGER")
-	migrateColumn(TodoDB, "todos", "position", "INTEGER DEFAULT 0")
 	Exec(TodoDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_todos_user_capture ON todos(user_id, capture_id)`)
 	Exec(TodoDB, `CREATE INDEX IF NOT EXISTS idx_todos_parent ON todos(parent_id)`)
 	Exec(TodoDB, `CREATE INDEX IF NOT EXISTS idx_todos_user_parent ON todos(user_id, parent_id, position)`)
@@ -122,7 +110,6 @@ func InitBookmarkDB(dataPath string) {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
-	migrateColumn(BookmarkDB, "bookmarks", "capture_id", "TEXT")
 	Exec(BookmarkDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_capture ON bookmarks(user_id, capture_id)`)
 }
 
@@ -139,7 +126,6 @@ func InitHistoryDB(dataPath string) {
 			duration INTEGER DEFAULT 0
 		)
 	`)
-	migrateColumn(HistoryDB, "history", "domain", "TEXT NOT NULL DEFAULT ''")
 	backfillHistoryDomains()
 	Exec(HistoryDB, `CREATE INDEX IF NOT EXISTS idx_history_user_domain ON history(user_id, domain)`)
 }
@@ -191,7 +177,6 @@ func InitScreenshotDB(dataPath string) {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
-	migrateColumn(ScreenshotDB, "screenshots", "capture_id", "TEXT")
 	Exec(ScreenshotDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_screenshots_todo_capture ON screenshots(todo_id, capture_id)`)
 }
 
@@ -210,7 +195,6 @@ func InitWalletDB(dataPath string) {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
-	migrateColumn(WalletDB, "wallet", "login_provider", "TEXT NOT NULL DEFAULT 'Password'")
 }
 
 func InitUsageDB(dataPath string) {
@@ -243,8 +227,8 @@ func InsertSampleData() {
 
 	err = TodoDB.QueryRow("SELECT COUNT(*) FROM todos").Scan(&count)
 	if err == nil && count == 0 {
-		_, err = TodoDB.Exec("INSERT INTO todos (user_id, title, description, domain, completed) VALUES (?, ?, ?, ?, ?)",
-			1, "Sample Todo", "This is a sample todo", "", false)
+		_, err = TodoDB.Exec("INSERT INTO todos (user_id, title, description, domain, status) VALUES (?, ?, ?, ?, ?)",
+			1, "Sample Todo", "This is a sample todo", "", "pending")
 		if err != nil {
 			log.Printf("Failed to insert sample todo: %v", err)
 		}

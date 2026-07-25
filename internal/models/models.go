@@ -10,11 +10,13 @@ type Todo struct {
 	Domain         string     `json:"domain"`
 	CaptureID      string     `json:"capture_id,omitempty"`
 	ScreenshotPath string     `json:"screenshot_path"`
-	Completed      bool       `json:"completed"`
 	Pinned         bool       `json:"pinned"`
-	Archived       bool       `json:"archived"`
+	Status         string     `json:"status"`
 	Priority       string     `json:"priority"`
-	DueDate        *time.Time `json:"due_date"`
+	Color          string     `json:"color"`
+	StartDate      *time.Time `json:"start_date"`
+	EndDate        *time.Time `json:"end_date"`
+	Rrule          string     `json:"rrule"`
 	Tags           string     `json:"tags"`
 	ParentID       *int       `json:"parent_id"`
 	Position       int        `json:"position"`

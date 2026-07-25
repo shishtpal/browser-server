@@ -16,35 +16,20 @@ func GetSubtasks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	rows, err := db.TodoDB.Query("SELECT id, user_id, title, description, domain, screenshot_path, completed, pinned, archived, priority, due_date, tags, parent_id, position, created_at, updated_at FROM todos WHERE parent_id = ? ORDER BY pinned DESC, position ASC", parentID)
+	rows, err := db.TodoDB.Query("SELECT "+todoColumns+" FROM todos WHERE parent_id = ? ORDER BY pinned DESC, position ASC", parentID)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	defer rows.Close()
 
-	var subtasks []models.TodoResponse
+	subtasks := make([]models.TodoResponse, 0)
 	for rows.Next() {
-		var todo models.Todo
-		var tagsDB string
-		var dueDate sql.NullTime
-		var pid sql.NullInt64
-		err := rows.Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.Pinned, &todo.Archived, &todo.Priority, &dueDate, &tagsDB, &pid, &todo.Position, &todo.CreatedAt, &todo.UpdatedAt)
+		todo, tagsJSON, err := scanTodo(rows)
 		if err != nil {
 			continue
 		}
-		if dueDate.Valid {
-			dt := dueDate.Time
-			todo.DueDate = &dt
-		}
-		if pid.Valid {
-			cpid := int(pid.Int64)
-			todo.ParentID = &cpid
-		}
-		subtasks = append(subtasks, models.TodoResponse{
-			Todo: todo,
-			Tags: helpers.ParseTagsFromJSON(tagsDB),
-		})
+		subtasks = append(subtasks, todoToResponse(todo, tagsJSON))
 	}
 
 	json.NewEncoder(w).Encode(subtasks)
@@ -59,7 +44,8 @@ func CreateSubtask(w http.ResponseWriter, r *http.Request) {
 		Domain      string   `json:"domain"`
 		UserID      int      `json:"user_id"`
 		Priority    string   `json:"priority"`
-		DueDate     *string  `json:"due_date"`
+		StartDate   *string  `json:"start_date"`
+		EndDate     *string  `json:"end_date"`
 		Tags        []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -84,10 +70,13 @@ func CreateSubtask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tagsJSON := helpers.TagsToJSON(input.Tags)
-	var dueDateDB *time.Time
-	if input.DueDate != nil && *input.DueDate != "" {
-		parsed := parseDueDate(*input.DueDate)
-		dueDateDB = parsed
+	var startDateDB *time.Time
+	if input.StartDate != nil && *input.StartDate != "" {
+		startDateDB = parseDate(*input.StartDate)
+	}
+	var endDateDB *time.Time
+	if input.EndDate != nil && *input.EndDate != "" {
+		endDateDB = parseDate(*input.EndDate)
 	}
 
 	var maxPos sql.NullInt64
@@ -96,9 +85,9 @@ func CreateSubtask(w http.ResponseWriter, r *http.Request) {
 
 	pid := parentID
 	result, err := db.TodoDB.Exec(`
-		INSERT INTO todos (user_id, title, description, domain, completed, priority, due_date, tags, parent_id, position)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		input.UserID, input.Title, input.Description, input.Domain, false, input.Priority, dueDateDB, tagsJSON, &pid, position)
+		INSERT INTO todos (user_id, title, description, domain, status, priority, start_date, end_date, tags, parent_id, position)
+		VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+		input.UserID, input.Title, input.Description, input.Domain, input.Priority, startDateDB, endDateDB, tagsJSON, &pid, position)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
@@ -112,15 +101,16 @@ func CreateSubtask(w http.ResponseWriter, r *http.Request) {
 		Title:       input.Title,
 		Description: input.Description,
 		Domain:      input.Domain,
-		Completed:   false,
+		Status:      "pending",
 		Priority:    input.Priority,
-		DueDate:     dueDateDB,
+		StartDate:   startDateDB,
+		EndDate:     endDateDB,
 		ParentID:    &pid,
 		Position:    position,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	resp := models.TodoResponse{Todo: todo, Tags: helpers.ParseTagsFromJSON(tagsJSON)}
+	resp := todoToResponse(todo, tagsJSON)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

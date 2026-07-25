@@ -33,17 +33,17 @@
               type="button"
               @click="$emit('toggle-subtask', element)"
               class="grid h-4 w-4 place-items-center rounded-full border-2 transition"
-              :class="element.completed ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400 dark:border-slate-600 dark:hover:border-indigo-400'"
+              :class="element.status === 'completed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400 dark:border-slate-600 dark:hover:border-indigo-400'"
             >
               <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
               </svg>
             </button>
-            <span class="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200" :class="{ 'line-through text-slate-400 dark:text-slate-500': element.completed }">
+            <span class="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200" :class="{ 'line-through text-slate-400 dark:text-slate-500': element.status === 'completed' }">
               {{ element.title }}
             </span>
             <TodoPriorityBadge :priority="(element.priority as any)" />
-            <TodoDueDateBadge v-if="element.due_date" :due-date="element.due_date" :completed="element.completed" />
+            <TodoDueDateBadge v-if="element.start_date" :due-date="element.start_date" :status="element.status" />
             <div v-if="isLoading" class="h-3 w-3 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"></div>
           </div>
         </template>

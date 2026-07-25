@@ -13,6 +13,7 @@ const activePath = Astro.url.pathname
 
 const primaryNav = [
   { href: '/', label: 'Todos', icon: 'check' },
+  { href: '/calendar/', label: 'Calendar', icon: 'calendar' },
   { href: '/bookmarks/', label: 'Bookmarks', icon: 'bookmark' },
   { href: '/history/', label: 'History', icon: 'clock' },
   { href: '/wallet/', label: 'Wallet', icon: 'lock' },
@@ -84,6 +85,7 @@ const isActive = (href: string) => {
               >
                 <svg class="h-3.5 w-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   {item.icon === 'check' && <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />}
+                  {item.icon === 'calendar' && <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>}
                   {item.icon === 'bookmark' && <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />}
                   {item.icon === 'clock' && <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
                   {item.icon === 'lock' && <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>}
@@ -156,6 +158,7 @@ const isActive = (href: string) => {
               >
                 <svg class="h-4 w-4 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   {item.icon === 'check' && <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />}
+                  {item.icon === 'calendar' && <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>}
                   {item.icon === 'bookmark' && <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />}
                   {item.icon === 'clock' && <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
                   {item.icon === 'lock' && <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>}

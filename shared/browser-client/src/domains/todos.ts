@@ -14,7 +14,7 @@ export function createTodoMethods(baseUrl: string, getToken?: TokenProvider) {
     },
 
     createTodo(data: CreateTodoInput): Promise<Todo> {
-      return apiFetch<Todo>(baseUrl, 'POST', '/api/todos', { ...data, completed: false }, getToken)
+      return apiFetch<Todo>(baseUrl, 'POST', '/api/todos', data, getToken)
     },
 
     updateTodo(id: number, data: UpdateTodoInput): Promise<Todo> {

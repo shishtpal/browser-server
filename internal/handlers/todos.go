@@ -12,7 +12,10 @@ import (
 	"browser-server/internal/models"
 )
 
-func parseDueDate(raw string) *time.Time {
+// Column list used in all SELECT queries for todos.
+const todoColumns = "id, user_id, title, description, domain, screenshot_path, pinned, status, priority, color, start_date, end_date, rrule, tags, parent_id, position, created_at, updated_at"
+
+func parseDate(raw string) *time.Time {
 	if raw == "" {
 		return nil
 	}
@@ -27,31 +30,73 @@ func parseDueDate(raw string) *time.Time {
 	return &t
 }
 
+func scanTodo(scanner interface{ Scan(...any) error }) (models.Todo, string, error) {
+	var todo models.Todo
+	var tagsJSON string
+	var startDate sql.NullTime
+	var endDate sql.NullTime
+	var parentID sql.NullInt64
+	err := scanner.Scan(
+		&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain,
+		&todo.ScreenshotPath, &todo.Pinned, &todo.Status, &todo.Priority, &todo.Color,
+		&startDate, &endDate, &todo.Rrule, &tagsJSON, &parentID,
+		&todo.Position, &todo.CreatedAt, &todo.UpdatedAt,
+	)
+	if err != nil {
+		return todo, tagsJSON, err
+	}
+	if startDate.Valid {
+		t := startDate.Time
+		todo.StartDate = &t
+	}
+	if endDate.Valid {
+		t := endDate.Time
+		todo.EndDate = &t
+	}
+	if parentID.Valid {
+		pid := int(parentID.Int64)
+		todo.ParentID = &pid
+	}
+	return todo, tagsJSON, nil
+}
+
+func todoToResponse(todo models.Todo, tagsJSON string) models.TodoResponse {
+	return models.TodoResponse{
+		Todo: todo,
+		Tags: helpers.ParseTagsFromJSON(tagsJSON),
+	}
+}
+
 func GetTodos(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	userID := helpers.GetUserIDFromQuery(r)
-	completedStr := r.URL.Query().Get("completed")
+	statusFilter := r.URL.Query().Get("status")
 	domain := r.URL.Query().Get("domain")
 	priority := r.URL.Query().Get("priority")
 	tagFilter := r.URL.Query().Get("tag")
 	parentIDStr := r.URL.Query().Get("parent_id")
-	archived, _ := strconv.ParseBool(r.URL.Query().Get("archived"))
 	sortField := r.URL.Query().Get("sort")
 	sortOrder := r.URL.Query().Get("order")
 
-	query := "SELECT id, user_id, title, description, domain, screenshot_path, completed, pinned, archived, priority, due_date, tags, parent_id, position, created_at, updated_at FROM todos WHERE archived = ?"
-	args := []interface{}{archived}
+	// Default: exclude archived unless explicitly requested
+	showArchived, _ := strconv.ParseBool(r.URL.Query().Get("archived"))
+
+	query := "SELECT " + todoColumns + " FROM todos WHERE 1=1"
+	args := []interface{}{}
+
+	if !showArchived {
+		query += " AND status != 'archived'"
+	}
 
 	if userID > 0 {
 		query += " AND user_id = ?"
 		args = append(args, userID)
 	}
 
-	if completedStr != "" {
-		completed, _ := strconv.ParseBool(completedStr)
-		query += " AND completed = ?"
-		args = append(args, completed)
+	if statusFilter != "" {
+		query += " AND status = ?"
+		args = append(args, statusFilter)
 	}
 
 	if domain != "" {
@@ -83,7 +128,7 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 
 	if sortField != "" {
 		switch sortField {
-		case "position", "due_date", "created_at":
+		case "position", "start_date", "created_at":
 			query += " ORDER BY pinned DESC, " + sortField
 		case "priority":
 			query += " ORDER BY pinned DESC, CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END"
@@ -111,49 +156,20 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 
 	todos := make([]models.TodoResponse, 0)
 	for rows.Next() {
-		var todo models.Todo
-		var tagsJSON string
-		var dueDate sql.NullTime
-		var parentID sql.NullInt64
-		err := rows.Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.Pinned, &todo.Archived, &todo.Priority, &dueDate, &tagsJSON, &parentID, &todo.Position, &todo.CreatedAt, &todo.UpdatedAt)
+		todo, tagsJSON, err := scanTodo(rows)
 		if err != nil {
 			continue
 		}
-		if dueDate.Valid {
-			t := dueDate.Time
-			todo.DueDate = &t
-		}
-		if parentID.Valid {
-			pid := int(parentID.Int64)
-			todo.ParentID = &pid
-		}
-		resp := models.TodoResponse{
-			Todo: todo,
-			Tags: helpers.ParseTagsFromJSON(tagsJSON),
-		}
+		resp := todoToResponse(todo, tagsJSON)
+
 		if tagFilter == "" {
-			childRows, err := db.TodoDB.Query("SELECT id, user_id, title, description, domain, screenshot_path, completed, pinned, archived, priority, due_date, tags, parent_id, position, created_at, updated_at FROM todos WHERE parent_id = ? AND archived = ? ORDER BY pinned DESC, position ASC", todo.ID, archived)
-			if err == nil {
+			childRows, cerr := db.TodoDB.Query("SELECT "+todoColumns+" FROM todos WHERE parent_id = ? AND status != 'archived' ORDER BY pinned DESC, position ASC", todo.ID)
+			if cerr == nil {
 				var children []models.TodoResponse
 				for childRows.Next() {
-					var child models.Todo
-					var childTags string
-					var childDue sql.NullTime
-					var childParent sql.NullInt64
-					err := childRows.Scan(&child.ID, &child.UserID, &child.Title, &child.Description, &child.Domain, &child.ScreenshotPath, &child.Completed, &child.Pinned, &child.Archived, &child.Priority, &childDue, &childTags, &childParent, &child.Position, &child.CreatedAt, &child.UpdatedAt)
+					child, childTags, err := scanTodo(childRows)
 					if err == nil {
-						if childDue.Valid {
-							ct := childDue.Time
-							child.DueDate = &ct
-						}
-						if childParent.Valid {
-							cpid := int(childParent.Int64)
-							child.ParentID = &cpid
-						}
-						children = append(children, models.TodoResponse{
-							Todo: child,
-							Tags: helpers.ParseTagsFromJSON(childTags),
-						})
+						children = append(children, todoToResponse(child, childTags))
 					}
 				}
 				childRows.Close()
@@ -235,17 +251,26 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tagsJSON := helpers.TagsToJSON(extractStringSlice(input, "tags"))
-
-	var dueDateDB *time.Time
-	if d, ok := input["due_date"].(string); ok && d != "" {
-		parsed := parseDueDate(d)
-		dueDateDB = parsed
+	status := "pending"
+	if s, ok := input["status"].(string); ok && s != "" {
+		validStatuses := map[string]bool{"pending": true, "completed": true, "archived": true}
+		if validStatuses[s] {
+			status = s
+		}
 	}
 
-	var completed bool
-	if c, ok := input["completed"].(bool); ok {
-		completed = c
+	color := extractString(input, "color")
+	rrule := extractString(input, "rrule")
+	tagsJSON := helpers.TagsToJSON(extractStringSlice(input, "tags"))
+
+	var startDateDB *time.Time
+	if d, ok := input["start_date"].(string); ok && d != "" {
+		startDateDB = parseDate(d)
+	}
+
+	var endDateDB *time.Time
+	if d, ok := input["end_date"].(string); ok && d != "" {
+		endDateDB = parseDate(d)
 	}
 
 	var parentID *int
@@ -273,10 +298,10 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := db.TodoDB.Exec(`
-		INSERT INTO todos (user_id, title, description, domain, capture_id, completed, priority, due_date, tags, parent_id, position)
-		VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?)
+		INSERT INTO todos (user_id, title, description, domain, capture_id, status, priority, color, start_date, end_date, rrule, tags, parent_id, position)
+		VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(user_id, capture_id) DO NOTHING`,
-		userID, title, description, domain, captureID, completed, priority, dueDateDB, tagsJSON, parentID, position)
+		userID, title, description, domain, captureID, status, priority, color, startDateDB, endDateDB, rrule, tagsJSON, parentID, position)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
@@ -284,28 +309,13 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 && captureID != "" {
-		var todo models.Todo
-		var tagsDB string
-		var due sql.NullTime
-		var pid sql.NullInt64
-		err = db.TodoDB.QueryRow(`
-			SELECT id, user_id, title, description, domain, screenshot_path, completed, pinned, archived, priority, due_date, tags, parent_id, position, created_at, updated_at
-			FROM todos WHERE user_id = ? AND capture_id = ?`,
-			userID, captureID,
-		).Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.Pinned, &todo.Archived, &todo.Priority, &due, &tagsDB, &pid, &todo.Position, &todo.CreatedAt, &todo.UpdatedAt)
+		row := db.TodoDB.QueryRow("SELECT "+todoColumns+" FROM todos WHERE user_id = ? AND capture_id = ?", userID, captureID)
+		todo, tagsDB, err := scanTodo(row)
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 			return
 		}
-		if due.Valid {
-			dt := due.Time
-			todo.DueDate = &dt
-		}
-		if pid.Valid {
-			cpid := int(pid.Int64)
-			todo.ParentID = &cpid
-		}
-		resp := models.TodoResponse{Todo: todo, Tags: helpers.ParseTagsFromJSON(tagsDB)}
+		resp := todoToResponse(todo, tagsDB)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 		return
@@ -319,15 +329,18 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		Title:       title,
 		Description: description,
 		Domain:      domain,
-		Completed:   completed,
+		Status:      status,
 		Priority:    priority,
-		DueDate:     dueDateDB,
+		Color:       color,
+		StartDate:   startDateDB,
+		EndDate:     endDateDB,
+		Rrule:       rrule,
 		ParentID:    parentID,
 		Position:    position,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	resp := models.TodoResponse{Todo: todo, Tags: helpers.ParseTagsFromJSON(tagsJSON)}
+	resp := todoToResponse(todo, tagsJSON)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -337,13 +350,8 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 	id := helpers.GetIDFromPath(r)
 
-	var todo models.Todo
-	var tagsDB string
-	var dueDate sql.NullTime
-	var parentID sql.NullInt64
-	err := db.TodoDB.QueryRow("SELECT id, user_id, title, description, domain, screenshot_path, completed, pinned, archived, priority, due_date, tags, parent_id, position, created_at, updated_at FROM todos WHERE id = ?", id).
-		Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.Pinned, &todo.Archived, &todo.Priority, &dueDate, &tagsDB, &parentID, &todo.Position, &todo.CreatedAt, &todo.UpdatedAt)
-
+	row := db.TodoDB.QueryRow("SELECT "+todoColumns+" FROM todos WHERE id = ?", id)
+	todo, tagsDB, err := scanTodo(row)
 	if err == sql.ErrNoRows {
 		helpers.WriteError(w, http.StatusNotFound, "Todo not found")
 		return
@@ -352,39 +360,15 @@ func GetTodoByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if dueDate.Valid {
-		dt := dueDate.Time
-		todo.DueDate = &dt
-	}
-	if parentID.Valid {
-		pid := int(parentID.Int64)
-		todo.ParentID = &pid
-	}
+	resp := todoToResponse(todo, tagsDB)
 
-	resp := models.TodoResponse{Todo: todo, Tags: helpers.ParseTagsFromJSON(tagsDB)}
-
-	childRows, err := db.TodoDB.Query("SELECT id, user_id, title, description, domain, screenshot_path, completed, pinned, archived, priority, due_date, tags, parent_id, position, created_at, updated_at FROM todos WHERE parent_id = ? ORDER BY pinned DESC, position ASC", todo.ID)
+	childRows, err := db.TodoDB.Query("SELECT "+todoColumns+" FROM todos WHERE parent_id = ? ORDER BY pinned DESC, position ASC", todo.ID)
 	if err == nil {
 		var children []models.TodoResponse
 		for childRows.Next() {
-			var child models.Todo
-			var childTags string
-			var childDue sql.NullTime
-			var childParent sql.NullInt64
-			err := childRows.Scan(&child.ID, &child.UserID, &child.Title, &child.Description, &child.Domain, &child.ScreenshotPath, &child.Completed, &child.Pinned, &child.Archived, &child.Priority, &childDue, &childTags, &childParent, &child.Position, &child.CreatedAt, &child.UpdatedAt)
+			child, childTags, err := scanTodo(childRows)
 			if err == nil {
-				if childDue.Valid {
-					ct := childDue.Time
-					child.DueDate = &ct
-				}
-				if childParent.Valid {
-					cpid := int(childParent.Int64)
-					child.ParentID = &cpid
-				}
-				children = append(children, models.TodoResponse{
-					Todo: child,
-					Tags: helpers.ParseTagsFromJSON(childTags),
-				})
+				children = append(children, todoToResponse(child, childTags))
 			}
 		}
 		childRows.Close()
@@ -406,11 +390,13 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		Description    *string         `json:"description"`
 		Domain         *string         `json:"domain"`
 		ScreenshotPath *string         `json:"screenshot_path"`
-		Completed      *bool           `json:"completed"`
 		Pinned         *bool           `json:"pinned"`
-		Archived       *bool           `json:"archived"`
+		Status         *string         `json:"status"`
 		Priority       *string         `json:"priority"`
-		DueDate        json.RawMessage `json:"due_date"`
+		Color          *string         `json:"color"`
+		StartDate      json.RawMessage `json:"start_date"`
+		EndDate        json.RawMessage `json:"end_date"`
+		Rrule          *string         `json:"rrule"`
 		Tags           *[]string       `json:"tags"`
 		Position       *int            `json:"position"`
 	}
@@ -419,12 +405,8 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var todo models.Todo
-	var tagsJSON string
-	var dueDate sql.NullTime
-	var parentID sql.NullInt64
-	err := db.TodoDB.QueryRow("SELECT id, user_id, title, description, domain, screenshot_path, completed, pinned, archived, priority, due_date, tags, parent_id, position, created_at, updated_at FROM todos WHERE id = ?", id).
-		Scan(&todo.ID, &todo.UserID, &todo.Title, &todo.Description, &todo.Domain, &todo.ScreenshotPath, &todo.Completed, &todo.Pinned, &todo.Archived, &todo.Priority, &dueDate, &tagsJSON, &parentID, &todo.Position, &todo.CreatedAt, &todo.UpdatedAt)
+	row := db.TodoDB.QueryRow("SELECT "+todoColumns+" FROM todos WHERE id = ?", id)
+	todo, tagsJSON, err := scanTodo(row)
 	if err == sql.ErrNoRows {
 		helpers.WriteError(w, http.StatusNotFound, "Todo not found")
 		return
@@ -432,14 +414,6 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
-	}
-	if dueDate.Valid {
-		dt := dueDate.Time
-		todo.DueDate = &dt
-	}
-	if parentID.Valid {
-		pid := int(parentID.Int64)
-		todo.ParentID = &pid
 	}
 
 	if input.UserID != nil {
@@ -463,14 +437,16 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	if input.ScreenshotPath != nil {
 		todo.ScreenshotPath = *input.ScreenshotPath
 	}
-	if input.Completed != nil {
-		todo.Completed = *input.Completed
-	}
 	if input.Pinned != nil {
 		todo.Pinned = *input.Pinned
 	}
-	if input.Archived != nil {
-		todo.Archived = *input.Archived
+	if input.Status != nil {
+		validStatuses := map[string]bool{"pending": true, "completed": true, "archived": true}
+		if !validStatuses[*input.Status] {
+			helpers.WriteValidationError(w, map[string]string{"status": "must be pending, completed, or archived"})
+			return
+		}
+		todo.Status = *input.Status
 	}
 	if input.Priority != nil {
 		validPriorities := map[string]bool{"low": true, "medium": true, "high": true, "urgent": true}
@@ -480,18 +456,41 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		}
 		todo.Priority = *input.Priority
 	}
-	if input.DueDate != nil {
-		todo.DueDate = nil
-		if string(input.DueDate) != "null" {
-			var rawDueDate string
-			if err := json.Unmarshal(input.DueDate, &rawDueDate); err != nil {
-				helpers.WriteValidationError(w, map[string]string{"due_date": "must be a date string or null"})
+	if input.Color != nil {
+		todo.Color = *input.Color
+	}
+	if input.Rrule != nil {
+		todo.Rrule = *input.Rrule
+	}
+	if input.StartDate != nil {
+		todo.StartDate = nil
+		if string(input.StartDate) != "null" {
+			var raw string
+			if err := json.Unmarshal(input.StartDate, &raw); err != nil {
+				helpers.WriteValidationError(w, map[string]string{"start_date": "must be a date string or null"})
 				return
 			}
-			if rawDueDate != "" {
-				todo.DueDate = parseDueDate(rawDueDate)
-				if todo.DueDate == nil {
-					helpers.WriteValidationError(w, map[string]string{"due_date": "must be a valid date"})
+			if raw != "" {
+				todo.StartDate = parseDate(raw)
+				if todo.StartDate == nil {
+					helpers.WriteValidationError(w, map[string]string{"start_date": "must be a valid date"})
+					return
+				}
+			}
+		}
+	}
+	if input.EndDate != nil {
+		todo.EndDate = nil
+		if string(input.EndDate) != "null" {
+			var raw string
+			if err := json.Unmarshal(input.EndDate, &raw); err != nil {
+				helpers.WriteValidationError(w, map[string]string{"end_date": "must be a date string or null"})
+				return
+			}
+			if raw != "" {
+				todo.EndDate = parseDate(raw)
+				if todo.EndDate == nil {
+					helpers.WriteValidationError(w, map[string]string{"end_date": "must be a valid date"})
 					return
 				}
 			}
@@ -504,15 +503,15 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		todo.Position = *input.Position
 	}
 
-	_, err = db.TodoDB.Exec("UPDATE todos SET user_id = ?, title = ?, description = ?, domain = ?, screenshot_path = ?, completed = ?, pinned = ?, archived = ?, priority = ?, due_date = ?, tags = ?, position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.ScreenshotPath, todo.Completed, todo.Pinned, todo.Archived, todo.Priority, todo.DueDate, tagsJSON, todo.Position, id)
+	_, err = db.TodoDB.Exec("UPDATE todos SET user_id = ?, title = ?, description = ?, domain = ?, screenshot_path = ?, pinned = ?, status = ?, priority = ?, color = ?, start_date = ?, end_date = ?, rrule = ?, tags = ?, position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		todo.UserID, todo.Title, todo.Description, todo.Domain, todo.ScreenshotPath, todo.Pinned, todo.Status, todo.Priority, todo.Color, todo.StartDate, todo.EndDate, todo.Rrule, tagsJSON, todo.Position, id)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 
 	todo.UpdatedAt = time.Now()
-	resp := models.TodoResponse{Todo: todo, Tags: helpers.ParseTagsFromJSON(tagsJSON)}
+	resp := todoToResponse(todo, tagsJSON)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
@@ -527,7 +526,6 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// Delete subtasks first
 	if _, err := tx.Exec("DELETE FROM todos WHERE parent_id = ?", id); err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return

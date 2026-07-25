@@ -18,7 +18,7 @@ export interface TodoView {
 
 function sortTodos(todos: Todo[]): Todo[] {
   return [...todos].sort(
-    (left, right) => Number(left.completed) - Number(right.completed) || Date.parse(right.updated_at) - Date.parse(left.updated_at),
+    (left, right) => Number(left.status === 'completed') - Number(right.status === 'completed') || Date.parse(right.updated_at) - Date.parse(left.updated_at),
   )
 }
 
@@ -27,7 +27,7 @@ function toView(todo: Todo, client: BrowserServerClient): TodoView {
     id: todo.id,
     title: todo.title,
     description: todo.description,
-    completed: todo.completed,
+    completed: todo.status === 'completed',
     hasScreenshot: Boolean(todo.screenshot_path),
     screenshotUrl: todo.screenshot_path ? client.getScreenshotUrl(todo.id) : null,
     screenshotPath: todo.screenshot_path,
@@ -80,7 +80,7 @@ export function useTodosView(
     try {
       const todos = sortTodos(await client.value.getTodos(userId.value, currentDomain.value))
       items.value = todos.map((todo) => toView(todo, client.value!))
-      const done = todos.filter((todo) => todo.completed).length
+      const done = todos.filter((todo) => todo.status === 'completed').length
       total.value = todos.length
       completed.value = done
       stats.value = `${todos.length} todos · ${done} done`
@@ -173,12 +173,9 @@ export function useTodosView(
 
     try {
       await client.value.updateTodo(id, {
-        user_id: userId.value,
         title: changes.title?.trim() || todo.title,
         description: changes.description?.trim() ?? todo.description,
-        domain: todo.domain,
-        screenshot_path: todo.screenshotPath,
-        completed: changes.completed ?? todo.completed,
+        status: changes.completed !== undefined ? (changes.completed ? 'completed' : 'pending') : undefined,
       })
       actionError.value = null
       await refresh()

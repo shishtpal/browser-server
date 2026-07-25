@@ -7,27 +7,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { isOverdue, isDueToday, isDueThisWeek } from '../../composables/useTodoDueDate'
+import type { TodoStatus } from '../../types'
 
 interface Props {
   dueDate: string | null
-  completed?: boolean
+  status?: TodoStatus
 }
 
-const props = withDefaults(defineProps<Props>(), { completed: false })
+const props = withDefaults(defineProps<Props>(), { status: 'pending' })
 
 const badgeClass = computed(() => {
-  if (props.completed) return 'bg-gray-100 text-gray-500'
-  if (isOverdue({ due_date: props.dueDate, completed: props.completed } as any)) return 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-  if (isDueToday({ due_date: props.dueDate, completed: props.completed } as any)) return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
-  if (isDueThisWeek({ due_date: props.dueDate, completed: props.completed } as any)) return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400'
+  const todo = { start_date: props.dueDate, status: props.status } as any
+  if (props.status === 'completed') return 'bg-gray-100 text-gray-500'
+  if (isOverdue(todo)) return 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+  if (isDueToday(todo)) return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+  if (isDueThisWeek(todo)) return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400'
   return 'bg-gray-100 text-gray-600'
 })
 
 const label = computed(() => {
   if (!props.dueDate) return ''
-  if (isOverdue({ due_date: props.dueDate, completed: props.completed } as any)) return 'Overdue'
-  if (isDueToday({ due_date: props.dueDate, completed: props.completed } as any)) return 'Today'
-  if (isDueThisWeek({ due_date: props.dueDate, completed: props.completed } as any)) return 'This week'
+  const todo = { start_date: props.dueDate, status: props.status } as any
+  if (isOverdue(todo)) return 'Overdue'
+  if (isDueToday(todo)) return 'Today'
+  if (isDueThisWeek(todo)) return 'This week'
   const d = new Date(props.dueDate)
   return d.toLocaleDateString()
 })

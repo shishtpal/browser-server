@@ -1,4 +1,5 @@
 export type TodoPriority = 'low' | 'medium' | 'high' | 'urgent'
+export type TodoStatus = 'pending' | 'completed' | 'archived'
 
 export interface Todo {
   id: number
@@ -7,11 +8,13 @@ export interface Todo {
   description: string
   domain: string
   screenshot_path: string
-  completed: boolean
   pinned: boolean
-  archived: boolean
+  status: TodoStatus
   priority: TodoPriority
-  due_date: string | null
+  color: string
+  start_date: string | null
+  end_date: string | null
+  rrule: string
   tags: string[]
   parent_id: number | null
   position: number
@@ -34,7 +37,11 @@ export interface CreateTodoInput {
   domain?: string
   capture_id?: string
   priority?: TodoPriority
-  due_date?: string | null
+  status?: TodoStatus
+  color?: string
+  start_date?: string | null
+  end_date?: string | null
+  rrule?: string | null
   tags?: string[]
   parent_id?: number | null
 }
@@ -44,12 +51,14 @@ export interface UpdateTodoInput {
   title?: string
   description?: string
   domain?: string
-  completed?: boolean
-  pinned?: boolean
-  archived?: boolean
   screenshot_path?: string
+  pinned?: boolean
+  status?: TodoStatus
   priority?: TodoPriority
-  due_date?: string | null
+  color?: string
+  start_date?: string | null
+  end_date?: string | null
+  rrule?: string | null
   tags?: string[]
   position?: number
 }

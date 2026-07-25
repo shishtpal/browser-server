@@ -1,0 +1,10 @@
+---
+import CalendarPage from '../components/CalendarPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Calendar">
+  <main>
+    <CalendarPage client:only="vue" />
+  </main>
+</Layout>

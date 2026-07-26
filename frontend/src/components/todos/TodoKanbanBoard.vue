@@ -21,8 +21,6 @@
             @toggle-expand="$emit('toggle-expand', $event)"
             @view-screenshot="$emit('view-screenshot', $event)"
             @start-edit="$emit('start-edit', $event)"
-            @save-edit="(...args) => $emit('save-edit', ...args)"
-            @cancel-edit="$emit('cancel-edit')"
             @delete="$emit('delete', $event)"
           />
         </template>
@@ -46,8 +44,6 @@ const emit = defineEmits<{
   toggle: [todo: Todo]
   'view-screenshot': [todo: Todo]
   'start-edit': [todo: Todo]
-  'save-edit': [todo: Todo, title: string, description: string, priority: string, dueDate: string | null, tags: string[]]
-  'cancel-edit': []
   delete: [id: number]
   reorder: [items: ReorderItem[]]
   'priority-change': [payload: { todo: Todo; newPriority: string; items: ReorderItem[] }]

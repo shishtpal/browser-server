@@ -77,8 +77,6 @@ const subtaskDoneCount = computed(() => (props.todo.subtasks || []).filter(s => 
 const emit = defineEmits<{
   toggle: [todo: Todo]
   'start-edit': [todo: Todo]
-  'save-edit': [todo: Todo, title: string, description: string, priority: string, dueDate: string | null, tags: string[]]
-  'cancel-edit': []
   delete: [id: number]
   'toggle-expand': [id: number]
 }>()

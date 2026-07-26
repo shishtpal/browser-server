@@ -13,17 +13,7 @@
         </svg>
       </button>
     <div class="min-w-0 flex-1">
-      <div v-if="editing" class="grid gap-2">
-        <input v-model="localTitle" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-indigo-900/30" />
-        <input v-model="localDescription" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-indigo-900/30" />
-        <div class="flex flex-wrap items-center gap-2">
-          <TodoPrioritySelect v-model="localPriority" />
-          <TodoDueDatePicker v-model="localDueDate" />
-          <button type="button" @click="$emit('saveEdit', todo, localTitle, localDescription, localPriority, localDueDate, localTags)" class="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-white transition hover:bg-emerald-600">Save</button>
-          <button type="button" @click="$emit('cancelEdit')" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-black text-slate-600 transition hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">Cancel</button>
-        </div>
-      </div>
-      <div v-else>
+      <div>
         <div class="flex items-center gap-2">
           <button v-if="todo.screenshot_path" type="button" @click="$emit('viewScreenshot', todo)" class="shrink-0 cursor-zoom-in transition hover:opacity-80" title="View screenshot">
             <img :src="screenshotUrl" class="h-8 w-14 rounded border border-gray-200 object-cover dark:border-slate-600" />
@@ -62,7 +52,7 @@
         </div>
       </div>
     </div>
-    <div v-if="!editing" class="flex shrink-0 flex-col gap-0.5">
+    <div class="flex shrink-0 flex-col gap-0.5">
       <button
         type="button"
         class="drag-handle cursor-grab active:cursor-grabbing rounded px-1 py-0.5 text-slate-400 transition hover:text-slate-600"
@@ -88,13 +78,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { computed } from 'vue'
 import { formatDate } from '../../lib/utils'
 import { getScreenshotUrl } from '../../lib/api'
 import type { Todo } from '../../types'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
-import TodoPrioritySelect from './TodoPrioritySelect.vue'
-import TodoDueDatePicker from './TodoDueDatePicker.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'
 import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
@@ -102,7 +90,6 @@ import TodoSubtaskList from './TodoSubtaskList.vue'
 
 const props = defineProps<{
   todo: Todo
-  editing: boolean
   expanded?: boolean
 }>()
 
@@ -112,8 +99,6 @@ const emit = defineEmits<{
   archive: [todo: Todo]
   restore: [todo: Todo]
   startEdit: [todo: Todo]
-  saveEdit: [todo: Todo, title: string, description: string, priority: string, dueDate: string | null, tags: string[]]
-  cancelEdit: []
   delete: [id: number]
   viewScreenshot: [todo: Todo]
   'toggle-expand': [id: number]
@@ -122,24 +107,8 @@ const emit = defineEmits<{
 
 const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')
 
-const localTitle = ref('')
-const localDescription = ref('')
-const localPriority = ref<'low' | 'medium' | 'high' | 'urgent'>('medium')
-const localDueDate = ref<string | null>(null)
-const localTags = ref<string[]>([])
-
 const subtaskCount = computed(() => (props.todo.subtasks || []).length)
 const subtaskDoneCount = computed(() => (props.todo.subtasks || []).filter(s => s.status === 'completed').length)
-
-watch(() => props.editing, (val) => {
-  if (val) {
-    localTitle.value = props.todo.title
-    localDescription.value = props.todo.description
-    localPriority.value = (props.todo.priority as any) || 'medium'
-    localDueDate.value = props.todo.start_date ?? null
-    localTags.value = [...(props.todo.tags || [])]
-  }
-})
 
 function confirmDelete() {
   if (window.confirm(`Delete "${props.todo.title}"?`)) {

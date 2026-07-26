@@ -14,13 +14,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  const newTitle = ref('')
-  const newDescription = ref('')
-  const newPriority = ref<'low' | 'medium' | 'high' | 'urgent' | ''>('')
-  const newStartDate = ref<string | null>(null)
-  const newTags = ref<string[]>([])
-  const newMoreOpen = ref(false)
-
   const activeFilter = ref<'all' | 'active' | 'completed' | 'archived'>('all')
   const searchQuery = ref('')
   const filters = [
@@ -29,13 +22,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     { label: 'Completed', value: 'completed' as const },
     { label: 'Archived', value: 'archived' as const },
   ]
-
-  const editingId = ref<number | null>(null)
-  const editTitle = ref('')
-  const editDescription = ref('')
-  const editPriority = ref<'low' | 'medium' | 'high' | 'urgent' | ''>('')
-  const editStartDate = ref<string | null>(null)
-  const editTags = ref<string[]>([])
 
   const totalCount = computed(() => todos.value.filter(t => t.status !== 'archived').length)
   const activeCount = computed(() => todos.value.filter(t => t.status === 'pending').length)
@@ -105,31 +91,23 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const reorder = useTodoReorder(todos, loadTodos)
 
-  const addTodo = async (data?: { title: string; description?: string; priority?: string; start_date?: string | null; end_date?: string | null; domain?: string; color?: string; rrule?: string | null; tags?: string[] }) => {
+  const addTodo = async (data: { title: string; description?: string; priority?: string; start_date?: string | null; end_date?: string | null; domain?: string; color?: string; rrule?: string | null; tags?: string[] }) => {
     if (!selectedUserId.value) return
-    const title = data?.title || newTitle.value.trim()
+    const title = data.title.trim()
     if (!title) return
     try {
       await createTodo({
         user_id: selectedUserId.value,
         title,
-        description: data?.description || newDescription.value.trim() || undefined,
-        priority: (data?.priority || newPriority.value || 'medium') as Todo['priority'],
-        start_date: data?.start_date ?? newStartDate.value ?? null,
-        end_date: data?.end_date ?? null,
-        domain: data?.domain || undefined,
-        color: data?.color || undefined,
-        rrule: data?.rrule || undefined,
-        tags: data?.tags || newTags.value,
+        description: data.description || undefined,
+        priority: (data.priority || 'medium') as Todo['priority'],
+        start_date: data.start_date ?? null,
+        end_date: data.end_date ?? null,
+        domain: data.domain || undefined,
+        color: data.color || undefined,
+        rrule: data.rrule || undefined,
+        tags: data.tags || [],
       })
-      if (!data) {
-        newTitle.value = ''
-        newDescription.value = ''
-        newPriority.value = ''
-        newStartDate.value = null
-        newTags.value = []
-        newMoreOpen.value = false
-      }
       await loadTodos()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to add todo'
@@ -173,35 +151,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     }
   }
 
-  const startEdit = (todo: Todo) => {
-    editingId.value = todo.id
-    editTitle.value = todo.title
-    editDescription.value = todo.description
-    editPriority.value = (todo.priority as any) || 'medium'
-    editStartDate.value = todo.start_date ?? null
-    editTags.value = [...(todo.tags || [])]
-  }
-
-  const cancelEdit = () => {
-    editingId.value = null
-  }
-
-  const saveEdit = async (todo: Todo, title: string, description: string, priority: string, startDate: string | null, tags: string[]) => {
-    try {
-      await updateTodo(todo.id, {
-        title,
-        description,
-        priority: (priority || 'medium') as Todo['priority'],
-        start_date: startDate ?? null,
-        tags,
-      })
-      editingId.value = null
-      await loadTodos()
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update todo'
-    }
-  }
-
   const removeTodo = async (id: number) => {
     try {
       await deleteTodo(id)
@@ -219,21 +168,9 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     todos,
     isLoading,
     error,
-    newTitle,
-    newDescription,
-    newPriority,
-    newStartDate,
-    newTags,
-    newMoreOpen,
     activeFilter,
     searchQuery,
     filters,
-    editingId,
-    editTitle,
-    editDescription,
-    editPriority,
-    editStartDate,
-    editTags,
     totalCount,
     activeCount,
     completedCount,
@@ -246,9 +183,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     togglePinned,
     archiveTodo,
     restoreTodo,
-    startEdit,
-    cancelEdit,
-    saveEdit,
     removeTodo,
     priority,
     dueDate,

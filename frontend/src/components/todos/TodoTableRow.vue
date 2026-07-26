@@ -29,21 +29,7 @@
         </button>
       </div>
     </td>
-    <td v-if="editing" class="px-3 py-2" colspan="7">
-      <div class="grid gap-2">
-        <div class="grid grid-cols-2 gap-2">
-          <input v-model="localTitle" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-indigo-900/30" />
-          <input v-model="localDescription" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-indigo-900/30" />
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <TodoPrioritySelect v-model="localPriority" />
-          <TodoDueDatePicker v-model="localDueDate" />
-          <button type="button" @click="$emit('saveEdit', todo, localTitle, localDescription, localPriority, localDueDate, localTags)" class="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-black text-white transition hover:bg-emerald-600">Save</button>
-          <button type="button" @click="$emit('cancelEdit')" class="rounded-lg bg-gray-100 px-3 py-1 text-xs font-black text-slate-600 transition hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">Cancel</button>
-        </div>
-      </div>
-    </td>
-    <td v-else class="max-w-xs px-3 py-3">
+    <td class="max-w-xs px-3 py-3">
       <div class="flex items-center gap-2">
         <button v-if="todo.screenshot_path" type="button" @click="$emit('viewScreenshot', todo)" class="shrink-0 cursor-zoom-in transition hover:opacity-80" title="View screenshot">
           <img :src="screenshotUrl" class="h-6 w-10 rounded border border-gray-200 object-cover dark:border-slate-600" />
@@ -56,23 +42,23 @@
         <TodoPriorityBadge :priority="(todo.priority as any)" />
       </div>
     </td>
-    <td v-show="!editing" class="max-w-xs px-3 py-3">
+    <td class="max-w-xs px-3 py-3">
       <span class="block truncate text-sm text-slate-500 transition-colors dark:text-slate-400">{{ todo.description || '—' }}</span>
     </td>
-    <td v-show="!editing" class="px-3 py-3">
+    <td class="px-3 py-3">
       <div class="flex flex-wrap items-center gap-1">
         <TodoDueDateBadge v-if="todo.start_date" :due-date="todo.start_date" :status="todo.status" />
       </div>
     </td>
-    <td v-show="!editing" class="px-3 py-3">
+    <td class="px-3 py-3">
       <div class="flex flex-wrap items-center gap-1">
         <TodoTagBadges :tags="(todo.tags || [])" />
       </div>
     </td>
-    <td v-show="!editing" class="px-3 py-3">
+    <td class="px-3 py-3">
       <span class="whitespace-nowrap rounded-md bg-gray-100 px-2 py-1 text-[10px] font-bold text-slate-500 transition-colors dark:bg-slate-700 dark:text-slate-400">{{ formatDate(todo.updated_at) }}</span>
     </td>
-    <td v-show="!editing" class="px-3 py-3">
+    <td class="px-3 py-3">
       <button
         type="button"
         @click="$emit('toggle-expand', todo.id)"
@@ -81,7 +67,7 @@
         {{ (todo.subtasks?.length || 0) }} subtask{{ (todo.subtasks?.length || 0) !== 1 ? 's' : '' }}
       </button>
     </td>
-    <td v-show="!editing" class="px-3 py-3 text-right">
+    <td class="px-3 py-3 text-right">
       <div class="flex justify-end gap-1">
         <button type="button" @click="$emit('toggle-pin', todo)" class="rounded-lg px-2 py-1.5 text-xs font-black transition" :class="todo.pinned ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-indigo-500/10'">{{ todo.pinned ? 'Unpin' : 'Pin' }}</button>
         <button v-if="todo.status === 'archived'" type="button" @click="$emit('restore', todo)" class="rounded-lg px-2 py-1.5 text-xs font-black text-emerald-600 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20">Restore</button>
@@ -94,19 +80,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { computed } from 'vue'
 import { formatDate } from '../../lib/utils'
 import { getScreenshotUrl } from '../../lib/api'
 import type { Todo } from '../../types'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
-import TodoPrioritySelect from './TodoPrioritySelect.vue'
-import TodoDueDatePicker from './TodoDueDatePicker.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'
 
 interface Props {
   todo: Todo
-  editing: boolean
   expanded?: boolean
 }
 
@@ -118,28 +101,10 @@ const emit = defineEmits<{
   archive: [todo: Todo]
   restore: [todo: Todo]
   startEdit: [todo: Todo]
-  saveEdit: [todo: Todo, title: string, description: string, priority: string, dueDate: string | null, tags: string[]]
-  cancelEdit: []
   delete: [id: number]
   viewScreenshot: [todo: Todo]
   'toggle-expand': [id: number]
 }>()
 
 const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')
-
-const localTitle = ref('')
-const localDescription = ref('')
-const localPriority = ref<'low' | 'medium' | 'high' | 'urgent'>('medium')
-const localDueDate = ref<string | null>(null)
-const localTags = ref<string[]>([])
-
-watch(() => props.editing, (val) => {
-  if (val) {
-    localTitle.value = props.todo.title
-    localDescription.value = props.todo.description
-    localPriority.value = (props.todo.priority as any) || 'medium'
-    localDueDate.value = props.todo.start_date ?? null
-    localTags.value = [...(props.todo.tags || [])]
-  }
-})
 </script>

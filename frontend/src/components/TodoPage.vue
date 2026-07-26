@@ -10,6 +10,14 @@
       </template>
       <template #actions>
         <UserSelector id="todo-user" v-model="selectedUserId" :users="users" color="indigo" />
+        <Button variant="gradient-indigo" size="sm" :disabled="!selectedUserId" @click="openCreateModal()">
+          <span class="flex items-center gap-1">
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add Todo
+          </span>
+        </Button>
         <div class="flex flex-wrap items-center gap-1.5">
           <FilterPill
             v-for="f in filters"
@@ -83,9 +91,7 @@
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadTodos" />
 
     <div v-else-if="selectedUserId">
-      <TodoAddForm v-if="activeFilter !== 'archived'" class="mb-4" @submit="handleAddTodo" :existing-tags="allTags" />
-
-      <div v-else class="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-300">
+      <div v-if="activeFilter === 'archived'" class="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-300">
         <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M7 8V5h10v3m-9 0v11h8V8m-5 4h2" />
         </svg>
@@ -150,21 +156,13 @@
               <template #item="{ element: todo }">
                 <TodoTableRow
                   :todo="todo"
-                  :editing="editingId === todo.id"
-                  :initial-title="editingId === todo.id ? editTitle : ''"
-                  :initial-description="editingId === todo.id ? editDescription : ''"
-                  :initial-priority="editingId === todo.id ? editPriority : ''"
-                  :initial-due-date="editingId === todo.id ? editStartDate : null"
-                  :initial-tags="editingId === todo.id ? editTags : []"
                   :expanded="expandedTodoId === todo.id"
                   @toggle="toggleTodo"
                   @toggle-pin="togglePinned"
                   @archive="archiveTodo"
                   @restore="restoreTodo"
                   @toggle-expand="toggleExpand"
-                  @start-edit="startEdit"
-                  @saveEdit="saveEdit"
-                  @cancel-edit="cancelEdit"
+                  @start-edit="openEditModal"
                   @delete="removeTodo"
                   @view-screenshot="openScreenshot"
                 />
@@ -190,9 +188,7 @@
             @restore="restoreTodo"
             @toggle-expand="toggleExpand"
             @view-screenshot="openScreenshot"
-            @start-edit="(t: Todo) => startEdit(t)"
-            @save-edit="saveEdit"
-            @cancel-edit="cancelEdit"
+            @start-edit="openEditModal"
             @delete="removeTodo"
             @reorder="onKanbanReorder"
             @priority-change="onKanbanPriorityChange"
@@ -203,21 +199,13 @@
           <template #item="{ element: todo }">
             <TodoCard
               :todo="todo"
-              :editing="editingId === todo.id"
-              :initial-title="editingId === todo.id ? editTitle : ''"
-              :initial-description="editingId === todo.id ? editDescription : ''"
-              :initial-priority="editingId === todo.id ? editPriority : ''"
-              :initial-due-date="editingId === todo.id ? editStartDate : null"
-              :initial-tags="editingId === todo.id ? editTags : []"
               :expanded="expandedTodoId === todo.id"
               @toggle="toggleTodo"
               @toggle-pin="togglePinned"
               @archive="archiveTodo"
               @restore="restoreTodo"
               @toggle-expand="toggleExpand"
-              @start-edit="startEdit"
-              @saveEdit="saveEdit"
-              @cancel-edit="cancelEdit"
+              @start-edit="openEditModal"
               @delete="removeTodo"
               @view-screenshot="openScreenshot"
             />
@@ -229,18 +217,30 @@
     <Modal :open="screenshotModal.open" :title="screenshotModal.title" @close="screenshotModal.open = false" fullscreen>
       <img :src="screenshotModal.url" class="w-full h-full rounded-lg border border-gray-200 object-contain dark:border-slate-700" />
     </Modal>
+
+    <CalendarTodoModal
+      :open="modalOpen"
+      :editing-todo="editingTodo"
+      :initial-due-date="modalDueDate"
+      :user-id="selectedUserId!"
+      @close="closeModal"
+      @submit="handleCreate"
+      @update="handleUpdate"
+      @delete="handleDelete"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { Todo, TodoPriority } from '../types'
+import type { Todo, TodoPriority, CreateTodoInput } from '../types'
 import draggable from 'vuedraggable'
 import { useUser } from '../composables/useUser'
 import { useTodos } from '../composables/useTodos'
 import PageHeader from './ui/PageHeader.vue'
 import StatCard from './ui/StatCard.vue'
 import UserSelector from './ui/UserSelector.vue'
+import Button from './ui/Button.vue'
 import FilterPill from './ui/FilterPill.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
@@ -252,8 +252,8 @@ import TodoCard from './todos/TodoCard.vue'
 import TodoKanbanBoard from './todos/TodoKanbanBoard.vue'
 import TodoViewToggle from './todos/TodoViewToggle.vue'
 import TodoSortBar from './todos/TodoSortBar.vue'
-import TodoAddForm from './todos/TodoAddForm.vue'
 import TodoSubtaskList from './todos/TodoSubtaskList.vue'
+import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
 import { getScreenshotUrl, reorderTodos, updateTodo } from '../lib/api'
 
 const allPriorityOptions: { value: TodoPriority; label: string }[] = [
@@ -270,21 +270,9 @@ const {
   todos,
   isLoading,
   error,
-  newTitle,
-  newDescription,
-  newPriority,
-  newDueDate: newStartDate,
-  newTags,
-  newMoreOpen,
   activeFilter,
   searchQuery,
   filters,
-  editingId,
-  editTitle,
-  editDescription,
-  editPriority,
-  editStartDate,
-  editTags,
   totalCount,
   activeCount,
   completedCount,
@@ -297,9 +285,6 @@ const {
   togglePinned,
   archiveTodo,
   restoreTodo,
-  startEdit,
-  cancelEdit,
-  saveEdit,
   removeTodo,
   priority,
   dueDate,
@@ -380,8 +365,43 @@ function openScreenshot(todo: Todo) {
   }
 }
 
-function handleAddTodo(data: { title: string; description?: string; priority?: string; start_date?: string | null; end_date?: string | null; domain?: string; color?: string; rrule?: string | null; tags?: string[] }) {
-  addTodo(data)
+// ── New / Edit todo modal ──────────────────────────────────────────────
+const modalOpen = ref(false)
+const editingTodo = ref<Todo | null>(null)
+const modalDueDate = ref('')
+
+function openCreateModal() {
+  if (!selectedUserId.value) return
+  editingTodo.value = null
+  modalDueDate.value = ''
+  modalOpen.value = true
+}
+
+function openEditModal(todo: Todo) {
+  editingTodo.value = todo
+  modalDueDate.value = todo.start_date || ''
+  modalOpen.value = true
+}
+
+function closeModal() {
+  modalOpen.value = false
+  editingTodo.value = null
+}
+
+async function handleCreate(data: CreateTodoInput) {
+  await addTodo(data)
+}
+
+async function handleUpdate(id: number, data: Partial<Todo>) {
+  await updateTodo(id, data)
+  await loadTodos()
+}
+
+async function handleDelete() {
+  if (!editingTodo.value) return
+  const id = editingTodo.value.id
+  await removeTodo(id)
+  closeModal()
 }
 
 const dueDateLabel = computed(() => {

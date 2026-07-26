@@ -428,6 +428,7 @@ func validate(cfg *Config) error {
 	known := map[string]bool{
 		"get_current_time": true, "search_bookmarks": true, "search_todos": true,
 		"add_todo_record": true,
+		"update_todo_record": true,
 		"search_history":  true, "search_calendar": true, "add_calendar_event": true, "execute_command": true,
 		"web_search": true, "web_fetch": true,
 		"read_file": true, "write_file": true, "edit_file": true, "multi_edit": true, "list_directory": true,

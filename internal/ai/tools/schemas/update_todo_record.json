@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "properties": {
+        "user_id": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "id": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+        },
+        "description": {
+            "type": "string",
+            "maxLength": 2000
+        },
+        "status": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "in_progress",
+                "completed",
+                "done",
+                "cancelled",
+                "archived"
+            ]
+        },
+        "priority": {
+            "type": "string",
+            "enum": [
+                "low",
+                "medium",
+                "high",
+                "urgent"
+            ]
+        },
+        "color": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "position": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "start_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Date string (YYYY-MM-DD or RFC3339) or null to clear"
+        },
+        "end_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Date string (YYYY-MM-DD or RFC3339) or null to clear"
+        },
+        "rrule": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "screenshot_path": {
+            "type": "string"
+        },
+        "pinned": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "user_id",
+        "id"
+    ],
+    "additionalProperties": false
+}

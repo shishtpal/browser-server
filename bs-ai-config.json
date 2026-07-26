@@ -32,6 +32,7 @@
             "get_current_time",
             "search_todos",
             "add_todo_record",
+            "update_todo_record",
             "search_calendar",
             "add_calendar_event",
             "search_bookmarks",

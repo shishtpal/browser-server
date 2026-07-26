@@ -56,6 +56,7 @@ func New(options ...Options) *Registry {
 	registerGetCurrentTime(r)
 	registerSearchTodos(r)
 	registerAddTodoRecord(r)
+	registerUpdateTodoRecord(r)
 	registerAddCalendarEvent(r)
 	registerSearchCalendar(r)
 	registerSearchBookmarks(r)

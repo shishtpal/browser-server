@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-5 lg:gap-6">
     <YearMonthCard
       v-for="monthIdx in 12"
       :key="monthIdx - 1"

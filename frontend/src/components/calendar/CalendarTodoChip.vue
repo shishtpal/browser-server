@@ -1,12 +1,23 @@
 <template>
   <button
     type="button"
-    class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-[10px] font-bold transition hover:ring-1 hover:ring-indigo-400 dark:hover:ring-indigo-300"
-    :class="chipClass"
+    class="group flex w-full items-center gap-1.5 rounded-md border px-2 py-1 text-left text-xs font-medium transition-all duration-150 active:scale-[0.98]"
+    :class="chipStyle"
     @click.stop="emit('click', todo)"
   >
-    <span class="h-1.5 w-1.5 shrink-0 rounded-full" :class="priorityDot"></span>
-    <span class="truncate">{{ displayTitle }}</span>
+    <!-- Priority Dot / Status Indicator -->
+    <span 
+      class="h-1.5 w-1.5 shrink-0 rounded-full transition-transform group-hover:scale-125" 
+      :class="priorityDot"
+    />
+    
+    <!-- Title with native CSS truncation -->
+    <span 
+      class="truncate leading-none" 
+      :class="{ 'line-through opacity-60': isCompleted }"
+    >
+      {{ todo.title }}
+    </span>
   </button>
 </template>
 
@@ -22,23 +33,37 @@ const emit = defineEmits<{
   (e: 'click', todo: Todo): void
 }>()
 
-const displayTitle = computed(() => {
-  return props.todo.title.length > 14 ? props.todo.title.slice(0, 14) + '…' : props.todo.title
-})
+const isCompleted = computed(() => props.todo.status === 'completed')
 
 const priorityDot = computed(() => {
+  if (isCompleted.value) return 'bg-slate-300 dark:bg-slate-600'
+  
   const map: Record<string, string> = {
     low: 'bg-slate-400 dark:bg-slate-500',
-    medium: 'bg-blue-400 dark:bg-blue-300',
+    medium: 'bg-blue-500 dark:bg-blue-400',
     high: 'bg-amber-500 dark:bg-amber-400',
     urgent: 'bg-red-500 dark:bg-red-400',
   }
   return map[props.todo.priority] || 'bg-slate-400'
 })
 
-const chipClass = computed(() => {
-  const base = 'bg-gray-100 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200'
-  const completed = props.todo.status === 'completed' ? 'opacity-60 line-through' : ''
-  return `${base} ${completed}`
+const chipStyle = computed(() => {
+  if (isCompleted.value) {
+    return 'border-transparent bg-slate-100/60 text-slate-400 dark:bg-slate-800/40 dark:text-slate-500'
+  }
+
+  // Soft themed backgrounds based on priority for better visual scanning
+  const priorityStyles: Record<string, string> = {
+    urgent: 
+      'border-red-200/60 bg-red-50/80 text-red-900 hover:border-red-300 dark:border-red-900/30 dark:bg-red-950/30 dark:text-red-200 dark:hover:border-red-800/60',
+    high: 
+      'border-amber-200/60 bg-amber-50/80 text-amber-900 hover:border-amber-300 dark:border-amber-900/30 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:border-amber-800/60',
+    medium: 
+      'border-blue-200/60 bg-blue-50/80 text-blue-900 hover:border-blue-300 dark:border-blue-900/30 dark:bg-blue-950/30 dark:text-blue-200 dark:hover:border-blue-800/60',
+    low: 
+      'border-slate-200/60 bg-slate-100/80 text-slate-700 hover:border-slate-300 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:border-slate-600',
+  }
+
+  return priorityStyles[props.todo.priority] || priorityStyles.low
 })
 </script>

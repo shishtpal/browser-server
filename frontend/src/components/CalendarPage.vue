@@ -76,6 +76,12 @@
       @update="handleUpdate"
       @delete="handleDelete"
     />
+
+    <CalendarTodoDetail
+      :todo="detailTodo"
+      @close="closeDetail"
+      @edit="editFromDetail"
+    />
   </div>
 </template>
 
@@ -99,6 +105,7 @@ import CalendarDayView from './calendar/CalendarDayView.vue'
 import CalendarYearView from './calendar/CalendarYearView.vue'
 import CalendarMiniStats from './calendar/CalendarMiniStats.vue'
 import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
+import CalendarTodoDetail from './calendar/CalendarTodoDetail.vue'
 
 const { users, currentUserId, setUser, clearUser } = useUser()
 const selectedUserId = ref<number | null>(currentUserId.value)
@@ -110,6 +117,7 @@ const todosStats = computed(() => stats.value)
 const modalOpen = ref(false)
 const editingTodo = ref<Todo | null>(null)
 const modalDueDate = ref('')
+const detailTodo = ref<Todo | null>(null)
 
 // For week view, only pass the 7 days of the current week
 const weekDays = computed(() => {
@@ -146,6 +154,15 @@ function openCreateModal(date?: string) {
 }
 
 function openEditModal(todo: Todo) {
+  detailTodo.value = todo
+}
+
+function closeDetail() {
+  detailTodo.value = null
+}
+
+function editFromDetail(todo: Todo) {
+  detailTodo.value = null
   editingTodo.value = todo
   modalDueDate.value = todo.start_date || ''
   modalOpen.value = true

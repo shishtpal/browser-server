@@ -1,24 +1,38 @@
 <template>
   <div
     :class="cardClasses"
-    class="rounded-xl p-3 cursor-pointer transition-all hover:shadow-sm"
+    class="rounded-2xl p-3 sm:p-4 cursor-pointer transition-all duration-200 group hover:-translate-y-0.5"
     @click="emit('monthClick', monthIndex)"
   >
-    <div class="flex items-center justify-between mb-2">
-      <h3 class="text-sm font-black" :class="labelClass">
-        {{ label }}
-        <span v-if="isCurrentMonth" class="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Today</span>
-      </h3>
-      <span v-if="totalTodos > 0" :class="countClass">
-        {{ totalTodos }} todo{{ totalTodos !== 1 ? 's' : '' }}
+    <!-- Header: Month Name & Badges -->
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <h3 class="text-sm font-semibold tracking-tight" :class="labelClass">
+          {{ label }}
+        </h3>
+        <span 
+          v-if="isCurrentMonth" 
+          class="flex h-4 items-center rounded-full bg-indigo-600 px-1.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm shadow-indigo-500/30 dark:bg-indigo-500"
+        >
+          Today
+        </span>
+      </div>
+      
+      <span 
+        v-if="totalTodos > 0" 
+        class="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full" 
+        :class="countClass"
+      >
+        {{ totalTodos }}
       </span>
     </div>
 
-    <div class="grid grid-cols-7 gap-0.5">
+    <!-- Mini Calendar Grid -->
+    <div class="grid grid-cols-7 gap-y-1 gap-x-0.5">
       <div
         v-for="d in dayHeaders"
         :key="d"
-        class="text-[8px] text-center text-slate-400 dark:text-slate-500 font-bold pb-0.5 select-none"
+        class="text-[9px] text-center text-slate-400 dark:text-slate-500 font-medium select-none pb-0.5"
       >
         {{ d }}
       </div>
@@ -71,19 +85,27 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-const monthTodos = computed(() => {
+// PERFORMANCE OPTIMIZATION: Pre-calculate counts to avoid O(N*M) nested loops
+const todoCountMap = computed(() => {
+  const map = new Map<string, number>()
+  props.todos.forEach((t) => {
+    if (t.start_date && t.status !== 'completed') {
+      map.set(t.start_date, (map.get(t.start_date) || 0) + 1)
+    }
+  })
+  return map
+})
+
+const totalTodos = computed(() => {
   const startStr = formatDate(monthStart.value)
   const endStr = formatDate(monthEnd.value)
   return props.todos.filter((t) => {
-    if (!t.start_date) return false
+    if (!t.start_date || t.status === 'completed') return false
     return t.start_date >= startStr && t.start_date <= endStr
-  })
+  }).length
 })
 
-const totalTodos = computed(() => monthTodos.value.filter((t) => t.status !== 'completed').length)
-
 const dayData = computed(() => {
-  // Build a 6-week grid aligned to weekday
   const gridStart = new Date(monthStart.value)
   gridStart.setDate(gridStart.getDate() - gridStart.getDay())
   const gridEnd = new Date(monthEnd.value)
@@ -102,11 +124,10 @@ const dayData = computed(() => {
   const current = new Date(gridStart)
   while (current <= gridEnd) {
     const dateStr = formatDate(current)
-    const count = props.todos.filter((t) => t.start_date === dateStr && t.status !== 'completed').length
     days.push({
       date: dateStr,
       day: current.getDate(),
-      count,
+      count: todoCountMap.value.get(dateStr) || 0, // Use optimized map
       isCurrentMonth: current.getMonth() === props.monthIndex,
       isToday: current.getFullYear() === today.getFullYear() && current.getMonth() === today.getMonth() && current.getDate() === today.getDate(),
       isWeekend: current.getDay() === 0 || current.getDay() === 6,
@@ -118,12 +139,12 @@ const dayData = computed(() => {
 
 const cardClasses = computed(() => {
   if (isCurrentMonth.value) {
-    return 'border-2 border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 shadow-md'
+    return 'border-2 border-indigo-500/80 dark:border-indigo-400/60 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30'
   }
   if (totalTodos.value > 0) {
-    return 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/60 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md'
+    return 'border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50'
   }
-  return 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-600'
+  return 'border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700'
 })
 
 const labelClass = computed(() => {
@@ -134,36 +155,41 @@ const labelClass = computed(() => {
 
 const countClass = computed(() => {
   if (totalTodos.value >= 10) {
-    return 'text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-bold px-1.5 py-0.5 rounded-full'
+    return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300'
   }
   if (totalTodos.value >= 5) {
-    return 'text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 font-bold px-1.5 py-0.5 rounded-full'
+    return 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400'
   }
-  return 'text-[10px] bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 font-bold px-1.5 py-0.5 rounded-full'
+  return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
 })
 
 function dayClasses(day: { isToday: boolean; count: number; isWeekend: boolean; isCurrentMonth: boolean }) {
-  const classes = ['aspect-square rounded-sm flex items-center justify-center text-[8px] font-bold transition-colors cursor-pointer']
+  const base = 'aspect-square rounded-md flex items-center justify-center text-[10px] font-medium transition-colors cursor-pointer'
+  
   if (!day.isCurrentMonth) {
-    classes.push('text-slate-300 dark:text-slate-600')
-    return classes.join(' ')
+    return `${base} text-slate-300 dark:text-slate-700`
   }
+  
   if (day.isToday) {
-    classes.push('bg-indigo-600 text-white ring-2 ring-indigo-400 ring-offset-1 dark:ring-offset-slate-800')
-  } else if (day.count > 0) {
-    classes.push(getHeatmapColor(day.count))
-  } else if (day.isWeekend) {
-    classes.push('text-slate-400 dark:text-slate-500')
-  } else {
-    classes.push('text-slate-600 dark:text-slate-400')
-  }
-  return classes.join(' ')
+    return `${base} bg-indigo-600 text-white font-bold shadow-sm shadow-indigo-500/40 dark:bg-indigo-500`
+  } 
+  
+  if (day.count > 0) {
+    return `${base} ${getHeatmapColor(day.count)}`
+  } 
+  
+  if (day.isWeekend) {
+    return `${base} text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50`
+  } 
+  
+  return `${base} text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50`
 }
 
+// Cohesive Indigo Heatmap matching the app's primary theme
 function getHeatmapColor(count: number): string {
-  if (count >= 4) return 'bg-emerald-500 dark:bg-emerald-600/70 text-white'
-  if (count >= 3) return 'bg-emerald-400 dark:bg-emerald-700/60 text-white'
-  if (count >= 2) return 'bg-emerald-300 dark:bg-emerald-800/50 text-emerald-900 dark:text-emerald-200'
-  return 'bg-emerald-200 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'
+  if (count >= 4) return 'bg-indigo-500 text-white dark:bg-indigo-600 font-bold'
+  if (count >= 3) return 'bg-indigo-200 text-indigo-900 dark:bg-indigo-700/60 text-white'
+  if (count >= 2) return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800/50 text-indigo-200'
+  return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 text-indigo-400'
 }
 </script>

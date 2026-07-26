@@ -4,6 +4,16 @@ import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api'
 import type { Todo, CreateTodoInput } from '../types'
 import type { CalendarDay, CalendarStats, DateRange } from '../components/calendar/types'
 
+/** Parse a date string that may be ISO 8601 (with T) or plain yyyy-MM-dd. */
+function parseToDate(raw: string): Date {
+  return new Date(raw.includes('T') ? raw : raw + 'T00:00:00')
+}
+
+/** Normalize a date string (ISO or plain) to yyyy-MM-dd for comparison. */
+function toDateStr(raw: string): string {
+  return format(parseToDate(raw), 'yyyy-MM-dd')
+}
+
 export function useCalendarTodos(
   selectedUserId: Ref<number | null>,
   dateRange: ComputedRef<DateRange>,
@@ -18,7 +28,7 @@ export function useCalendarTodos(
   const visibleTodos = computed(() => {
     return todos.value.filter((t) => {
       if (!t.start_date) return false
-      const start = startOfDay(new Date(t.start_date + 'T00:00:00'))
+      const start = startOfDay(parseToDate(t.start_date))
       return start >= rangeStart.value && start <= rangeEnd.value
     })
   })
@@ -40,7 +50,7 @@ export function useCalendarTodos(
         isToday: isSameDay(current, today),
         isCurrentMonth: current.getMonth() === viewMonth && current.getFullYear() === viewYear,
         isWeekend: current.getDay() === 0 || current.getDay() === 6,
-        todos: visibleTodos.value.filter((t) => t.start_date === dateStr),
+        todos: visibleTodos.value.filter((t) => t.start_date && toDateStr(t.start_date) === dateStr),
       })
       current.setDate(current.getDate() + 1)
     }
@@ -49,10 +59,13 @@ export function useCalendarTodos(
 
   const stats = computed<CalendarStats>(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd')
-    const todayCount = todos.value.filter((t) => t.start_date === todayStr && t.status === 'pending').length
+    const todayCount = todos.value.filter((t) => {
+      if (!t.start_date || t.status !== 'pending') return false
+      return toDateStr(t.start_date) === todayStr
+    }).length
     const overdueCount = todos.value.filter((t) => {
       if (!t.start_date || t.status !== 'pending') return false
-      return startOfDay(new Date(t.start_date + 'T00:00:00')) < startOfDay(new Date())
+      return startOfDay(parseToDate(t.start_date)) < startOfDay(new Date())
     }).length
     const completedCount = todos.value.filter((t) => t.status === 'completed').length
     return { todayCount, overdueCount, completedCount }

@@ -1,42 +1,80 @@
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full flex-col select-none">
     <!-- Day name headers -->
-    <div class="mb-1.5 grid grid-cols-7 gap-1.5">
+    <div class="mb-2 grid grid-cols-7 gap-px">
       <div
         v-for="name in dayNames"
         :key="name"
-        class="text-center text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400"
+        class="py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
       >
         {{ name }}
       </div>
     </div>
-    <!-- Day grid — fills remaining height -->
-    <div class="grid flex-1 grid-cols-7 gap-1.5" :style="{ gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }">
+
+    <!-- Seamless 1px Grid Container -->
+    <div
+      class="grid flex-1 grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 shadow-sm"
+      :style="{ gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }"
+    >
       <div
         v-for="day in weekDays"
         :key="day.date"
-        class="flex flex-col overflow-hidden rounded-xl border border-gray-200/80 bg-white p-1.5 transition-colors hover:bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-800/90 dark:hover:bg-slate-800/70 cursor-pointer"
+        class="group relative flex min-h-[70px] sm:min-h-[110px] flex-col bg-white p-1.5 sm:p-2 transition-all duration-150 hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-850 cursor-pointer"
         :class="cellClass(day)"
         @click="onCellClick(day)"
       >
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-black" :class="dateClass(day)">{{ day.dayNumber }}</span>
-          <span v-if="day.todos.length > 0" class="text-[9px] font-bold text-slate-400 dark:text-slate-500">{{ day.todos.length }}</span>
+        <!-- Top Row: Date & Count Badge -->
+        <div class="flex items-center justify-between mb-1">
+          <span
+            class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-transform group-hover:scale-105"
+            :class="dateClass(day)"
+          >
+            {{ day.dayNumber }}
+          </span>
+
+          <!-- Total tasks indicator (visible on desktop or when non-empty) -->
+          <span
+            v-if="day.todos.length > 0"
+            class="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+          >
+            {{ day.todos.length }}
+          </span>
         </div>
-        <div class="mt-1 flex flex-1 flex-col gap-0.5 overflow-hidden">
+
+        <!-- MOBILE VIEW (< 640px): Compact Priority Dots -->
+        <div class="flex sm:hidden flex-wrap gap-1 mt-auto pt-1">
+          <span
+            v-for="todo in day.todos.slice(0, 6)"
+            :key="todo.id"
+            class="h-1.5 w-1.5 rounded-full"
+            :class="getPriorityDotClass(todo.priority)"
+          />
+          <span
+            v-if="day.todos.length > 6"
+            class="text-[9px] font-bold leading-none text-slate-400"
+          >
+            +{{ day.todos.length - 6 }}
+          </span>
+        </div>
+
+        <!-- DESKTOP VIEW (>= 640px): Full Interactive Chips -->
+        <div class="hidden sm:flex flex-1 flex-col gap-1 overflow-hidden">
           <CalendarTodoChip
             v-for="todo in day.todos.slice(0, 3)"
             :key="todo.id"
             :todo="todo"
-            @click.stop="emit('todoClick', todo)"
+            @click="emit('todoClick', todo)"
           />
+
+          <!-- "+X more" Button -->
           <button
             v-if="day.todos.length > 3"
             type="button"
-            class="text-left text-[9px] font-bold text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            class="mt-auto flex items-center justify-between rounded-md px-1.5 py-1 text-left text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             @click.stop="emit('showMore', day.date)"
           >
-            +{{ day.todos.length - 3 }} more
+            <span>+{{ day.todos.length - 3 }} more</span>
+            <span class="text-[9px]">→</span>
           </button>
         </div>
       </div>
@@ -73,18 +111,43 @@ const rowCount = computed(() => Math.ceil(props.days.length / 7))
 
 function cellClass(day: CalendarDay & { dayNumber: number }) {
   const classes: string[] = []
-  if (!day.isCurrentMonth) classes.push('opacity-40 dark:opacity-30')
-  if (day.isToday) classes.push('ring-2 ring-indigo-500 dark:ring-indigo-400')
+  if (!day.isCurrentMonth) {
+    classes.push('bg-slate-50/50 dark:bg-slate-950/40 opacity-40')
+  }
+  if (day.isWeekend && day.isCurrentMonth) {
+    classes.push('bg-slate-50/30 dark:bg-slate-900/60')
+  }
   return classes.join(' ')
 }
 
 function dateClass(day: CalendarDay & { dayNumber: number }) {
-  if (day.isToday) return 'flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900'
-  if (day.isWeekend) return 'text-slate-500 dark:text-slate-400'
+  if (day.isToday) {
+    return 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-500/30 dark:bg-indigo-500 dark:text-white'
+  }
+  if (day.isWeekend) {
+    return 'text-slate-400 dark:text-slate-500'
+  }
   return 'text-slate-700 dark:text-slate-200'
+}
+
+function getPriorityDotClass(priority: string) {
+  const map: Record<string, string> = {
+    low: 'bg-slate-400 dark:bg-slate-500',
+    medium: 'bg-blue-500 dark:bg-blue-400',
+    high: 'bg-amber-500 dark:bg-amber-400',
+    urgent: 'bg-red-500 dark:bg-red-400',
+  }
+  return map[priority] || 'bg-slate-400'
 }
 
 function onCellClick(day: CalendarDay & { dayNumber: number }) {
   emit('click', day.date)
 }
 </script>
+
+<style scoped>
+/* Subtle custom dark mode background color to match sleek SaaS UIs */
+.dark .dark\:bg-slate-850 {
+  background-color: rgb(24 32 47);
+}
+</style>

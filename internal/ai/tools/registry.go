@@ -58,6 +58,7 @@ func New(options ...Options) *Registry {
 	registerSearchTodos(r)
 	registerSearchHistory(r)
 	registerSearchCalendar(r)
+	registerAddCalendarEvent(r)
 	registerExecuteCommand(r, shell)
 	if len(options) > 0 && options[0].WebSearch.Enabled {
 		registerWebTools(r, options[0].WebSearch)

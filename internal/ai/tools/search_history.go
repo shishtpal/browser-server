@@ -13,12 +13,12 @@ func registerSearchHistory(r *Registry) {
 	r.add(Tool{
 		Name:        "search_history",
 		Category:    "General",
-		Description: "Search the local browsing history database. Can filter by text query across URL/title and optionally by domain.",
+		Description: "Search the local browsing history database. Can filter by text query across URL/title and optionally by domain. When no query or domain is given, returns the most recently visited records (up to the page limit).",
 		Schema: json.RawMessage(`{"type":"object","properties":{` +
 			`"user_id":{"type":"integer","minimum":1},` +
 			`"query":{"type":"string","maxLength":200},` +
 			`"domain":{"type":"string","maxLength":100},` +
-			`"limit":{"type":"integer","minimum":1,"maximum":20}` +
+			`"limit":{"type":"integer","minimum":1,"maximum":50}` +
 			`},"required":["user_id"],"additionalProperties":false}`),
 		Execute: searchHistory,
 	})
@@ -42,14 +42,11 @@ func searchHistory(ctx context.Context, raw json.RawMessage) (any, error) {
 	if len(a.Query) > 200 {
 		return nil, fmt.Errorf("query too long")
 	}
-	if a.Query == "" && a.Domain == "" {
-		return nil, fmt.Errorf("at least one of query or domain is required")
-	}
 	if a.Limit == 0 {
-		a.Limit = 10
+		a.Limit = 50
 	}
-	if a.Limit < 1 || a.Limit > 20 {
-		return nil, fmt.Errorf("limit must be 1 to 20")
+	if a.Limit < 1 || a.Limit > 50 {
+		return nil, fmt.Errorf("limit must be 1 to 50")
 	}
 
 	where := []string{"user_id = ?"}

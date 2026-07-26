@@ -197,7 +197,7 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
       ]
     }
   },
-  "tools": { "enabled": true, "allowed": ["get_current_time", "search_bookmarks"], "max_iterations": 5 },
+  "tools": { "enabled": true, "allowed": ["get_current_time", "search_bookmarks", "search_calendar", "add_calendar_event"], "max_iterations": 5 },
   "chat": { "system_prompt": "You are a helpful assistant.", "stream": true, "temperature": 0.7 }
 }
 ```
@@ -227,6 +227,7 @@ The server retries transient failures such as network errors, timeouts, rate lim
 - Streaming responses via SSE (Server-Sent Events)
 - Configurable retries for transient provider failures
 - Server-side tools the model can call (with user approval or auto-approve "YOLO mode")
+- Calendar event creation and search via AI tool calls
 - Conversation history persisted in SQLite
 - Regenerate previous responses, stop in-progress generation
 

@@ -399,24 +399,49 @@ known := map[string]bool{
 
 | Tool | File | Description |
 |------|------|-------------|
-| `get_current_time` | `registry.go` | Get server time in a timezone |
-| `search_bookmarks` | `registry.go` | Search bookmark database |
-| `execute_command` | `shell.go` | Run a shell command (30s timeout) |
-| `read_file` | `filesystem.go` | Read a UTF-8 file (32 KiB max) |
-| `write_file` | `filesystem.go` | Create/overwrite a file |
-| `list_directory` | `filesystem.go` | List directory contents |
-| `delete_file` | `filesystem.go` | Delete a file |
-| `move_file` | `filesystem.go` | Move/rename a file |
-| `copy_file` | `filesystem.go` | Copy a file |
-| `git_status` | `git.go` | Repository status (branch, staged, untracked) |
-| `git_diff` | `git.go` | View diffs (working tree, staged, between refs) |
-| `git_log` | `git.go` | Commit history with filtering |
-| `git_branch` | `git.go` | List/create/delete/rename branches |
-| `git_checkout` | `git.go` | Switch or create branches |
-| `git_commit` | `git.go` | Stage files and commit |
-| `git_push` | `git.go` | Push to remote (uses --force-with-lease) |
-| `git_pull` | `git.go` | Pull from remote |
-| `git_merge` | `git.go` | Merge a branch |
+| `get_current_time` | `get_current_time.go` | Get server time in a timezone |
+| `search_todos` | `search_todos.go` | Search todo database (filter by status, priority, text) |
+| `search_calendar` | `search_calendar.go` | Search calendar events (todos with scheduled dates, date range filtering) |
+| `add_calendar_event` | `create_calendar_entry.go` | Create a calendar event (todo with start_date/end_date/rrule) |
+| `search_bookmarks` | `search_bookmarks.go` | Search bookmark database |
+| `search_history` | `search_history.go` | Search browsing history |
+| `execute_command` | `execute_command.go` | Run a shell command (30s timeout) |
+| `web_search` | `web.go` | Search the web (requires web_search config) |
+| `web_fetch` | `web.go` | Fetch content from a URL |
+| `read_file` | `read_file.go` | Read a UTF-8 file (32 KiB max) |
+| `write_file` | `write_file.go` | Create/overwrite a file |
+| `edit_file` | `edit_file.go` | Find-and-replace edit in a file |
+| `multi_edit` | `multi_edit.go` | Atomic multi-file find-and-replace edits |
+| `list_directory` | `list_directory.go` | List directory contents |
+| `delete_file` | `delete_file.go` | Delete a file |
+| `move_file` | `move_file.go` | Move/rename a file |
+| `copy_file` | `copy_file.go` | Copy a file |
+| `directory_tree` | `directory_tree.go` | Recursive directory tree listing |
+| `search_code` | `search_code.go` | Regex search across files |
+| `analyze_code` | `analyze_code.go` | AST-based code analysis |
+| `get_diagnostics` | `get_diagnostics.go` | Get compile/lint diagnostics for a file |
+| `git_status` | `git_status.go` | Repository status (branch, staged, untracked) |
+| `git_diff` | `git_diff.go` | View diffs (working tree, staged, between refs) |
+| `git_log` | `git_log.go` | Commit history with filtering |
+| `git_branch` | `git_branch.go` | List/create/delete/rename branches |
+| `git_checkout` | `git_checkout.go` | Switch or create branches |
+| `git_commit` | `git_commit.go` | Stage files and commit |
+| `git_push` | `git_push.go` | Push to remote (uses --force-with-lease) |
+| `git_pull` | `git_pull.go` | Pull from remote |
+| `git_merge` | `git_merge.go` | Merge a branch |
+| `ai_remember` | `memory.go` | Store a memory |
+| `ai_recall` | `memory.go` | Recall a specific memory |
+| `ai_search_memory` | `memory.go` | Search stored memories |
+| `ai_list_memories` | `memory.go` | List all memories |
+| `ai_forget` | `memory.go` | Delete a memory |
+| `ai_update_memory` | `memory.go` | Update an existing memory |
+| `ai_resolve_references` | `memory.go` | Resolve memory cross-references |
+| `ai_lazy_memory` | `memory.go` | Lazy-load memory content |
+| `ai_manage_cache` | `memory.go` | Manage memory cache |
+| `list_skills` | `skills.go` | List available AI skills |
+| `activate_skill` | `skills.go` | Activate an AI skill |
+| `deactivate_skill` | `skills.go` | Deactivate an AI skill |
+| `get_active_skills` | `skills.go` | Get currently active skills |
 
 ## Key Conventions
 

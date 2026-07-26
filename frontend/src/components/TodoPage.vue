@@ -167,6 +167,7 @@
                   @delete="removeTodo"
                   @view-screenshot="openScreenshot"
                   @toggle-subtask="toggleTodo"
+                  @mousedown="onRowMouseDown"
                   @dragstart="onRowDragStart($event, todo.id)"
                   @dragover.prevent="onRowDragOver($event, todo.id)"
                   @drop="onRowDrop($event, todo.id)"
@@ -336,10 +337,15 @@ async function onListDragEnd(event: any) {
 
 // ── Native HTML5 drag for desktop table rows ──────────────────────────
 const dragId = ref<number | null>(null)
+const dragAllowed = ref(false)
+
+function onRowMouseDown(event: MouseEvent) {
+  // Allow drag only when initiated from the drag handle
+  dragAllowed.value = !!(event.target && (event.target as HTMLElement).closest('.drag-handle'))
+}
 
 function onRowDragStart(event: DragEvent, id: number) {
-  // Only initiate drag from the drag handle
-  if (!event.target || !(event.target as HTMLElement).closest('.drag-handle')) {
+  if (!dragAllowed.value) {
     event.preventDefault()
     return
   }
@@ -371,6 +377,7 @@ function onRowDrop(_event: DragEvent, id: number) {
 
 function onRowDragEnd() {
   dragId.value = null
+  dragAllowed.value = false
 }
 
 function toggleExpand(id: number) {

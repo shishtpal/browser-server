@@ -152,6 +152,21 @@
       @close="showMemoryExplorer = false"
       @updated="messages = $event"
     />
+
+    <!-- New Conversation modal -->
+    <ChatNewConversationModal
+      :open="showNewConversationModal"
+      :profiles="profiles"
+      :provider-names="providerNames"
+      :providers="config?.providers ?? {}"
+      :skills="skills"
+      :default-provider="selectedProvider"
+      :default-model="selectedModel"
+      :default-profile="profileLocked ? '' : selectedProfile"
+      :default-skills="activeSkills"
+      @close="showNewConversationModal = false"
+      @create="handleNewConversationCreate"
+    />
   </div>
 </template>
 
@@ -170,6 +185,8 @@ import ChatDisabledState from './chat/ChatDisabledState.vue'
 import ChatCopyToast from './chat/ChatCopyToast.vue'
 import ChatToolsPanel from './chat/ChatToolsPanel.vue'
 import ChatMemoryExplorer from './chat/ChatMemoryExplorer.vue'
+import ChatNewConversationModal from './chat/ChatNewConversationModal.vue'
+import type { NewConversationResult } from './chat/ChatNewConversationModal.vue'
 import type { ToolCallEntry } from './chat/ChatToolsPanel.vue'
 import { useChatConfig } from './chat/composables/useChatConfig'
 import { useChatConversations } from './chat/composables/useChatConversations'
@@ -247,6 +264,7 @@ const showMobileSidebar = ref(false)
 const showCopyToast = ref(false)
 const showToolsPanel = ref(false)
 const showMemoryExplorer = ref(false)
+const showNewConversationModal = ref(false)
 const chatFontFamily = ref(localStorage.getItem('ai-chat-font-family') || 'system-ui')
 const chatFontSize = ref(Number(localStorage.getItem('ai-chat-font-size')) || 14)
 
@@ -337,15 +355,20 @@ async function reload() {
 
 async function startConversation() {
   if (!config.value?.enabled) return
+  showNewConversationModal.value = true
+}
+
+async function handleNewConversationCreate(result: NewConversationResult) {
+  showNewConversationModal.value = false
   error.value = ''
   try {
-    // Reset profile to empty (Default) for new conversations unless user explicitly chose one
-    // When coming from a locked conversation, the profile selector was disabled,
-    // so selectedProfile still holds the old value — reset it.
-    if (profileLocked.value) {
-      selectedProfile.value = ''
-    }
-    await createConversation(selectedProvider.value, selectedModel.value, selectedProfile.value || undefined)
+    // Apply the user's choices to the active config state
+    selectedProvider.value = result.provider
+    selectedModel.value = result.model
+    selectedProfile.value = result.profile
+    setActiveSkills(result.skills)
+
+    await createConversation(result.provider, result.model, result.profile || undefined)
     nextTick(() => chatInputRef.value?.focus())
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to create conversation'

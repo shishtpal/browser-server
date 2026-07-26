@@ -1,5 +1,5 @@
 <template>
-  <aside class="flex flex-col border-r border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-slate-900/60">
+  <aside class="flex h-full min-h-0 flex-col border-r border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-slate-900/60">
     <div class="flex items-center justify-between gap-3 border-b border-slate-200 p-4 dark:border-white/10">
       <div>
         <h1 class="text-lg font-black">AI Chat</h1>
@@ -26,7 +26,7 @@
       />
     </div>
 
-    <div class="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+    <div class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
       <div v-if="conversations.length === 0" class="px-2 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
         {{ search ? 'No matching conversations' : 'No conversations yet' }}
       </div>

@@ -152,11 +152,12 @@
                 <th class="w-44 px-3 py-3 text-right text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Actions</th>
               </tr>
             </thead>
-            <draggable v-model="listTodos" item-key="id" handle=".drag-handle" @end="onListDragEnd" tag="tbody" class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
-              <template #item="{ element: todo }">
+            <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
+              <template v-for="todo in listTodos" :key="todo.id">
                 <TodoTableRow
                   :todo="todo"
                   :expanded="expandedTodoId === todo.id"
+                  draggable="true"
                   @toggle="toggleTodo"
                   @toggle-pin="togglePinned"
                   @archive="archiveTodo"
@@ -165,17 +166,20 @@
                   @start-edit="openEditModal"
                   @delete="removeTodo"
                   @view-screenshot="openScreenshot"
+                  @toggle-subtask="toggleTodo"
+                  @dragstart="onRowDragStart($event, todo.id)"
+                  @dragover.prevent="onRowDragOver($event, todo.id)"
+                  @drop="onRowDrop($event, todo.id)"
+                  @dragend="onRowDragEnd"
                 />
+                <tr v-if="expandedTodoId === todo.id" class="bg-indigo-50/40 dark:bg-slate-800/40">
+                  <td colspan="8" class="px-4 py-3">
+                    <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="toggleTodo" />
+                  </td>
+                </tr>
               </template>
-            </draggable>
+            </tbody>
           </table>
-          <div v-if="expandedTodo" class="mt-1 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800/90">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-black text-slate-700 dark:text-slate-200">Subtasks</h3>
-              <button type="button" @click="toggleExpand(expandedTodo.id)" class="text-xs font-black text-slate-400 transition hover:text-slate-600">Close</button>
-            </div>
-            <TodoSubtaskList :todo="expandedTodo" @toggle-subtask="toggleTodo" />
-          </div>
         </div>
 
         <div v-else-if="view === 'kanban'">
@@ -290,7 +294,6 @@ const {
   dueDate,
   tags,
   sort,
-  subtasks,
   reorder,
   expandedTodoId,
 } = useTodos(selectedUserId)
@@ -331,14 +334,48 @@ async function onListDragEnd(event: any) {
   await loadTodos()
 }
 
+// ── Native HTML5 drag for desktop table rows ──────────────────────────
+const dragId = ref<number | null>(null)
+
+function onRowDragStart(event: DragEvent, id: number) {
+  // Only initiate drag from the drag handle
+  if (!event.target || !(event.target as HTMLElement).closest('.drag-handle')) {
+    event.preventDefault()
+    return
+  }
+  dragId.value = id
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('text/plain', String(id))
+    event.dataTransfer.effectAllowed = 'move'
+  }
+}
+
+function onRowDragOver(event: DragEvent, id: number) {
+  if (dragId.value === null || dragId.value === id) return
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+}
+
+function onRowDrop(_event: DragEvent, id: number) {
+  if (dragId.value === null || dragId.value === id) {
+    dragId.value = null
+    return
+  }
+  const fromIdx = listTodos.value.findIndex(t => t.id === dragId.value)
+  const toIdx = listTodos.value.findIndex(t => t.id === id)
+  dragId.value = null
+  if (fromIdx === -1 || toIdx === -1) return
+  const moved = listTodos.value.splice(fromIdx, 1)[0]
+  listTodos.value.splice(toIdx, 0, moved)
+  reorderTodos(listTodos.value.map((t, idx) => ({ id: t.id, position: idx }))).then(loadTodos)
+}
+
+function onRowDragEnd() {
+  dragId.value = null
+}
+
 function toggleExpand(id: number) {
   expandedTodoId.value = expandedTodoId.value === id ? null : id
 }
-
-const expandedTodo = computed(() => {
-  if (!expandedTodoId.value) return null
-  return todos.value.find(t => t.id === expandedTodoId.value) || null
-})
 
 async function onKanbanReorder(items: { id: number; position: number }[]) {
   await reorderTodos(items)

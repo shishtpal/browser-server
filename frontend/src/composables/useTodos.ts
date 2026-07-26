@@ -4,7 +4,7 @@ import { useTodoPriority } from './useTodoPriority'
 import { useTodoDueDate } from './useTodoDueDate'
 import { useTodoTags } from './useTodoTags'
 import { useTodoSort } from './useTodoSort'
-import { useTodoSubtasks } from './useTodoSubtasks'
+
 import { useTodoReorder } from './useTodoReorder'
 import { isOverdue, isDueToday, isDueThisWeek } from './useTodoDueDate'
 import type { Todo } from '../types'
@@ -73,7 +73,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const displayedTodos = sort.sorted
 
   const expandedTodoId = ref<number | null>(null)
-  const subtasks = useTodoSubtasks(expandedTodoId, selectedUserId)
 
   const loadTodos = async () => {
     if (!selectedUserId.value) return
@@ -188,7 +187,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     dueDate,
     tags,
     sort,
-    subtasks,
     reorder,
     expandedTodoId,
   }

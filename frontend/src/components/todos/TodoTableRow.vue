@@ -62,10 +62,12 @@
       <button
         type="button"
         @click="$emit('toggle-expand', todo.id)"
-        class="text-[10px] font-black text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
+        class="flex items-center gap-1.5 text-[10px] font-black text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
       >
-        {{ (todo.subtasks?.length || 0) }} subtask{{ (todo.subtasks?.length || 0) !== 1 ? 's' : '' }}
+        <svg class="h-3 w-3 shrink-0 transition-transform" :class="expanded ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+        <span>{{ subtaskCount }} subtask{{ subtaskCount !== 1 ? 's' : '' }}</span>
       </button>
+      <TodoSubtaskProgress v-if="subtaskCount > 0" :done="subtaskDoneCount" :total="subtaskCount" />
     </td>
     <td class="px-3 py-3 text-right">
       <div class="flex justify-end gap-1">
@@ -87,6 +89,7 @@ import type { Todo } from '../../types'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'
+import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
 
 interface Props {
   todo: Todo
@@ -104,7 +107,11 @@ const emit = defineEmits<{
   delete: [id: number]
   viewScreenshot: [todo: Todo]
   'toggle-expand': [id: number]
+  'toggle-subtask': [todo: Todo]
 }>()
 
 const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')
+
+const subtaskCount = computed(() => (props.todo.subtasks || []).length)
+const subtaskDoneCount = computed(() => (props.todo.subtasks || []).filter(s => s.status === 'completed').length)
 </script>

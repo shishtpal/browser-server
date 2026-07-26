@@ -15,6 +15,56 @@ export function useMemoryExplorer(
   const saving = ref(false)
   const errorMsg = ref('')
 
+  // ─── Multi-select state ────────────────────────────────
+  const selectedIds = ref<Set<string>>(new Set())
+  const confirmBulkDelete = ref(false)
+
+  const selectedCount = computed(() => selectedIds.value.size)
+  const allSelected = computed(() => messages.value.length > 0 && selectedIds.value.size === messages.value.length)
+
+  function toggleSelect(id: string) {
+    const next = new Set(selectedIds.value)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    selectedIds.value = next
+  }
+
+  function toggleSelectAll() {
+    if (allSelected.value) {
+      selectedIds.value = new Set()
+    } else {
+      selectedIds.value = new Set(messages.value.map((m) => m.id))
+    }
+  }
+
+  function clearSelection() {
+    selectedIds.value = new Set()
+    confirmBulkDelete.value = false
+  }
+
+  async function doBulkDelete() {
+    if (!conversationId.value || selectedIds.value.size === 0) return
+    saving.value = true
+    errorMsg.value = ''
+    const ids = [...selectedIds.value]
+    try {
+      for (const id of ids) {
+        await deleteAIMessage(conversationId.value, id)
+      }
+      const newMessages = messages.value.filter((m) => !selectedIds.value.has(m.id))
+      onUpdated(newMessages)
+      selectedIds.value = new Set()
+      confirmBulkDelete.value = false
+    } catch (err) {
+      errorMsg.value = err instanceof Error ? err.message : 'Failed to delete selected messages'
+    } finally {
+      saving.value = false
+    }
+  }
+
   const toolMessageCount = computed(() => messages.value.filter((m) => m.role === 'tool').length)
 
   // When the modal opens, re-fetch messages from the backend so we always
@@ -26,6 +76,8 @@ export function useMemoryExplorer(
       editingId.value = null
       deleteTargetId.value = null
       confirmRemoveAllTools.value = false
+      selectedIds.value = new Set()
+      confirmBulkDelete.value = false
       try {
         const detail = await getAIConversation(conversationId.value)
         if (detail.messages) {
@@ -121,6 +173,15 @@ export function useMemoryExplorer(
     saving,
     errorMsg,
     toolMessageCount,
+    // Multi-select
+    selectedIds,
+    selectedCount,
+    allSelected,
+    confirmBulkDelete,
+    toggleSelect,
+    toggleSelectAll,
+    clearSelection,
+    doBulkDelete,
     // Edit
     startEdit,
     cancelEdit,

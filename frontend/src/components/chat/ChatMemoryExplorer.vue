@@ -1,23 +1,63 @@
 <template>
   <Modal :open="open" title="Memory Explorer" description="View, edit, or remove messages from this conversation's memory." fullscreen @close="$emit('close')">
     <div class="flex h-full flex-col overflow-hidden">
-      <!-- Toolbar: bulk remove tool calls -->
-      <div v-if="toolMessageCount > 0" class="mb-3 flex shrink-0 items-center gap-3">
-        <button
-          v-if="!confirmRemoveAllTools"
-          class="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
-          type="button"
-          :disabled="saving"
-          @click="confirmRemoveAllTools = true"
-        >
-          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          Remove all tool calls ({{ toolMessageCount }})
-        </button>
-        <div v-else class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 dark:border-red-900/40 dark:bg-red-950/20">
-          <span class="text-xs text-red-700 dark:text-red-300">Remove all {{ toolMessageCount }} tool messages?</span>
-          <Button variant="danger" size="sm" :loading="saving" loading-text="…" @click="doRemoveAllTools">Confirm</Button>
-          <Button variant="ghost" size="sm" @click="confirmRemoveAllTools = false">Cancel</Button>
-        </div>
+      <!-- Toolbar -->
+      <div class="mb-3 flex shrink-0 flex-wrap items-center gap-3">
+        <!-- Select all checkbox -->
+        <label class="flex cursor-pointer items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <input
+            type="checkbox"
+            :checked="allSelected"
+            :indeterminate="selectedCount > 0 && !allSelected"
+            class="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-white/20 dark:bg-slate-800"
+            @change="toggleSelectAll"
+          />
+          <span v-if="selectedCount === 0">Select all</span>
+          <span v-else>{{ selectedCount }} selected</span>
+        </label>
+
+        <!-- Bulk delete selected -->
+        <template v-if="selectedCount > 0">
+          <button
+            v-if="!confirmBulkDelete"
+            class="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-800/50 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+            type="button"
+            :disabled="saving"
+            @click="confirmBulkDelete = true"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Remove selected ({{ selectedCount }})
+          </button>
+          <div v-else class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 dark:border-red-900/40 dark:bg-red-950/20">
+            <span class="text-xs text-red-700 dark:text-red-300">Remove {{ selectedCount }} messages?</span>
+            <Button variant="danger" size="sm" :loading="saving" loading-text="…" @click="doBulkDelete">Confirm</Button>
+            <Button variant="ghost" size="sm" @click="confirmBulkDelete = false">Cancel</Button>
+          </div>
+          <button
+            class="text-xs text-slate-400 underline hover:text-slate-600 dark:hover:text-slate-300"
+            type="button"
+            @click="clearSelection"
+          >Clear</button>
+        </template>
+
+        <!-- Bulk remove tool calls (existing) -->
+        <template v-if="toolMessageCount > 0 && selectedCount === 0">
+          <button
+            v-if="!confirmRemoveAllTools"
+            class="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
+            type="button"
+            :disabled="saving"
+            @click="confirmRemoveAllTools = true"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Remove all tool calls ({{ toolMessageCount }})
+          </button>
+          <div v-else class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 dark:border-red-900/40 dark:bg-red-950/20">
+            <span class="text-xs text-red-700 dark:text-red-300">Remove all {{ toolMessageCount }} tool messages?</span>
+            <Button variant="danger" size="sm" :loading="saving" loading-text="…" @click="doRemoveAllTools">Confirm</Button>
+            <Button variant="ghost" size="sm" @click="confirmRemoveAllTools = false">Cancel</Button>
+          </div>
+        </template>
       </div>
 
       <!-- Message list -->
@@ -38,6 +78,7 @@
           :edit-content="editContent"
           :is-delete-target="deleteTargetId === msg.id"
           :saving="saving"
+          :selected="selectedIds.has(msg.id)"
           @edit="startEdit(msg)"
           @edit-input="editContent = $event"
           @save="saveEdit(msg)"
@@ -45,6 +86,7 @@
           @confirm-delete="confirmDeleteMessage(msg)"
           @delete="doDelete(msg)"
           @cancel-delete="cancelDelete"
+          @toggle-select="toggleSelect(msg.id)"
         />
       </div>
 
@@ -83,6 +125,14 @@ const {
   saving,
   errorMsg,
   toolMessageCount,
+  selectedIds,
+  selectedCount,
+  allSelected,
+  confirmBulkDelete,
+  toggleSelect,
+  toggleSelectAll,
+  clearSelection,
+  doBulkDelete,
   startEdit,
   cancelEdit,
   saveEdit,

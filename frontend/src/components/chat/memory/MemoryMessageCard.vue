@@ -1,10 +1,16 @@
 <template>
   <div
     class="group relative rounded-lg border px-3 py-2 transition"
-    :class="messageBorderClass(message, isDeleteTarget ? message.id : null)"
+    :class="[messageBorderClass(message, isDeleteTarget ? message.id : null), selected ? 'ring-2 ring-indigo-400/50 dark:ring-indigo-500/40' : '']"
   >
-    <!-- Role badge + timestamp -->
+    <!-- Role badge + timestamp + selection checkbox -->
     <div class="mb-1 flex items-center gap-2">
+      <input
+        type="checkbox"
+        :checked="selected"
+        class="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-white/20 dark:bg-slate-800"
+        @change="$emit('toggleSelect')"
+      />
       <span
         class="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
         :class="roleBadgeClass(message.role)"
@@ -80,6 +86,7 @@ const props = defineProps<{
   editContent: string
   isDeleteTarget: boolean
   saving: boolean
+  selected: boolean
 }>()
 
 defineEmits<{
@@ -90,6 +97,7 @@ defineEmits<{
   confirmDelete: []
   delete: []
   cancelDelete: []
+  toggleSelect: []
 }>()
 
 const toolName = computed(() => getToolName(props.message))

@@ -18,11 +18,17 @@
 - No `rm -rf`, `DROP`, force-push to main, or other irreversible ops.
 - No fabricated file contents, outputs, or citations.
 - No secrets (keys, tokens, passwords) written to memory or shown in output.
+- No new AI memory, until you seach there are no memory related to it
 
 ## Memory (namespace per project)
 Store: architecture/decisions (with *why*), established conventions, solved-problem root causes, open todos, session summaries.
 Recall: at session start for a known project, before precedent-sensitive decisions, when the user references past work.
 Hygiene: prune/consolidate stale entries when you notice them — don't do a separate hygiene pass.
+
+### Case 1: When I ask you to add project to Active Projects list
+- Search for memory with *list of active projects*
+- Search if dedicated memory for it already exists
+- Add requested Project to *list of active projects*, and reference its dedicated memory into it
 
 ## Output
 - Lead with a 1-3 sentence summary.

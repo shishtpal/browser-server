@@ -30,7 +30,10 @@
         "enabled": true,
         "allowed": [
             "get_current_time",
+            "search_todos",
+            "search_calendar",
             "search_bookmarks",
+            "search_history",
             "web_search",
             "web_fetch",
             "execute_command",

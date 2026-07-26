@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TodoPriority } from '@browser-server/shared-client'
 import { computed, ref, watch } from 'vue'
 import { createApiClient, useExtensionSettings, useTodosView, useUserId } from '../composables/composables'
 import type { PanelStatus } from './types'
@@ -7,10 +8,16 @@ const emit = defineEmits<{ (event: 'status', status: PanelStatus): void }>()
 
 const title = ref('')
 const description = ref('')
+const priority = ref<TodoPriority>('medium')
+const dueDate = ref('')
+const tags = ref('')
 const filter = ref<'all' | 'active' | 'completed'>('all')
 const editingId = ref<number | null>(null)
 const editTitle = ref('')
 const editDescription = ref('')
+const editPriority = ref<TodoPriority>('medium')
+const editDueDate = ref('')
+const editTags = ref('')
 const screenshot = ref<{ url: string; title: string } | null>(null)
 const { settings } = useExtensionSettings()
 const userId = useUserId(computed(() => settings.value))
@@ -31,6 +38,7 @@ const {
   add,
   update,
   toggle,
+  togglePin,
   remove,
   clearAll,
 } = useTodosView(client, userId, autoCapture)
@@ -42,10 +50,21 @@ defineExpose({
 const isReady = computed(() => Boolean(client.value) && userId.value > 0)
 const showSkeleton = computed(() => isLoading.value && items.value.length === 0)
 const visibleItems = computed(() => items.value.filter((todo) => {
-  if (filter.value === 'active') return !todo.completed
-  if (filter.value === 'completed') return todo.completed
+  if (filter.value === 'active') return todo.status === 'pending'
+  if (filter.value === 'completed') return todo.status === 'completed'
   return true
 }))
+
+const priorityClasses: Record<TodoPriority, string> = {
+  low: 'bg-emerald-500/15 text-emerald-300',
+  medium: 'bg-amber-500/15 text-amber-300',
+  high: 'bg-orange-500/15 text-orange-300',
+  urgent: 'bg-rose-500/15 text-rose-300',
+}
+
+function parseTags(value: string): string[] {
+  return [...new Set(value.split(',').map((tag) => tag.trim()).filter(Boolean))]
+}
 
 watch(
   [isReady, isLoading, errorMessage, total, completed],
@@ -69,9 +88,12 @@ watch(
 
 async function submit() {
   if (!title.value.trim()) return
-  if (await add(title.value, description.value)) {
+  if (await add(title.value, description.value, priority.value, dueDate.value, parseTags(tags.value))) {
     title.value = ''
     description.value = ''
+    priority.value = 'medium'
+    dueDate.value = ''
+    tags.value = ''
   }
 }
 
@@ -79,11 +101,20 @@ function startEdit(todo: (typeof items.value)[number]) {
   editingId.value = todo.id
   editTitle.value = todo.title
   editDescription.value = todo.description
+  editPriority.value = todo.priority
+  editDueDate.value = todo.startDate?.slice(0, 10) ?? ''
+  editTags.value = todo.tags.join(', ')
 }
 
 async function saveEdit(id: number) {
   if (!editTitle.value.trim()) return
-  if (await update(id, { title: editTitle.value, description: editDescription.value })) {
+  if (await update(id, {
+    title: editTitle.value,
+    description: editDescription.value,
+    priority: editPriority.value,
+    start_date: editDueDate.value || null,
+    tags: parseTags(editTags.value),
+  })) {
     editingId.value = null
   }
 }
@@ -122,6 +153,16 @@ function confirmClearAll() {
           placeholder="Details (optional)"
           class="w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-rose-400 focus:ring-2 focus:ring-rose-500/20"
         />
+        <div class="grid grid-cols-2 gap-2">
+          <select v-model="priority" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-rose-400">
+            <option value="low">Low priority</option>
+            <option value="medium">Medium priority</option>
+            <option value="high">High priority</option>
+            <option value="urgent">Urgent</option>
+          </select>
+          <input v-model="dueDate" type="date" title="Due date" class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-rose-400" />
+        </div>
+        <input v-model="tags" type="text" placeholder="Tags, comma separated" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-rose-400" />
       </form>
 
       <div v-if="screenshotPreview" class="mt-2 flex items-center gap-2 rounded-lg bg-slate-800/50 p-2">
@@ -213,7 +254,7 @@ function confirmClearAll() {
           <input
             type="checkbox"
             class="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-rose-500"
-            :checked="todo.completed"
+            :checked="todo.status === 'completed'"
             @change="toggle(todo.id, ($event.target as HTMLInputElement).checked)"
           />
           <button
@@ -229,17 +270,46 @@ function confirmClearAll() {
             <form v-if="editingId === todo.id" class="space-y-1.5" @submit.prevent="saveEdit(todo.id)">
               <input v-model="editTitle" class="w-full rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none focus:border-rose-400" />
               <textarea v-model="editDescription" rows="2" placeholder="Details (optional)" class="w-full resize-none rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none focus:border-rose-400" />
+              <div class="grid grid-cols-2 gap-1">
+                <select v-model="editPriority" class="rounded border border-slate-600 bg-slate-950 px-1.5 py-1 text-[10px] text-slate-200 outline-none focus:border-rose-400">
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+                <input v-model="editDueDate" type="date" class="rounded border border-slate-600 bg-slate-950 px-1.5 py-1 text-[10px] text-slate-200 outline-none focus:border-rose-400" />
+              </div>
+              <input v-model="editTags" placeholder="Tags, comma separated" class="w-full rounded border border-slate-600 bg-slate-950 px-2 py-1 text-[10px] text-slate-100 outline-none focus:border-rose-400" />
               <div class="flex gap-1">
                 <button type="submit" :disabled="!editTitle.trim()" class="rounded bg-rose-500 px-2 py-1 text-[10px] font-medium text-white disabled:opacity-40">Save</button>
                 <button type="button" class="rounded px-2 py-1 text-[10px] text-slate-400 hover:bg-slate-700" @click="editingId = null">Cancel</button>
               </div>
             </form>
             <template v-else>
-              <p class="break-words text-sm font-medium" :class="todo.completed ? 'text-slate-500 line-through' : 'text-slate-100'">{{ todo.title }}</p>
+              <div class="flex items-start gap-1.5">
+                <span v-if="todo.pinned" class="mt-0.5 text-[11px] text-indigo-300" title="Pinned">◆</span>
+                <p class="min-w-0 break-words text-sm font-medium" :class="todo.status === 'completed' ? 'text-slate-500 line-through' : 'text-slate-100'">{{ todo.title }}</p>
+              </div>
               <p v-if="todo.description" class="mt-0.5 whitespace-pre-wrap break-words text-xs leading-4 text-slate-400">{{ todo.description }}</p>
+              <div class="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                <span class="rounded px-1.5 py-0.5 capitalize" :class="priorityClasses[todo.priority]">{{ todo.priority }}</span>
+                <span v-if="todo.dueDateLabel" class="rounded bg-slate-700 px-1.5 py-0.5" :class="todo.dueDateLabel === 'Overdue' && todo.status === 'pending' ? 'text-rose-300' : 'text-slate-300'">{{ todo.dueDateLabel }}</span>
+                <span v-if="todo.subtaskTotal" class="rounded bg-cyan-500/10 px-1.5 py-0.5 text-cyan-300">{{ todo.subtaskCompleted }}/{{ todo.subtaskTotal }} subtasks</span>
+                <span v-for="tag in todo.tags" :key="tag" class="rounded bg-slate-800 px-1.5 py-0.5 text-slate-400">#{{ tag }}</span>
+              </div>
               <p class="mt-1 text-[10px] text-slate-500" :title="`Created ${todo.createdAtLabel}`">Updated {{ todo.updatedAtLabel }} · {{ todo.domain }}</p>
             </template>
           </div>
+          <button
+            v-if="editingId !== todo.id"
+            type="button"
+            :title="todo.pinned ? 'Unpin' : 'Pin'"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded opacity-0 transition hover:bg-indigo-500/15 group-hover:opacity-100"
+            :class="todo.pinned ? 'text-indigo-300 opacity-100' : 'text-slate-500 hover:text-indigo-300'"
+            @click="togglePin(todo.id)"
+          >
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m14 4 6 6-3 1-4 4-1 5-3-3-4 4-2-2 4-4-3-3 5-1 4-4 1-3Z"/></svg>
+          </button>
           <button
             v-if="editingId !== todo.id"
             type="button"

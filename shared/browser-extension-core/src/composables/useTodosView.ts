@@ -1,4 +1,4 @@
-import type { BrowserServerClient, Todo } from '@browser-server/shared-client'
+import type { BrowserServerClient, Todo, TodoPriority, UpdateTodoInput } from '@browser-server/shared-client'
 import { ref, watch, type Ref } from 'vue'
 import { captureVisibleTab, dataUrlToBlob, getActiveTabDomain } from '../lib/browser'
 import { timeAgo } from '@browser-server/shared-utils'
@@ -7,7 +7,14 @@ export interface TodoView {
   id: number
   title: string
   description: string
-  completed: boolean
+  status: Todo['status']
+  priority: TodoPriority
+  pinned: boolean
+  startDate: string | null
+  dueDateLabel: string | null
+  tags: string[]
+  subtaskTotal: number
+  subtaskCompleted: number
   hasScreenshot: boolean
   screenshotUrl: string | null
   screenshotPath: string
@@ -16,18 +23,36 @@ export interface TodoView {
   domain: string
 }
 
-function sortTodos(todos: Todo[]): Todo[] {
-  return [...todos].sort(
-    (left, right) => Number(left.status === 'completed') - Number(right.status === 'completed') || Date.parse(right.updated_at) - Date.parse(left.updated_at),
-  )
+function formatDueDate(value: string | null): string | null {
+  if (!value) return null
+  const date = new Date(value.length === 10 ? `${value}T00:00:00` : value)
+  if (Number.isNaN(date.getTime())) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const due = new Date(date)
+  due.setHours(0, 0, 0, 0)
+  const dayDifference = Math.round((due.getTime() - today.getTime()) / 86_400_000)
+  if (dayDifference < 0) return 'Overdue'
+  if (dayDifference === 0) return 'Today'
+  if (dayDifference === 1) return 'Tomorrow'
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function toView(todo: Todo, client: BrowserServerClient): TodoView {
+  const subtasks = todo.subtasks ?? []
   return {
     id: todo.id,
     title: todo.title,
     description: todo.description,
-    completed: todo.status === 'completed',
+    status: todo.status,
+    priority: todo.priority,
+    pinned: todo.pinned,
+    startDate: todo.start_date,
+    dueDateLabel: formatDueDate(todo.start_date),
+    tags: todo.tags ?? [],
+    subtaskTotal: subtasks.length,
+    subtaskCompleted: subtasks.filter((subtask) => subtask.status === 'completed').length,
     hasScreenshot: Boolean(todo.screenshot_path),
     screenshotUrl: todo.screenshot_path ? client.getScreenshotUrl(todo.id) : null,
     screenshotPath: todo.screenshot_path,
@@ -78,7 +103,7 @@ export function useTodosView(
 
     isLoading.value = true
     try {
-      const todos = sortTodos(await client.value.getTodos(userId.value, currentDomain.value))
+      const todos = await client.value.getTodos(userId.value, currentDomain.value)
       items.value = todos.map((todo) => toView(todo, client.value!))
       const done = todos.filter((todo) => todo.status === 'completed').length
       total.value = todos.length
@@ -132,7 +157,7 @@ export function useTodosView(
     }
   }
 
-  async function add(title: string, description = '') {
+  async function add(title: string, description = '', priority: TodoPriority = 'medium', startDate = '', tags: string[] = []) {
     const trimmed = title.trim()
     if (!trimmed || !currentDomain.value || !client.value || !userId.value) {
       return false
@@ -144,6 +169,9 @@ export function useTodosView(
         title: trimmed,
         description: description.trim() || undefined,
         domain: currentDomain.value,
+        priority,
+        start_date: startDate || null,
+        tags,
       })
 
       if (screenshotPreview.value) {
@@ -161,7 +189,7 @@ export function useTodosView(
     }
   }
 
-  async function update(id: number, changes: { title?: string; description?: string; completed?: boolean }) {
+  async function update(id: number, changes: UpdateTodoInput) {
     if (!client.value || !userId.value) {
       return false
     }
@@ -175,7 +203,11 @@ export function useTodosView(
       await client.value.updateTodo(id, {
         title: changes.title?.trim() || todo.title,
         description: changes.description?.trim() ?? todo.description,
-        status: changes.completed !== undefined ? (changes.completed ? 'completed' : 'pending') : undefined,
+        status: changes.status,
+        priority: changes.priority,
+        pinned: changes.pinned,
+        start_date: changes.start_date,
+        tags: changes.tags,
       })
       actionError.value = null
       await refresh()
@@ -188,7 +220,12 @@ export function useTodosView(
   }
 
   async function toggle(id: number, completed: boolean) {
-    await update(id, { completed })
+    await update(id, { status: completed ? 'completed' : 'pending' })
+  }
+
+  async function togglePin(id: number) {
+    const todo = items.value.find((item) => item.id === id)
+    if (todo) await update(id, { pinned: !todo.pinned })
   }
 
   async function remove(id: number) {
@@ -242,6 +279,7 @@ export function useTodosView(
     add,
     update,
     toggle,
+    togglePin,
     remove,
     clearAll,
   }

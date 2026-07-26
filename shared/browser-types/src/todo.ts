@@ -63,6 +63,16 @@ export interface UpdateTodoInput {
   position?: number
 }
 
+export interface GetTodosOptions {
+  status?: TodoStatus
+  priority?: TodoPriority
+  tag?: string
+  parent_id?: number
+  archived?: boolean
+  sort?: 'position' | 'priority' | 'start_date' | 'created_at' | 'title'
+  order?: 'asc' | 'desc'
+}
+
 export interface ReorderItem {
   id: number
   position: number

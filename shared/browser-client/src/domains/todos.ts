@@ -1,4 +1,4 @@
-import type { CreateTodoInput, ReorderItem, ReorderTodosInput, Todo, UpdateTodoInput } from '@browser-server/shared-types'
+import type { CreateTodoInput, GetTodosOptions, ReorderItem, ReorderTodosInput, Todo, UpdateTodoInput } from '@browser-server/shared-types'
 import { type TokenProvider, apiFetch, buildQuery } from '../internals'
 
 export function createTodoMethods(baseUrl: string, getToken?: TokenProvider) {
@@ -8,8 +8,8 @@ export function createTodoMethods(baseUrl: string, getToken?: TokenProvider) {
   }
 
   return {
-    getTodos(userId?: number, domain?: string, options?: { priority?: string; tag?: string; parent_id?: number; archived?: boolean; sort?: string; order?: string }): Promise<Todo[]> {
-      const qs = queryBuilder({ user_id: userId, domain, priority: options?.priority, tag: options?.tag, parent_id: options?.parent_id, archived: options?.archived === undefined ? undefined : String(options.archived), sort: options?.sort, order: options?.order })
+    getTodos(userId?: number, domain?: string, options?: GetTodosOptions): Promise<Todo[]> {
+      const qs = queryBuilder({ user_id: userId, domain, status: options?.status, priority: options?.priority, tag: options?.tag, parent_id: options?.parent_id, archived: options?.archived === undefined ? undefined : String(options.archived), sort: options?.sort, order: options?.order })
       return apiFetch<Todo[]>(baseUrl, 'GET', `/api/todos${qs}`, undefined, getToken)
     },
 

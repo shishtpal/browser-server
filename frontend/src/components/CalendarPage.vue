@@ -62,6 +62,7 @@
           :todos="todos"
           @month-click="onMonthClick"
           @day-click="onYearDayClick"
+          @year-change="onYearChange"
         />
       </div>
     </div>
@@ -201,5 +202,9 @@ function onMonthClick(month: number) {
 function onYearDayClick(date: string) {
   currentDate.value = new Date(date + 'T00:00:00')
   view.value = 'day'
+}
+
+function onYearChange(year: number) {
+  currentDate.value = new Date(year, currentDate.value.getMonth(), 1)
 }
 </script>

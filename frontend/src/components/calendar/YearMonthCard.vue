@@ -43,7 +43,13 @@
         :class="dayClasses(day)"
         @click.stop="emit('dayClick', day.date)"
       >
-        {{ day.day }}
+        <span class="leading-none">{{ day.day }}</span>
+        <span
+          v-if="day.count > 0"
+          class="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 flex h-3 min-w-3 items-center justify-center rounded-full bg-indigo-600 px-0.5 text-[7px] font-bold leading-none text-white shadow-sm ring-1 ring-white/80 dark:bg-indigo-500 dark:ring-slate-900/80"
+        >
+          {{ day.count }}
+        </span>
       </div>
     </div>
   </div>
@@ -164,7 +170,7 @@ const countClass = computed(() => {
 })
 
 function dayClasses(day: { isToday: boolean; count: number; isWeekend: boolean; isCurrentMonth: boolean }) {
-  const base = 'aspect-square rounded-md flex items-center justify-center text-[10px] font-medium transition-colors cursor-pointer'
+  const base = 'relative aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-colors cursor-pointer'
   
   if (!day.isCurrentMonth) {
     return `${base} text-slate-300 dark:text-slate-700`

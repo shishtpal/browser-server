@@ -93,3 +93,29 @@ func URLHostname(value string) string {
 	}
 	return strings.ToLower(u.Hostname())
 }
+
+// IsSelfOrigin reports whether rawURL points back to this server itself.
+// The server listens on all interfaces, so localhost, 127.0.0.1, and ::1
+// on the configured port are all considered self-origin.
+func IsSelfOrigin(rawURL, port string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return false
+	}
+	hostPort := u.Port()
+	if hostPort == "" {
+		if u.Scheme == "http" {
+			hostPort = "80"
+		} else {
+			hostPort = "443"
+		}
+	}
+	if hostPort != port {
+		return false
+	}
+	switch strings.ToLower(u.Hostname()) {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	return false
+}

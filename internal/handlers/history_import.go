@@ -138,6 +138,12 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		// Don't import browsing history for the server's own web UI.
+		if helpers.IsSelfOrigin(url, ServerPort) {
+			skipped++
+			continue
+		}
+
 		visitedAt := chromeTimestampToTime(visitTime)
 		// Skip entries with obviously wrong timestamps (before year 2000)
 		if visitedAt.Year() < 2000 {

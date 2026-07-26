@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-var StartedAt time.Time
+var (
+	StartedAt  time.Time
+	ServerPort string // port the HTTP server listens on, set from main.go
+)
 
 type healthResponse struct {
 	Status string  `json:"status"`

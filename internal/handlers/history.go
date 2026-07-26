@@ -238,6 +238,12 @@ func CreateHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Don't record browsing history for the server's own web UI.
+	if helpers.IsSelfOrigin(entry.URL, ServerPort) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	if entry.VisitedAt.IsZero() {
 		entry.VisitedAt = time.Now()
 	}

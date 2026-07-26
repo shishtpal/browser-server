@@ -66,6 +66,7 @@ func main() {
 	r.Use(middleware.CORS(aiModule.CORSEnabled()))
 
 	handlers.StartedAt = time.Now()
+	handlers.ServerPort = port
 	// /health stays public for Docker/CI checks.
 	r.HandleFunc("/health", handlers.Health).Methods("GET")
 

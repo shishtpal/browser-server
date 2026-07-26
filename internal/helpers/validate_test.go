@@ -87,3 +87,37 @@ func TestValidatorFirstErrorWins(t *testing.T) {
 		t.Errorf("expected first error to be preserved, got %q", got)
 	}
 }
+
+func TestIsSelfOrigin(t *testing.T) {
+	cases := []struct {
+		url  string
+		port string
+		want bool
+	}{
+		{"http://localhost:9191/", "9191", true},
+		{"http://localhost:9191/todos", "9191", true},
+		{"http://127.0.0.1:9191/history", "9191", true},
+		{"http://[::1]:9191/dashboard", "9191", true},
+		{"https://localhost:9191/secure", "9191", true},
+
+		// Different port — not self
+		{"http://localhost:8080/", "9191", false},
+		{"http://127.0.0.1:3000/page", "9191", false},
+
+		// Different host, same port — not self
+		{"http://example.com:9191/", "9191", false},
+
+		// Default port (80) matches when server port is 80
+		{"http://localhost/", "80", true},
+		{"http://localhost/page", "80", true},
+
+		// Non-http(s) — not self
+		{"chrome://history", "9191", false},
+		{"not a url", "9191", false},
+	}
+	for _, c := range cases {
+		if got := IsSelfOrigin(c.url, c.port); got != c.want {
+			t.Errorf("IsSelfOrigin(%q, %q) = %v, want %v", c.url, c.port, got, c.want)
+		}
+	}
+}

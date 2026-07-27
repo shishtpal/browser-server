@@ -371,3 +371,25 @@ export function updateAIMessage(conversationId: string, messageId: string, data:
 export function deleteAIMessage(conversationId: string, messageId: string): Promise<void> {
   return client.deleteAIMessage(conversationId, messageId)
 }
+
+// ─── AI Chat Archiving ──────────────────────────────────────────────────────
+
+export function archiveAIConversation(id: string): Promise<void> {
+  return fetch(`${API_BASE}/api/ai/conversations/${id}/archive`, { method: 'POST', headers: authHeaders() }).then((res) => {
+    if (!res.ok) throw new Error('Failed to archive conversation')
+  })
+}
+
+export function restoreAIConversation(id: string): Promise<void> {
+  return fetch(`${API_BASE}/api/ai/conversations/${id}/restore`, { method: 'POST', headers: authHeaders() }).then((res) => {
+    if (!res.ok) throw new Error('Failed to restore conversation')
+  })
+}
+
+export function listArchivedAIConversations(): Promise<AIConversation[]> {
+  return fetch(`${API_BASE}/api/ai/conversations/archived`, { headers: authHeaders() }).then((res) => {
+    if (!res.ok) throw new Error('Failed to load archived conversations')
+    return res.json() as Promise<AIConversation[]>
+  })
+}
+

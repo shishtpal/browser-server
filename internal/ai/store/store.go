@@ -30,6 +30,7 @@ type Conversation struct {
 	Preview   string    `json:"preview,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Archived  bool      `json:"archived"`
 }
 
 type Message struct {
@@ -173,6 +174,9 @@ func (s *Store) migrate() error {
 		{3, []string{
 			`ALTER TABLE conversations ADD COLUMN skills TEXT NOT NULL DEFAULT '[]'`,
 		}},
+		{4, []string{
+			`ALTER TABLE conversations ADD COLUMN archived BOOLEAN DEFAULT FALSE`,
+		}},
 	}
 	var currentVersion int
 	s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&currentVersion)
@@ -228,23 +232,36 @@ func (s *Store) ListConversations(ctx context.Context, query string, limit int) 
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
+	includeArchived, _ := ctx.Value("include_archived").(bool)
 	var rows *sql.Rows
 	var err error
 	if strings.TrimSpace(query) != "" {
 		pattern := "%" + strings.TrimSpace(query) + "%"
-		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.created_at, c.updated_at,
-			COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
-			FROM conversations c WHERE c.title LIKE ? ORDER BY c.updated_at DESC LIMIT ?`, pattern, limit)
+		if includeArchived {
+			rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.archived, c.created_at, c.updated_at,
+				COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
+				FROM conversations c WHERE c.title LIKE ? ORDER BY c.updated_at DESC LIMIT ?`, pattern, limit)
+		} else {
+			rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.archived, c.created_at, c.updated_at,
+				COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
+				FROM conversations c WHERE c.title LIKE ? AND c.archived = FALSE ORDER BY c.updated_at DESC LIMIT ?`, pattern, limit)
+		}
 	} else {
-		rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.created_at, c.updated_at,
-			COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
-			FROM conversations c ORDER BY c.updated_at DESC LIMIT ?`, limit)
+		if includeArchived {
+			rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.archived, c.created_at, c.updated_at,
+				COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
+				FROM conversations c ORDER BY c.updated_at DESC LIMIT ?`, limit)
+		} else {
+			rows, err = s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.archived, c.created_at, c.updated_at,
+				COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
+				FROM conversations c WHERE c.archived = FALSE ORDER BY c.updated_at DESC LIMIT ?`, limit)
+		}
 	}
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var conversations []Conversation
+	conversations := make([]Conversation, 0)
 	for rows.Next() {
 		item, err := scanConversation(rows)
 		if err != nil {
@@ -256,7 +273,7 @@ func (s *Store) ListConversations(ctx context.Context, query string, limit int) 
 }
 
 func (s *Store) GetConversation(ctx context.Context, id string) (Conversation, []Message, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, title, provider, model, profile, skills, created_at, updated_at, '' FROM conversations WHERE id = ?`, id)
+	row := s.db.QueryRowContext(ctx, `SELECT id, title, provider, model, profile, skills, archived, created_at, updated_at, '' FROM conversations WHERE id = ?`, id)
 	conversation, err := scanConversation(row)
 	if err != nil {
 		return Conversation{}, nil, err
@@ -294,6 +311,60 @@ func (s *Store) UpdateConversationSkills(ctx context.Context, id string, skills 
 	_, err := s.db.ExecContext(ctx, `UPDATE conversations SET skills = ?, updated_at = ? WHERE id = ?`,
 		string(data), formatTime(time.Now().UTC()), id)
 	return err
+}
+
+func (s *Store) ArchiveConversation(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE conversations SET archived = TRUE, updated_at = ? WHERE id = ?`,
+		formatTime(time.Now().UTC()), id)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (s *Store) RestoreConversation(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE conversations SET archived = FALSE, updated_at = ? WHERE id = ?`,
+		formatTime(time.Now().UTC()), id)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (s *Store) ListArchivedConversations(ctx context.Context, limit int) ([]Conversation, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT c.id, c.title, c.provider, c.model, c.profile, c.skills, c.archived, c.created_at, c.updated_at,
+		COALESCE((SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1), '') AS preview
+		FROM conversations c WHERE c.archived = TRUE ORDER BY c.updated_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	conversations := make([]Conversation, 0)
+	for rows.Next() {
+		item, err := scanConversation(rows)
+		if err != nil {
+			return nil, err
+		}
+		conversations = append(conversations, item)
+	}
+	return conversations, rows.Err()
 }
 
 func (s *Store) DeleteConversation(ctx context.Context, id string) error {
@@ -529,7 +600,7 @@ type conversationScanner interface {
 func scanConversation(row conversationScanner) (Conversation, error) {
 	var item Conversation
 	var created, updated, skillsJSON string
-	if err := row.Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &item.Profile, &skillsJSON, &created, &updated, &item.Preview); err != nil {
+	if err := row.Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &item.Profile, &skillsJSON, &item.Archived, &created, &updated, &item.Preview); err != nil {
 		return Conversation{}, err
 	}
 	item.CreatedAt = parseTime(created)

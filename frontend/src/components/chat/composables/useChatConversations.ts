@@ -1,10 +1,13 @@
 import type { AIConversation, AIMessage } from '@browser-server/shared-types'
 import { computed, ref } from 'vue'
 import {
+  archiveAIConversation,
   createAIConversation,
   deleteAIConversation,
   getAIConversation,
   listAIConversations,
+  listArchivedAIConversations,
+  restoreAIConversation,
   updateAIConversation,
 } from '../../../lib/api'
 
@@ -23,6 +26,18 @@ export function useChatConversations() {
   // Delete state
   const showDeleteModal = ref(false)
   const deleteTarget = ref<AIConversation | null>(null)
+
+  // Archive state
+  const showArchiveModal = ref(false)
+  const archiveTarget = ref<AIConversation | null>(null)
+
+  // Restore state
+  const showRestoreModal = ref(false)
+  const restoreTarget = ref<AIConversation | null>(null)
+
+  // Archived conversations
+  const archivedConversations = ref<AIConversation[]>([])
+  const showArchived = ref(false)
 
   const filteredConversations = computed(() => {
     const query = search.value.trim().toLowerCase()
@@ -101,6 +116,51 @@ export function useChatConversations() {
     }
   }
 
+  // Archive
+  function confirmArchive(conversation: AIConversation) {
+    archiveTarget.value = conversation
+    showArchiveModal.value = true
+  }
+
+  async function doArchive() {
+    if (!archiveTarget.value) return
+    const id = archiveTarget.value.id
+    await archiveAIConversation(id)
+    conversations.value = conversations.value.filter((c) => c.id !== id)
+    if (activeConversation.value?.id === id) {
+      activeConversation.value = null
+      messages.value = []
+    }
+    showArchiveModal.value = false
+    archiveTarget.value = null
+  }
+
+  // Restore
+  function confirmRestore(conversation: AIConversation) {
+    restoreTarget.value = conversation
+    showRestoreModal.value = true
+  }
+
+  async function doRestore() {
+    if (!restoreTarget.value) return
+    const id = restoreTarget.value.id
+    await restoreAIConversation(id)
+    archivedConversations.value = archivedConversations.value.filter((c) => c.id !== id)
+    showRestoreModal.value = false
+    restoreTarget.value = null
+  }
+
+  async function loadArchivedConversations() {
+    archivedConversations.value = await listArchivedAIConversations()
+  }
+
+  function toggleArchived() {
+    showArchived.value = !showArchived.value
+    if (showArchived.value) {
+      loadArchivedConversations()
+    }
+  }
+
   return {
     conversations,
     activeConversation,
@@ -119,6 +179,21 @@ export function useChatConversations() {
     deleteTarget,
     confirmDelete,
     doDelete,
+    // Archive
+    showArchiveModal,
+    archiveTarget,
+    confirmArchive,
+    doArchive,
+    // Restore
+    showRestoreModal,
+    restoreTarget,
+    confirmRestore,
+    doRestore,
+    // Archived
+    archivedConversations,
+    showArchived,
+    toggleArchived,
+    loadArchivedConversations,
     // Actions
     loadConversations,
     createConversation,

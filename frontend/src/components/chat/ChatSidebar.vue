@@ -26,6 +26,7 @@
       />
     </div>
 
+    <!-- Main conversations -->
     <div class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
       <div v-if="conversations.length === 0" class="px-2 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
         {{ search ? 'No matching conversations' : 'No conversations yet' }}
@@ -47,31 +48,38 @@
           v-if="conversation.profile"
           class="mt-1 inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
         >{{ conversation.profile }}</span>
-        <div class="absolute right-2 top-2 hidden gap-1 group-hover:flex">
+        <div class="absolute right-2 top-2">
           <button
             class="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
-            title="Rename"
+            aria-label="Conversation actions"
             type="button"
-            @click.stop="$emit('rename', conversation)"
+            @click.stop="toggleMenu(conversation.id)"
           >
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 4a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
           </button>
-          <button
-            class="rounded p-1 text-slate-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-            title="Delete"
-            type="button"
-            @click.stop="$emit('delete', conversation)"
-          >
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          </button>
+          <div v-if="openMenuId === conversation.id" class="absolute right-0 top-8 z-20 w-32 rounded-lg border border-slate-200 bg-white p-1 text-sm shadow-lg dark:border-white/10 dark:bg-slate-900">
+            <button class="block w-full rounded px-2 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-white/10" type="button" @click.stop="chooseAction('rename', conversation)">Edit</button>
+            <button class="block w-full rounded px-2 py-1.5 text-left text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20" type="button" @click.stop="chooseAction('archive', conversation)">Archive</button>
+            <button class="block w-full rounded px-2 py-1.5 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" type="button" @click.stop="chooseAction('delete', conversation)">Delete</button>
+          </div>
         </div>
       </div>
     </div>
+
+    <ArchivedConversationsList
+      :items="archivedConversations"
+      :open="showArchived"
+      @select="$emit('select', $event)"
+      @restore="$emit('restore', $event)"
+      @toggle="$emit('toggle-archived')"
+    />
   </aside>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { AIConversation } from '@browser-server/shared-types'
+import ArchivedConversationsList from './ArchivedConversationsList.vue'
 
 defineProps<{
   conversations: AIConversation[]
@@ -79,15 +87,31 @@ defineProps<{
   search: string
   statusLabel: string
   disabled: boolean
+  archivedConversations: AIConversation[]
+  showArchived: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   new: []
   select: [id: string]
   rename: [conversation: AIConversation]
   delete: [conversation: AIConversation]
+  archive: [conversation: AIConversation]
+  restore: [conversation: AIConversation]
+  'toggle-archived': []
   'update:search': [value: string]
 }>()
+
+const openMenuId = ref<string | null>(null)
+
+function toggleMenu(id: string) {
+  openMenuId.value = openMenuId.value === id ? null : id
+}
+
+function chooseAction(action: 'rename' | 'archive' | 'delete', conversation: AIConversation) {
+  openMenuId.value = null
+  emit(action, conversation)
+}
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()

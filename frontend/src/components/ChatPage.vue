@@ -12,10 +12,15 @@
       :search="search"
       :status-label="configLabel"
       :disabled="!config?.enabled || isBusy"
+      :archived-conversations="archivedConversations"
+      :show-archived="showArchived"
       @new="startConversation"
       @select="handleSelectConversation"
       @rename="openRename"
       @delete="confirmDelete"
+      @archive="confirmArchive"
+      @restore="confirmRestore"
+      @toggle-archived="toggleArchived"
       @update:search="search = $event"
     />
 
@@ -112,9 +117,16 @@
       :conversations="filteredConversations"
       :active-id="activeConversation?.id ?? null"
       :disabled="!config?.enabled || isBusy"
+      :archived-conversations="archivedConversations"
+      :show-archived="showArchived"
       @close="showMobileSidebar = false"
       @new="startConversation(); showMobileSidebar = false"
       @select="handleSelectConversation($event); showMobileSidebar = false"
+      @rename="openRename"
+      @delete="confirmDelete"
+      @archive="confirmArchive"
+      @restore="confirmRestore"
+      @toggle-archived="toggleArchived"
     />
 
     <!-- Rename modal -->
@@ -131,6 +143,24 @@
           <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white dark:bg-white dark:text-slate-900" type="submit">Save</button>
         </div>
       </form>
+    </Modal>
+
+    <!-- Archive confirmation modal -->
+    <Modal :open="showArchiveModal" title="Archive conversation" @close="showArchiveModal = false">
+      <p class="text-sm text-slate-600 dark:text-slate-400">Archive "<strong>{{ archiveTarget?.title }}</strong>"? It will be moved to the Archived section.</p>
+      <div class="mt-4 flex justify-end gap-2">
+        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" type="button" @click="showArchiveModal = false">Cancel</button>
+        <button class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700" type="button" @click="handleArchive">Archive</button>
+      </div>
+    </Modal>
+
+    <!-- Restore confirmation modal -->
+    <Modal :open="showRestoreModal" title="Restore conversation" @close="showRestoreModal = false">
+      <p class="text-sm text-slate-600 dark:text-slate-400">Restore "<strong>{{ restoreTarget?.title }}</strong>"? It will reappear in the main list.</p>
+      <div class="mt-4 flex justify-end gap-2">
+        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" type="button" @click="showRestoreModal = false">Cancel</button>
+        <button class="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700" type="button" @click="handleRestore">Restore</button>
+      </div>
     </Modal>
 
     <!-- Delete confirmation modal -->
@@ -235,6 +265,22 @@ const {
   doRename,
   confirmDelete,
   doDelete,
+  // Archive
+  showArchiveModal,
+  archiveTarget,
+  confirmArchive,
+  doArchive,
+  // Restore
+  showRestoreModal,
+  restoreTarget,
+  confirmRestore,
+  doRestore,
+  // Archived
+  archivedConversations,
+  showArchived,
+  toggleArchived,
+  loadArchivedConversations,
+  // Actions
   loadConversations,
   createConversation,
   selectConversation,
@@ -266,6 +312,8 @@ const showCopyToast = ref(false)
 const showToolsPanel = ref(true)
 const showMemoryExplorer = ref(false)
 const showNewConversationModal = ref(false)
+
+// Archive/Restore local state
 const chatFontFamily = ref(localStorage.getItem('ai-chat-font-family') || 'system-ui')
 const chatFontSize = ref(Number(localStorage.getItem('ai-chat-font-size')) || 14)
 
@@ -465,6 +513,25 @@ async function handleDelete() {
   }
 }
 
+async function handleArchive() {
+  try {
+    await doArchive()
+    await loadArchivedConversations()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to archive'
+  }
+}
+
+async function handleRestore() {
+  try {
+    await doRestore()
+    await loadArchivedConversations()
+    await loadConversations()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to restore'
+  }
+}
+
 // ─── Utilities ─────────────────────────────────────────
 
 function useSuggestion(text: string) {
@@ -530,3 +597,9 @@ function filenameSafe(value: string): string {
     .slice(0, 100) || 'ai-conversation'
 }
 </script>
+
+
+
+
+
+

@@ -55,6 +55,7 @@ export interface AIConversation {
   preview?: string
   created_at: string
   updated_at: string
+  archived?: boolean
 }
 
 export type AIMessageRole = 'system' | 'user' | 'assistant' | 'tool'

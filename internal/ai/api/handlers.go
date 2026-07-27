@@ -167,6 +167,7 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/skills/{name}", m.requireAI(m.GetSkill)).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.ListConversations)).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.CreateConversation)).Methods("POST")
+	r.HandleFunc("/ai/conversations/archived", m.requireAI(m.ListArchivedConversations)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.GetConversation)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.UpdateConversation)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.DeleteConversation)).Methods("DELETE")
@@ -176,6 +177,8 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}/tool-calls/{callID}", m.requireAI(m.DecideToolCall)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/stop", m.requireAI(m.StopGeneration)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/regenerate", m.requireAI(m.Regenerate)).Methods("POST")
+	r.HandleFunc("/ai/conversations/{id}/archive", m.requireAI(m.ArchiveConversation)).Methods("POST")
+	r.HandleFunc("/ai/conversations/{id}/restore", m.requireAI(m.RestoreConversation)).Methods("POST")
 }
 
 // configResponse wraps the sanitized config with profile and skill information.
@@ -277,7 +280,9 @@ func (m *Module) GetSkill(w http.ResponseWriter, r *http.Request) {
 
 func (m *Module) ListConversations(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	conversations, err := m.store.ListConversations(r.Context(), r.URL.Query().Get("q"), limit)
+	includeArchived := strings.EqualFold(r.URL.Query().Get("include_archived"), "true")
+	ctx := context.WithValue(r.Context(), "include_archived", includeArchived)
+	conversations, err := m.store.ListConversations(ctx, r.URL.Query().Get("q"), limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "store_error", "Failed to list conversations")
 		return
@@ -415,6 +420,44 @@ func (m *Module) DeleteConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (m *Module) ArchiveConversation(w http.ResponseWriter, r *http.Request) {
+	if m.service.IsActive(mux.Vars(r)["id"]) {
+		writeError(w, http.StatusConflict, "generation_conflict", "Generation is active")
+		return
+	}
+	if err := m.store.ArchiveConversation(r.Context(), mux.Vars(r)["id"]); err != nil {
+		if store.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, "not_found", "Conversation not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "store_error", "Failed to archive conversation")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (m *Module) RestoreConversation(w http.ResponseWriter, r *http.Request) {
+	if err := m.store.RestoreConversation(r.Context(), mux.Vars(r)["id"]); err != nil {
+		if store.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, "not_found", "Conversation not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "store_error", "Failed to restore conversation")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (m *Module) ListArchivedConversations(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	conversations, err := m.store.ListArchivedConversations(r.Context(), limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "store_error", "Failed to list archived conversations")
+		return
+	}
+	writeJSON(w, http.StatusOK, conversations)
 }
 
 func (m *Module) SubmitMessage(w http.ResponseWriter, r *http.Request) {

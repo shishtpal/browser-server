@@ -64,6 +64,9 @@ importers:
       '@browser-server/shared-client':
         specifier: link:..\shared\browser-client
         version: link:../shared/browser-client
+      '@browser-server/shared-modal':
+        specifier: link:..\shared\browser-modal
+        version: link:../shared/browser-modal
       '@browser-server/shared-types':
         specifier: link:..\shared\browser-types
         version: link:../shared/browser-types
@@ -146,6 +149,16 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)
+      vue-tsc:
+        specifier: ^3.0.8
+        version: 3.3.4(typescript@6.0.3)
+
+  shared/browser-modal:
+    dependencies:
+      vue:
+        specifier: ^3.5.40
+        version: 3.5.40(typescript@6.0.3)
+    devDependencies:
       vue-tsc:
         specifier: ^3.0.8
         version: 3.3.4(typescript@6.0.3)

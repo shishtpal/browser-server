@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "timezone": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

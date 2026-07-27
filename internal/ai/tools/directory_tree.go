@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,12 +10,15 @@ import (
 	"strings"
 )
 
+//go:embed schemas/directory_tree.json
+var directoryTreeSchema []byte
+
 func registerDirectoryTree(r *Registry) {
 	r.add(Tool{
 		Name:        "directory_tree",
 		Category:    "File Operations",
 		Description: "Generate a tree-style directory listing showing the hierarchical structure of files and folders. Ignores .git and node_modules by default.",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Directory path to generate tree for; defaults to the server working directory"},"max_depth":{"type":"integer","description":"Maximum depth to recurse (1-20, default 5)","minimum":1,"maximum":20},"ignore_patterns":{"type":"array","items":{"type":"string"},"description":"Additional file/directory patterns to ignore (supports glob patterns like *.log). .git and node_modules are always ignored."}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(directoryTreeSchema),
 		Execute:     directoryTree,
 	})
 }

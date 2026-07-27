@@ -2,17 +2,21 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"time"
 )
+
+//go:embed schemas/get_current_time.json
+var getCurrentTimeSchema []byte
 
 func registerGetCurrentTime(r *Registry) {
 	r.add(Tool{
 		Name:        "get_current_time",
 		Category:    "General",
 		Description: "Get the current server time",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"timezone":{"type":"string"}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(getCurrentTimeSchema),
 		Execute:     currentTime,
 	})
 }

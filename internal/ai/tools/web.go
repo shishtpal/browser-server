@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -11,6 +12,12 @@ import (
 	"browser-server/internal/ai/config"
 	"browser-server/internal/search"
 )
+
+//go:embed schemas/web_search.json
+var webSearchSchema []byte
+
+//go:embed schemas/web_fetch.json
+var webFetchSchema []byte
 
 const maxWebToolText = 24 * 1024
 
@@ -53,14 +60,14 @@ func registerWebTools(r *Registry, cfg config.WebSearchConfig) {
 		Name:        "web_search",
 		Category:    "Web",
 		Description: "Search the web for current information. Returns titles, URLs, and snippets. Use for up-to-date documentation, news, releases, or other time-sensitive facts.",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"query":{"type":"string","description":"Precise search query","minLength":1,"maxLength":1000},"max_results":{"type":"integer","description":"Number of results","minimum":1,"maximum":20},"provider":{"type":"string","enum":["auto","brave","tavily","google","searxng","duckduckgo"]},"time_range":{"type":"string","enum":["day","week","month","year"]},"country":{"type":"string","description":"Two-letter country code"},"language":{"type":"string","description":"Two-letter language code"},"safe_search":{"type":"boolean","default":true},"include_domains":{"type":"array","items":{"type":"string"},"maxItems":20},"exclude_domains":{"type":"array","items":{"type":"string"},"maxItems":20}},"required":["query"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(webSearchSchema),
 		Execute:     w.search,
 	})
 	r.add(Tool{
 		Name:        "web_fetch",
 		Category:    "Web",
 		Description: "Fetch and extract readable content from a public URL. Use after web_search to read a specific article or documentation page.",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"url":{"type":"string","description":"Public HTTP or HTTPS URL","maxLength":4096},"extract_content":{"type":"boolean","default":true},"max_chars":{"type":"integer","description":"Maximum characters to return","default":10000,"minimum":1000,"maximum":24000}},"required":["url"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(webFetchSchema),
 		Execute:     w.fetch,
 	})
 }

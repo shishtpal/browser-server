@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,12 +10,15 @@ import (
 	"strings"
 )
 
+//go:embed schemas/write_file.json
+var writeFileSchema []byte
+
 func registerWriteFile(r *Registry) {
 	r.add(Tool{
 		Name:        "write_file",
 		Category:    "File Operations",
 		Description: "Create or overwrite a UTF-8 text file on the server filesystem, creating parent directories as needed",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Destination path on the server"},"content":{"type":"string","description":"Complete file content"}},"required":["path","content"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(writeFileSchema),
 		Execute:     writeFile,
 	})
 }

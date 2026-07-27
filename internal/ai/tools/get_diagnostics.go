@@ -3,6 +3,7 @@ package tools
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,7 +14,8 @@ import (
 	"strings"
 )
 
-const getDiagnosticsSchema = `{"type":"object","properties":{"path":{"type":"string"},"language":{"type":"string","enum":["go","typescript","javascript","python","rust","java","auto"]},"severity":{"type":"string","enum":["error","warning","info","hint","all"]},"include_related":{"type":"boolean"},"max_results":{"type":"integer","minimum":1,"maximum":200}},"required":["path"],"additionalProperties":false}`
+//go:embed schemas/get_diagnostics.json
+var getDiagnosticsSchema []byte
 
 var diagnosticLine = regexp.MustCompile(`^(.*):(\d+):(\d+):\s*(.*)$`)
 

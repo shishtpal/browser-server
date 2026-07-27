@@ -2,17 +2,21 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 )
+
+//go:embed schemas/git_commit.json
+var gitCommitSchema []byte
 
 func registerGitCommit(r *Registry) {
 	r.add(Tool{
 		Name:        "git_commit",
 		Category:    "Git Operations",
 		Description: "Create a git commit, optionally staging files first",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"message":{"type":"string","description":"Commit message (required unless amend)"},"add":{"type":"array","items":{"type":"string"},"description":"Files to stage before committing"},"all":{"type":"boolean","description":"Stage all tracked changes"},"amend":{"type":"boolean","description":"Amend the previous commit"},"allow_empty":{"type":"boolean","description":"Allow empty commit"}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitCommitSchema),
 		Execute:     gitCommit,
 	})
 }

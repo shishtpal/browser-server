@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "working_dir": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string",
+            "description": "Commit message (required unless amend)"
+        },
+        "add": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Files to stage before committing"
+        },
+        "all": {
+            "type": "boolean",
+            "description": "Stage all tracked changes"
+        },
+        "amend": {
+            "type": "boolean",
+            "description": "Amend the previous commit"
+        },
+        "allow_empty": {
+            "type": "boolean",
+            "description": "Allow empty commit"
+        }
+    },
+    "additionalProperties": false
+}

@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,12 +11,15 @@ import (
 	"unicode/utf8"
 )
 
+//go:embed schemas/read_file.json
+var readFileSchema []byte
+
 func registerReadFile(r *Registry) {
 	r.add(Tool{
 		Name:        "read_file",
 		Category:    "File Operations",
 		Description: "Read a UTF-8 text file from the server filesystem (maximum 32 KiB)",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Path to the file on the server"}},"required":["path"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(readFileSchema),
 		Execute:     readFile,
 	})
 }

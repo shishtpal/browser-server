@@ -3,6 +3,7 @@ package tools
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -15,7 +16,8 @@ import (
 	"strings"
 )
 
-const analyzeCodeSchema = `{"type":"object","properties":{"path":{"type":"string"},"include_patterns":{"type":"array","items":{"type":"string"}},"exclude_patterns":{"type":"array","items":{"type":"string"}},"analysis_type":{"type":"string","enum":["symbols","imports","exports","functions","types","all"]},"include_private":{"type":"boolean"},"max_depth":{"type":"integer","minimum":1,"maximum":10},"max_results":{"type":"integer","minimum":1,"maximum":500}},"required":["path"],"additionalProperties":false}`
+//go:embed schemas/analyze_code.json
+var analyzeCodeSchema []byte
 
 func registerAnalyzeCode(r *Registry) {
 	r.add(Tool{

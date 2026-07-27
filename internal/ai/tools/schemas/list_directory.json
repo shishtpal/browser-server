@@ -1,0 +1,10 @@
+{
+    "type": "object",
+    "properties": {
+        "path": {
+            "type": "string",
+            "description": "Directory path on the server; defaults to the server working directory"
+        }
+    },
+    "additionalProperties": false
+}

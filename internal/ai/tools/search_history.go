@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,18 +10,16 @@ import (
 	"browser-server/internal/db"
 )
 
+//go:embed schemas/search_history.json
+var searchHistorySchema []byte
+
 func registerSearchHistory(r *Registry) {
 	r.add(Tool{
 		Name:        "search_history",
 		Category:    "General",
 		Description: "Search the local browsing history database. Can filter by text query across URL/title and optionally by domain. When no query or domain is given, returns the most recently visited records (up to the page limit).",
-		Schema: json.RawMessage(`{"type":"object","properties":{` +
-			`"user_id":{"type":"integer","minimum":1},` +
-			`"query":{"type":"string","maxLength":200},` +
-			`"domain":{"type":"string","maxLength":100},` +
-			`"limit":{"type":"integer","minimum":1,"maximum":50}` +
-			`},"required":["user_id"],"additionalProperties":false}`),
-		Execute: searchHistory,
+		Schema:      json.RawMessage(searchHistorySchema),
+		Execute:     searchHistory,
 	})
 }
 

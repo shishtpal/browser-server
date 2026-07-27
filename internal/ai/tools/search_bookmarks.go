@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,12 +10,15 @@ import (
 	"browser-server/internal/db"
 )
 
+//go:embed schemas/search_bookmarks.json
+var searchBookmarksSchema []byte
+
 func registerSearchBookmarks(r *Registry) {
 	r.add(Tool{
 		Name:        "search_bookmarks",
 		Category:    "General",
 		Description: "Search the local bookmark database",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"user_id":{"type":"integer","minimum":1},"query":{"type":"string","maxLength":200},"limit":{"type":"integer","minimum":1,"maximum":20}},"required":["user_id","query"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(searchBookmarksSchema),
 		Execute:     searchBookmarks,
 	})
 }

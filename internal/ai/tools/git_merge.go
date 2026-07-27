@@ -2,16 +2,20 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 )
+
+//go:embed schemas/git_merge.json
+var gitMergeSchema []byte
 
 func registerGitMerge(r *Registry) {
 	r.add(Tool{
 		Name:        "git_merge",
 		Category:    "Git Operations",
 		Description: "Merge a branch into the current branch",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"branch":{"type":"string","description":"Branch to merge"},"no_ff":{"type":"boolean","description":"Create merge commit even if fast-forward possible"},"squash":{"type":"boolean","description":"Squash commits"},"no_commit":{"type":"boolean","description":"Merge without auto-commit"},"message":{"type":"string","description":"Custom merge commit message"}},"required":["branch"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitMergeSchema),
 		Execute:     gitMerge,
 	})
 }

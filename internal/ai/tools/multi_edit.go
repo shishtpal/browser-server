@@ -3,6 +3,7 @@ package tools
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,11 +14,13 @@ import (
 	"unicode/utf8"
 )
 
+//go:embed schemas/multi_edit.json
+var multiEditSchema []byte
+
 const (
 	maxMultiEditFiles = 50
 	maxMultiEditOps   = 200
 	maxEditFileSize   = 2 << 20
-	multiEditSchema   = "{\"type\":\"object\",\"properties\":{\"edits\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":200,\"description\":\"Literal find/replace operations applied atomically in array order.\",\"items\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Absolute path to an existing file\"},\"find\":{\"type\":\"string\",\"description\":\"Exact literal text to locate; must match once unless all is true\"},\"replace\":{\"type\":\"string\",\"description\":\"Replacement text; an empty string deletes the match\"},\"all\":{\"type\":\"boolean\",\"description\":\"Replace every occurrence instead of requiring exactly one\"}},\"required\":[\"path\",\"find\",\"replace\"],\"additionalProperties\":false}},\"dry_run\":{\"type\":\"boolean\",\"description\":\"Validate and return a unified diff without writing files\"}},\"required\":[\"edits\"],\"additionalProperties\":false}"
 )
 
 var multiEditMu sync.Mutex

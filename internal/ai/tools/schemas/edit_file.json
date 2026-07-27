@@ -1,0 +1,22 @@
+{
+    "type": "object",
+    "properties": {
+        "path": {
+            "type": "string",
+            "description": "Absolute path to the file to edit"
+        },
+        "patch": {
+            "type": "string",
+            "description": "Unified diff text with --- / +++ headers and @@ hunks. Context lines (space prefix) must match the file exactly."
+        },
+        "dry_run": {
+            "type": "boolean",
+            "description": "Validate without writing and return a preview of the resulting content."
+        }
+    },
+    "required": [
+        "path",
+        "patch"
+    ],
+    "additionalProperties": false
+}

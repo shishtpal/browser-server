@@ -3,6 +3,7 @@ package tools
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,7 +15,8 @@ import (
 	"unicode/utf8"
 )
 
-const searchCodeSchema = `{"type":"object","properties":{"pattern":{"type":"string","maxLength":500},"path":{"type":"string"},"include":{"type":"array","items":{"type":"string"}},"exclude":{"type":"array","items":{"type":"string"}},"case_sensitive":{"type":"boolean"},"whole_word":{"type":"boolean"},"max_results":{"type":"integer","minimum":1,"maximum":100},"context_lines":{"type":"integer","minimum":0,"maximum":10},"type":{"type":"string","enum":["regex","literal","fixed"]}},"required":["pattern"],"additionalProperties":false}`
+//go:embed schemas/search_code.json
+var searchCodeSchema []byte
 
 func registerSearchCode(r *Registry) {
 	r.add(Tool{

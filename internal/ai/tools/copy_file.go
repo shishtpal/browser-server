@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,12 +11,15 @@ import (
 	"strings"
 )
 
+//go:embed schemas/copy_file.json
+var copyFileSchema []byte
+
 func registerCopyFile(r *Registry) {
 	r.add(Tool{
 		Name:        "copy_file",
 		Category:    "File Operations",
 		Description: "Copy a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"source":{"type":"string","description":"Existing source file path"},"destination":{"type":"string","description":"New destination file path"}},"required":["source","destination"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(copyFileSchema),
 		Execute:     copyFile,
 	})
 }

@@ -1,0 +1,67 @@
+{
+    "type": "object",
+    "properties": {
+        "query": {
+            "type": "string",
+            "description": "Precise search query",
+            "minLength": 1,
+            "maxLength": 1000
+        },
+        "max_results": {
+            "type": "integer",
+            "description": "Number of results",
+            "minimum": 1,
+            "maximum": 20
+        },
+        "provider": {
+            "type": "string",
+            "enum": [
+                "auto",
+                "brave",
+                "tavily",
+                "google",
+                "searxng",
+                "duckduckgo"
+            ]
+        },
+        "time_range": {
+            "type": "string",
+            "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+            ]
+        },
+        "country": {
+            "type": "string",
+            "description": "Two-letter country code"
+        },
+        "language": {
+            "type": "string",
+            "description": "Two-letter language code"
+        },
+        "safe_search": {
+            "type": "boolean",
+            "default": true
+        },
+        "include_domains": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "maxItems": 20
+        },
+        "exclude_domains": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "maxItems": 20
+        }
+    },
+    "required": [
+        "query"
+    ],
+    "additionalProperties": false
+}

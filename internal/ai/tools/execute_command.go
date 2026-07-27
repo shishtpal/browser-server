@@ -3,6 +3,7 @@ package tools
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -64,7 +65,11 @@ func DetectShell() ShellInfo {
 	return info
 }
 
+//go:embed schemas/execute_command.json
+var executeCommandSchema []byte
+
 func registerExecuteCommand(r *Registry, shell ShellInfo) {
+	schema := bytes.ReplaceAll(executeCommandSchema, []byte("{{SHELL_NAME}}"), []byte(shell.Name))
 	r.add(Tool{
 		Name:     "execute_command",
 		Category: "Process Management",
@@ -72,7 +77,7 @@ func registerExecuteCommand(r *Registry, shell ShellInfo) {
 			"Execute a shell command on the server. The server is running on %s with %s. Generate commands using %s syntax. Use this to run system commands, check file contents, list directories, manage processes, etc. Commands time out after 30 seconds max.",
 			shell.Platform, shell.Name, shell.Name,
 		),
-		Schema:  json.RawMessage(`{"type":"object","properties":{"command":{"type":"string","description":"The shell command to execute. Use ` + shell.Name + ` syntax.","maxLength":4096},"working_dir":{"type":"string","description":"Optional working directory for the command. Defaults to the server binary directory."},"timeout_seconds":{"type":"integer","description":"Timeout in seconds (1-30). Defaults to 10.","minimum":1,"maximum":30}},"required":["command"],"additionalProperties":false}`),
+		Schema:  json.RawMessage(schema),
 		Execute: executeCommand(shell),
 	})
 }

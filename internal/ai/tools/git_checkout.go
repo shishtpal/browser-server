@@ -2,16 +2,20 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 )
+
+//go:embed schemas/git_checkout.json
+var gitCheckoutSchema []byte
 
 func registerGitCheckout(r *Registry) {
 	r.add(Tool{
 		Name:        "git_checkout",
 		Category:    "Git Operations",
 		Description: "Switch to a branch or create and switch to a new branch",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"branch":{"type":"string","description":"Branch to switch to or create"},"create":{"type":"boolean","description":"Create new branch (-b)"},"force":{"type":"boolean","description":"Force checkout"}},"required":["branch"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitCheckoutSchema),
 		Execute:     gitCheckout,
 	})
 }

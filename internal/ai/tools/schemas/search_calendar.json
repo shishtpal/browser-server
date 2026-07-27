@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "user_id": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "query": {
+            "type": "string",
+            "maxLength": 200
+        },
+        "from": {
+            "type": "string",
+            "description": "Start of date range (YYYY-MM-DD)"
+        },
+        "to": {
+            "type": "string",
+            "description": "End of date range (YYYY-MM-DD)"
+        },
+        "status": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "in_progress",
+                "done",
+                "cancelled"
+            ]
+        },
+        "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+        }
+    },
+    "required": [
+        "user_id"
+    ],
+    "additionalProperties": false
+}

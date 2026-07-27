@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "working_dir": {
+            "type": "string"
+        },
+        "branch": {
+            "type": "string",
+            "description": "Branch to switch to or create"
+        },
+        "create": {
+            "type": "boolean",
+            "description": "Create new branch (-b)"
+        },
+        "force": {
+            "type": "boolean",
+            "description": "Force checkout"
+        }
+    },
+    "required": [
+        "branch"
+    ],
+    "additionalProperties": false
+}

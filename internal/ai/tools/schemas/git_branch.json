@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "working_dir": {
+            "type": "string"
+        },
+        "operation": {
+            "type": "string",
+            "enum": [
+                "list",
+                "create",
+                "delete",
+                "rename"
+            ],
+            "description": "Branch operation (default: list)"
+        },
+        "name": {
+            "type": "string",
+            "description": "Branch name (required for create/delete/rename)"
+        },
+        "new_name": {
+            "type": "string",
+            "description": "New name (required for rename)"
+        },
+        "start_point": {
+            "type": "string",
+            "description": "Start point for create"
+        },
+        "force": {
+            "type": "boolean",
+            "description": "Force delete (-D)"
+        },
+        "all": {
+            "type": "boolean",
+            "description": "Include remote branches in list"
+        }
+    },
+    "required": [
+        "operation"
+    ],
+    "additionalProperties": false
+}

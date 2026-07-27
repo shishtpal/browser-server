@@ -1,0 +1,25 @@
+{
+    "type": "object",
+    "properties": {
+        "url": {
+            "type": "string",
+            "description": "Public HTTP or HTTPS URL",
+            "maxLength": 4096
+        },
+        "extract_content": {
+            "type": "boolean",
+            "default": true
+        },
+        "max_chars": {
+            "type": "integer",
+            "description": "Maximum characters to return",
+            "default": 10000,
+            "minimum": 1000,
+            "maximum": 24000
+        }
+    },
+    "required": [
+        "url"
+    ],
+    "additionalProperties": false
+}

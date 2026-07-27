@@ -2,16 +2,20 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 )
+
+//go:embed schemas/git_pull.json
+var gitPullSchema []byte
 
 func registerGitPull(r *Registry) {
 	r.add(Tool{
 		Name:        "git_pull",
 		Category:    "Git Operations",
 		Description: "Pull changes from a remote repository",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"remote":{"type":"string","description":"Remote name (default: origin)"},"branch":{"type":"string","description":"Branch to pull"},"rebase":{"type":"boolean","description":"Rebase instead of merge"},"ff_only":{"type":"boolean","description":"Fast-forward only"}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitPullSchema),
 		Execute:     gitPull,
 	})
 }

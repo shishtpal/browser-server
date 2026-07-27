@@ -2,17 +2,21 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 )
+
+//go:embed schemas/git_status.json
+var gitStatusSchema []byte
 
 func registerGitStatus(r *Registry) {
 	r.add(Tool{
 		Name:        "git_status",
 		Category:    "Git Operations",
 		Description: "Check the git repository status: current branch, staged/unstaged changes, untracked files, ahead/behind remote",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string","description":"Repository path. Defaults to the server binary directory."}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitStatusSchema),
 		Execute:     gitStatus,
 	})
 }

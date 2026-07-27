@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -12,24 +13,16 @@ import (
 	"browser-server/internal/helpers"
 )
 
+//go:embed schemas/add_calendar_event.json
+var addCalendarEventSchema []byte
+
 func registerAddCalendarEvent(r *Registry) {
 	r.add(Tool{
 		Name:        "add_calendar_event",
 		Category:    "General",
 		Description: "Create a calendar event (todo with a scheduled date). Requires user_id, title, and start_date. Optional fields: description, end_date, rrule, priority, status, color, tags.",
-		Schema: json.RawMessage(`{"type":"object","properties":{` +
-			`"user_id":{"type":"integer","minimum":1},` +
-			`"title":{"type":"string","minLength":1,"maxLength":500},` +
-			`"description":{"type":"string","maxLength":2000},` +
-			`"start_date":{"type":"string","description":"Start date (YYYY-MM-DD or RFC3339)"},` +
-			`"end_date":{"type":"string","description":"End date (YYYY-MM-DD or RFC3339)"},` +
-			`"rrule":{"type":"string","description":"Recurrence rule (e.g. RRULE:FREQ=WEEKLY;COUNT=5)"},` +
-			`"priority":{"type":"string","enum":["low","medium","high","urgent"]},` +
-			`"status":{"type":"string","enum":["pending","completed","archived"]},` +
-			`"color":{"type":"string"},` +
-			`"tags":{"type":"array","items":{"type":"string"}}` +
-			`},"required":["user_id","title","start_date"],"additionalProperties":false}`),
-		Execute: addCalendarEvent,
+		Schema:      json.RawMessage(addCalendarEventSchema),
+		Execute:     addCalendarEvent,
 	})
 }
 

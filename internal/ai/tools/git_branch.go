@@ -2,17 +2,21 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 )
+
+//go:embed schemas/git_branch.json
+var gitBranchSchema []byte
 
 func registerGitBranch(r *Registry) {
 	r.add(Tool{
 		Name:        "git_branch",
 		Category:    "Git Operations",
 		Description: "Manage git branches: list, create, delete, or rename",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"operation":{"type":"string","enum":["list","create","delete","rename"],"description":"Branch operation (default: list)"},"name":{"type":"string","description":"Branch name (required for create/delete/rename)"},"new_name":{"type":"string","description":"New name (required for rename)"},"start_point":{"type":"string","description":"Start point for create"},"force":{"type":"boolean","description":"Force delete (-D)"},"all":{"type":"boolean","description":"Include remote branches in list"}},"required":["operation"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitBranchSchema),
 		Execute:     gitBranch,
 	})
 }

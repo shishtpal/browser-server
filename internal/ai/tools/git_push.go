@@ -2,16 +2,20 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 )
+
+//go:embed schemas/git_push.json
+var gitPushSchema []byte
 
 func registerGitPush(r *Registry) {
 	r.add(Tool{
 		Name:        "git_push",
 		Category:    "Git Operations",
 		Description: "Push commits to a remote repository",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"remote":{"type":"string","description":"Remote name (default: origin)"},"branch":{"type":"string","description":"Branch to push"},"set_upstream":{"type":"boolean","description":"Set upstream tracking (-u)"},"force":{"type":"boolean","description":"Force push (uses --force-with-lease)"},"tags":{"type":"boolean","description":"Push tags"}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitPushSchema),
 		Execute:     gitPush,
 	})
 }

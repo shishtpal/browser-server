@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,20 +10,16 @@ import (
 	"browser-server/internal/db"
 )
 
+//go:embed schemas/search_calendar.json
+var searchCalendarSchema []byte
+
 func registerSearchCalendar(r *Registry) {
 	r.add(Tool{
 		Name:        "search_calendar",
 		Category:    "General",
 		Description: "Search calendar events (todos with scheduled dates). Can filter by date range, text query, and status. Returns events that have a start_date set.",
-		Schema: json.RawMessage(`{"type":"object","properties":{` +
-			`"user_id":{"type":"integer","minimum":1},` +
-			`"query":{"type":"string","maxLength":200},` +
-			`"from":{"type":"string","description":"Start of date range (YYYY-MM-DD)"},` +
-			`"to":{"type":"string","description":"End of date range (YYYY-MM-DD)"},` +
-			`"status":{"type":"string","enum":["pending","in_progress","done","cancelled"]},` +
-			`"limit":{"type":"integer","minimum":1,"maximum":20}` +
-			`},"required":["user_id"],"additionalProperties":false}`),
-		Execute: searchCalendar,
+		Schema:      json.RawMessage(searchCalendarSchema),
+		Execute:     searchCalendar,
 	})
 }
 

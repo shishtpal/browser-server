@@ -2,16 +2,20 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 )
+
+//go:embed schemas/git_diff.json
+var gitDiffSchema []byte
 
 func registerGitDiff(r *Registry) {
 	r.add(Tool{
 		Name:        "git_diff",
 		Category:    "Git Operations",
 		Description: "View git diff output (working tree, staged, or between commits)",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"cached":{"type":"boolean","description":"Show staged changes (--cached)"},"commit1":{"type":"string","description":"Base ref"},"commit2":{"type":"string","description":"Target ref"},"path":{"type":"string","description":"Limit diff to a specific path"}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitDiffSchema),
 		Execute:     gitDiff,
 	})
 }

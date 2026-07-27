@@ -1,0 +1,10 @@
+{
+    "type": "object",
+    "properties": {
+        "working_dir": {
+            "type": "string",
+            "description": "Repository path. Defaults to the server binary directory."
+        }
+    },
+    "additionalProperties": false
+}

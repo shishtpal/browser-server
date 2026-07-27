@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,19 +10,16 @@ import (
 	"browser-server/internal/db"
 )
 
+//go:embed schemas/search_todos.json
+var searchTodosSchema []byte
+
 func registerSearchTodos(r *Registry) {
 	r.add(Tool{
 		Name:        "search_todos",
 		Category:    "General",
 		Description: "Search the local todo database. Can filter by status, priority, and text query across title/description.",
-		Schema: json.RawMessage(`{"type":"object","properties":{` +
-			`"user_id":{"type":"integer","minimum":1},` +
-			`"query":{"type":"string","maxLength":200},` +
-			`"status":{"type":"string","enum":["pending","in_progress","done","cancelled"]},` +
-			`"priority":{"type":"string","enum":["low","medium","high","urgent"]},` +
-			`"limit":{"type":"integer","minimum":1,"maximum":20}` +
-			`},"required":["user_id"],"additionalProperties":false}`),
-		Execute: searchTodos,
+		Schema:      json.RawMessage(searchTodosSchema),
+		Execute:     searchTodos,
 	})
 }
 

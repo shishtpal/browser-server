@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "source": {
+            "type": "string",
+            "description": "Existing source file path"
+        },
+        "destination": {
+            "type": "string",
+            "description": "New destination file path"
+        }
+    },
+    "required": [
+        "source",
+        "destination"
+    ],
+    "additionalProperties": false
+}

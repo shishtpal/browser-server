@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,12 +10,15 @@ import (
 	"strings"
 )
 
+//go:embed schemas/move_file.json
+var moveFileSchema []byte
+
 func registerMoveFile(r *Registry) {
 	r.add(Tool{
 		Name:        "move_file",
 		Category:    "File Operations",
 		Description: "Move or rename a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"source":{"type":"string","description":"Existing source file path"},"destination":{"type":"string","description":"New destination file path"}},"required":["source","destination"],"additionalProperties":false}`),
+		Schema:      json.RawMessage(moveFileSchema),
 		Execute:     moveFile,
 	})
 }

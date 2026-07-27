@@ -2,17 +2,21 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 )
+
+//go:embed schemas/git_log.json
+var gitLogSchema []byte
 
 func registerGitLog(r *Registry) {
 	r.add(Tool{
 		Name:        "git_log",
 		Category:    "Git Operations",
 		Description: "View git commit history with optional filtering by branch, path, date range, or author",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"working_dir":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":50,"description":"Max commits (default 20)"},"branch":{"type":"string"},"path":{"type":"string"},"since":{"type":"string","description":"ISO date"},"until":{"type":"string","description":"ISO date"},"author":{"type":"string"}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(gitLogSchema),
 		Execute:     gitLog,
 	})
 }

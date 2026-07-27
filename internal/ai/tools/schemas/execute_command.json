@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "command": {
+            "type": "string",
+            "description": "The shell command to execute. Use {{SHELL_NAME}} syntax.",
+            "maxLength": 4096
+        },
+        "working_dir": {
+            "type": "string",
+            "description": "Optional working directory for the command. Defaults to the server binary directory."
+        },
+        "timeout_seconds": {
+            "type": "integer",
+            "description": "Timeout in seconds (1-30). Defaults to 10.",
+            "minimum": 1,
+            "maximum": 30
+        }
+    },
+    "required": [
+        "command"
+    ],
+    "additionalProperties": false
+}

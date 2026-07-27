@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,12 +10,15 @@ import (
 	"strings"
 )
 
+//go:embed schemas/list_directory.json
+var listDirectorySchema []byte
+
 func registerListDirectory(r *Registry) {
 	r.add(Tool{
 		Name:        "list_directory",
 		Category:    "File Operations",
 		Description: "List the immediate contents of a directory on the server filesystem",
-		Schema:      json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","description":"Directory path on the server; defaults to the server working directory"}},"additionalProperties":false}`),
+		Schema:      json.RawMessage(listDirectorySchema),
 		Execute:     listDirectory,
 	})
 }

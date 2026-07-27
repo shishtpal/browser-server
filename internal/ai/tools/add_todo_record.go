@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,7 +21,7 @@ func registerAddTodoRecord(r *Registry) {
 	r.add(Tool{
 		Name:        "add_todo_record",
 		Category:    "General",
-		Description: "Create a todo item with optional sub-tasks in a single call. Requires user_id and title. Optional fields: description, parent_id, priority, status, color, tags, subtasks. Subtask titles default to 'Subtask N' if omitted.",
+		Description: "Create a todo item with optional sub-tasks in a single call. Requires user_id and title. Optional fields: description, parent_id, priority, status, color, tags, start_date, end_date, and subtasks. Subtask titles default to 'Subtask N' if omitted.",
 		Schema:      json.RawMessage(addTodoRecordSchema),
 		Execute:     addTodoRecord,
 	})
@@ -47,11 +48,14 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 		Color       string         `json:"color"`
 		Tags        []string       `json:"tags"`
 		Subtasks    []subtaskInput `json:"subtasks"`
+		StartDate   *string        `json:"start_date"`
+		EndDate     *string        `json:"end_date"`
 	}
 	if err := strict(raw, &a, map[string]bool{
 		"user_id": true, "title": true, "description": true,
 		"parent_id": true, "priority": true, "status": true,
 		"color": true, "tags": true, "subtasks": true,
+		"start_date": true, "end_date": true,
 	}); err != nil {
 		return nil, err
 	}
@@ -69,6 +73,22 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	if len(a.Description) > 2000 {
 		return nil, fmt.Errorf("description must be 2000 characters or fewer")
+	}
+
+	// Validate color format (must be empty or valid hex color)
+	if a.Color != "" {
+		color := strings.TrimSpace(a.Color)
+		if color != "" && !isValidColor(color) {
+			return nil, fmt.Errorf("color must be empty or a valid hex color code (e.g., #FF5733 or #33FF57)")
+		}
+		a.Color = color
+	}
+
+	// Validate tags
+	for i, tag := range a.Tags {
+		if len(tag) > 100 {
+			return nil, fmt.Errorf("tags[%d] must be 100 characters or fewer", i)
+		}
 	}
 
 	// Validate priority
@@ -121,7 +141,36 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 				return nil, fmt.Errorf("subtasks[%d].status must be one of: pending, in_progress, completed, done, cancelled, archived", i)
 			}
 		}
+		// Validate subtask color
+		if st.Color != "" {
+			st.Color = strings.TrimSpace(st.Color)
+			if st.Color != "" && !isValidColor(st.Color) {
+				return nil, fmt.Errorf("subtasks[%d].color must be empty or a valid hex color code", i)
+			}
+		}
+		// Validate subtask tags
+		for j, tag := range st.Tags {
+			if len(tag) > 100 {
+				return nil, fmt.Errorf("subtasks[%d].tags[%d] must be 100 characters or fewer", i, j)
+			}
+		}
 		a.Subtasks[i] = st
+	}
+
+	// Parse start_date / end_date (optional, YYYY-MM-DD or RFC3339)
+	var startDate *time.Time
+	if a.StartDate != nil && *a.StartDate != "" {
+		startDate = parseDate(*a.StartDate)
+		if startDate == nil {
+			return nil, fmt.Errorf("start_date must be a valid date (YYYY-MM-DD or RFC3339)")
+		}
+	}
+	var endDate *time.Time
+	if a.EndDate != nil && *a.EndDate != "" {
+		endDate = parseDate(*a.EndDate)
+		if endDate == nil {
+			return nil, fmt.Errorf("end_date must be a valid date (YYYY-MM-DD or RFC3339)")
+		}
 	}
 
 	// Validate parent_id if provided
@@ -166,11 +215,11 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	).Scan(&maxPos)
 	position := int(maxPos.Int64) + 1
 
-	now := time.Now()
+	now := time.Now().UTC()
 	result, err := db.TodoDB.Exec(`
-		INSERT INTO todos (user_id, title, description, status, priority, color, tags, parent_id, position, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-		a.UserID, a.Title, a.Description, status, priority, color, tagsJSON, parentID, position)
+		INSERT INTO todos (user_id, title, description, status, priority, color, start_date, end_date, tags, parent_id, position, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+		a.UserID, a.Title, a.Description, status, priority, color, startDate, endDate, tagsJSON, parentID, position)
 	if err != nil {
 		return nil, err
 	}
@@ -183,12 +232,22 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 		"description": a.Description,
 		"status":      status,
 		"priority":    priority,
-		"color":       color,
-		"tags":        a.Tags,
-		"parent_id":   a.ParentID,
+		"color":       nullIfEmpty(color),
+		"tags":        emptyIfEmptySlice(a.Tags),
+		"parent_id":   parentID,
 		"position":    position,
 		"created_at":  now,
 		"updated_at":  now,
+	}
+	if startDate != nil {
+		todo["start_date"] = startDate.Format("2006-01-02")
+	} else {
+		todo["start_date"] = nil
+	}
+	if endDate != nil {
+		todo["end_date"] = endDate.Format("2006-01-02")
+	} else {
+		todo["end_date"] = nil
 	}
 
 	// Create subtasks if provided
@@ -222,8 +281,8 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 				"description": st.Description,
 				"status":      stStatus,
 				"priority":    stPriority,
-				"color":       stColor,
-				"tags":        st.Tags,
+				"color":       nullIfEmpty(stColor),
+				"tags":        emptyIfEmptySlice(st.Tags),
 				"parent_id":   todoID,
 				"position":    i,
 				"created_at":  now,
@@ -234,4 +293,28 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 
 	return todo, nil
+}
+
+// isValidColor checks if a string is a valid hex color code (3 or 6 hex digits, optionally prefixed with #)
+func isValidColor(color string) bool {
+	// Match #RGB, #RRGGBB, RGB, or RRGGBB patterns
+	colorPattern := regexp.MustCompile(`^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
+	return colorPattern.MatchString(color)
+}
+
+// nullIfEmpty returns nil if the string is empty, otherwise returns the string
+func nullIfEmpty(s string) any {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return s
+}
+
+// emptyIfEmptySlice returns a non-nil empty slice if the input is empty, so JSON
+// serialization yields `[]` instead of `null` for empty tag arrays.
+func emptyIfEmptySlice[T any](slice []T) any {
+	if len(slice) == 0 {
+		return make([]T, 0)
+	}
+	return slice
 }

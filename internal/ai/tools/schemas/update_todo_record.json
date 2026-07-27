@@ -3,20 +3,24 @@
     "properties": {
         "user_id": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "description": "User ID must be a positive integer"
         },
         "id": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "description": "Todo ID must be a positive integer"
         },
         "title": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 500
+            "maxLength": 500,
+            "description": "Title must be 1-500 characters"
         },
         "description": {
             "type": "string",
-            "maxLength": 2000
+            "maxLength": 2000,
+            "description": "Description must be 2000 characters or fewer"
         },
         "status": {
             "type": "string",
@@ -27,7 +31,8 @@
                 "done",
                 "cancelled",
                 "archived"
-            ]
+            ],
+            "description": "Status must be one of: pending, in_progress, completed, done, cancelled, archived"
         },
         "priority": {
             "type": "string",
@@ -36,20 +41,31 @@
                 "medium",
                 "high",
                 "urgent"
-            ]
+            ],
+            "description": "Priority must be one of: low, medium, high, urgent"
         },
         "color": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$",
+            "description": "Color must be a valid hex color code (e.g., #FF5733, #33FF57, FF5733, or 33FF57)"
         },
         "tags": {
             "type": "array",
             "items": {
-                "type": "string"
-            }
+                "type": "string",
+                "maxLength": 100
+            },
+            "description": "Each tag must be 100 characters or fewer"
         },
         "position": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Position must be a non-negative integer"
+        },
+        "parent_id": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Parent todo ID to reparent this todo (must be a top-level todo owned by the same user). Pass null to make it a top-level todo."
         },
         "start_date": {
             "type": [
@@ -66,16 +82,20 @@
             "description": "Date string (YYYY-MM-DD or RFC3339) or null to clear"
         },
         "rrule": {
-            "type": "string"
+            "type": "string",
+            "description": "Recurrence rule string"
         },
         "domain": {
-            "type": "string"
+            "type": "string",
+            "description": "Domain string"
         },
         "screenshot_path": {
-            "type": "string"
+            "type": "string",
+            "description": "Path to screenshot"
         },
         "pinned": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the todo is pinned"
         }
     },
     "required": [

@@ -21,7 +21,7 @@ func registerUpdateTodoRecord(r *Registry) {
 	r.add(Tool{
 		Name:        "update_todo_record",
 		Category:    "General",
-		Description: "Update an existing todo item (including sub-tasks) by ID. Requires user_id and id. All other fields are optional — only provided fields are updated. Use null for start_date/end_date to clear them.",
+		Description: "Update an existing todo item (including sub-tasks) by ID. Requires user_id and id. All other fields are optional - only provided fields are updated. Use null for parent_id, start_date, or end_date to clear them.",
 		Schema:      json.RawMessage(updateTodoRecordSchema),
 		Execute:     updateTodoRecord,
 	})
@@ -38,6 +38,7 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 		Color          *string         `json:"color"`
 		Tags           *[]string       `json:"tags"`
 		Position       *int            `json:"position"`
+		ParentID       json.RawMessage `json:"parent_id"`
 		StartDate      json.RawMessage `json:"start_date"`
 		EndDate        json.RawMessage `json:"end_date"`
 		Rrule          *string         `json:"rrule"`
@@ -50,7 +51,7 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 		"title": true, "description": true,
 		"status": true, "priority": true,
 		"color": true, "tags": true,
-		"position": true,
+		"position": true, "parent_id": true,
 		"start_date": true, "end_date": true,
 		"rrule": true, "domain": true,
 		"screenshot_path": true, "pinned": true,
@@ -66,22 +67,6 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("id is required and must be a positive integer")
 	}
 
-	// Verify ownership — todo must exist and belong to the specified user
-	var existingUserID int
-	err := db.TodoDB.QueryRow(
-		"SELECT user_id FROM todos WHERE id = ?",
-		a.ID,
-	).Scan(&existingUserID)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("todo %d not found", a.ID)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if existingUserID != a.UserID {
-		return nil, fmt.Errorf("todo %d does not belong to user %d", a.ID, a.UserID)
-	}
-
 	// Validate provided field values
 	if a.Title != nil {
 		title := strings.TrimSpace(*a.Title)
@@ -93,8 +78,18 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 		}
 		*a.Title = title
 	}
-	if a.Description != nil && len(*a.Description) > 2000 {
-		return nil, fmt.Errorf("description must be 2000 characters or fewer")
+	if a.Description != nil {
+		if len(*a.Description) > 2000 {
+			return nil, fmt.Errorf("description must be 2000 characters or fewer")
+		}
+		*a.Description = strings.TrimSpace(*a.Description)
+	}
+	if a.Tags != nil {
+		for i, tag := range *a.Tags {
+			if len(tag) > 100 {
+				return nil, fmt.Errorf("tags[%d] must be 100 characters or fewer", i)
+			}
+		}
 	}
 	if a.Priority != nil {
 		validPriorities := map[string]bool{"low": true, "medium": true, "high": true, "urgent": true}
@@ -110,6 +105,27 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	if a.Color != nil {
 		*a.Color = strings.TrimSpace(*a.Color)
+		if *a.Color != "" && !isValidColor(*a.Color) {
+			return nil, fmt.Errorf("color must be empty or a valid hex color code (e.g., #FF5733 or #33FF57)")
+		}
+	}
+	if a.Position != nil && *a.Position < 0 {
+		return nil, fmt.Errorf("position must be a non-negative integer")
+	}
+
+	// Parse parent_id without accessing the database. Ownership and relationship
+	// checks happen after all input validation has completed.
+	var parentID *int
+	if a.ParentID != nil {
+		if string(a.ParentID) == "null" {
+			parentID = nil // explicit clear
+		} else {
+			var pid int
+			if err := json.Unmarshal(a.ParentID, &pid); err != nil || pid < 1 {
+				return nil, fmt.Errorf("parent_id must be a positive integer or null")
+			}
+			parentID = &pid
+		}
 	}
 
 	// Parse dates (null clears the field)
@@ -145,16 +161,63 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	// Convert tags to JSON
 	var tagsJSON string
 	if a.Tags != nil {
-		tagsJSON = helpers.TagsToJSON(*a.Tags)
+		// Store empty tags as a JSON array for consistent response types.
+		if len(*a.Tags) == 0 {
+			tagsJSON = "[]"
+		} else {
+			tagsJSON = helpers.TagsToJSON(*a.Tags)
+		}
 	}
 
 	// Check if any updatable field was provided
 	hasUpdate := a.Title != nil || a.Description != nil || a.Status != nil ||
 		a.Priority != nil || a.Color != nil || a.Tags != nil || a.Position != nil ||
-		a.StartDate != nil || a.EndDate != nil || a.Rrule != nil || a.Domain != nil ||
-		a.ScreenshotPath != nil || a.Pinned != nil
+		a.ParentID != nil || a.StartDate != nil || a.EndDate != nil || a.Rrule != nil ||
+		a.Domain != nil || a.ScreenshotPath != nil || a.Pinned != nil
 	if !hasUpdate {
 		return nil, fmt.Errorf("no updatable fields provided")
+	}
+
+	// Verify ownership only after input validation, so malformed requests do not
+	// depend on database availability and consistently return validation errors.
+	var existingUserID int
+	err := db.TodoDB.QueryRow(
+		"SELECT user_id FROM todos WHERE id = ?",
+		a.ID,
+	).Scan(&existingUserID)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("todo %d not found", a.ID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if existingUserID != a.UserID {
+		return nil, fmt.Errorf("todo %d does not belong to user %d", a.ID, a.UserID)
+	}
+
+	if parentID != nil {
+		if *parentID == a.ID {
+			return nil, fmt.Errorf("parent_id must not equal the todo's own id")
+		}
+		// Verify the parent belongs to the same user and is not itself a subtask.
+		var parentUserID int
+		var grandparentID sql.NullInt64
+		perr := db.TodoDB.QueryRow(
+			"SELECT user_id, parent_id FROM todos WHERE id = ?",
+			*parentID,
+		).Scan(&parentUserID, &grandparentID)
+		if perr == sql.ErrNoRows {
+			return nil, fmt.Errorf("parent todo %d not found", *parentID)
+		}
+		if perr != nil {
+			return nil, perr
+		}
+		if parentUserID != a.UserID {
+			return nil, fmt.Errorf("parent todo %d does not belong to user %d", *parentID, a.UserID)
+		}
+		if grandparentID.Valid {
+			return nil, fmt.Errorf("parent todo %d is itself a subtask; nested subtasks are not allowed", *parentID)
+		}
 	}
 
 	// Build dynamic UPDATE SET clause
@@ -179,7 +242,7 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	if a.Color != nil {
 		setClauses = append(setClauses, "color = ?")
-		args = append(args, *a.Color)
+		args = append(args, nullIfEmpty(*a.Color))
 	}
 	if a.Tags != nil {
 		setClauses = append(setClauses, "tags = ?")
@@ -188,6 +251,10 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	if a.Position != nil {
 		setClauses = append(setClauses, "position = ?")
 		args = append(args, *a.Position)
+	}
+	if a.ParentID != nil {
+		setClauses = append(setClauses, "parent_id = ?")
+		args = append(args, parentID)
 	}
 	if a.StartDate != nil {
 		setClauses = append(setClauses, "start_date = ?")
@@ -259,24 +326,24 @@ func updateTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 				continue
 			}
 			subtask := map[string]any{
-				"id":          childTodo.ID,
-				"user_id":     childTodo.UserID,
-				"title":       childTodo.Title,
-				"description": childTodo.Description,
-				"domain":      childTodo.Domain,
-				"screenshot_path": childTodo.ScreenshotPath,
-				"pinned":      childTodo.Pinned,
-				"status":      childTodo.Status,
-				"priority":    childTodo.Priority,
-				"color":       childTodo.Color,
-				"start_date":  nil,
-				"end_date":    nil,
-				"rrule":       childTodo.Rrule,
-				"tags":        helpers.ParseTagsFromJSON(childTagsJSON),
-				"parent_id":   childTodo.ParentID,
-				"position":    childTodo.Position,
-				"created_at":  childTodo.CreatedAt,
-				"updated_at":  childTodo.UpdatedAt,
+				"id":              childTodo.ID,
+				"user_id":         childTodo.UserID,
+				"title":           childTodo.Title,
+				"description":     childTodo.Description,
+				"domain":          nullIfEmpty(childTodo.Domain),
+				"screenshot_path": nullIfEmpty(childTodo.ScreenshotPath),
+				"pinned":          childTodo.Pinned,
+				"status":          childTodo.Status,
+				"priority":        childTodo.Priority,
+				"color":           nullIfEmpty(childTodo.Color),
+				"start_date":      nil,
+				"end_date":        nil,
+				"rrule":           nullIfEmpty(childTodo.Rrule),
+				"tags":            emptyIfEmptySlice(helpers.ParseTagsFromJSON(childTagsJSON)),
+				"parent_id":       childTodo.ParentID,
+				"position":        childTodo.Position,
+				"created_at":      childTodo.CreatedAt,
+				"updated_at":      childTodo.UpdatedAt,
 			}
 			if childTodo.StartDate != nil {
 				subtask["start_date"] = childTodo.StartDate.Format("2006-01-02")
@@ -331,22 +398,22 @@ func scanTodo(scanner interface{ Scan(...any) error }) (models.Todo, string, err
 // todoToMap converts a models.Todo and tags JSON string into a map for AI tool responses.
 func todoToMap(todo models.Todo, tagsJSON string) map[string]any {
 	m := map[string]any{
-		"id":          todo.ID,
-		"user_id":     todo.UserID,
-		"title":       todo.Title,
-		"description": todo.Description,
-		"domain":      todo.Domain,
-		"screenshot_path": todo.ScreenshotPath,
-		"pinned":      todo.Pinned,
-		"status":      todo.Status,
-		"priority":    todo.Priority,
-		"color":       todo.Color,
-		"rrule":       todo.Rrule,
-		"tags":        helpers.ParseTagsFromJSON(tagsJSON),
-		"parent_id":   todo.ParentID,
-		"position":    todo.Position,
-		"created_at":  todo.CreatedAt,
-		"updated_at":  todo.UpdatedAt,
+		"id":              todo.ID,
+		"user_id":         todo.UserID,
+		"title":           todo.Title,
+		"description":     todo.Description,
+		"domain":          nullIfEmpty(todo.Domain),
+		"screenshot_path": nullIfEmpty(todo.ScreenshotPath),
+		"pinned":          todo.Pinned,
+		"status":          todo.Status,
+		"priority":        todo.Priority,
+		"color":           nullIfEmpty(todo.Color),
+		"rrule":           nullIfEmpty(todo.Rrule),
+		"tags":            emptyIfEmptySlice(helpers.ParseTagsFromJSON(tagsJSON)),
+		"parent_id":       todo.ParentID,
+		"position":        todo.Position,
+		"created_at":      todo.CreatedAt,
+		"updated_at":      todo.UpdatedAt,
 	}
 	if todo.StartDate != nil {
 		m["start_date"] = todo.StartDate.Format("2006-01-02")

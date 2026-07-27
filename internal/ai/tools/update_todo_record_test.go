@@ -53,6 +53,26 @@ func TestUpdateTodoRecordValidation(t *testing.T) {
 			wantErr: "description",
 		},
 		{
+			name:    "invalid color",
+			input:   `{"user_id":1,"id":1,"color":"orange"}`,
+			wantErr: "color",
+		},
+		{
+			name:    "invalid position",
+			input:   `{"user_id":1,"id":1,"position":-1}`,
+			wantErr: "position",
+		},
+		{
+			name:    "invalid parent_id",
+			input:   `{"user_id":1,"id":1,"parent_id":0}`,
+			wantErr: "parent_id",
+		},
+		{
+			name:    "invalid start_date",
+			input:   `{"user_id":1,"id":1,"start_date":"not-a-date"}`,
+			wantErr: "start_date",
+		},
+		{
 			name:    "unknown field",
 			input:   `{"user_id":1,"id":1,"bogus":true}`,
 			wantErr: "bogus",

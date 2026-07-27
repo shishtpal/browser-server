@@ -5,15 +5,14 @@
     class="group relative ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-slate-900 px-4 py-3 text-white shadow-sm dark:bg-white dark:text-slate-900"
   >
     <pre class="whitespace-pre-wrap break-words font-sans text-[1em] leading-relaxed">{{ message.content }}</pre>
-    <!-- Copy button -->
-    <button
-      class="absolute right-2 top-2 hidden rounded-md p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white group-hover:block dark:text-slate-400 dark:hover:bg-slate-900/10 dark:hover:text-slate-900"
-      title="Copy"
-      type="button"
-      @click="$emit('copy', message.content)"
-    >
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-    </button>
+    <div class="absolute right-2 top-2 hidden items-center gap-0.5 group-hover:flex">
+      <button class="rounded-md p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white dark:text-slate-400 dark:hover:bg-slate-900/10 dark:hover:text-slate-900" title="Copy" type="button" @click="$emit('copy', message.content)">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      </button>
+      <button class="rounded-md p-1.5 text-white/50 transition hover:bg-red-500/20 hover:text-red-200 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-600" title="Delete message" type="button" @click="$emit('delete', message.id)">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </button>
+    </div>
   </article>
 
   <!-- Assistant message -->
@@ -34,22 +33,29 @@
     <div v-if="message.status === 'error'" class="mt-2 text-[0.85em] text-red-500">Generation failed</div>
     <div v-if="message.status === 'cancelled'" class="mt-2 text-[0.85em] text-amber-500">Stopped</div>
 
-    <!-- Copy button -->
-    <button
-      class="absolute right-2 top-2 hidden rounded-md p-1.5 text-slate-300 transition hover:bg-slate-100 hover:text-slate-600 group-hover:block dark:text-slate-600 dark:hover:bg-white/10 dark:hover:text-slate-300"
-      title="Copy"
-      type="button"
-      @click="$emit('copy', message.content)"
-    >
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-    </button>
+    <div class="absolute right-2 top-2 hidden items-center gap-0.5 group-hover:flex">
+      <button class="rounded-md p-1.5 text-slate-300 transition hover:bg-slate-100 hover:text-slate-600 dark:text-slate-600 dark:hover:bg-white/10 dark:hover:text-slate-300" title="Copy" type="button" @click="$emit('copy', message.content)">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      </button>
+      <button class="rounded-md p-1.5 text-slate-300 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-600 dark:hover:bg-red-500/10 dark:hover:text-red-400" title="Delete message" type="button" @click="$emit('delete', message.id)">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </button>
+    </div>
   </article>
 
   <!-- Tool message -->
   <article
     v-else-if="message.role === 'tool'"
-    class="w-full max-w-[90%] text-slate-700 dark:text-slate-300"
+    class="group relative w-full max-w-[90%] pr-8 text-slate-700 dark:text-slate-300"
   >
+    <button
+      class="absolute right-0 top-0 hidden rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 group-hover:block dark:hover:bg-red-500/10 dark:hover:text-red-400"
+      title="Delete message"
+      type="button"
+      @click="$emit('delete', message.id)"
+    >
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    </button>
     <button
       class="group flex w-full items-center gap-1.5 py-1 text-left text-[0.85em]"
       type="button"
@@ -134,6 +140,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   copy: [content: string]
+  delete: [messageId: string]
   toolDecision: [callId: string, approved: boolean, comment: string]
 }>()
 

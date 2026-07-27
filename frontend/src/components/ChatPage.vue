@@ -64,6 +64,7 @@
           :loading="isBusy"
           @suggestion="useSuggestion"
           @copy="copyMessage"
+          @delete="deleteMessage"
           @tool-decision="handleToolDecision"
         />
 
@@ -172,7 +173,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { getAIConfig, getAIConversation } from '../lib/api'
+import { deleteAIMessage, getAIConfig, getAIConversation } from '../lib/api'
 import Modal from './ui/Modal.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
 import ChatSidebar from './chat/ChatSidebar.vue'
@@ -262,7 +263,7 @@ const draft = ref('')
 const error = ref('')
 const showMobileSidebar = ref(false)
 const showCopyToast = ref(false)
-const showToolsPanel = ref(false)
+const showToolsPanel = ref(true)
 const showMemoryExplorer = ref(false)
 const showNewConversationModal = ref(false)
 const chatFontFamily = ref(localStorage.getItem('ai-chat-font-family') || 'system-ui')
@@ -477,6 +478,19 @@ async function copyMessage(content: string) {
     showCopyToast.value = true
     setTimeout(() => { showCopyToast.value = false }, 2000)
   } catch { /* silent */ }
+}
+
+async function deleteMessage(messageId: string) {
+  if (!activeConversation.value || isBusy.value || messageId.startsWith('temp-')) return
+  if (!window.confirm('Delete this message? This action cannot be undone.')) return
+
+  error.value = ''
+  try {
+    await deleteAIMessage(activeConversation.value.id, messageId)
+    messages.value = messages.value.filter((message) => message.id !== messageId)
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to delete message'
+  }
 }
 
 function downloadConversation() {

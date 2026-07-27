@@ -21,7 +21,12 @@
 
       <!-- Messages -->
       <template v-for="message in messages" :key="message.id">
-        <ChatBubble :message="message" @copy="$emit('copy', $event)" @tool-decision="(callId, approved, comment) => $emit('tool-decision', callId, approved, comment)" />
+        <ChatBubble
+          :message="message"
+          @copy="$emit('copy', $event)"
+          @delete="$emit('delete', $event)"
+          @tool-decision="(callId, approved, comment) => $emit('tool-decision', callId, approved, comment)"
+        />
       </template>
 
       <!-- Typing indicator -->
@@ -47,6 +52,7 @@ const props = defineProps<{
 defineEmits<{
   suggestion: [text: string]
   copy: [content: string]
+  delete: [messageId: string]
   toolDecision: [callId: string, approved: boolean, comment: string]
 }>()
 

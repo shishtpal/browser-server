@@ -7,7 +7,32 @@ import (
 	"time"
 
 	"browser-server/internal/ai/config"
+	"browser-server/internal/ai/store"
 )
+
+func TestProviderMessagesExcludeToolHistory(t *testing.T) {
+	s := &Service{cfg: &config.Config{Chat: config.ChatConfig{MaxHistoryMessages: 2}}}
+	messages := []store.Message{
+		{Role: "user", Content: "older user message", Status: "completed"},
+		{Role: "tool", Content: `{"tool":"read_file","result":"secret tool output"}`, ToolCallID: "call-1", Status: "completed"},
+		{Role: "assistant", Content: "older assistant message", Status: "completed"},
+		{Role: "user", Content: "latest user message", Status: "completed"},
+	}
+
+	got := s.providerMessages(messages, "system prompt")
+	if len(got) != 3 {
+		t.Fatalf("provider messages length = %d, want 3: %#v", len(got), got)
+	}
+	if got[0].Role != "system" || got[0].Content != "system prompt" {
+		t.Fatalf("system message = %#v", got[0])
+	}
+	if got[1].Role != "assistant" || got[1].Content != "older assistant message" {
+		t.Fatalf("first history message = %#v", got[1])
+	}
+	if got[2].Role != "user" || got[2].Content != "latest user message" {
+		t.Fatalf("second history message = %#v", got[2])
+	}
+}
 
 func TestResolveActiveToolsDistinguishesOmittedAndEmpty(t *testing.T) {
 	s := &Service{cfg: &config.Config{Tools: config.ToolsConfig{Allowed: []string{"read_file", "write_file"}}}}

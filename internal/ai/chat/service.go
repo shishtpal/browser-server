@@ -391,6 +391,18 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				toolStatus = "error"
 				result, _ = json.Marshal(map[string]string{"error": toolErr.Error()})
 				providerToolContent = string(result)
+			} else if call.Name == "ask_questions" && comment != "" {
+				request, validationErr := tools.ValidateQuestionArguments(json.RawMessage(call.Arguments))
+				if validationErr != nil {
+					toolErr = validationErr
+					toolStatus = "error"
+					result, _ = json.Marshal(map[string]string{"error": validationErr.Error()})
+					providerToolContent = string(result)
+				} else {
+					decision = "answered"
+					result = questionAnswerResult(request, comment)
+					providerToolContent = string(result)
+				}
 			} else if comment != "" {
 				// User supplied feedback instead of running the tool; feed the
 				// comment back to the model as the tool result so it can adjust.
@@ -521,6 +533,38 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 		ToolMessages:     toolMessages,
 		Usage:            resp.Usage,
 	}, nil
+}
+
+// questionAnswerResult turns the existing tool-decision comment channel into
+// the ask_questions tool's structured result. JSON answers are accepted when a UI
+// wants to submit several answers; plain text answers the first question.
+func questionAnswerResult(request tools.QuestionRequest, comment string) []byte {
+	var structured struct {
+		Answers json.RawMessage `json:"answers"`
+	}
+	if json.Unmarshal([]byte(comment), &structured) == nil && len(structured.Answers) > 0 {
+		var answers []any
+		if json.Unmarshal(structured.Answers, &answers) == nil {
+			result, _ := json.Marshal(map[string]any{"status": "answered", "answers": answers})
+			return result
+		}
+	}
+	answers := make([]map[string]any, 0, len(request.Questions))
+	for i, question := range request.Questions {
+		answer := ""
+		skipped := true
+		if i == 0 {
+			answer = comment
+			skipped = false
+		}
+		answers = append(answers, map[string]any{
+			"id": question.ID, "prompt": question.Prompt, "answer": answer, "skipped": skipped,
+		})
+	}
+	result, _ := json.Marshal(map[string]any{
+		"status": "answered", "answers": answers,
+	})
+	return result
 }
 
 const webSearchPromptFragment = `

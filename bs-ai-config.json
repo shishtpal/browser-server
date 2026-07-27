@@ -30,6 +30,7 @@
         "enabled": true,
         "allowed": [
             "get_current_time",
+			"ask_questions",
             "search_todos",
             "add_todo_record",
             "update_todo_record",

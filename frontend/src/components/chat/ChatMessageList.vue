@@ -53,7 +53,7 @@ defineEmits<{
   suggestion: [text: string]
   copy: [content: string]
   delete: [messageId: string]
-  toolDecision: [callId: string, approved: boolean, comment: string]
+  'tool-decision': [callId: string, approved: boolean, comment: string]
 }>()
 
 const container = ref<HTMLElement | null>(null)

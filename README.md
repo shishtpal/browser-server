@@ -243,6 +243,9 @@ go test ./...
 go vet ./...
 go build -o bin/server.exe ./cmd/server
 
+# Shared Libraries
+pnpm --filter @browser-server/shared-modal type-check
+
 # Web app
 pnpm --dir frontend dev
 pnpm --dir frontend build

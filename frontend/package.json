@@ -11,6 +11,7 @@
   "dependencies": {
     "@astrojs/vue": "^7.0.1",
     "@browser-server/shared-client": "link:..\\shared\\browser-client",
+    "@browser-server/shared-modal": "link:..\\shared\\browser-modal",
     "@browser-server/shared-types": "link:..\\shared\\browser-types",
     "@browser-server/shared-utils": "link:..\\shared\\browser-utils",
     "@tailwindcss/vite": "4.3.0",

@@ -3,6 +3,7 @@ import '../styles/global.css'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import ServerStatus from '../components/ServerStatus.vue'
 import ApiTokenSettings from '../components/ApiTokenSettings.vue'
+import AppModalHost from '../components/AppModalHost.vue'
 
 interface Props {
   title?: string
@@ -189,6 +190,7 @@ const isActive = (href: string) => {
     </header>
 
     <slot />
+    <AppModalHost client:only="vue" />
   </body>
 </html>
 

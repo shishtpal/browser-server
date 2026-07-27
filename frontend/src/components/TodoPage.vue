@@ -164,7 +164,7 @@
                   @restore="restoreTodo"
                   @toggle-expand="toggleExpand"
                   @start-edit="openEditModal"
-                  @delete="removeTodo"
+                  @delete="confirmDelete"
                   @view-screenshot="openScreenshot"
                   @toggle-subtask="toggleTodo"
                   @mousedown="onRowMouseDown"
@@ -194,7 +194,7 @@
             @toggle-expand="toggleExpand"
             @view-screenshot="openScreenshot"
             @start-edit="openEditModal"
-            @delete="removeTodo"
+            @delete="confirmDelete"
             @reorder="onKanbanReorder"
             @priority-change="onKanbanPriorityChange"
           />
@@ -211,7 +211,7 @@
               @restore="restoreTodo"
               @toggle-expand="toggleExpand"
               @start-edit="openEditModal"
-              @delete="removeTodo"
+              @delete="confirmDelete"
               @view-screenshot="openScreenshot"
             />
           </template>
@@ -259,6 +259,7 @@ import TodoViewToggle from './todos/TodoViewToggle.vue'
 import TodoSortBar from './todos/TodoSortBar.vue'
 import TodoSubtaskList from './todos/TodoSubtaskList.vue'
 import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
+import { useModal } from '@browser-server/shared-modal'
 import { getScreenshotUrl, reorderTodos, updateTodo } from '../lib/api'
 
 const allPriorityOptions: { value: TodoPriority; label: string }[] = [
@@ -444,8 +445,21 @@ async function handleUpdate(id: number, data: Partial<Todo>) {
 async function handleDelete() {
   if (!editingTodo.value) return
   const id = editingTodo.value.id
-  await removeTodo(id)
   closeModal()
+  confirmDelete(id)
+}
+
+// ── Delete confirmation (imperative modal) ────────────────────────────
+const { confirmDelete: modalConfirmDelete } = useModal()
+
+async function confirmDelete(id: number) {
+  const confirmed = await modalConfirmDelete(
+    'Delete this todo?',
+    "This action cannot be undone. The todo and its data will be permanently removed.",
+  )
+  if (confirmed) {
+    await removeTodo(id)
+  }
 }
 
 const dueDateLabel = computed(() => {

@@ -1,0 +1,52 @@
+{
+    "type": "object",
+    "properties": {
+        "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "User ID must be a positive integer"
+        },
+        "action": {
+            "type": "string",
+            "enum": ["add", "edit", "remove"],
+            "description": "Action to perform: add, edit, or remove a prompt"
+        },
+        "id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Prompt ID (required for edit and remove actions)"
+        },
+        "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Prompt title (required for add action, max 200 chars)"
+        },
+        "content": {
+            "type": "string",
+            "maxLength": 10000,
+            "description": "Prompt content (required for add action, max 10000 chars)"
+        },
+        "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Description must be 2000 characters or fewer"
+        },
+        "folder_id": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Folder ID to organize the prompt (optional)"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "maxLength": 100
+            },
+            "description": "Each tag must be 100 characters or fewer"
+        }
+    },
+    "required": ["user_id", "action"],
+    "additionalProperties": false
+}

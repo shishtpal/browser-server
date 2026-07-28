@@ -60,6 +60,7 @@ func New(options ...Options) *Registry {
 	registerUpdateTodoRecord(r)
 	registerSearchPrompts(r)
 	registerAddCalendarEvent(r)
+	registerManagePrompt(r)
 	registerSearchCalendar(r)
 	registerSearchBookmarks(r)
 	registerSearchHistory(r)

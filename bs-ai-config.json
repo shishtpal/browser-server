@@ -35,6 +35,7 @@
             "add_todo_record",
             "update_todo_record",
             "search_prompts",
+            "manage_prompt",
             "search_calendar",
             "add_calendar_event",
             "search_bookmarks",

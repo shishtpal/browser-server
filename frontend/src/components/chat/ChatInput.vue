@@ -1,62 +1,108 @@
 <template>
   <div class="border-t border-slate-200 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/80">
     <form class="mx-auto w-full lg:px-4" @submit.prevent="submit">
+      <!-- ── Prompt-applied indicator ── -->
+      <Transition name="toast">
+        <div
+          v-if="appliedVisible"
+          class="mb-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-500/10"
+        >
+          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[0.65rem] font-bold text-white">✓</span>
+          <span class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Prompt applied</span>
+          <span class="text-sm text-emerald-500 dark:text-emerald-400">— press Enter to send</span>
+        </div>
+      </Transition>
+
       <div class="relative">
-        <textarea
-          ref="textareaRef"
-          v-model="localValue"
-          class="max-h-48 min-h-[52px] w-full resize-none rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-24 text-[1em] leading-relaxed outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400 dark:border-white/10 dark:bg-slate-900 dark:placeholder:text-slate-500 dark:focus:border-white/20"
-          :disabled="disabled"
-          :placeholder="promptMode ? 'Search prompts…' : 'Message the assistant…'"
-          rows="1"
-          @input="onInput"
-          @keydown="onKeydown"
-          @blur="onBlur"
-        ></textarea>
+        <!-- ── Prompt search dropdown (above input) ── -->
         <PromptSearchDropdown
           v-if="promptMode"
           ref="dropdownRef"
-          :visible="promptMode"
           :results="promptResults"
           :loading="promptLoading"
+          :query="promptQuery"
           @select="onPromptSelect"
-          @close="closePromptMode"
         />
-        <div class="absolute bottom-2 right-2 flex items-center gap-1.5">
-          <button
-            v-if="busy"
-            class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.85em] font-bold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            type="button"
-            @click="$emit('stop')"
-          >
-            Stop
-          </button>
-          <button
-            class="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-gray-100"
-            :disabled="!canSend"
-            type="submit"
-            title="Send message"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V5m0 0l-7 7m7-7l7 7" />
-            </svg>
-          </button>
+
+        <!-- ── Input row ── -->
+        <div
+          class="flex items-end rounded-2xl border transition-all duration-200"
+          :class="[
+            promptMode
+              ? 'border-violet-300 bg-violet-50/50 shadow-lg shadow-violet-500/10 dark:border-violet-500/30 dark:bg-violet-950/20 dark:shadow-violet-500/5'
+              : 'border-slate-200 bg-white shadow-sm hover:shadow-md dark:border-white/10 dark:bg-slate-900',
+            disabled && 'pointer-events-none opacity-60',
+          ]"
+        >
+          <!-- Prompt-mode badge -->
+          <div v-if="promptMode" class="flex items-center gap-1.5 pl-4 pt-3">
+            <span class="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 text-xs dark:bg-violet-500/20">🔍</span>
+          </div>
+
+          <textarea
+            ref="textareaRef"
+            v-model="localValue"
+            class="max-h-48 min-h-[52px] w-full flex-1 resize-none bg-transparent py-3 pl-4 pr-2 text-[1em] leading-relaxed outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            :class="promptMode ? 'pl-2' : ''"
+            :disabled="disabled"
+            :placeholder="promptMode ? 'Search prompts…' : 'Message the assistant…'"
+            rows="1"
+            @input="onInput"
+            @keydown="onKeydown"
+          />
+
+          <!-- Action buttons -->
+          <div class="flex items-center gap-1.5 px-3 pb-2.5">
+            <button
+              v-if="busy"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.85em] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              type="button"
+              @click="$emit('stop')"
+            >
+              Stop
+            </button>
+            <button
+              class="grid h-9 w-9 place-items-center rounded-xl transition-all duration-200"
+              :class="
+                canSend && !busy
+                  ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-gray-100'
+                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600'
+              "
+              :disabled="!canSend || busy"
+              type="submit"
+              title="Send message"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
-      <p class="mt-2 text-center text-[0.8em] text-slate-400 dark:text-slate-500">
-        <kbd class="rounded border border-slate-200 px-1 py-0.5 text-[0.7em] dark:border-white/10">Enter</kbd> to send ·
-        <kbd class="rounded border border-slate-200 px-1 py-0.5 text-[0.7em] dark:border-white/10">Shift+Enter</kbd> for new line ·
-        <kbd class="rounded border border-slate-200 px-1 py-0.5 text-[0.7em] dark:border-white/10">/</kbd> to search prompts
-      </p>
+
+      <!-- ── Keyboard hints ── -->
+      <div class="mt-2 flex items-center justify-center gap-3 text-[0.75em] text-slate-400 dark:text-slate-500">
+        <span>
+          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.7em] dark:border-white/10">↵</kbd> send
+        </span>
+        <span class="text-slate-300 dark:text-slate-600">·</span>
+        <span>
+          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.7em] dark:border-white/10">⇧↵</kbd> new line
+        </span>
+        <span class="text-slate-300 dark:text-slate-600">·</span>
+        <span>
+          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.7em] dark:border-white/10">/</kbd> prompts
+        </span>
+      </div>
     </form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import PromptSearchDropdown from '../prompts/PromptSearchDropdown.vue'
 import { searchPrompts } from '../../lib/api'
-import type { PromptResponse } from '../types'
+import type { PromptResponse } from '../../types'
 
 const props = defineProps<{
   modelValue: string
@@ -72,54 +118,92 @@ const emit = defineEmits<{
   selectPrompt: [prompt: PromptResponse]
 }>()
 
+/* ───── refs ───── */
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const dropdownRef = ref<InstanceType<typeof PromptSearchDropdown> | null>(null)
-const localValue = ref(props.modelValue)
+
+function normalizeToString(v: any): string {
+  if (typeof v === 'string') return v
+  if (v == null) return ''
+  const candidate = (v as any).content ?? (v as any).Content ?? (v as any).Prompt?.content ?? (v as any).prompt?.content
+  if (typeof candidate === 'string') return candidate
+  try {
+    return JSON.stringify(v)
+  } catch {
+    return String(v)
+  }
+}
+
+const localValue = ref<string>(normalizeToString(props.modelValue))
 
 watch(() => props.modelValue, (v) => {
-  if (v !== localValue.value) localValue.value = v
+  const newVal = normalizeToString(v)
+  if (newVal !== localValue.value) localValue.value = newVal
 })
 
 const canSend = computed(() => !props.disabled && !props.busy && localValue.value.trim().length > 0)
 
+/* ───── prompt-mode state ───── */
 const promptMode = ref(false)
 const promptQuery = ref('')
 const promptResults = ref<PromptResponse[]>([])
 const promptLoading = ref(false)
 let promptDebounce: ReturnType<typeof setTimeout> | null = null
 
-function onInput() {
-  const el = textareaRef.value
-  if (el) {
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 192) + 'px'
-  }
+/* ───── applied indicator ───── */
+const appliedVisible = ref(false)
+let appliedTimer: ReturnType<typeof setTimeout> | null = null
 
-  const value = localValue.value
-  if (!promptMode.value) {
-    if (value.startsWith('/')) {
-      enterPromptMode(value.slice(1))
-      return
-    }
-    return
-  }
-
-  const query = value.startsWith('/') ? value.slice(1) : value
-  promptQuery.value = query
-  if (!query.trim()) {
-    promptResults.value = []
-    promptLoading.value = false
-    return
-  }
-
-  if (promptDebounce) clearTimeout(promptDebounce)
-  promptDebounce = setTimeout(() => runPromptSearch(query), 180)
+function showAppliedIndicator() {
+  appliedVisible.value = true
+  if (appliedTimer) clearTimeout(appliedTimer)
+  appliedTimer = setTimeout(() => { appliedVisible.value = false }, 2500)
 }
 
+/* ───── auto-resize ───── */
+function autoResize() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 192) + 'px'
+}
+
+/* ───── input handler ───── */
+function onInput() {
+  autoResize()
+
+  const value = localValue.value
+
+  /* Already in prompt mode */
+  if (promptMode.value) {
+    if (!value.startsWith('/')) {
+      // User backspaced over the "/" — exit prompt mode, keep remaining text
+      exitPromptMode()
+      return
+    }
+    const query = value.slice(1)
+    promptQuery.value = query
+    if (!query.trim()) {
+      promptResults.value = []
+      promptLoading.value = false
+      return
+    }
+    debouncedSearch(query)
+    return
+  }
+
+  /* Not in prompt mode — check if user just typed "/" */
+  if (value.startsWith('/')) {
+    enterPromptMode(value.slice(1))
+  }
+}
+
+/* ───── prompt-mode helpers ───── */
 function enterPromptMode(query = '') {
   promptMode.value = true
   promptQuery.value = query
   localValue.value = '/' + query
+  emit('update:modelValue', localValue.value)
   if (query.trim()) {
     runPromptSearch(query)
   } else {
@@ -128,92 +212,110 @@ function enterPromptMode(query = '') {
   }
 }
 
-function runPromptSearch(query: string) {
-  if (!props.userId || props.userId <= 0) return
-  const trimmedQuery = query.trim()
-  if (!trimmedQuery) {
-    promptResults.value = []
-    promptLoading.value = false
-    return
-  }
-
-  promptLoading.value = true
-  searchPrompts(props.userId, trimmedQuery, 20)
-    .then((results) => {
-      promptResults.value = results
-    })
-    .catch(() => {
-      promptResults.value = []
-    })
-    .finally(() => {
-      promptLoading.value = false
-    })
-}
-
-function closePromptMode() {
+/**
+ * Exit prompt mode but **preserve** whatever is currently in the input.
+ * Used when the user backspaces over the "/" or when a prompt is selected.
+ */
+function exitPromptMode() {
   promptMode.value = false
   promptQuery.value = ''
   promptResults.value = []
+  promptLoading.value = false
+  if (promptDebounce) {
+    clearTimeout(promptDebounce)
+    promptDebounce = null
+  }
+}
+
+/**
+ * Exit prompt mode **and** clear the input (e.g. Escape).
+ */
+function clearPromptMode() {
+  exitPromptMode()
   localValue.value = ''
   emit('update:modelValue', '')
 }
 
+function debouncedSearch(query: string) {
+  if (promptDebounce) clearTimeout(promptDebounce)
+  promptDebounce = setTimeout(() => runPromptSearch(query), 180)
+}
+
+function runPromptSearch(query: string) {
+  if (!props.userId || props.userId <= 0) return
+  const q = query.trim()
+  if (!q) { promptResults.value = []; promptLoading.value = false; return }
+
+  promptLoading.value = true
+  searchPrompts(props.userId, q, 20)
+    .then((r) => { promptResults.value = r })
+    .catch(() => { promptResults.value = [] })
+    .finally(() => { promptLoading.value = false })
+}
+
+/* ───── prompt selection ───── */
 function onPromptSelect(prompt: PromptResponse) {
-  localValue.value = prompt.content
-  emit('update:modelValue', prompt.content)
+  // 1. Exit prompt mode WITHOUT clearing the input
+  exitPromptMode()
+
+  // 2. Fill the input with the prompt content
+  // Some responses may contain the prompt content as an object (older shapes
+  // or nested payloads). Normalize to a string so the textarea doesn't get
+  // `[object Object]` inserted.
+  let contentValue: string
+  const raw: any = prompt as any
+  const candidate = raw.content ?? raw.Content ?? raw.Prompt?.content ?? raw.prompt?.content
+  if (typeof candidate === 'string') {
+    contentValue = candidate
+  } else if (candidate == null) {
+    // Fallback to an empty string if nothing available
+    contentValue = ''
+  } else {
+    try {
+      contentValue = JSON.stringify(candidate)
+    } catch {
+      contentValue = String(candidate)
+    }
+  }
+
+  localValue.value = contentValue
+  emit('update:modelValue', contentValue)
   emit('selectPrompt', prompt)
-  closePromptMode()
-  nextTick(() => textareaRef.value?.focus())
+
+  // 3. Show the "applied" indicator
+  showAppliedIndicator()
+
+  // 4. Refocus & resize
+  nextTick(() => {
+    textareaRef.value?.focus()
+    autoResize()
+  })
 }
 
+/* ───── keyboard ───── */
 function onKeydown(event: KeyboardEvent) {
-  if (!promptMode.value) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      submit()
-      return
-    }
-    if (event.key === 'Enter' && event.shiftKey) {
-      return
-    }
+  /* ── Prompt-mode shortcuts ── */
+  if (promptMode.value) {
+    if (event.key === 'ArrowDown') { event.preventDefault(); dropdownRef.value?.move(1); return }
+    if (event.key === 'ArrowUp')   { event.preventDefault(); dropdownRef.value?.move(-1); return }
+    if (event.key === 'Enter')     { event.preventDefault(); dropdownRef.value?.activate(); return }
+    if (event.key === 'Escape')    { event.preventDefault(); clearPromptMode(); return }
     return
   }
 
-  if (event.key === 'ArrowDown') {
+  /* ── Normal-mode shortcuts ── */
+  if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
-    dropdownRef.value?.move(1)
-    return
-  }
-  if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    dropdownRef.value?.move(-1)
-    return
-  }
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    dropdownRef.value?.activate()
-    return
-  }
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    closePromptMode()
-    return
+    submit()
   }
 }
 
-function onBlur() {
-  // Small delay to allow dropdown click to register
-  setTimeout(() => {
-    if (promptMode.value) closePromptMode()
-  }, 120)
-}
-
+/* ───── submit ───── */
 function submit() {
   if (!canSend.value) return
-  if (promptMode.value) {
-    // allow selecting via enter only
-    return
-  }
+  // In prompt mode, Enter selects from the dropdown — don't send
+  if (promptMode.value) return
+
   const content = localValue.value.trim()
   localValue.value = ''
   emit('update:modelValue', '')
@@ -227,3 +329,15 @@ function focus() {
 
 defineExpose({ focus })
 </script>
+
+<style scoped>
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+</style>

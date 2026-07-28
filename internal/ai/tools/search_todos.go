@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"browser-server/internal/db"
+	"browser-server/internal/todo"
 )
 
 //go:embed schemas/search_todos.json
@@ -46,6 +47,12 @@ func searchTodos(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	if a.Limit < 1 || a.Limit > 20 {
 		return nil, fmt.Errorf("limit must be 1 to 20")
+	}
+	if a.Priority != "" && !todo.IsValidPriority(a.Priority) {
+		return nil, fmt.Errorf("priority must be one of: low, medium, high, urgent")
+	}
+	if a.Status != "" && !todo.IsValidStatus(a.Status) {
+		return nil, fmt.Errorf("status must be one of: pending, in_progress, completed, done, cancelled, archived")
 	}
 
 	// Build dynamic query

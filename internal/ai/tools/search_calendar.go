@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"browser-server/internal/db"
+	"browser-server/internal/todo"
 )
 
 //go:embed schemas/search_calendar.json
@@ -47,6 +48,9 @@ func searchCalendar(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	if a.Limit < 1 || a.Limit > 20 {
 		return nil, fmt.Errorf("limit must be 1 to 20")
+	}
+	if a.Status != "" && !todo.IsValidStatus(a.Status) {
+		return nil, fmt.Errorf("status must be one of: pending, in_progress, completed, done, cancelled, archived")
 	}
 
 	// Only return items that have a start_date (calendar events)

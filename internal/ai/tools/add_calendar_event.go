@@ -11,6 +11,7 @@ import (
 
 	"browser-server/internal/db"
 	"browser-server/internal/helpers"
+	"browser-server/internal/todo"
 )
 
 //go:embed schemas/add_calendar_event.json
@@ -63,7 +64,7 @@ func addCalendarEvent(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 
 	// Parse start_date (required)
-	startDate := parseDate(a.StartDate)
+	startDate := todo.ParseDate(a.StartDate)
 	if startDate == nil {
 		return nil, fmt.Errorf("start_date is required and must be a valid date (YYYY-MM-DD or RFC3339)")
 	}
@@ -71,7 +72,7 @@ func addCalendarEvent(ctx context.Context, raw json.RawMessage) (any, error) {
 	// Parse end_date (optional)
 	var endDate *time.Time
 	if a.EndDate != "" {
-		endDate = parseDate(a.EndDate)
+		endDate = todo.ParseDate(a.EndDate)
 		if endDate == nil {
 			return nil, fmt.Errorf("end_date must be a valid date (YYYY-MM-DD or RFC3339)")
 		}
@@ -80,8 +81,7 @@ func addCalendarEvent(ctx context.Context, raw json.RawMessage) (any, error) {
 	// Validate priority
 	priority := "medium"
 	if a.Priority != "" {
-		validPriorities := map[string]bool{"low": true, "medium": true, "high": true, "urgent": true}
-		if !validPriorities[a.Priority] {
+		if !todo.IsValidPriority(a.Priority) {
 			return nil, fmt.Errorf("priority must be one of: low, medium, high, urgent")
 		}
 		priority = a.Priority
@@ -90,9 +90,8 @@ func addCalendarEvent(ctx context.Context, raw json.RawMessage) (any, error) {
 	// Validate status
 	status := "pending"
 	if a.Status != "" {
-		validStatuses := map[string]bool{"pending": true, "in_progress": true, "completed": true, "archived": true}
-		if !validStatuses[a.Status] {
-			return nil, fmt.Errorf("status must be one of: pending, in_progress, completed, archived")
+		if !todo.IsValidStatus(a.Status) {
+			return nil, fmt.Errorf("status must be one of: pending, in_progress, completed, done, cancelled, archived")
 		}
 		status = a.Status
 	}
@@ -144,21 +143,4 @@ func addCalendarEvent(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 
 	return todo, nil
-}
-
-// parseDate parses a date string in YYYY-MM-DD or RFC3339 format.
-// Returns nil for empty or unparsable strings.
-func parseDate(raw string) *time.Time {
-	if raw == "" {
-		return nil
-	}
-	t, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		t2, err2 := time.Parse("2006-01-02", raw)
-		if err2 != nil {
-			return nil
-		}
-		return &t2
-	}
-	return &t
 }

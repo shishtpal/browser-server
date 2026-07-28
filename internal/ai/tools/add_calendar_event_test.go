@@ -39,7 +39,7 @@ func TestAddCalendarEventValidation(t *testing.T) {
 		},
 		{
 			name:    "invalid status",
-			input:   `{"user_id":1,"title":"Meeting","start_date":"2026-08-01","status":"done"}`,
+			input:   `{"user_id":1,"title":"Meeting","start_date":"2026-08-01","status":"unknown"}`,
 			wantErr: "status",
 		},
 		{

@@ -19,6 +19,8 @@ export interface Prompt {
   updated_at: string
 }
 
+export type PromptResponse = Prompt
+
 export interface CreatePromptFolderInput {
   user_id: number
   name: string

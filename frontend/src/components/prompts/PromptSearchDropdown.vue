@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, type PropType } from 'vue'
-import type { PromptResponse } from '../types'
+import type { PromptResponse } from '../../types'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },

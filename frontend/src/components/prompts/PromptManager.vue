@@ -133,7 +133,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Modal from '../ui/Modal.vue'
-import type { PromptFolder, PromptResponse, CreatePromptFolderInput, UpdatePromptFolderInput, CreatePromptInput, UpdatePromptInput } from '../types'
+import type { PromptFolder, PromptResponse, CreatePromptFolderInput, UpdatePromptFolderInput, CreatePromptInput, UpdatePromptInput } from '../../types'
 import { usePrompts } from '../../composables/usePrompts'
 
 const props = defineProps<{

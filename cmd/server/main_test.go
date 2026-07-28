@@ -1,6 +1,12 @@
 package main
 
-import "testing"
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/gorilla/mux"
+)
 
 func TestResolveServerPortDefault(t *testing.T) {
 	t.Setenv("PORT", "")
@@ -77,5 +83,28 @@ func TestResolveServerPortRejectsInvalidEnvValue(t *testing.T) {
 
 	if _, err := resolveServerPort(nil); err == nil {
 		t.Fatal("resolveServerPort returned nil error")
+	}
+}
+
+func TestPromptSearchRouteMatchesBeforePromptIDRoute(t *testing.T) {
+	r := mux.NewRouter()
+	r.HandleFunc("/prompts/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("id"))
+	}).Methods(http.MethodGet)
+	r.HandleFunc("/prompts/search", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("search"))
+	}).Methods(http.MethodGet)
+
+	req := httptest.NewRequest(http.MethodGet, "/prompts/search", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("ServeHTTP status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	if got := rr.Body.String(); got != "search" {
+		t.Fatalf("ServeHTTP body = %q, want %q", got, "search")
 	}
 }

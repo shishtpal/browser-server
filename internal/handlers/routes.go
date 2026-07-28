@@ -58,6 +58,16 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "POST", Path: "/api/users", Description: "Create a new user"},
 		{Method: "GET", Path: "/api/users/{id}", Description: "Get user by ID"},
 		{Method: "DELETE", Path: "/api/users/{id}", Description: "Delete user by ID"},
+		{Method: "GET", Path: "/api/prompts/folders", Description: "List prompt folders"},
+		{Method: "POST", Path: "/api/prompts/folders", Description: "Create a prompt folder"},
+		{Method: "PUT", Path: "/api/prompts/folders/{id}", Description: "Rename a prompt folder"},
+		{Method: "DELETE", Path: "/api/prompts/folders/{id}", Description: "Delete a prompt folder"},
+		{Method: "GET", Path: "/api/prompts", Description: "List prompts (filters: user_id, folder_id, q)"},
+		{Method: "POST", Path: "/api/prompts", Description: "Create a prompt"},
+		{Method: "GET", Path: "/api/prompts/{id}", Description: "Get prompt by ID"},
+		{Method: "PUT", Path: "/api/prompts/{id}", Description: "Update prompt by ID"},
+		{Method: "DELETE", Path: "/api/prompts/{id}", Description: "Delete prompt by ID"},
+		{Method: "GET", Path: "/api/prompts/search", Description: "Fuzzy search prompts (params: user_id, q, limit)"},
 	}
 
 	w.Header().Set("Content-Type", "application/json")

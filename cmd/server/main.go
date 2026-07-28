@@ -121,6 +121,17 @@ func main() {
 	api.HandleFunc("/users/{id}", handlers.GetUserByID).Methods("GET")
 	api.HandleFunc("/users/{id}", handlers.DeleteUser).Methods("DELETE")
 
+	api.HandleFunc("/prompts/folders", handlers.GetPromptFolders).Methods("GET")
+	api.HandleFunc("/prompts/folders", handlers.CreatePromptFolder).Methods("POST")
+	api.HandleFunc("/prompts/folders/{id}", handlers.UpdatePromptFolder).Methods("PUT")
+	api.HandleFunc("/prompts/folders/{id}", handlers.DeletePromptFolder).Methods("DELETE")
+	api.HandleFunc("/prompts", handlers.GetPrompts).Methods("GET")
+	api.HandleFunc("/prompts", handlers.CreatePrompt).Methods("POST")
+	api.HandleFunc("/prompts/search", handlers.SearchPrompts).Methods("GET")
+	api.HandleFunc("/prompts/{id:[0-9]+}", handlers.GetPromptByID).Methods("GET")
+	api.HandleFunc("/prompts/{id:[0-9]+}", handlers.UpdatePrompt).Methods("PUT")
+	api.HandleFunc("/prompts/{id:[0-9]+}", handlers.DeletePrompt).Methods("DELETE")
+
 	ex, err := os.Executable()
 	if err != nil {
 		log.Fatal("Failed to get executable path:", err)

@@ -44,6 +44,7 @@
         :download-disabled="!activeConversation"
         :show-tools-panel="showToolsPanel"
         :show-memory-explorer="showMemoryExplorer"
+        :show-prompt-manager="showPromptManager"
         @toggle-sidebar="showMobileSidebar = true"
         @update:selected-profile="selectedProfile = $event"
         @update:selected-provider="selectedProvider = $event"
@@ -53,6 +54,7 @@
         @download="downloadConversation"
         @toggle-tools-panel="showToolsPanel = !showToolsPanel"
         @toggle-memory-explorer="showMemoryExplorer = !showMemoryExplorer"
+        @toggle-prompt-manager="showPromptManager = !showPromptManager"
       />
 
       <!-- Error banner -->
@@ -84,8 +86,10 @@
           v-model="draft"
           :disabled="!config?.enabled"
           :busy="isBusy"
+          :user-id="currentUserId"
           @send="sendMessage"
           @stop="handleStop"
+          @select-prompt="useSuggestion"
         />
       </template>
     </section>
@@ -184,6 +188,13 @@
       @updated="messages = $event"
     />
 
+    <!-- Prompt Manager modal -->
+    <PromptManager
+      :open="showPromptManager"
+      :user-id="currentUserId"
+      @close="showPromptManager = false"
+    />
+
     <!-- New Conversation modal -->
     <ChatNewConversationModal
       :open="showNewConversationModal"
@@ -222,6 +233,8 @@ import type { ToolCallEntry } from './chat/ChatToolsPanel.vue'
 import { useChatConfig } from './chat/composables/useChatConfig'
 import { useChatConversations } from './chat/composables/useChatConversations'
 import { useChatMessaging } from './chat/composables/useChatMessaging'
+import { useUser } from '../composables/useUser'
+import PromptManager from './prompts/PromptManager.vue'
 
 // ─── Composables ───────────────────────────────────────
 
@@ -303,6 +316,8 @@ const {
   (msgs) => { messages.value = msgs },
 )
 
+const { currentUserId } = useUser()
+
 // ─── Local state ───────────────────────────────────────
 
 const draft = ref('')
@@ -312,6 +327,7 @@ const showCopyToast = ref(false)
 const showToolsPanel = ref(true)
 const showMemoryExplorer = ref(false)
 const showNewConversationModal = ref(false)
+const showPromptManager = ref(false)
 
 // Archive/Restore local state
 const chatFontFamily = ref(localStorage.getItem('ai-chat-font-family') || 'system-ui')
@@ -597,9 +613,3 @@ function filenameSafe(value: string): string {
     .slice(0, 100) || 'ai-conversation'
 }
 </script>
-
-
-
-
-
-

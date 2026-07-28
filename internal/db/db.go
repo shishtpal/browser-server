@@ -19,6 +19,7 @@ var (
 	UserDB       *sql.DB
 	ScreenshotDB *sql.DB
 	UsageDB      *sql.DB
+	PromptDB     *sql.DB
 )
 
 func GetDataPath() string {
@@ -214,6 +215,42 @@ func InitUsageDB(dataPath string) {
 	Exec(UsageDB, `CREATE INDEX IF NOT EXISTS idx_domain_usage_user_domain ON domain_usage(user_id, domain)`)
 }
 
+func InitPromptDB(dataPath string) {
+	PromptDB = Open(filepath.Join(dataPath, "prompts.db"))
+	Exec(PromptDB, `
+		CREATE TABLE IF NOT EXISTS prompt_folders (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			name TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	Exec(PromptDB, `CREATE INDEX IF NOT EXISTS idx_prompt_folders_user ON prompt_folders(user_id)`)
+	Exec(PromptDB, `
+		CREATE TABLE IF NOT EXISTS prompts (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			folder_id INTEGER,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL,
+			description TEXT DEFAULT '',
+			tags TEXT DEFAULT '[]',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (folder_id) REFERENCES prompt_folders(id) ON DELETE SET NULL
+		)
+	`)
+	Exec(PromptDB, `CREATE INDEX IF NOT EXISTS idx_prompts_user ON prompts(user_id)`)
+	Exec(PromptDB, `CREATE INDEX IF NOT EXISTS idx_prompts_folder ON prompts(folder_id)`)
+}
+
+func ClosePromptDB() {
+	if PromptDB != nil {
+		PromptDB.Close()
+	}
+}
+
 func InsertSampleData() {
 	var count int
 
@@ -233,6 +270,14 @@ func InsertSampleData() {
 			log.Printf("Failed to insert sample todo: %v", err)
 		}
 	}
+
+	err = PromptDB.QueryRow("SELECT COUNT(*) FROM prompt_folders").Scan(&count)
+	if err == nil && count == 0 {
+		_, err = PromptDB.Exec("INSERT INTO prompt_folders (user_id, name) VALUES (?, ?)", 1, "General")
+		if err != nil {
+			log.Printf("Failed to insert sample prompt folder: %v", err)
+		}
+	}
 }
 
 func InitAll(dataPath string) {
@@ -243,6 +288,7 @@ func InitAll(dataPath string) {
 	InitWalletDB(dataPath)
 	InitScreenshotDB(dataPath)
 	InitUsageDB(dataPath)
+	InitPromptDB(dataPath)
 	InsertSampleData()
 }
 
@@ -267,5 +313,8 @@ func CloseAll() {
 	}
 	if UsageDB != nil {
 		UsageDB.Close()
+	}
+	if PromptDB != nil {
+		PromptDB.Close()
 	}
 }

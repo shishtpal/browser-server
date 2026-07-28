@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"fmt"
 	"net/mail"
 	"net/url"
 	"strings"
@@ -46,6 +47,13 @@ func (v *Validator) Required(field, value string) {
 func (v *Validator) PositiveID(field string, value int) {
 	if value <= 0 {
 		v.add(field, "must be a positive integer")
+	}
+}
+
+// MaxLength fails if the string value exceeds the given character limit.
+func (v *Validator) MaxLength(field, value string, max int) {
+	if len(value) > max {
+		v.add(field, fmt.Sprintf("must be %d characters or fewer", max))
 	}
 }
 

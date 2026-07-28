@@ -12,11 +12,16 @@ import type {
   BookmarkResponse,
   CreateAIConversationInput,
   CreateHistoryInput,
+  CreatePromptFolderInput,
+  CreatePromptInput,
   CreateTodoInput,
   HealthResponse,
   History,
   HistoryImportResult,
   ImportResult,
+  Prompt,
+  PromptFolder,
+  PromptResponse,
   ReorderItem,
   ReorderTodosInput,
   Screenshot,
@@ -25,6 +30,8 @@ import type {
   StopAIGenerationResponse,
   Todo,
   UpdateAIConversationInput,
+  UpdatePromptFolderInput,
+  UpdatePromptInput,
   User,
   WalletEntry,
   WalletImportResult,
@@ -390,6 +397,92 @@ export function listArchivedAIConversations(): Promise<AIConversation[]> {
   return fetch(`${API_BASE}/api/ai/conversations/archived`, { headers: authHeaders() }).then((res) => {
     if (!res.ok) throw new Error('Failed to load archived conversations')
     return res.json() as Promise<AIConversation[]>
+  })
+}
+
+// ─── Prompts ───────────────────────────────────────────
+
+export function getPromptFolders(userId: number): Promise<PromptFolder[]> {
+  return fetch(`${API_BASE}/api/prompts/folders?user_id=${userId}`, { headers: authHeaders() }).then((res) => {
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    return res.json() as Promise<PromptFolder[]>
+  })
+}
+
+export function createPromptFolder(data: CreatePromptFolderInput): Promise<PromptFolder> {
+  return fetch(`${API_BASE}/api/prompts/folders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(data),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    return res.json() as Promise<PromptFolder>
+  })
+}
+
+export function updatePromptFolder(id: number, data: UpdatePromptFolderInput): Promise<PromptFolder> {
+  return fetch(`${API_BASE}/api/prompts/folders/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(data),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    return res.json() as Promise<PromptFolder>
+  })
+}
+
+export function deletePromptFolder(id: number): Promise<void> {
+  return fetch(`${API_BASE}/api/prompts/folders/${id}`, { method: 'DELETE', headers: authHeaders() }).then((res) => {
+    if (res.status === 204) return
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+  })
+}
+
+export function getPrompts(userId: number, folderId?: number | null, query?: string): Promise<PromptResponse[]> {
+  const params = new URLSearchParams({ user_id: String(userId) })
+  if (folderId !== undefined && folderId !== null) params.set('folder_id', String(folderId))
+  if (query) params.set('q', query)
+  const qs = params.toString()
+  return fetch(`${API_BASE}/api/prompts?${qs}`, { headers: authHeaders() }).then((res) => {
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    return res.json() as Promise<PromptResponse[]>
+  })
+}
+
+export function createPrompt(data: CreatePromptInput): Promise<PromptResponse> {
+  return fetch(`${API_BASE}/api/prompts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(data),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    return res.json() as Promise<PromptResponse>
+  })
+}
+
+export function updatePrompt(id: number, data: UpdatePromptInput): Promise<PromptResponse> {
+  return fetch(`${API_BASE}/api/prompts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(data),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    return res.json() as Promise<PromptResponse>
+  })
+}
+
+export function deletePrompt(id: number): Promise<void> {
+  return fetch(`${API_BASE}/api/prompts/${id}`, { method: 'DELETE', headers: authHeaders() }).then((res) => {
+    if (res.status === 204) return
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+  })
+}
+
+export function searchPrompts(userId: number, query: string, limit = 10): Promise<PromptResponse[]> {
+  const params = new URLSearchParams({ user_id: String(userId), q: query, limit: String(limit) })
+  return fetch(`${API_BASE}/api/prompts/search?${params.toString()}`, { headers: authHeaders() }).then((res) => {
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    return res.json() as Promise<PromptResponse[]>
   })
 }
 

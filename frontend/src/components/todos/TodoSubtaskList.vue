@@ -149,7 +149,7 @@ import type { Todo, TodoPriority } from '../../types'
 
 const props = defineProps({
   todo: { type: Object as PropType<Todo>, required: true },
-  defaultExpanded: { type: Boolean, default: false },
+  defaultExpanded: { type: Boolean, default: true },
 })
 
 const emit = defineEmits<{

@@ -2,17 +2,17 @@ import type { Todo } from '../types'
 import { computed, ref, type Ref } from 'vue'
 
 export function isOverdue(todo: Todo): boolean {
-  if (!todo.start_date || todo.status !== 'pending') return false
+  if (!todo.start_date || todo.status === 'completed' || todo.status === 'archived') return false
   return new Date(todo.start_date) < new Date(new Date().toDateString())
 }
 
 export function isDueToday(todo: Todo): boolean {
-  if (!todo.start_date || todo.status !== 'pending') return false
+  if (!todo.start_date || todo.status === 'completed' || todo.status === 'archived') return false
   return new Date(todo.start_date).toDateString() === new Date().toDateString()
 }
 
 export function isDueThisWeek(todo: Todo): boolean {
-  if (!todo.start_date || todo.status !== 'pending') return false
+  if (!todo.start_date || todo.status === 'completed' || todo.status === 'archived') return false
   const due = new Date(todo.start_date)
   const now = new Date()
   const weekEnd = new Date(now)
@@ -37,7 +37,7 @@ export function useTodoDueDate() {
     })
 
   const dueDateBadgeClass = (todo: Todo) => {
-    if (todo.status === 'completed') return 'bg-gray-100 text-gray-500'
+    if (todo.status === 'completed' || todo.status === 'archived') return 'bg-gray-100 text-gray-500'
     if (isOverdue(todo)) return 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
     if (isDueToday(todo)) return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
     if (isDueThisWeek(todo)) return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400'

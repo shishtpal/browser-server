@@ -1,15 +1,18 @@
 <template>
-  <li class="group rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-800/90 dark:hover:border-indigo-500/30">
+  <li :class="['group rounded-xl border p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md', todo.status === 'in_progress' ? 'border-blue-300 bg-blue-50/40 dark:border-blue-500/40 dark:bg-blue-900/10 hover:border-blue-400' : 'border-gray-200/80 bg-white hover:border-indigo-200 dark:border-slate-700/80 dark:bg-slate-800/90 dark:hover:border-indigo-500/30']">
     <div class="flex items-start gap-3">
       <button
         type="button"
         :disabled="todo.status === 'archived'"
         @click="$emit('toggle', todo)"
         class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition disabled:cursor-default"
-        :class="todo.status === 'completed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400 dark:border-slate-600 dark:hover:border-indigo-400'"
+        :class="todo.status === 'completed' ? 'border-emerald-500 bg-emerald-500 text-white' : todo.status === 'in_progress' ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400 dark:border-slate-600 dark:hover:border-indigo-400'"
       >
-        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg v-if="todo.status === 'completed'" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+        </svg>
+        <svg v-else-if="todo.status === 'in_progress'" class="h-3 w-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="animation-duration: 2s">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 3a9 9 0 019 9" />
         </svg>
       </button>
     <div class="min-w-0 flex-1">
@@ -19,9 +22,10 @@
             <img :src="screenshotUrl" class="h-8 w-14 rounded border border-gray-200 object-cover dark:border-slate-600" />
           </button>
           <span v-if="todo.color" class="h-3 w-3 shrink-0 rounded-full" :style="{ backgroundColor: todo.color }"></span>
-          <span :class="['block truncate text-sm font-black', todo.status === 'completed' ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-900 dark:text-white']">{{ todo.title }}</span>
+          <span :class="['block truncate text-sm font-black', todo.status === 'completed' ? 'text-slate-400 line-through dark:text-slate-500' : todo.status === 'in_progress' ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-white']">{{ todo.title }}</span>
           <span v-if="todo.pinned" class="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-black text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">Pinned</span>
           <TodoPriorityBadge :priority="(todo.priority as any)" />
+          <span v-if="todo.status === 'in_progress'" class="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">In Progress</span>
           <span v-if="todo.status === 'archived'" class="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-black text-gray-500 dark:bg-slate-700 dark:text-slate-400">Archived</span>
         </div>
         <p v-if="todo.description" class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400">{{ todo.description }}</p>
@@ -39,16 +43,16 @@
           <button
             v-if="subtaskCount > 0"
             type="button"
-            @click="$emit('toggle-expand', todo.id)"
+            @click="showSubtasks = !showSubtasks"
             class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black text-indigo-500 transition hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-900/20"
           >
-            {{ expanded ? '−' : '+' }} {{ subtaskCount }}
+            {{ showSubtasks ? '−' : '+' }} {{ subtaskCount }}
           </button>
           <TodoSubtaskProgress v-if="subtaskCount > 0" :done="subtaskDoneCount" :total="subtaskCount" />
           <span class="mt-1 inline-block rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 transition-colors dark:bg-slate-700 dark:text-slate-400">{{ formatDate(todo.updated_at) }}</span>
         </div>
-        <div v-if="expanded" class="mt-2">
-          <TodoSubtaskList :todo="todo" @toggle-subtask="$emit('toggle-subtask', $event)" />
+        <div v-if="showSubtasks && subtaskCount > 0" class="mt-2">
+          <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="$emit('toggle-subtask', $event)" />
         </div>
       </div>
     </div>
@@ -78,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { formatDate } from '../../lib/utils'
 import { getScreenshotUrl } from '../../lib/api'
 import type { Todo } from '../../types'
@@ -90,7 +94,6 @@ import TodoSubtaskList from './TodoSubtaskList.vue'
 
 const props = defineProps<{
   todo: Todo
-  expanded?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -101,9 +104,10 @@ const emit = defineEmits<{
   startEdit: [todo: Todo]
   delete: [id: number]
   viewScreenshot: [todo: Todo]
-  'toggle-expand': [id: number]
   'toggle-subtask': [todo: Todo]
 }>()
+
+const showSubtasks = ref(true)
 
 const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')
 

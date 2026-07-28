@@ -54,6 +54,43 @@ func Exec(db *sql.DB, query string) {
 	}
 }
 
+func hasColumn(db *sql.DB, tableName, columnName string) (bool, error) {
+	rows, err := db.Query("PRAGMA table_info(" + tableName + ")")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name string
+		var dataType string
+		var notNull int
+		var defaultValue sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &pk); err != nil {
+			return false, err
+		}
+		if name == columnName {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+func ensureColumn(db *sql.DB, tableName, columnName, definition string) {
+	exists, err := hasColumn(db, tableName, columnName)
+	if err != nil {
+		log.Fatal("Failed to inspect schema:", err)
+	}
+	if exists {
+		return
+	}
+	if _, err := db.Exec("ALTER TABLE " + tableName + " ADD COLUMN " + definition); err != nil {
+		log.Fatal("Failed to add column:", err)
+	}
+}
+
 func InitUserDB(dataPath string) {
 	UserDB = Open(filepath.Join(dataPath, "users.db"))
 	Exec(UserDB, `
@@ -90,6 +127,15 @@ func InitTodoDB(dataPath string) {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
+	ensureColumn(TodoDB, "todos", "capture_id", "capture_id TEXT")
+	ensureColumn(TodoDB, "todos", "color", "color TEXT DEFAULT ''")
+	ensureColumn(TodoDB, "todos", "start_date", "start_date DATETIME")
+	ensureColumn(TodoDB, "todos", "end_date", "end_date DATETIME")
+	ensureColumn(TodoDB, "todos", "rrule", "rrule TEXT DEFAULT ''")
+	ensureColumn(TodoDB, "todos", "parent_id", "parent_id INTEGER")
+	ensureColumn(TodoDB, "todos", "position", "position INTEGER DEFAULT 0")
+	ensureColumn(TodoDB, "todos", "created_at", "created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
+	ensureColumn(TodoDB, "todos", "updated_at", "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP")
 	Exec(TodoDB, `CREATE UNIQUE INDEX IF NOT EXISTS idx_todos_user_capture ON todos(user_id, capture_id)`)
 	Exec(TodoDB, `CREATE INDEX IF NOT EXISTS idx_todos_parent ON todos(parent_id)`)
 	Exec(TodoDB, `CREATE INDEX IF NOT EXISTS idx_todos_user_parent ON todos(user_id, parent_id, position)`)

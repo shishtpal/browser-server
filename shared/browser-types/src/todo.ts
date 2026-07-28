@@ -1,5 +1,5 @@
 export type TodoPriority = 'low' | 'medium' | 'high' | 'urgent'
-export type TodoStatus = 'pending' | 'completed' | 'archived'
+export type TodoStatus = 'pending' | 'in_progress' | 'completed' | 'archived'
 
 export interface Todo {
   id: number

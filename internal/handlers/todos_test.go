@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"browser-server/internal/db"
@@ -103,6 +104,54 @@ func TestGetTodosArchiveFilteringAndPinnedOrdering(t *testing.T) {
 	}
 	if !hasArchived {
 		t.Fatalf("expected archived todo when archived=true, got %+v", all)
+	}
+}
+
+func TestUpdateTodoWorksWithLegacySchema(t *testing.T) {
+	dataPath := t.TempDir()
+	legacyDB := db.Open(filepath.Join(dataPath, "todos.db"))
+	if _, err := legacyDB.Exec(`
+		CREATE TABLE todos (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			title TEXT NOT NULL,
+			description TEXT DEFAULT '',
+			domain TEXT DEFAULT '',
+			screenshot_path TEXT DEFAULT '',
+			pinned BOOLEAN DEFAULT FALSE,
+			status TEXT DEFAULT 'pending',
+			priority TEXT DEFAULT 'medium',
+			tags TEXT DEFAULT '[]',
+			position INTEGER DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`); err != nil {
+		t.Fatalf("create legacy todo table: %v", err)
+	}
+	if _, err := legacyDB.Exec(`INSERT INTO todos (user_id, title, description, domain, screenshot_path, pinned, status, priority, tags, position) VALUES (1, 'legacy', 'desc', 'example.com', 'todo.png', 0, 'pending', 'medium', '[]', 1)`); err != nil {
+		t.Fatalf("insert legacy todo: %v", err)
+	}
+	legacyDB.Close()
+
+	db.InitTodoDB(dataPath)
+	t.Cleanup(func() { db.TodoDB.Close() })
+
+	request := httptest.NewRequest(http.MethodPut, "/api/todos/1", bytes.NewBufferString(`{"status":"completed"}`))
+	request = mux.SetURLVars(request, map[string]string{"id": "1"})
+	response := httptest.NewRecorder()
+	UpdateTodo(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", response.Code, response.Body.String())
+	}
+
+	var updated models.TodoResponse
+	if err := json.NewDecoder(response.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if updated.Status != "completed" {
+		t.Fatalf("expected status to update, got %+v", updated)
 	}
 }
 

@@ -90,9 +90,9 @@ func addCalendarEvent(ctx context.Context, raw json.RawMessage) (any, error) {
 	// Validate status
 	status := "pending"
 	if a.Status != "" {
-		validStatuses := map[string]bool{"pending": true, "completed": true, "archived": true}
+		validStatuses := map[string]bool{"pending": true, "in_progress": true, "completed": true, "archived": true}
 		if !validStatuses[a.Status] {
-			return nil, fmt.Errorf("status must be one of: pending, completed, archived")
+			return nil, fmt.Errorf("status must be one of: pending, in_progress, completed, archived")
 		}
 		status = a.Status
 	}

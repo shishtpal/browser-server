@@ -253,7 +253,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	status := "pending"
 	if s, ok := input["status"].(string); ok && s != "" {
-		validStatuses := map[string]bool{"pending": true, "completed": true, "archived": true}
+		validStatuses := map[string]bool{"pending": true, "in_progress": true, "completed": true, "archived": true}
 		if validStatuses[s] {
 			status = s
 		}
@@ -441,9 +441,9 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		todo.Pinned = *input.Pinned
 	}
 	if input.Status != nil {
-		validStatuses := map[string]bool{"pending": true, "completed": true, "archived": true}
+		validStatuses := map[string]bool{"pending": true, "in_progress": true, "completed": true, "archived": true}
 		if !validStatuses[*input.Status] {
-			helpers.WriteValidationError(w, map[string]string{"status": "must be pending, completed, or archived"})
+			helpers.WriteValidationError(w, map[string]string{"status": "must be pending, in_progress, completed, or archived"})
 			return
 		}
 		todo.Status = *input.Status

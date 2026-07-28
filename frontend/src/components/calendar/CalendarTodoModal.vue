@@ -65,6 +65,7 @@
             class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-indigo-900/30"
           >
             <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
             <option value="archived">Archived</option>
           </select>

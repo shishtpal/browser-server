@@ -14,8 +14,8 @@
             "enum": [
                 "pending",
                 "in_progress",
-                "done",
-                "cancelled"
+                "completed",
+                "archived"
             ]
         },
         "priority": {

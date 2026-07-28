@@ -16,9 +16,8 @@
         <template #item="{ element: todo }">
           <TodoKanbanCard
             :todo="todo"
-            :expanded="expandedId === todo.id"
             @toggle="$emit('toggle', $event)"
-            @toggle-expand="$emit('toggle-expand', $event)"
+            @toggle-subtask="$emit('toggle-subtask', $event)"
             @view-screenshot="$emit('view-screenshot', $event)"
             @start-edit="$emit('start-edit', $event)"
             @delete="$emit('delete', $event)"
@@ -33,26 +32,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
 import type { Todo } from '../../types'
 import type { ReorderItem } from '../../types'
+import { ref, watch, computed } from 'vue'
 import { PRIORITIES } from '../../composables/useTodoPriority'
 import draggable from 'vuedraggable'
 import TodoKanbanCard from './TodoKanbanCard.vue'
 
 const emit = defineEmits<{
   toggle: [todo: Todo]
+  'toggle-subtask': [todo: Todo]
   'view-screenshot': [todo: Todo]
   'start-edit': [todo: Todo]
   delete: [id: number]
   reorder: [items: ReorderItem[]]
   'priority-change': [payload: { todo: Todo; newPriority: string; items: ReorderItem[] }]
-  'toggle-expand': [id: number]
 }>()
 
 interface Props {
   todos: Todo[]
-  expandedId?: number | null
 }
 
 const props = defineProps<Props>()

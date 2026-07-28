@@ -1,3 +1,4 @@
+import type { Todo, TodoStatus } from '../types'
 import { ref, computed, watch, type Ref } from 'vue'
 import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api'
 import { useTodoPriority } from './useTodoPriority'
@@ -7,27 +8,28 @@ import { useTodoSort } from './useTodoSort'
 
 import { useTodoReorder } from './useTodoReorder'
 import { isOverdue, isDueToday, isDueThisWeek } from './useTodoDueDate'
-import type { Todo } from '../types'
 
 export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<string | null>) {
   const todos = ref<Todo[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  const activeFilter = ref<'all' | 'active' | 'completed' | 'archived'>('all')
+  const activeFilter = ref<'all' | 'active' | 'in_progress' | 'completed' | 'archived'>('all')
   const searchQuery = ref('')
   const filters = [
     { label: 'All', value: 'all' as const },
     { label: 'Active', value: 'active' as const },
+    { label: 'In Progress', value: 'in_progress' as const },
     { label: 'Completed', value: 'completed' as const },
     { label: 'Archived', value: 'archived' as const },
   ]
 
   const totalCount = computed(() => todos.value.filter(t => t.status !== 'archived').length)
   const activeCount = computed(() => todos.value.filter(t => t.status === 'pending').length)
+  const inProgressCount = computed(() => todos.value.filter(t => t.status === 'in_progress').length)
   const completedCount = computed(() => todos.value.filter(t => t.status === 'completed').length)
   const archivedCount = computed(() => todos.value.filter(t => t.status === 'archived').length)
-  const overdueCount = computed(() => todos.value.filter(t => t.status === 'pending' && t.start_date && isOverdue(t)).length)
+  const overdueCount = computed(() => todos.value.filter(t => (t.status === 'pending' || t.status === 'in_progress') && t.start_date && isOverdue(t)).length)
 
   const priority = useTodoPriority()
   const dueDate = useTodoDueDate()
@@ -64,7 +66,8 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     if (tags.selectedTag.value) {
       list = list.filter(t => (t.tags || []).includes(tags.selectedTag.value!))
     }
-    if (activeFilter.value === 'active') list = list.filter(t => t.status === 'pending')
+    if (activeFilter.value === 'active') list = list.filter(t => t.status === 'pending' || t.status === 'in_progress')
+    if (activeFilter.value === 'in_progress') list = list.filter(t => t.status === 'in_progress')
     if (activeFilter.value === 'completed') list = list.filter(t => t.status === 'completed')
     return list
   })
@@ -115,7 +118,12 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const toggleTodo = async (todo: Todo) => {
     try {
-      const newStatus = todo.status === 'completed' ? 'pending' : 'completed'
+      const cycle: Record<string, TodoStatus> = {
+        pending: 'in_progress',
+        in_progress: 'completed',
+        completed: 'pending',
+      }
+      const newStatus: TodoStatus = cycle[todo.status] || 'pending'
       await updateTodo(todo.id, { status: newStatus })
       await loadTodos()
     } catch (e) {
@@ -172,6 +180,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     filters,
     totalCount,
     activeCount,
+    inProgressCount,
     completedCount,
     archivedCount,
     overdueCount,

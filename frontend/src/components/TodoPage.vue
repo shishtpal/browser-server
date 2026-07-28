@@ -4,6 +4,7 @@
       <template #stats>
         <StatCard :value="totalCount" label="Total" variant="dark" color="indigo" />
         <StatCard :value="activeCount" label="Active" variant="primary" color="indigo" />
+        <StatCard v-if="inProgressCount > 0" :value="inProgressCount" label="In Progress" variant="primary" color="blue" />
         <StatCard :value="completedCount" label="Done" variant="secondary" color="indigo" />
         <StatCard v-if="archivedCount > 0" :value="archivedCount" label="Archived" variant="secondary" color="indigo" />
         <StatCard v-if="overdueCount > 0" :value="overdueCount" label="Overdue" variant="dark" color="amber" />
@@ -156,13 +157,13 @@
               <template v-for="todo in listTodos" :key="todo.id">
                 <TodoTableRow
                   :todo="todo"
-                  :expanded="expandedTodoId === todo.id"
+                  :expanded="!collapsedTodoIds.has(todo.id)"
                   draggable="true"
                   @toggle="toggleTodo"
                   @toggle-pin="togglePinned"
                   @archive="archiveTodo"
                   @restore="restoreTodo"
-                  @toggle-expand="toggleExpand"
+                  @toggle-expand="toggleSubtaskRow"
                   @start-edit="openEditModal"
                   @delete="confirmDelete"
                   @view-screenshot="openScreenshot"
@@ -173,9 +174,9 @@
                   @drop="onRowDrop($event, todo.id)"
                   @dragend="onRowDragEnd"
                 />
-                <tr v-if="expandedTodoId === todo.id" class="bg-indigo-50/40 dark:bg-slate-800/40">
+                <tr v-if="(todo.subtasks?.length || 0) > 0 && !collapsedTodoIds.has(todo.id)" class="bg-indigo-50/40 dark:bg-slate-800/40">
                   <td colspan="8" class="px-4 py-3">
-                    <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="toggleTodo" />
+                    <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="onSubtaskToggled" />
                   </td>
                 </tr>
               </template>
@@ -186,12 +187,11 @@
         <div v-else-if="view === 'kanban'">
           <TodoKanbanBoard
             :todos="displayedTodos"
-            :expanded-id="expandedTodoId"
             @toggle="toggleTodo"
+            @toggle-subtask="onSubtaskToggled"
             @toggle-pin="togglePinned"
             @archive="archiveTodo"
             @restore="restoreTodo"
-            @toggle-expand="toggleExpand"
             @view-screenshot="openScreenshot"
             @start-edit="openEditModal"
             @delete="confirmDelete"
@@ -204,15 +204,14 @@
           <template #item="{ element: todo }">
             <TodoCard
               :todo="todo"
-              :expanded="expandedTodoId === todo.id"
               @toggle="toggleTodo"
               @toggle-pin="togglePinned"
               @archive="archiveTodo"
               @restore="restoreTodo"
-              @toggle-expand="toggleExpand"
               @start-edit="openEditModal"
               @delete="confirmDelete"
               @view-screenshot="openScreenshot"
+              @toggle-subtask="onSubtaskToggled"
             />
           </template>
         </draggable>
@@ -281,6 +280,7 @@ const {
   filters,
   totalCount,
   activeCount,
+  inProgressCount,
   completedCount,
   archivedCount,
   overdueCount,
@@ -297,7 +297,6 @@ const {
   tags,
   sort,
   reorder,
-  expandedTodoId,
 } = useTodos(selectedUserId)
 
 // Vue only unwraps refs exposed as top-level template bindings. Keeping these
@@ -381,8 +380,17 @@ function onRowDragEnd() {
   dragAllowed.value = false
 }
 
-function toggleExpand(id: number) {
-  expandedTodoId.value = expandedTodoId.value === id ? null : id
+const collapsedTodoIds = ref<Set<number>>(new Set())
+
+function toggleSubtaskRow(id: number) {
+  const next = new Set(collapsedTodoIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  collapsedTodoIds.value = next
+}
+
+function onSubtaskToggled() {
+  loadTodos()
 }
 
 async function onKanbanReorder(items: { id: number; position: number }[]) {

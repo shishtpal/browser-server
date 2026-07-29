@@ -147,31 +147,20 @@ type User struct {
 	Email    string `json:"email"`
 }
 
-type PromptFolder struct {
-	ID          int       `json:"id"`
-	UserID      int       `json:"user_id"`
-	Name        string    `json:"name"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
 type Prompt struct {
 	ID          int       `json:"id"`
 	UserID      int       `json:"user_id"`
-	FolderID    *int      `json:"folder_id"`
 	Title       string    `json:"title"`
 	Content     string    `json:"content"`
 	Description string    `json:"description"`
 	Tags        string    `json:"tags"`
-	FolderName  *string   `json:"folder_name,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type PromptResponse struct {
 	Prompt
-	Tags       []string `json:"tags"`
-	FolderName *string  `json:"folder_name,omitempty"`
+	Tags []string `json:"tags"`
 }
 
 type Route struct {

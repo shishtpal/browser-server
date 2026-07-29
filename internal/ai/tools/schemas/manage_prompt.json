@@ -33,11 +33,6 @@
             "maxLength": 2000,
             "description": "Description must be 2000 characters or fewer"
         },
-        "folder_id": {
-            "type": ["integer", "null"],
-            "minimum": 1,
-            "description": "Folder ID to organize the prompt (optional)"
-        },
         "tags": {
             "type": "array",
             "items": {

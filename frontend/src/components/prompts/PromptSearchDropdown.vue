@@ -39,9 +39,9 @@
         <!-- Grouped results -->
         <template v-else-if="grouped.length">
           <template v-for="group in grouped" :key="group.key">
-            <!-- Folder header -->
+            <!-- Tag header -->
             <div v-if="group.name" class="flex items-center gap-1.5 px-2 pt-2.5 pb-1">
-              <span class="text-[0.65rem]">📁</span>
+              <span class="text-[0.65rem]">🏷️</span>
               <span class="text-[0.7em] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 {{ group.name }}
               </span>
@@ -142,18 +142,18 @@ watch(activeIndex, (idx) => {
   })
 })
 
-/* ───── grouping by folder ───── */
+/* ───── grouping by first tag ───── */
 const grouped = computed(() => {
   const map = new Map<string, PromptResponse[]>()
   for (const p of props.results) {
-    const key = p.folder_name || '__unfiled__'
+    const key = p.tags?.[0] || '__untagged__'
     const list = map.get(key) || []
     list.push(p)
     map.set(key, list)
   }
-  return Array.from(map.entries()).map(([folderName, items]) => ({
-    key: folderName,
-    name: folderName === '__unfiled__' ? '' : folderName,
+  return Array.from(map.entries()).map(([tagName, items]) => ({
+    key: tagName,
+    name: tagName === '__untagged__' ? '' : tagName,
     items,
   }))
 })

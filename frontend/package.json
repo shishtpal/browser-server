@@ -21,6 +21,11 @@
     "vue": "^3.5.40",
     "vuedraggable": "^4.1.0"
   },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.8"
+  },
   "overrides": {
     "vite": "^7"
   },

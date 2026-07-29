@@ -2,7 +2,7 @@
   <Modal
     :open="open"
     title="Prompt Manager"
-    description="Organise folders on the left, browse prompts on the right"
+    description="Organise prompts with tags on the left, browse on the right"
     fullscreen
     @close="requestClose"
   >
@@ -17,7 +17,7 @@
             </span>
           </div>
           <div class="truncate text-xs text-slate-400">
-            {{ activeFolderLabel }}
+            {{ activeTagLabel }}
             <template v-if="view === 'grid'"> · {{ visiblePrompts.length }} prompt{{ visiblePrompts.length === 1 ? '' : 's' }}</template>
           </div>
         </div>
@@ -52,20 +52,13 @@
 
       <!-- ───────────────────────── Body ───────────────────────── -->
       <div ref="containerRef" class="flex min-h-0 flex-1 overflow-hidden">
-        <!-- Sidebar: folders only -->
+        <!-- Sidebar: tags -->
         <aside
           class="flex min-w-[200px] shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-900/80"
           :style="{ width: `${sidebarWidth}px` }"
         >
           <div class="flex items-center justify-between px-4 py-3">
-            <h3 class="text-sm font-semibold text-slate-100">Folders</h3>
-            <button
-              class="rounded-lg px-2 py-1 text-xs font-semibold text-slate-300 hover:bg-white/10"
-              type="button"
-              @click="createFolder"
-            >
-              + New
-            </button>
+            <h3 class="text-sm font-semibold text-slate-100">Tags</h3>
           </div>
 
           <nav class="flex-1 space-y-1 overflow-auto px-2 pb-4">
@@ -73,62 +66,45 @@
             <button
               type="button"
               class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition"
-              :class="activeFolderId === null ? 'bg-cyan-500/15 text-cyan-200' : 'text-slate-300 hover:bg-white/5'"
-              @click="selectFolder(null)"
+              :class="activeTag === null ? 'bg-cyan-500/15 text-cyan-200' : 'text-slate-300 hover:bg-white/5'"
+              @click="selectTag(null)"
             >
-              <span>🗂️</span>
+              <span>🏷️</span>
               <span class="flex-1 truncate">All prompts</span>
               <span class="text-xs text-slate-500">{{ prompts.length }}</span>
             </button>
 
-            <!-- Unfiled -->
+            <!-- Untagged -->
             <button
-              v-if="unfiledCount > 0"
+              v-if="untaggedCount > 0"
               type="button"
               class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition"
-              :class="activeFolderId === 'unfiled' ? 'bg-cyan-500/15 text-cyan-200' : 'text-slate-300 hover:bg-white/5'"
-              @click="selectFolder('unfiled')"
+              :class="activeTag === UNTAGGED_FILTER ? 'bg-cyan-500/15 text-cyan-200' : 'text-slate-300 hover:bg-white/5'"
+              @click="selectTag(UNTAGGED_FILTER)"
             >
               <span>📄</span>
-              <span class="flex-1 truncate">Unfiled</span>
-              <span class="text-xs text-slate-500">{{ unfiledCount }}</span>
+              <span class="flex-1 truncate">Untagged</span>
+              <span class="text-xs text-slate-500">{{ untaggedCount }}</span>
             </button>
 
             <div class="my-2 border-t border-white/5"></div>
 
-            <p v-if="folders.length === 0" class="rounded-lg border border-dashed border-white/10 px-3 py-4 text-center text-xs text-slate-500">
-              No folders yet
+            <p v-if="allTags.length === 0" class="rounded-lg border border-dashed border-white/10 px-3 py-4 text-center text-xs text-slate-500">
+              No tags yet
             </p>
 
-            <div
-              v-for="folder in folders"
-              :key="folder.id"
-              class="group flex items-center rounded-lg pr-1 transition"
-              :class="activeFolderId === folder.id ? 'bg-cyan-500/15' : 'hover:bg-white/5'"
+            <button
+              v-for="tag in allTags"
+              :key="tag.name"
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition"
+              :class="activeTag === tag.name ? 'bg-cyan-500/15 text-cyan-200' : 'text-slate-300 hover:bg-white/5'"
+              @click="selectTag(tag.name)"
             >
-              <button
-                type="button"
-                class="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm"
-                :class="activeFolderId === folder.id ? 'text-cyan-200' : 'text-slate-300'"
-                @click="selectFolder(folder.id)"
-              >
-                <span>📁</span>
-                <span class="flex-1 truncate">{{ folder.name }}</span>
-                <span class="text-xs text-slate-500">{{ countFor(folder.id) }}</span>
-              </button>
-              <button
-                class="rounded px-1 py-1 text-xs text-slate-500 opacity-0 transition hover:text-slate-200 group-hover:opacity-100"
-                type="button"
-                title="Rename folder"
-                @click.stop="startRenameFolder(folder)"
-              >✏️</button>
-              <button
-                class="rounded px-1 py-1 text-xs text-red-400/70 opacity-0 transition hover:text-red-300 group-hover:opacity-100"
-                type="button"
-                title="Delete folder"
-                @click.stop="confirmDeleteFolder(folder)"
-              >🗑️</button>
-            </div>
+              <span>#</span>
+              <span class="flex-1 truncate">{{ tag.name }}</span>
+              <span class="text-xs text-slate-500">{{ tag.count }}</span>
+            </button>
           </nav>
         </aside>
 
@@ -148,7 +124,7 @@
           <template v-if="view === 'grid'">
             <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2.5">
               <div class="flex items-center gap-2 text-xs text-slate-400">
-                <span class="font-semibold text-slate-200">{{ activeFolderLabel }}</span>
+                <span class="font-semibold text-slate-200">{{ activeTagLabel }}</span>
                 <span v-if="search">· results for “{{ search }}”</span>
               </div>
               <div class="flex items-center gap-2">
@@ -190,7 +166,7 @@
               >
                 <div class="text-3xl">🪄</div>
                 <p class="text-sm text-slate-300">
-                  {{ search ? 'No prompts match your search.' : 'No prompts in this folder yet.' }}
+                  {{ search ? 'No prompts match your search.' : 'No prompts match this tag yet.' }}
                 </p>
                 <button
                   class="rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400"
@@ -255,8 +231,7 @@
                     </span>
                   </div>
 
-                  <div class="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-[0.65rem] text-slate-500">
-                    <span class="truncate">{{ folderNameFor(prompt) }}</span>
+                  <div class="mt-2 flex items-center justify-end border-t border-white/5 pt-2 text-[0.65rem] text-slate-500">
                     <span>{{ formatDate(prompt.updated_at || prompt.created_at) }}</span>
                   </div>
                 </article>
@@ -281,27 +256,15 @@
 
             <form v-if="draft" class="flex min-h-0 flex-1 flex-col overflow-auto px-4 py-4" @submit.prevent="savePrompt">
               <div class="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4">
-                <div class="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-                  <div>
-                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Title</label>
-                    <input
-                      ref="titleInputRef"
-                      v-model="draft.title"
-                      class="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400"
-                      placeholder="Prompt title"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Folder</label>
-                    <select
-                      v-model="draft.folder_id"
-                      class="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400"
-                    >
-                      <option :value="null">Unfiled</option>
-                      <option v-for="folder in folders" :key="folder.id" :value="folder.id">{{ folder.name }}</option>
-                    </select>
-                  </div>
+                <div>
+                  <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Title</label>
+                  <input
+                    ref="titleInputRef"
+                    v-model="draft.title"
+                    class="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                    placeholder="Prompt title"
+                    required
+                  />
                 </div>
 
                 <div>
@@ -375,22 +338,6 @@
         </section>
       </div>
     </div>
-
-    <!-- Rename folder modal -->
-    <Modal v-if="editingFolder" :open="true" title="Rename folder" @close="editingFolder = null">
-      <form @submit.prevent="saveRenameFolder">
-        <input
-          v-model="editingFolderName"
-          class="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400"
-          placeholder="Folder name"
-          autofocus
-        />
-        <div class="mt-4 flex justify-end gap-2">
-          <button class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10" type="button" @click="editingFolder = null">Cancel</button>
-          <button class="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950" type="submit">Save</button>
-        </div>
-      </form>
-    </Modal>
   </Modal>
 </template>
 
@@ -398,12 +345,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Modal from '../ui/Modal.vue'
 import type {
-  PromptFolder,
   PromptResponse,
   CreatePromptInput,
   UpdatePromptInput,
 } from '../../types'
-import { usePrompts } from '../../composables/usePrompts'
+import { UNTAGGED_FILTER, usePrompts, type TagFilter } from '../../composables/usePrompts'
 
 const props = defineProps<{
   open: boolean
@@ -418,37 +364,32 @@ const emit = defineEmits<{
 const userIdRef = computed(() => props.userId)
 
 const {
-  folders,
   prompts,
   isLoading,
-  selectedFolderId,
-  loadFolders,
+  allTags,
+  untaggedCount,
+  activeTag,
   loadPrompts,
-  addFolder,
-  renameFolder,
-  removeFolder,
   addPrompt,
   editPrompt,
   removePrompt,
 } = usePrompts(userIdRef)
 
 /* ─────────────── view state ─────────────── */
-type FolderKey = number | 'unfiled' | null
 type ViewMode = 'grid' | 'editor'
 
 const view = ref<ViewMode>('grid')
-const activeFolderId = ref<FolderKey>(null)
 const search = ref('')
 const sortBy = ref<'updated' | 'created' | 'title'>('updated')
 const layout = ref<'grid' | 'list'>('grid')
 const copiedId = ref<number | null>(null)
 const isSaving = ref(false)
 
-/* Always fetch the full list; filtering happens client-side so folder
-   counts stay accurate and switching folders is instant. */
+/* Always fetch the full list; filtering happens client-side so tag
+   counts stay accurate and switching tags is instant. */
 async function refresh() {
-  selectedFolderId.value = null
-  await Promise.all([loadFolders(), loadPrompts(null)])
+  activeTag.value = null
+  await loadPrompts(null)
 }
 
 watch(
@@ -456,7 +397,7 @@ watch(
   (isOpen) => {
     if (isOpen) {
       view.value = 'grid'
-      activeFolderId.value = null
+      activeTag.value = null
       search.value = ''
       draft.value = null
       refresh()
@@ -465,34 +406,15 @@ watch(
   { immediate: true },
 )
 
-/* ─────────────── folders ─────────────── */
-const promptCounts = computed(() => {
-  const map = new Map<number | 'unfiled', number>()
-  for (const p of prompts.value) {
-    const key: number | 'unfiled' = p.folder_id ?? 'unfiled'
-    map.set(key, (map.get(key) ?? 0) + 1)
-  }
-  return map
-})
-const unfiledCount = computed(() => promptCounts.value.get('unfiled') ?? 0)
-function countFor(id: number) {
-  return promptCounts.value.get(id) ?? 0
-}
-
-const activeFolderLabel = computed(() => {
-  if (activeFolderId.value === null) return 'All prompts'
-  if (activeFolderId.value === 'unfiled') return 'Unfiled'
-  return folders.value.find(f => f.id === activeFolderId.value)?.name ?? 'All prompts'
+/* ─────────────── tags ─────────────── */
+const activeTagLabel = computed(() => {
+  if (activeTag.value === null) return 'All prompts'
+  if (activeTag.value === UNTAGGED_FILTER) return 'Untagged'
+  return activeTag.value
 })
 
-function folderNameFor(prompt: PromptResponse) {
-  if (!prompt.folder_id) return 'Unfiled'
-  return prompt.folder_name || folders.value.find(f => f.id === prompt.folder_id)?.name || 'Unfiled'
-}
-
-function selectFolder(id: FolderKey) {
-  activeFolderId.value = id
-  // Clicking a folder always returns to the grid (filtered).
+function selectTag(tag: TagFilter) {
+  activeTag.value = tag
   if (view.value === 'editor' && !confirmDiscard()) return
   view.value = 'grid'
   draft.value = null
@@ -501,9 +423,13 @@ function selectFolder(id: FolderKey) {
 /* ─────────────── grid data ─────────────── */
 const visiblePrompts = computed(() => {
   let list = prompts.value.slice()
+  const selectedTag = activeTag.value
 
-  if (activeFolderId.value === 'unfiled') list = list.filter(p => !p.folder_id)
-  else if (typeof activeFolderId.value === 'number') list = list.filter(p => p.folder_id === activeFolderId.value)
+  if (selectedTag === UNTAGGED_FILTER) {
+    list = list.filter(p => !(p.tags?.length))
+  } else if (typeof selectedTag === 'string') {
+    list = list.filter(p => (p.tags || []).includes(selectedTag))
+  }
 
   const q = search.value.trim().toLowerCase()
   if (q) {
@@ -554,7 +480,6 @@ interface PromptDraft {
   title: string
   content: string
   description: string
-  folder_id: number | null
   updated_at?: string | null
   tags?: string[]
 }
@@ -587,7 +512,6 @@ function openEditor(prompt: PromptResponse) {
     title: prompt.title || '',
     content: prompt.content || '',
     description: prompt.description || '',
-    folder_id: prompt.folder_id ?? null,
     updated_at: prompt.updated_at,
   }
   tagsInput.value = (prompt.tags || []).join(', ')
@@ -602,9 +526,8 @@ function createPrompt() {
     title: '',
     content: '',
     description: '',
-    folder_id: typeof activeFolderId.value === 'number' ? activeFolderId.value : null,
   }
-  tagsInput.value = ''
+  tagsInput.value = activeTag.value && activeTag.value !== UNTAGGED_FILTER ? activeTag.value : ''
   takeSnapshot()
   view.value = 'editor'
   nextTick(() => titleInputRef.value?.focus())
@@ -630,7 +553,6 @@ async function savePrompt() {
       title: draft.value.title.trim(),
       content: draft.value.content,
       description: draft.value.description || undefined,
-      folder_id: draft.value.folder_id ?? null,
       tags: parsedTags.value,
     }
 
@@ -659,37 +581,6 @@ async function confirmDeletePrompt(prompt: PromptResponse | PromptDraft) {
     tagsInput.value = ''
     view.value = 'grid'
   }
-}
-
-/* ─────────────── folder CRUD ─────────────── */
-const editingFolder = ref<PromptFolder | null>(null)
-const editingFolderName = ref('')
-
-async function createFolder() {
-  const name = window.prompt('Folder name')
-  if (!name?.trim()) return
-  await addFolder({ user_id: props.userId ?? 0, name: name.trim() })
-  await loadFolders()
-}
-
-function startRenameFolder(folder: PromptFolder) {
-  editingFolder.value = folder
-  editingFolderName.value = folder.name
-}
-
-async function saveRenameFolder() {
-  if (!editingFolder.value || !editingFolderName.value.trim()) return
-  await renameFolder(editingFolder.value.id, { name: editingFolderName.value.trim() })
-  editingFolder.value = null
-  editingFolderName.value = ''
-  await loadFolders()
-}
-
-async function confirmDeleteFolder(folder: PromptFolder) {
-  if (!window.confirm(`Delete folder "${folder.name}"? Prompts will be moved to unfiled.`)) return
-  await removeFolder(folder.id)
-  if (activeFolderId.value === folder.id) activeFolderId.value = null
-  await refresh()
 }
 
 /* ─────────────── close guard ─────────────── */

@@ -138,7 +138,12 @@ const localValue = ref<string>(normalizeToString(props.modelValue))
 
 watch(() => props.modelValue, (v) => {
   const newVal = normalizeToString(v)
-  if (newVal !== localValue.value) localValue.value = newVal
+  if (newVal !== localValue.value) {
+    localValue.value = newVal
+    // modelValue can be set programmatically (e.g. inserting a prompt from the
+    // manager); the @input handler never fires in that case, so resize manually.
+    nextTick(() => autoResize())
+  }
 })
 
 const canSend = computed(() => !props.disabled && !props.busy && localValue.value.trim().length > 0)

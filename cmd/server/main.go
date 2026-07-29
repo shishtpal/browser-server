@@ -121,10 +121,6 @@ func main() {
 	api.HandleFunc("/users/{id}", handlers.GetUserByID).Methods("GET")
 	api.HandleFunc("/users/{id}", handlers.DeleteUser).Methods("DELETE")
 
-	api.HandleFunc("/prompts/folders", handlers.GetPromptFolders).Methods("GET")
-	api.HandleFunc("/prompts/folders", handlers.CreatePromptFolder).Methods("POST")
-	api.HandleFunc("/prompts/folders/{id}", handlers.UpdatePromptFolder).Methods("PUT")
-	api.HandleFunc("/prompts/folders/{id}", handlers.DeletePromptFolder).Methods("DELETE")
 	api.HandleFunc("/prompts", handlers.GetPrompts).Methods("GET")
 	api.HandleFunc("/prompts", handlers.CreatePrompt).Methods("POST")
 	api.HandleFunc("/prompts/search", handlers.SearchPrompts).Methods("GET")

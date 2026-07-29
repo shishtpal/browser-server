@@ -192,6 +192,7 @@
     <PromptManager
       :open="showPromptManager"
       :user-id="currentUserId"
+      @select="applyPromptFromManager"
       @close="showPromptManager = false"
     />
 
@@ -552,6 +553,30 @@ async function handleRestore() {
 
 function useSuggestion(text: string) {
   draft.value = text
+  nextTick(() => chatInputRef.value?.focus())
+}
+
+function applyPromptFromManager(prompt: unknown) {
+  const raw = prompt as Record<string, unknown> | null | undefined
+  const candidate = raw?.content
+    ?? raw?.Content
+    ?? (raw?.Prompt as Record<string, unknown> | undefined)?.content
+    ?? (raw?.prompt as Record<string, unknown> | undefined)?.content
+
+  let text = ''
+  if (typeof candidate === 'string') {
+    text = candidate
+  } else if (candidate != null) {
+    try {
+      text = JSON.stringify(candidate)
+    } catch {
+      text = String(candidate)
+    }
+  }
+
+  if (!text) return
+  draft.value = text
+  showPromptManager.value = false
   nextTick(() => chatInputRef.value?.focus())
 }
 

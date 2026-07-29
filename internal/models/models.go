@@ -66,6 +66,7 @@ type ImportResult struct {
 	Imported  int                `json:"imported"`
 	Skipped   int                `json:"skipped"`
 	Bookmarks []BookmarkResponse `json:"bookmarks"`
+	Errors    []string           `json:"errors,omitempty"`
 }
 
 type History struct {

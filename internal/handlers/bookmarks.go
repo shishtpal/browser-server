@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
-	"strings"
 	"time"
 
-	"browser-server/internal/db"
+	"browser-server/internal/bookmark"
 	"browser-server/internal/helpers"
 	"browser-server/internal/models"
 )
@@ -15,209 +14,155 @@ import (
 func GetBookmarks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	userID := helpers.GetUserIDFromQuery(r)
-	tagsFilter := r.URL.Query().Get("tags")
-
-	query := "SELECT id, user_id, title, url, description, tags, folder_path, created_at, updated_at FROM bookmarks WHERE 1=1"
-	args := []interface{}{}
-
-	if userID > 0 {
-		query += " AND user_id = ?"
-		args = append(args, userID)
-	}
-
-	folderPathFilter := r.URL.Query().Get("folder_path")
-	if folderPathFilter != "" {
-		query += " AND folder_path LIKE ?"
-		args = append(args, folderPathFilter+"%")
-	}
-
-	rows, err := db.BookmarkDB.Query(query, args...)
+	bookmarks, err := bookmark.List(r.Context(), bookmark.ListOptions{
+		UserID:           helpers.GetUserIDFromQuery(r),
+		TagsFilter:       r.URL.Query().Get("tags"),
+		FolderPathPrefix: r.URL.Query().Get("folder_path"),
+	})
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-	defer rows.Close()
-
-	bookmarks := []models.BookmarkResponse{}
-	for rows.Next() {
-		var bookmark models.Bookmark
-		err := rows.Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.FolderPath, &bookmark.CreatedAt, &bookmark.UpdatedAt)
-		if err != nil {
-			continue
-		}
-
-		response := models.BookmarkResponse{
-			ID:          bookmark.ID,
-			UserID:      bookmark.UserID,
-			Title:       bookmark.Title,
-			URL:         bookmark.URL,
-			Description: bookmark.Description,
-			Tags:        helpers.ParseTagsFromJSON(bookmark.Tags),
-			FolderPath:  bookmark.FolderPath,
-			CreatedAt:   bookmark.CreatedAt,
-			UpdatedAt:   bookmark.UpdatedAt,
-		}
-
-		if tagsFilter != "" {
-			filterTags := strings.Split(tagsFilter, ",")
-			hasTag := false
-			for _, filterTag := range filterTags {
-				for _, bookmarkTag := range response.Tags {
-					if strings.EqualFold(strings.TrimSpace(filterTag), bookmarkTag) {
-						hasTag = true
-						break
-					}
-				}
-				if hasTag {
-					break
-				}
-			}
-			if !hasTag {
-				continue
-			}
-		}
-
-		bookmarks = append(bookmarks, response)
-	}
-
-	json.NewEncoder(w).Encode(bookmarks)
+	json.NewEncoder(w).Encode(bookmark.Responses(bookmarks))
 }
 
 func CreateBookmark(w http.ResponseWriter, r *http.Request) {
-	var bookmark models.BookmarkResponse
-	if err := json.NewDecoder(r.Body).Decode(&bookmark); err != nil {
+	var input models.BookmarkResponse
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
-	v := helpers.NewValidator()
-	v.PositiveID("user_id", bookmark.UserID)
-	v.Required("title", bookmark.Title)
-	v.URL("url", bookmark.URL)
-	if !v.OK() {
-		helpers.WriteValidationError(w, v.Fields())
+	if !validateBookmarkInput(w, &input) {
 		return
 	}
 
-	tagsJSON := helpers.TagsToJSON(bookmark.Tags)
-
-	result, err := db.BookmarkDB.Exec(`
-		INSERT INTO bookmarks (user_id, title, url, description, tags, folder_path, capture_id)
-		VALUES (?, ?, ?, ?, ?, ?, NULLIF(?, ''))
-		ON CONFLICT(user_id, capture_id) DO NOTHING`,
-		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath, bookmark.CaptureID)
+	id, inserted, err := bookmark.Create(r.Context(), bookmark.CreateInput{
+		UserID:      input.UserID,
+		Title:       input.Title,
+		URL:         input.URL,
+		Description: input.Description,
+		FolderPath:  input.FolderPath,
+		CaptureID:   input.CaptureID,
+		Tags:        input.Tags,
+	})
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-	if rowsAffected, _ := result.RowsAffected(); rowsAffected == 0 && bookmark.CaptureID != "" {
-		var tags string
-		err = db.BookmarkDB.QueryRow(`
-			SELECT id, title, url, description, tags, folder_path, created_at, updated_at
-			FROM bookmarks WHERE user_id = ? AND capture_id = ?`,
-			bookmark.UserID, bookmark.CaptureID,
-		).Scan(&bookmark.ID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &tags, &bookmark.FolderPath, &bookmark.CreatedAt, &bookmark.UpdatedAt)
+
+	if !inserted {
+		stored, err := bookmark.GetByCaptureID(r.Context(), input.UserID, input.CaptureID)
+		if errors.Is(err, bookmark.ErrNotFound) {
+			helpers.WriteError(w, http.StatusNotFound, "Bookmark not found")
+			return
+		}
 		if err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 			return
 		}
-		bookmark.Tags = helpers.ParseTagsFromJSON(tags)
+		response := bookmark.Response(stored)
+		response.CaptureID = input.CaptureID
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(bookmark)
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	id, _ := result.LastInsertId()
-	bookmark.ID = int(id)
-	bookmark.CreatedAt = time.Now()
-	bookmark.UpdatedAt = time.Now()
-
+	input.ID = int(id)
+	input.CreatedAt = time.Now()
+	input.UpdatedAt = input.CreatedAt
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(bookmark)
+	json.NewEncoder(w).Encode(input)
 }
 
 func GetBookmarkByID(w http.ResponseWriter, r *http.Request) {
 	id := helpers.GetIDFromPath(r)
-
-	var bookmark models.Bookmark
-	err := db.BookmarkDB.QueryRow("SELECT id, user_id, title, url, description, tags, folder_path, created_at, updated_at FROM bookmarks WHERE id = ?", id).
-		Scan(&bookmark.ID, &bookmark.UserID, &bookmark.Title, &bookmark.URL, &bookmark.Description, &bookmark.Tags, &bookmark.FolderPath, &bookmark.CreatedAt, &bookmark.UpdatedAt)
-
-	if err == sql.ErrNoRows {
+	b, err := bookmark.GetByID(r.Context(), id)
+	if errors.Is(err, bookmark.ErrNotFound) {
 		helpers.WriteError(w, http.StatusNotFound, "Bookmark not found")
 		return
-	} else if err != nil {
+	}
+	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-
-	response := models.BookmarkResponse{
-		ID:          bookmark.ID,
-		UserID:      bookmark.UserID,
-		Title:       bookmark.Title,
-		URL:         bookmark.URL,
-		Description: bookmark.Description,
-		Tags:        helpers.ParseTagsFromJSON(bookmark.Tags),
-		FolderPath:  bookmark.FolderPath,
-		CreatedAt:   bookmark.CreatedAt,
-		UpdatedAt:   bookmark.UpdatedAt,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(bookmark.Response(b))
 }
 
 func UpdateBookmark(w http.ResponseWriter, r *http.Request) {
 	id := helpers.GetIDFromPath(r)
-
-	var bookmark models.BookmarkResponse
-	if err := json.NewDecoder(r.Body).Decode(&bookmark); err != nil {
+	var input models.BookmarkResponse
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-
-	v := helpers.NewValidator()
-	v.PositiveID("user_id", bookmark.UserID)
-	v.Required("title", bookmark.Title)
-	v.URL("url", bookmark.URL)
-	if !v.OK() {
-		helpers.WriteValidationError(w, v.Fields())
+	if !validateBookmarkInput(w, &input) {
 		return
 	}
 
-	tagsJSON := helpers.TagsToJSON(bookmark.Tags)
-
-	_, err := db.BookmarkDB.Exec("UPDATE bookmarks SET user_id = ?, title = ?, url = ?, description = ?, tags = ?, folder_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-		bookmark.UserID, bookmark.Title, bookmark.URL, bookmark.Description, tagsJSON, bookmark.FolderPath, id)
-
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
-		return
-	}
-
-	bookmark.ID = id
-	bookmark.UpdatedAt = time.Now()
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(bookmark)
-}
-
-func DeleteBookmark(w http.ResponseWriter, r *http.Request) {
-	id := helpers.GetIDFromPath(r)
-
-	result, err := db.BookmarkDB.Exec("DELETE FROM bookmarks WHERE id = ?", id)
-	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
-		return
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
+	err := bookmark.Update(r.Context(), id, bookmark.CreateInput{
+		UserID:      input.UserID,
+		Title:       input.Title,
+		URL:         input.URL,
+		Description: input.Description,
+		FolderPath:  input.FolderPath,
+		Tags:        input.Tags,
+	})
+	if errors.Is(err, bookmark.ErrBookmarkNotFound) {
 		helpers.WriteError(w, http.StatusNotFound, "Bookmark not found")
 		return
 	}
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	input.ID = id
+	input.UpdatedAt = time.Now()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(input)
+}
 
+func DeleteBookmark(w http.ResponseWriter, r *http.Request) {
+	deleted, err := bookmark.Delete(r.Context(), helpers.GetIDFromPath(r))
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	if !deleted {
+		helpers.WriteError(w, http.StatusNotFound, "Bookmark not found")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func validateBookmarkInput(w http.ResponseWriter, input *models.BookmarkResponse) bool {
+	v := helpers.NewValidator()
+	v.PositiveID("user_id", input.UserID)
+	v.Required("title", input.Title)
+	v.URL("url", input.URL)
+	if title, err := bookmark.ValidateTitle(input.Title); err != nil {
+		v.Fields()["title"] = err.Error()
+	} else {
+		input.Title = title
+	}
+	input.Tags = bookmark.NormalizeTags(input.Tags)
+	if err := bookmark.ValidateDescription(input.Description); err != nil {
+		v.Fields()["description"] = err.Error()
+	}
+	if err := bookmark.ValidateURL(input.URL); err != nil {
+		v.Fields()["url"] = err.Error()
+	}
+	if err := bookmark.ValidateFolderPath(input.FolderPath); err != nil {
+		v.Fields()["folder_path"] = err.Error()
+	}
+	if err := bookmark.ValidateTags(input.Tags); err != nil {
+		v.Fields()["tags"] = err.Error()
+	}
+	if !v.OK() {
+		helpers.WriteValidationError(w, v.Fields())
+		return false
+	}
+	return true
 }

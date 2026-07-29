@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"browser-server/internal/db"
+	"browser-server/internal/bookmark"
 	"browser-server/internal/helpers"
 	"browser-server/internal/models"
 )
@@ -39,15 +39,10 @@ func ImportBookmarks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingURLs := make(map[string]bool)
-	rows, err := db.BookmarkDB.Query("SELECT url FROM bookmarks WHERE user_id = ?", userID)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var url string
-			rows.Scan(&url)
-			existingURLs[url] = true
-		}
+	existingURLs, err := bookmark.ExistingURLs(r.Context(), userID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to load existing bookmarks: "+err.Error())
+		return
 	}
 
 	doc, err := html.Parse(strings.NewReader(string(data)))
@@ -61,25 +56,24 @@ func ImportBookmarks(w http.ResponseWriter, r *http.Request) {
 	walkTree(doc, "", &records, existingURLs, &skipped)
 
 	imported := []models.BookmarkResponse{}
+	var importErrors []string
 	for _, rec := range records {
-		result, err := db.BookmarkDB.Exec(
-			"INSERT INTO bookmarks (user_id, title, url, description, tags, folder_path) VALUES (?, ?, ?, ?, ?, ?)",
-			userID, rec.Title, rec.URL, "", "[]", rec.FolderPath,
-		)
+		id, inserted, err := bookmark.Create(r.Context(), bookmark.CreateInput{
+			UserID: userID, Title: rec.Title, URL: rec.URL, FolderPath: rec.FolderPath,
+		})
 		if err != nil {
+			importErrors = append(importErrors, rec.URL)
 			continue
 		}
-		id, _ := result.LastInsertId()
-		imported = append(imported, models.BookmarkResponse{
-			ID:         int(id),
-			UserID:     userID,
-			Title:      rec.Title,
-			URL:        rec.URL,
-			Tags:       []string{},
-			FolderPath: rec.FolderPath,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-		})
+		if !inserted {
+			skipped++
+			continue
+		}
+		now := time.Now()
+		imported = append(imported, bookmark.Response(models.Bookmark{
+			ID: int(id), UserID: userID, Title: rec.Title, URL: rec.URL,
+			Tags: "[]", FolderPath: rec.FolderPath, CreatedAt: now, UpdatedAt: now,
+		}))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -88,6 +82,7 @@ func ImportBookmarks(w http.ResponseWriter, r *http.Request) {
 		Imported:  len(imported),
 		Skipped:   skipped,
 		Bookmarks: imported,
+		Errors:    importErrors,
 	})
 }
 
@@ -97,7 +92,7 @@ type importRecord struct {
 	FolderPath string
 }
 
-func walkTree(n *html.Node, folderPath string, records *[]importRecord, existingURLs map[string]bool, skipped *int) {
+func walkTree(n *html.Node, folderPath string, records *[]importRecord, existingURLs map[string]struct{}, skipped *int) {
 	if n.Type == html.ElementNode && n.Data == "dl" {
 		walkDL(n, folderPath, records, existingURLs, skipped)
 		return
@@ -107,7 +102,7 @@ func walkTree(n *html.Node, folderPath string, records *[]importRecord, existing
 	}
 }
 
-func walkDL(n *html.Node, folderPath string, records *[]importRecord, existingURLs map[string]bool, skipped *int) {
+func walkDL(n *html.Node, folderPath string, records *[]importRecord, existingURLs map[string]struct{}, skipped *int) {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type != html.ElementNode || c.Data != "dt" {
 			continue
@@ -117,13 +112,13 @@ func walkDL(n *html.Node, folderPath string, records *[]importRecord, existingUR
 			url := getAttr(aTag, "href")
 			title := strings.TrimSpace(getText(aTag))
 			if url != "" && url != "javascript:void(0)" {
-				if !existingURLs[url] {
+				if _, exists := existingURLs[url]; !exists {
 					*records = append(*records, importRecord{
 						Title:      title,
 						URL:        url,
 						FolderPath: folderPath,
 					})
-					existingURLs[url] = true
+					existingURLs[url] = struct{}{}
 				} else {
 					*skipped++
 				}

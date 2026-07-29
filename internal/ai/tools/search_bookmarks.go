@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"browser-server/internal/db"
+	"browser-server/internal/bookmark"
 )
 
 //go:embed schemas/search_bookmarks.json
@@ -17,7 +17,7 @@ func registerSearchBookmarks(r *Registry) {
 	r.add(Tool{
 		Name:        "search_bookmarks",
 		Category:    "General",
-		Description: "Search the local bookmark database",
+		Description: "Search the local bookmark database. Can filter by text query across title, URL, and description. When no query is given, returns the most recently updated bookmarks (up to the limit).",
 		Schema:      json.RawMessage(searchBookmarksSchema),
 		Execute:     searchBookmarks,
 	})
@@ -32,31 +32,28 @@ func searchBookmarks(ctx context.Context, raw json.RawMessage) (any, error) {
 	if err := strict(raw, &a, map[string]bool{"user_id": true, "query": true, "limit": true}); err != nil {
 		return nil, err
 	}
+	if a.UserID < 1 {
+		return nil, fmt.Errorf("user_id is required and must be a positive integer")
+	}
 	a.Query = strings.TrimSpace(a.Query)
-	if a.UserID < 1 || a.Query == "" || len(a.Query) > 200 {
-		return nil, fmt.Errorf("invalid bookmark search arguments")
+	if len(a.Query) > 200 {
+		return nil, fmt.Errorf("query must be 200 characters or fewer")
 	}
 	if a.Limit == 0 {
 		a.Limit = 10
 	}
 	if a.Limit < 1 || a.Limit > 20 {
-		return nil, fmt.Errorf("limit must be 1 to 20")
+		return nil, fmt.Errorf("limit must be between 1 and 20")
 	}
-	rows, err := db.BookmarkDB.QueryContext(ctx,
-		`SELECT id,title,url FROM bookmarks WHERE user_id=? AND (title LIKE ? OR url LIKE ? OR description LIKE ?) ORDER BY updated_at DESC LIMIT ?`,
-		a.UserID, "%"+a.Query+"%", "%"+a.Query+"%", "%"+a.Query+"%", a.Limit)
+
+	bookmarks, err := bookmark.Search(ctx, a.UserID, a.Query, a.Limit)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []map[string]any
-	for rows.Next() {
-		var id int
-		var title, url string
-		if err := rows.Scan(&id, &title, &url); err != nil {
-			return nil, err
-		}
-		out = append(out, map[string]any{"id": id, "title": title, "url": url})
+
+	out := make([]map[string]any, 0, len(bookmarks))
+	for _, b := range bookmarks {
+		out = append(out, bookmark.SearchMap(b))
 	}
-	return out, rows.Err()
+	return out, nil
 }

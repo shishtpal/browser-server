@@ -16,8 +16,7 @@
         }
     },
     "required": [
-        "user_id",
-        "query"
+        "user_id"
     ],
     "additionalProperties": false
 }

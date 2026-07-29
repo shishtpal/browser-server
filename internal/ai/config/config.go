@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ type Config struct {
 	DefaultProvider string                    `json:"default_provider"`
 	Providers       map[string]ProviderConfig `json:"providers"`
 	Tools           ToolsConfig               `json:"tools"`
+	FileTools       FileToolsConfig           `json:"file_tools"`
 	WebSearch       WebSearchConfig           `json:"web_search"`
 	Memory          MemoryConfig              `json:"memory"`
 	Skills          SkillsConfig              `json:"skills"`
@@ -55,6 +57,15 @@ type ToolsConfig struct {
 	Enabled       bool     `json:"enabled"`
 	Allowed       []string `json:"allowed"`
 	MaxIterations int      `json:"max_iterations"`
+}
+
+type FileToolsConfig struct {
+	MaxReadBytes        int      `json:"max_read_bytes"`
+	MaxLineReadBytes    int      `json:"max_line_read_bytes"`
+	MaxLineCount        int      `json:"max_line_count"`
+	MaxFileSizeWarnMB   int      `json:"max_file_size_warn_mb"`
+	AllowedExtensions   []string `json:"allowed_extensions"`
+	BlockedPathPatterns []string `json:"blocked_path_patterns"`
 }
 
 type WebSearchConfig struct {
@@ -286,6 +297,18 @@ func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 		}
 		cfg.Providers[name] = provider
 	}
+	if !nestedPresent(raw, "file_tools", "max_read_bytes") {
+		cfg.FileTools.MaxReadBytes = 32768
+	}
+	if !nestedPresent(raw, "file_tools", "max_line_read_bytes") {
+		cfg.FileTools.MaxLineReadBytes = 65536
+	}
+	if !nestedPresent(raw, "file_tools", "max_line_count") {
+		cfg.FileTools.MaxLineCount = 5000
+	}
+	if !nestedPresent(raw, "file_tools", "max_file_size_warn_mb") {
+		cfg.FileTools.MaxFileSizeWarnMB = 100
+	}
 }
 
 func nestedPresent(raw map[string]json.RawMessage, section, field string) bool {
@@ -453,6 +476,9 @@ func validate(cfg *Config) error {
 	if err := validateWebSearch(cfg.WebSearch); err != nil {
 		return err
 	}
+	if err := validateFileTools(cfg.FileTools); err != nil {
+		return err
+	}
 	if filepath.IsAbs(cfg.Memory.Directory) || strings.Contains(cfg.Memory.Directory, "..") {
 		return fmt.Errorf("memory.directory must be a safe relative path")
 	}
@@ -549,6 +575,34 @@ func validateWebSearch(cfg WebSearchConfig) error {
 		}
 	}
 	return fmt.Errorf("web_search must enable at least one provider")
+}
+
+func validateFileToolsGlobs(patterns []string) error {
+	for _, p := range patterns {
+		if _, err := path.Match(filepath.ToSlash(p), ""); err != nil {
+			return fmt.Errorf("invalid glob %q: %w", p, err)
+		}
+	}
+	return nil
+}
+
+func validateFileTools(cfg FileToolsConfig) error {
+	if cfg.MaxReadBytes < 4096 || cfg.MaxReadBytes > 512*1024 {
+		return fmt.Errorf("file_tools.max_read_bytes must be between 4096 and 524288")
+	}
+	if cfg.MaxLineReadBytes < 4096 || cfg.MaxLineReadBytes > 1024*1024 {
+		return fmt.Errorf("file_tools.max_line_read_bytes must be between 4096 and 1048576")
+	}
+	if cfg.MaxLineCount < 100 || cfg.MaxLineCount > 50000 {
+		return fmt.Errorf("file_tools.max_line_count must be between 100 and 50000")
+	}
+	if cfg.MaxFileSizeWarnMB < 1 || cfg.MaxFileSizeWarnMB > 10000 {
+		return fmt.Errorf("file_tools.max_file_size_warn_mb must be between 1 and 10000")
+	}
+	if err := validateFileToolsGlobs(cfg.BlockedPathPatterns); err != nil {
+		return fmt.Errorf("file_tools: %w", err)
+	}
+	return nil
 }
 
 func isLocalHost(host string) bool {

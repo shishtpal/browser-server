@@ -136,6 +136,20 @@
         "lazy_loading": true,
         "cache_size_limit_mb": 100
     },
+    "file_tools": {
+        "max_read_bytes": 32768,
+        "max_line_read_bytes": 65536,
+        "max_line_count": 5000,
+        "max_file_size_warn_mb": 100,
+        "allowed_extensions": [],
+        "blocked_path_patterns": [
+            "**/.env*",
+            "**/*.pem",
+            "**/*.key",
+            "**/node_modules/**",
+            "**/.git/**"
+        ]
+    },
     "skills": {
         "enabled": true,
         "directory": ".skills"

@@ -4,6 +4,42 @@
         "path": {
             "type": "string",
             "description": "Path to the file on the server"
+        },
+        "offset": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based line number to start reading from (default 1). Ignored when ranges is provided."
+        },
+        "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of lines to read starting from offset. Defaults to all remaining lines. Ignored when ranges is provided."
+        },
+        "ranges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "offset": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "1-based line number where the range starts"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Number of lines in this range"
+                    }
+                },
+                "required": ["offset", "limit"],
+                "additionalProperties": false
+            },
+            "description": "One or more line ranges to read. Mutually exclusive with offset/limit."
+        },
+        "line_numbers": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, prefix each line with its 1-based line number followed by ': ' (e.g. '128: content')."
         }
     },
     "required": [

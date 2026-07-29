@@ -30,6 +30,7 @@ type Options struct {
 	Memory    config.MemoryConfig
 	Skills    *skills.Registry
 	WebSearch config.WebSearchConfig
+	FileTools config.FileToolsConfig
 }
 
 // New creates a Registry with all built-in tools registered.
@@ -70,7 +71,11 @@ func New(options ...Options) *Registry {
 	}
 
 	// File operation tools
-	registerReadFile(r)
+	var fileToolsCfg config.FileToolsConfig
+	if len(options) > 0 {
+		fileToolsCfg = options[0].FileTools
+	}
+	registerReadFile(r, fileToolsCfg)
 	registerWriteFile(r)
 	registerEditFile(r)
 	registerMultiEdit(r)

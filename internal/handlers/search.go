@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"net/http"
 	"sort"
@@ -10,6 +10,7 @@ import (
 
 	"browser-server/internal/db"
 	"browser-server/internal/helpers"
+	"browser-server/internal/history"
 	"browser-server/internal/models"
 )
 
@@ -42,7 +43,7 @@ func SearchOmnibox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	historyResults, err := searchOmniboxHistory(userID, query, limit)
+	historyResults, err := searchOmniboxHistory(r.Context(), userID, query, limit)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
@@ -108,47 +109,8 @@ func minInt(a, b int) int {
 	return b
 }
 
-func searchOmniboxHistory(userID int, search string, limit int) ([]models.OmniboxSearchResult, error) {
-	where := "WHERE 1=1"
-	args := []interface{}{}
-
-	if userID > 0 {
-		where += " AND user_id = ?"
-		args = append(args, userID)
-	}
-
-	for _, term := range strings.Fields(search) {
-		like := "%" + term + "%"
-		where += " AND (title LIKE ? OR url LIKE ?)"
-		args = append(args, like, like)
-	}
-
-	query := "SELECT url, title, COUNT(*), MAX(visited_at) FROM history " +
-		where + " GROUP BY url ORDER BY MAX(visited_at) DESC LIMIT ?"
-	args = append(args, limit)
-
-	rows, err := db.HistoryDB.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	results := []models.OmniboxSearchResult{}
-	for rows.Next() {
-		var result models.OmniboxSearchResult
-		var lastVisited sql.NullString
-		if err := rows.Scan(&result.URL, &result.Title, &result.VisitCount, &lastVisited); err != nil {
-			continue
-		}
-		if lastVisited.Valid {
-			parsed := parseSQLiteTime(lastVisited.String)
-			result.LastVisited = &parsed
-		}
-		result.Source = "history"
-		results = append(results, result)
-	}
-
-	return results, rows.Err()
+func searchOmniboxHistory(ctx context.Context, userID int, search string, limit int) ([]models.OmniboxSearchResult, error) {
+	return history.OmniboxSearch(ctx, userID, search, limit)
 }
 
 func searchOmniboxBookmarks(userID int, search string, limit int) ([]models.OmniboxSearchResult, error) {

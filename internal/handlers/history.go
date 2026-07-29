@@ -1,124 +1,35 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
-	"browser-server/internal/db"
 	"browser-server/internal/helpers"
+	"browser-server/internal/history"
 	"browser-server/internal/models"
 )
 
 const defaultGroupedHistoryLimit = 100
-
-// sqliteTimeFormats mirrors the layouts go-sqlite3 uses to (de)serialize
-// DATETIME values. Aggregates like MAX(visited_at) lose the column's declared
-// type, so the driver hands them back as strings that we parse ourselves.
-var sqliteTimeFormats = []string{
-	"2006-01-02 15:04:05.999999999-07:00",
-	"2006-01-02T15:04:05.999999999-07:00",
-	"2006-01-02 15:04:05.999999999",
-	"2006-01-02T15:04:05.999999999",
-	"2006-01-02 15:04:05",
-	"2006-01-02T15:04:05",
-	"2006-01-02 15:04",
-	"2006-01-02T15:04",
-	"2006-01-02",
-}
-
-func parseSQLiteTime(value string) time.Time {
-	for _, layout := range sqliteTimeFormats {
-		if t, err := time.ParseInLocation(layout, value, time.UTC); err == nil {
-			return t
-		}
-	}
-	return time.Time{}
-}
 
 // GetGroupedHistory returns history aggregated by URL, searched and paginated
 // entirely on the server so clients never have to load every row at once.
 func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	userID := helpers.GetUserIDFromQuery(r)
-	search := strings.TrimSpace(r.URL.Query().Get("q"))
-	column := r.URL.Query().Get("column") // "all" (default), "title", or "url"
-	domain := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("domain")))
-	limit := helpers.GetLimitFromQuery(r, defaultGroupedHistoryLimit)
-	offset := helpers.GetOffsetFromQuery(r)
-
-	where := "WHERE 1=1"
-	args := []interface{}{}
-
-	if userID > 0 {
-		where += " AND user_id = ?"
-		args = append(args, userID)
-	}
-	if domain != "" {
-		where += " AND domain = ?"
-		args = append(args, domain)
-	}
-
-	// Each whitespace-separated term must match (AND), mirroring the previous
-	// client-side search behaviour.
-	for _, term := range strings.Fields(search) {
-		like := "%" + term + "%"
-		switch column {
-		case "title":
-			where += " AND title LIKE ?"
-			args = append(args, like)
-		case "url":
-			where += " AND url LIKE ?"
-			args = append(args, like)
-		default:
-			where += " AND (title LIKE ? OR url LIKE ?)"
-			args = append(args, like, like)
-		}
-	}
-
-	var total int
-	if err := db.HistoryDB.QueryRow("SELECT COUNT(DISTINCT url) FROM history "+where, args...).Scan(&total); err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
-		return
-	}
-
-	// SQLite's bare-column rule means `title` is taken from the row holding
-	// MAX(visited_at), i.e. the most recent visit for that URL.
-	query := "SELECT url, title, COUNT(*), COALESCE(SUM(duration), 0), MAX(visited_at) FROM history " +
-		where + " GROUP BY url ORDER BY MAX(visited_at) DESC LIMIT ? OFFSET ?"
-	args = append(args, limit, offset)
-
-	rows, err := db.HistoryDB.Query(query, args...)
+	resp, err := history.ListGrouped(r.Context(), history.GroupedOptions{
+		UserID: helpers.GetUserIDFromQuery(r),
+		Search: r.URL.Query().Get("q"),
+		Column: r.URL.Query().Get("column"),
+		Domain: r.URL.Query().Get("domain"),
+		Limit:  helpers.GetLimitFromQuery(r, defaultGroupedHistoryLimit),
+		Offset: helpers.GetOffsetFromQuery(r),
+	})
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-	defer rows.Close()
-
-	entries := []models.GroupedHistoryEntry{}
-	for rows.Next() {
-		var entry models.GroupedHistoryEntry
-		// MAX(visited_at) comes back as a string (aggregates lose the column's
-		// DATETIME type), so scan it as text and parse it ourselves.
-		var lastVisited sql.NullString
-		if err := rows.Scan(&entry.URL, &entry.Title, &entry.Count, &entry.TotalDuration, &lastVisited); err != nil {
-			continue
-		}
-		if lastVisited.Valid {
-			entry.LastVisited = parseSQLiteTime(lastVisited.String)
-		}
-		entries = append(entries, entry)
-	}
-
-	json.NewEncoder(w).Encode(models.GroupedHistoryResponse{
-		Entries: entries,
-		Total:   total,
-		Limit:   limit,
-		Offset:  offset,
-	})
+	json.NewEncoder(w).Encode(resp)
 }
 
 // GetHistoryDomains returns every hostname represented in history, ordered by
@@ -126,101 +37,29 @@ func GetGroupedHistory(w http.ResponseWriter, r *http.Request) {
 func GetHistoryDomains(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	userID := helpers.GetUserIDFromQuery(r)
-	search := strings.TrimSpace(r.URL.Query().Get("q"))
-	where := "WHERE domain <> ''"
-	args := []interface{}{}
-	if userID > 0 {
-		where += " AND user_id = ?"
-		args = append(args, userID)
-	}
-	if search != "" {
-		where += " AND domain LIKE ?"
-		args = append(args, "%"+strings.ToLower(search)+"%")
-	}
-
-	query := "SELECT domain, COUNT(*), COUNT(DISTINCT url), COALESCE(SUM(duration), 0), MAX(visited_at) " +
-		"FROM history " + where + " GROUP BY domain" +
-		" ORDER BY COUNT(*) DESC, MAX(visited_at) DESC"
-	rows, err := db.HistoryDB.Query(query, args...)
+	domains, err := history.ListDomains(r.Context(),
+		helpers.GetUserIDFromQuery(r), r.URL.Query().Get("q"))
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-	defer rows.Close()
-
-	domains := []models.HistoryDomainSummary{}
-	for rows.Next() {
-		var domain models.HistoryDomainSummary
-		var lastVisited sql.NullString
-		if err := rows.Scan(
-			&domain.Domain,
-			&domain.VisitCount,
-			&domain.URLCount,
-			&domain.TotalDuration,
-			&lastVisited,
-		); err != nil {
-			continue
-		}
-		if lastVisited.Valid {
-			domain.LastVisited = parseSQLiteTime(lastVisited.String)
-		}
-		domains = append(domains, domain)
-	}
-
 	json.NewEncoder(w).Encode(domains)
 }
 
 func GetHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	userID := helpers.GetUserIDFromQuery(r)
-	urlFilter := r.URL.Query().Get("url")
-	limit := helpers.GetLimitFromQuery(r, 0)
-	offset := helpers.GetOffsetFromQuery(r)
-
-	query := "SELECT id, user_id, url, title, visited_at, duration FROM history WHERE 1=1"
-	args := []interface{}{}
-
-	if userID > 0 {
-		query += " AND user_id = ?"
-		args = append(args, userID)
-	}
-
-	if urlFilter != "" {
-		query += " AND url LIKE ?"
-		args = append(args, "%"+urlFilter+"%")
-	}
-
-	query += " ORDER BY visited_at DESC"
-
-	if limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, limit)
-		if offset > 0 {
-			query += " OFFSET ?"
-			args = append(args, offset)
-		}
-	}
-
-	rows, err := db.HistoryDB.Query(query, args...)
+	entries, err := history.List(r.Context(), history.ListOptions{
+		UserID: helpers.GetUserIDFromQuery(r),
+		URL:    r.URL.Query().Get("url"),
+		Limit:  helpers.GetLimitFromQuery(r, 0),
+		Offset: helpers.GetOffsetFromQuery(r),
+	})
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-	defer rows.Close()
-
-	history := []models.History{}
-	for rows.Next() {
-		var entry models.History
-		err := rows.Scan(&entry.ID, &entry.UserID, &entry.URL, &entry.Title, &entry.VisitedAt, &entry.Duration)
-		if err != nil {
-			continue
-		}
-		history = append(history, entry)
-	}
-
-	json.NewEncoder(w).Encode(history)
+	json.NewEncoder(w).Encode(entries)
 }
 
 func CreateHistory(w http.ResponseWriter, r *http.Request) {
@@ -247,16 +86,12 @@ func CreateHistory(w http.ResponseWriter, r *http.Request) {
 	if entry.VisitedAt.IsZero() {
 		entry.VisitedAt = time.Now()
 	}
-	domain := helpers.URLHostname(entry.URL)
 
-	result, err := db.HistoryDB.Exec("INSERT INTO history (user_id, url, domain, title, visited_at, duration) VALUES (?, ?, ?, ?, ?, ?)",
-		entry.UserID, entry.URL, domain, entry.Title, entry.VisitedAt, entry.Duration)
+	id, err := history.Create(r.Context(), entry)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-
-	id, _ := result.LastInsertId()
 	entry.ID = int(id)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -265,13 +100,8 @@ func CreateHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetHistoryByID(w http.ResponseWriter, r *http.Request) {
-	id := helpers.GetIDFromPath(r)
-
-	var entry models.History
-	err := db.HistoryDB.QueryRow("SELECT id, user_id, url, title, visited_at, duration FROM history WHERE id = ?", id).
-		Scan(&entry.ID, &entry.UserID, &entry.URL, &entry.Title, &entry.VisitedAt, &entry.Duration)
-
-	if err == sql.ErrNoRows {
+	entry, err := history.GetByID(r.Context(), helpers.GetIDFromPath(r))
+	if err == history.ErrNotFound {
 		helpers.WriteError(w, http.StatusNotFound, "History entry not found")
 		return
 	} else if err != nil {
@@ -284,16 +114,12 @@ func GetHistoryByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteHistory(w http.ResponseWriter, r *http.Request) {
-	id := helpers.GetIDFromPath(r)
-
-	result, err := db.HistoryDB.Exec("DELETE FROM history WHERE id = ?", id)
+	deleted, err := history.Delete(r.Context(), helpers.GetIDFromPath(r))
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
+	if !deleted {
 		helpers.WriteError(w, http.StatusNotFound, "History entry not found")
 		return
 	}

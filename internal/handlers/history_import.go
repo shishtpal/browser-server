@@ -12,8 +12,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"browser-server/internal/db"
 	"browser-server/internal/helpers"
+	"browser-server/internal/history"
 	"browser-server/internal/models"
 )
 
@@ -82,15 +82,10 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Collect existing URLs for deduplication
-	existingURLs := make(map[string]bool)
-	existingRows, err := db.HistoryDB.Query("SELECT url FROM history WHERE user_id = ?", userID)
-	if err == nil {
-		defer existingRows.Close()
-		for existingRows.Next() {
-			var url string
-			existingRows.Scan(&url)
-			existingURLs[url] = true
-		}
+	existingURLs, err := history.ExistingURLs(r.Context(), userID)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Failed to load existing history")
+		return
 	}
 
 	// Chrome's urls table: id, url, title, visit_count, typed_count, last_visit_time, hidden, favicon_id
@@ -133,7 +128,7 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if existingURLs[url] {
+		if _, exists := existingURLs[url]; exists {
 			skipped++
 			continue
 		}
@@ -150,12 +145,14 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 			skipped++
 			continue
 		}
-		domain := helpers.URLHostname(url)
-
-		_, err := db.HistoryDB.Exec(
-			"INSERT INTO history (user_id, url, domain, title, visited_at, duration) VALUES (?, ?, ?, ?, ?, ?)",
-			userID, url, domain, title, visitedAt, 0,
-		)
+		entry := models.History{
+			UserID:    userID,
+			URL:       url,
+			Title:     title,
+			VisitedAt: visitedAt,
+			Duration:  0,
+		}
+		_, err := history.Create(r.Context(), entry)
 		if err != nil {
 			if len(errors) < 10 {
 				errors = append(errors, fmt.Sprintf("Failed to import %s: %v", url, err))
@@ -163,7 +160,7 @@ func ImportHistory(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		existingURLs[url] = true
+		existingURLs[url] = struct{}{}
 		imported++
 	}
 

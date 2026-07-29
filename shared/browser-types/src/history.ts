@@ -3,6 +3,7 @@ export interface History {
   user_id: number
   url: string
   title: string
+  domain: string
   visited_at: string
   duration: number
 }

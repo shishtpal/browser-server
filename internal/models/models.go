@@ -74,6 +74,7 @@ type History struct {
 	UserID    int       `json:"user_id"`
 	URL       string    `json:"url"`
 	Title     string    `json:"title"`
+	Domain    string    `json:"domain"`
 	VisitedAt time.Time `json:"visited_at"`
 	Duration  int       `json:"duration"`
 }

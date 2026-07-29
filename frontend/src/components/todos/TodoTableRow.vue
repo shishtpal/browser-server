@@ -95,12 +95,10 @@ import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'
 import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
 
-interface Props {
+const props = defineProps<{
   todo: Todo
   expanded?: boolean
-}
-
-const props = defineProps<Props>()
+}>()
 
 const emit = defineEmits<{
   toggle: [todo: Todo]

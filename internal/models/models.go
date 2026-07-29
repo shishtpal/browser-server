@@ -27,7 +27,7 @@ type Todo struct {
 type TodoResponse struct {
 	Todo
 	Tags     []string       `json:"tags"`
-	Subtasks []TodoResponse `json:"subtasks,omitempty"`
+	Subtasks []TodoResponse `json:"subtasks"`
 }
 
 type Screenshot struct {

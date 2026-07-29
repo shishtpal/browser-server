@@ -1,5 +1,6 @@
 import type { AIConfig, AIProfile, AISkill } from '@browser-server/shared-types'
 import { computed, ref, watch } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
 
 export interface AIModelInfo {
   id: string
@@ -10,13 +11,20 @@ export interface AIModelInfo {
 
 export function useChatConfig() {
   const config = ref<AIConfig | null>(null)
+  
   const selectedProvider = ref('')
   const selectedModel = ref('')
   const selectedProfile = ref('')
-  const yoloMode = ref(false)
-  const userToolsEnabled = ref(true)
-  const disabledTools = ref<Set<string>>(new Set())
-  const activeSkills = ref<string[]>([])
+
+  const yoloMode = useLocalStorage(`bs.ai.yoloMode`, false)
+  const userToolsEnabled = useLocalStorage(`bs.ai.userToolsEnabled`, true)
+  const disabledTools = useLocalStorage<Set<string>>(`bs.ai.disabledTools`, new Set(), {
+    serializer: {
+      read: (v) => v ? new Set(JSON.parse(v)) : new Set(),
+      write: (v) => JSON.stringify([...v]),
+    },
+  })
+  const activeSkills = useLocalStorage<string[]>(`bs.ai.activeSkills`, [])
 
   /** Available profiles from the server config */
   const profiles = computed<AIProfile[]>(() => config.value?.profiles ?? [])
@@ -74,23 +82,6 @@ export function useChatConfig() {
     }
   })
 
-  // Persist YOLO mode and tool preferences
-  watch(yoloMode, (enabled) => {
-    localStorage.setItem('ai-yolo-mode', String(enabled))
-  })
-
-  watch(userToolsEnabled, (enabled) => {
-    localStorage.setItem('ai-tools-enabled', String(enabled))
-  })
-
-  watch(disabledTools, (set) => {
-    localStorage.setItem('ai-disabled-tools', JSON.stringify([...set]))
-  }, { deep: true })
-
-  watch(activeSkills, (skills) => {
-    localStorage.setItem('ai-active-skills', JSON.stringify(skills))
-  })
-
   function toggleTool(name: string, enabled: boolean) {
     const next = new Set(disabledTools.value)
     if (enabled) {
@@ -123,26 +114,6 @@ export function useChatConfig() {
     selectedModel.value = provider?.default_model || models.find((m) => m.default)?.id || models[0]?.id || ''
   }
 
-  function loadPersistedSettings() {
-    yoloMode.value = localStorage.getItem('ai-yolo-mode') === 'true'
-    const storedToolsEnabled = localStorage.getItem('ai-tools-enabled')
-    if (storedToolsEnabled !== null) {
-      userToolsEnabled.value = storedToolsEnabled !== 'false'
-    }
-    try {
-      const stored = localStorage.getItem('ai-disabled-tools')
-      if (stored) {
-        disabledTools.value = new Set(JSON.parse(stored))
-      }
-    } catch { /* ignore malformed storage */ }
-    try {
-      const stored = localStorage.getItem('ai-active-skills')
-      if (stored) {
-        activeSkills.value = JSON.parse(stored)
-      }
-    } catch { /* ignore malformed storage */ }
-  }
-
   return {
     config,
     selectedProvider,
@@ -166,6 +137,5 @@ export function useChatConfig() {
     toggleSkill,
     setActiveSkills,
     initFromConfig,
-    loadPersistedSettings,
   }
 }

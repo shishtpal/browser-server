@@ -157,7 +157,7 @@
               <template v-for="todo in listTodos" :key="todo.id">
                 <TodoTableRow
                   :todo="todo"
-                  :expanded="!collapsedTodoIds.has(todo.id)"
+                  :expanded="expandedTodoIds.has(todo.id)"
                   draggable="true"
                   @toggle="toggleTodo"
                   @toggle-pin="togglePinned"
@@ -174,7 +174,7 @@
                   @drop="onRowDrop($event, todo.id)"
                   @dragend="onRowDragEnd"
                 />
-                <tr v-if="(todo.subtasks?.length || 0) > 0 && !collapsedTodoIds.has(todo.id)" class="bg-indigo-50/40 dark:bg-slate-800/40">
+                <tr v-if="expandedTodoIds.has(todo.id)" class="bg-indigo-50/40 dark:bg-slate-800/40">
                   <td colspan="8" class="px-4 py-3">
                     <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="onSubtaskToggled" />
                   </td>
@@ -236,8 +236,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
 import type { Todo, TodoPriority, CreateTodoInput } from '../types'
+import { ref, watch, computed } from 'vue'
 import draggable from 'vuedraggable'
 import { useUser } from '../composables/useUser'
 import { useTodos } from '../composables/useTodos'
@@ -297,6 +297,7 @@ const {
   tags,
   sort,
   reorder,
+  expandedTodoIds,
 } = useTodos(selectedUserId)
 
 // Vue only unwraps refs exposed as top-level template bindings. Keeping these
@@ -380,13 +381,11 @@ function onRowDragEnd() {
   dragAllowed.value = false
 }
 
-const collapsedTodoIds = ref<Set<number>>(new Set())
-
 function toggleSubtaskRow(id: number) {
-  const next = new Set(collapsedTodoIds.value)
+  const next = new Set(expandedTodoIds.value)
   if (next.has(id)) next.delete(id)
   else next.add(id)
-  collapsedTodoIds.value = next
+  expandedTodoIds.value = next
 }
 
 function onSubtaskToggled() {

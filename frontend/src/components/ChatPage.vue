@@ -215,6 +215,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
 import { deleteAIMessage, getAIConfig, getAIConversation } from '../lib/api'
 import Modal from './ui/Modal.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
@@ -261,7 +262,6 @@ const {
   toggleSkill,
   setActiveSkills,
   initFromConfig,
-  loadPersistedSettings,
 } = useChatConfig()
 
 const {
@@ -331,8 +331,8 @@ const showNewConversationModal = ref(false)
 const showPromptManager = ref(false)
 
 // Archive/Restore local state
-const chatFontFamily = ref(localStorage.getItem('ai-chat-font-family') || 'system-ui')
-const chatFontSize = ref(Number(localStorage.getItem('ai-chat-font-size')) || 14)
+const chatFontFamily = useLocalStorage(`bs.ai.chatFontFamily`, 'system-ui')
+const chatFontSize = useLocalStorage(`bs.ai.chatFontSize`, 14)
 
 const messageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null)
 const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
@@ -358,9 +358,6 @@ const chatFontStyle = computed(() => ({
   fontFamily: chatFontFamily.value,
   fontSize: chatFontSize.value + 'px',
 }))
-
-watch(chatFontFamily, (v) => localStorage.setItem('ai-chat-font-family', v))
-watch(chatFontSize, (v) => localStorage.setItem('ai-chat-font-size', String(v)))
 
 // ─── Tool call entries for the panel ───────────────────
 
@@ -393,7 +390,6 @@ const toolCallEntries = computed<ToolCallEntry[]>(() => {
 
 onMounted(async () => {
   window.addEventListener('api-token-changed', reload)
-  loadPersistedSettings()
   await reload()
 })
 

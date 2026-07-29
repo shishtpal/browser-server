@@ -1,10 +1,10 @@
 import type { Todo } from '../types'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import { getSubtasks, createSubtask, updateTodo, deleteTodo } from '../lib/api'
+import { createSubtask, updateTodo, deleteTodo } from '../lib/api'
 
-export function useTodoSubtasks(parentId: Ref<number | null>, userId: Ref<number | null>) {
-  const subtasks: Ref<Todo[]> = ref([])
-  const isLoading: Ref<boolean> = ref(false)
+export function useTodoSubtasks(initialSubtasks: Todo[], parentId: Ref<number | null>, userId: Ref<number | null>) {
+  const subtasks: Ref<Todo[]> = ref([...initialSubtasks])
+
   const error: Ref<string | null> = ref(null)
 
   const progress: ComputedRef<{ done: number; total: number }> = computed(() => {
@@ -12,22 +12,6 @@ export function useTodoSubtasks(parentId: Ref<number | null>, userId: Ref<number
     const done = subtasks.value.filter(t => t.status === 'completed').length
     return { done, total }
   })
-
-  async function loadSubtasks() {
-    if (!parentId.value) {
-      subtasks.value = []
-      return
-    }
-    isLoading.value = true
-    error.value = null
-    try {
-      subtasks.value = await getSubtasks(parentId.value)
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load subtasks'
-    } finally {
-      isLoading.value = false
-    }
-  }
 
   async function addSubtask(title: string) {
     if (!parentId.value || !title.trim() || !userId.value) return
@@ -58,10 +42,8 @@ export function useTodoSubtasks(parentId: Ref<number | null>, userId: Ref<number
 
   return {
     subtasks,
-    isLoading,
     error,
     progress,
-    loadSubtasks,
     addSubtask,
     toggleSubtask,
     removeSubtask,

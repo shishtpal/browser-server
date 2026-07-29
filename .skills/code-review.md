@@ -5,6 +5,8 @@ description: Focused code review with security and performance analysis
 category: Development
 tags: [review, security, performance]
 tools:
+  - ai_search_memory
+  - ai_list_memories
   - read_file
   - search_code
   - analyze_code

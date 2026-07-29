@@ -18,7 +18,7 @@ export interface Todo {
   tags: string[]
   parent_id: number | null
   position: number
-  subtasks?: Todo[]
+  subtasks: Todo[]
   created_at: string
   updated_at: string
 }

@@ -40,17 +40,27 @@
           <span v-if="todo.domain" class="inline-flex items-center rounded-full bg-violet-50 px-1.5 py-0.5 text-[9px] font-black text-violet-600 dark:bg-violet-900/20 dark:text-violet-400">{{ todo.domain }}</span>
           <TodoTagBadges :tags="(todo.tags || [])" />
           <button
-            v-if="(todo.subtasks?.length || 0) > 0"
+            v-if="subtaskCount > 0"
             type="button"
-            @click="showSubtasks = !showSubtasks"
-            class="text-[9px] font-black text-indigo-500 transition hover:text-indigo-700"
+            @click="toggleSubtaskVisibility"
+            class="inline-flex items-center gap-1 text-[9px] font-black text-indigo-500 transition hover:text-indigo-700"
           >
-            {{ showSubtasks ? '−' : '+' }} {{ todo.subtasks?.length }}
+            <svg class="h-3 w-3 shrink-0 transition-transform" :class="showSubtasks ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+            {{ subtaskCount }} subtask{{ subtaskCount !== 1 ? 's' : '' }}
           </button>
-          <TodoSubtaskProgress v-else-if="todo.parent_id" :done="0" :total="0" />
+          <button
+            v-else
+            type="button"
+            @click="showSubtasks = true"
+            class="inline-flex items-center gap-1 text-[9px] font-black text-indigo-500 transition hover:text-indigo-700"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M12 5v14m-7-7h14" /></svg>
+            Add subtask
+          </button>
+          <TodoSubtaskProgress v-if="subtaskCount > 0" :done="subtaskDoneCount" :total="subtaskCount" />
         </div>
-        <div v-if="showSubtasks && subtaskCount > 0" class="mt-2 border-t border-gray-100 pt-2 dark:border-slate-700">
-          <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="$emit('toggle-subtask', $event)" />
+        <div v-if="showSubtasks" class="mt-2 border-t border-gray-100 pt-2 dark:border-slate-700">
+          <TodoSubtaskList :todo="todo" @toggle-subtask="$emit('toggle-subtask', $event)" />
         </div>
       </div>
       <div class="flex shrink-0 gap-0.5">
@@ -73,10 +83,14 @@ const props = defineProps({
   todo: { type: Object as PropType<Todo>, required: true },
 })
 
-const showSubtasks = ref(true)
-
 const subtaskCount = computed(() => (props.todo.subtasks || []).length)
 const subtaskDoneCount = computed(() => (props.todo.subtasks || []).filter(s => s.status === 'completed').length)
+
+const showSubtasks = ref(false)
+
+function toggleSubtaskVisibility() {
+  showSubtasks.value = !showSubtasks.value
+}
 
 const emit = defineEmits<{
   toggle: [todo: Todo]

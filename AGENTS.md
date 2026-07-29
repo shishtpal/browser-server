@@ -2,9 +2,15 @@
 
 ## Project Overview
 
-Browser Server is a Go-based REST API server with an Astro + Vue frontend and Chromium and Firefox browser extensions. It manages personal data: todos, bookmarks, browsing history, a password wallet, screenshots, domain usage analytics, and AI-powered chat conversations. Data is stored in SQLite databases under `.data/`.
+Browser Server is a Go-based REST API server with an Astro + Vue frontend and Chromium and Firefox browser extensions. It manages personal data: todos, bookmarks, browsing history, a password wallet, screenshots, domain usage analytics, prompt templates, and AI-powered chat conversations. Data is stored in SQLite databases under `.data/`.
 
 It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `frontend/`, `extension/`, `extension-firefox/`, and `shared/*` are TypeScript workspace packages.
+
+## Current repo notes
+
+- The AI module now supports richer workflows through `web_search`, `file_tools`, `memory`, and `skills` sections in `bs-ai-config.json`; keep config examples and documentation aligned with the schema in `internal/ai/config/config.go`.
+- Prompt management and prompt folders are part of the shared domain model under `internal/prompt/`; they should remain the single source of truth for prompt validation and storage.
+- When changing shared domain code, keep HTTP concerns in handlers and tool-argument validation in AI tools rather than duplicating logic in both layers.
 
 ## Sub-project guidance
 
@@ -39,54 +45,55 @@ This root `AGENTS.md` covers the Go backend and cross-cutting concerns. Each fro
 
 ```
 browser-server/
-├── cmd/server/main.go          # Entry point — CLI subcommands, router setup, static serving
+├── cmd/server/main.go          # CLI entry point, router setup, and static serving
 ├── internal/
-│   ├── auth/token.go           # API token: generate/refresh/load/validate (.bs-token file)
-│   ├── db/db.go                # SQLite connection management, schema init, sample data
-│   ├── models/models.go        # Shared structs (Todo, Bookmark, History, WalletEntry, User, Route)
-│   ├── helpers/helpers.go      # Query param parsing, path ID extraction, JSON tag conversion
-│   ├── middleware/
-│   │   ├── auth.go             # Bearer-token auth middleware (401/503)
-│   │   ├── cors.go             # CORS middleware
-│   │   └── logging.go          # Request logging middleware
-│   ├── ai/                     # AI chat module (self-contained, registered via aiapi.Init())
-│   │   ├── api/handlers.go    # HTTP handlers for /api/ai/* + module init & route registration
+│   ├── ai/                     # AI chat module and server-side tool runtime
+│   │   ├── api/handlers.go     # /api/ai/* HTTP handlers and lifecycle setup
 │   │   ├── chat/service.go    # Conversation orchestration, streaming, tool-call loops
-│   │   ├── config/config.go   # Load & parse bs-ai-config.json
-│   │   ├── provider/          # LLM provider abstraction (OpenAI-compatible endpoint)
-│   │   ├── store/store.go     # SQLite persistence for conversations & messages (.data/bs-ai.db)
-│   │   └── tools/registry.go  # Server-side tool definitions and execution
-│   └── handlers/
-│       ├── health.go           # GET /health (public, no auth)
-│       ├── routes.go           # POST /api/routes endpoint
-│       ├── search.go           # GET /api/search/omnibox combined bookmark/history suggestions
-│       ├── todos.go            # CRUD for /api/todos
-│       ├── bookmarks.go        # CRUD for /api/bookmarks (with tag filtering)
-│       ├── bookmark_import.go  # POST /api/bookmarks/import
-│       ├── history.go          # CRUD for /api/history
-│       ├── history_import.go   # POST /api/history/import
-│       ├── wallet.go           # CRUD for /api/wallet (+ reveal)
-│       ├── wallet_import.go    # POST /api/wallet/import
-│       ├── screenshots.go      # Upload/serve todo screenshots
-│       ├── analytics.go        # Domain usage upsert + summary
-│       └── users.go            # Read/create for /api/users
-├── frontend/                   # Astro + Vue web app (see frontend/AGENTS.md)
-├── extension/                  # Chromium extension wrapper (see extension/AGENTS.md)
-├── extension-firefox/          # Firefox extension wrapper
-├── shared/                     # Shared TypeScript workspace packages
-│   ├── browser-types/          # Domain models, DTOs, shared error/auth types
-│   ├── browser-client/         # createBrowserServerClient() — the canonical API layer
-│   ├── browser-utils/          # Pure helpers (date/duration formatting, favicon, etc.)
-│   └── browser-extension-core/ # Shared Vue extension UI and runtime logic
-├── scripts/build.ps1           # Full build: builds frontend, then Go binary, copies dist into bin/
-├── bin/                        # Build output
-├── pnpm-workspace.yaml         # pnpm workspace config
-├── go.mod / go.sum
-├── bs-ai-config.json           # AI chat configuration (providers, models, tools, logging)
-├── README.md                   # Setup, usage, extension, and development guide
-├── PRD.md                      # Product requirements and API documentation
-├── AGENTS.md                   # This file
-└── ROADMAP.md                  # What's done and what's next
+│   │   ├── config/config.go   # bs-ai-config.json parsing and validation
+│   │   ├── profiles/          # Provider/model profile definitions
+│   │   ├── provider/          # OpenAI-compatible LLM client abstraction
+│   │   ├── skills/            # Skill definitions and activation helpers
+│   │   ├── store/store.go     # SQLite persistence for conversations and messages
+│   │   └── tools/             # Tool registry and tool implementations
+│   ├── auth/token.go           # Token generation, loading, and validation
+│   ├── bookmark/               # Bookmark domain logic, storage, and renderers
+│   ├── db/db.go                # SQLite connection management and schema init
+│   ├── handlers/              # REST handlers for todos, bookmarks, history, prompts, wallet, etc.
+│   │   ├── prompts.go         # Prompt CRUD and folder-aware handlers
+│   │   ├── search.go          # Combined bookmark/history omnibox search
+│   │   ├── todos.go          # Todo CRUD handlers
+│   │   ├── todo_reorder.go   # Todo ordering handlers
+│   │   ├── todo_subtasks.go  # Todo subtask handlers
+│   │   └── ...               # Additional domain handlers
+│   ├── helpers/               # Shared request parsing and helper utilities
+│   ├── history/               # History domain logic and storage
+│   ├── middleware/            # Auth, CORS, and logging middleware
+│   ├── models/models.go       # Shared API/domain structs
+│   ├── prompt/                # Prompt domain model, storage, and renderers
+│   ├── search/                # Shared search helpers and models
+│   ├── todo/                  # Todo domain logic, validation, and storage
+│   └── ...
+├── frontend/                  # Astro + Vue web app (see frontend/AGENTS.md)
+├── extension/                 # Chromium extension wrapper (see extension/AGENTS.md)
+├── extension-firefox/         # Firefox extension wrapper
+├── shared/                    # Shared TypeScript workspace packages
+│   ├── browser-client/       # Canonical typed API client
+│   ├── browser-extension-core/ # Shared extension UI/runtime logic
+│   ├── browser-modal/        # Shared modal primitives
+│   ├── browser-types/        # Shared domain/API types
+│   └── browser-utils/        # Pure helper utilities
+├── plans/                     # Design and implementation notes
+├── scripts/build.ps1         # Full build script for web app + Go binary
+├── bin/                      # Build output and runtime assets
+├── package.json               # Root workspace scripts and dependencies
+├── pnpm-workspace.yaml        # pnpm workspace config
+├── go.mod / go.sum            # Go module definition
+├── bs-ai-config.json          # AI chat configuration, tools, web/file/memory/skill settings
+├── README.md                  # Setup, usage, extension, and development guide
+├── PRD.md                     # Product requirements and API documentation
+├── AGENTS.md                  # This file
+└── ROADMAP.md                 # Completed and planned work
 ```
 
 ## Building
@@ -236,6 +243,46 @@ Results use a normalized `OmniboxSearchResult` shape in `internal/models` and `s
 
 When both sources have matches, the omnibox endpoint should preserve a balanced mix so bookmark suggestions are not crowded out by high-volume history matches. If one source has no matches, the other source can use the full result limit.
 
+## Domain Packages (shared business logic)
+
+Domains that are reachable from **both** the REST API and the AI tools keep their
+logic in a dedicated package under `internal/<domain>/` rather than duplicating it
+in `internal/handlers/` and `internal/ai/tools/`:
+
+| Package | Used by |
+|---------|---------|
+| `internal/todo` | `handlers/todos.go`, `todo_subtasks.go`, `todo_reorder.go`, and the `add_todo_record`, `update_todo_record`, `add_calendar_event`, `search_todos`, `search_calendar` tools |
+| `internal/prompt` | `handlers/prompts.go` and the `manage_prompt`, `search_prompts` tools |
+| `internal/bookmark` | `handlers/bookmarks.go`, `bookmark_import.go`, and the `search_bookmarks` tool |
+| `internal/history` | `handlers/history.go`, `history_import.go`, `search.go`, and the `search_history` tool |
+
+Each package is layered the same way:
+
+- **`<domain>.go`** — pure validation and constants (field limits, valid enum
+  values, date parsing). No database access, so it is trivial to unit test.
+- **`store.go`** — the single source of truth for the SQL: the `Columns`
+  constant, the row `Scan`, `Create`, an `UpdateBuilder` for partial updates,
+  and ownership checks. Every query that scans a row **must** select `Columns`.
+- **`view.go`** — the two renderings of a record: `Response(...)` for the REST
+  API (typed `models.*Response`) and `Map(...)` for AI tools (a flat
+  `map[string]any` where blank optional strings become `null`).
+
+**Rules when working in these domains:**
+
+- Never re-declare a column list, row scanner, or validation table in a handler
+  or a tool — import the domain package instead. Adding a column then means
+  editing one `Columns` constant.
+- Keep HTTP concerns (status codes, `helpers.WriteError`) in handlers and
+  tool-argument concerns (`strict(...)`) in tools. Domain packages return plain
+  values and sentinel errors (`ErrNotFound`, `ErrFolderNotOwned`, …) that the
+  caller maps to its own response format.
+- The REST API and the AI tools intentionally accept **different status sets**
+  for todos: use `IsValidCoreStatus` for the API and `IsValidStatus` for tools,
+  which additionally tolerates the legacy `done`/`cancelled` aliases.
+- Prompt rows store `created_at` with sub-second precision from Go rather than
+  SQL's whole-second `CURRENT_TIMESTAMP`, because prompt listings order by
+  `created_at` and would otherwise be non-deterministic within the same second.
+
 ## How to Add a New Route
 
 Adding a new API route involves touching **6 files** (plus `internal/db/db.go` for entirely new domains):
@@ -246,10 +293,10 @@ Add your request/response structs with JSON tags. For import endpoints, create a
 
 ```go
 type MyDomain struct {
-	ID        int       `json:"id"`
-	UserID    int       `json:"user_id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
+  ID        int       `json:"id"`
+  UserID    int       `json:"user_id"`
+  Name      string    `json:"name"`
+  CreatedAt time.Time `json:"created_at"`
 }
 ```
 

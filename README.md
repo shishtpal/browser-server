@@ -15,11 +15,12 @@ The project includes:
 
 ## Features
 
-- CRUD APIs and web views for todos, bookmarks, history, wallet entries, and users
+- CRUD APIs and web views for todos, bookmarks, history, wallet entries, prompts, and users
 - Bookmark and browser-history imports
 - Todo screenshot capture and storage
 - Domain usage analytics
-- AI chat with streaming responses, configurable providers (OpenRouter, OpenAI, etc.), and server-side tool calling
+- AI chat with streaming responses, configurable providers (OpenRouter, OpenAI, etc.), server-side tool calling, and optional web/file/memory/skill integrations
+- Prompt management with folder-aware storage and search
 - Combined bookmark/history search through the extension omnibox keyword `bs`
 - One-click bookmark and todo capture from the page context menu or keyboard shortcuts
 - Bearer-token authentication for every `/api/*` endpoint
@@ -192,12 +193,36 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
       "retry_attempts": 10,
       "retry_delay_seconds": 5,
       "models": [
-        { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true },
-        { "id": "anthropic/claude-sonnet-4", "label": "Claude Sonnet 4", "supports_tools": true }
+        { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true, "max_output_tokens": 4096 },
+        { "id": "anthropic/claude-sonnet-4", "label": "Claude Sonnet 4", "supports_tools": true, "max_output_tokens": 8192 }
       ]
     }
   },
-  "tools": { "enabled": true, "allowed": ["get_current_time", "search_bookmarks", "search_calendar", "add_calendar_event"], "max_iterations": 5 },
+  "tools": {
+    "enabled": true,
+    "allowed": ["get_current_time", "ask_questions", "search_todos", "add_todo_record", "update_todo_record", "search_bookmarks", "search_history", "search_calendar", "add_calendar_event"],
+    "max_iterations": 100
+  },
+  "web_search": {
+    "enabled": true,
+    "default_provider": "auto",
+    "timeout_seconds": 30,
+    "max_results": 10,
+    "fallback": true
+  },
+  "file_tools": {
+    "max_read_bytes": 32768,
+    "max_line_count": 5000,
+    "allowed_extensions": []
+  },
+  "memory": {
+    "enabled": true,
+    "directory": ".memory"
+  },
+  "skills": {
+    "enabled": true,
+    "directory": ".skills"
+  },
   "chat": { "system_prompt": "You are a helpful assistant.", "stream": true, "temperature": 0.7 }
 }
 ```
@@ -221,6 +246,8 @@ Retry behavior is configured independently for each provider:
 
 The server retries transient failures such as network errors, timeouts, rate limits (`429`), provider errors (`5xx`), and malformed provider responses. Other `4xx` responses are returned immediately because retrying an invalid request or API key will not resolve it. Streaming requests are retried only before any output is emitted, preventing duplicate partial responses. Stopping a generation also cancels any pending retry delay.
 
+Tool-call continuation has an additional recovery path. If the provider fails after one or more tools have run, every failure is recoverable regardless of HTTP status (including `400`). In manual mode the chat shows a **tool-call recovery** prompt with Resume and Stop actions; feedback can also be supplied before resuming. In YOLO mode the server resumes automatically every five seconds until the request succeeds or generation is stopped. Recovery removes the most recent assistant tool-call turn and its paired tool results from the provider payload before retrying, which avoids resending the tool call that caused the failed continuation.
+
 ### Key features
 
 - Multiple provider and model selection from the web UI
@@ -228,6 +255,8 @@ The server retries transient failures such as network errors, timeouts, rate lim
 - Configurable retries for transient provider failures
 - Server-side tools the model can call (with user approval or auto-approve "YOLO mode")
 - Calendar event creation and search via AI tool calls
+- Prompt search and management via AI tools
+- Optional web search, file operations, memory, and skill activation for richer workflows
 - Conversation history persisted in SQLite
 - Regenerate previous responses, stop in-progress generation
 

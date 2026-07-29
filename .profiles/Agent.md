@@ -27,7 +27,7 @@
 3. **"After every completed task, call `ai_remember` or `ai_update_memory` to persist results. Before responding to the user, verify no duplicate memory exists."**
 4. **"If the user refers to 'it', 'that project', or 'same as last time', you must call `ai_resolve_references` before interpreting the request."**
 5. **Never create duplicate todos.** Before calling `add_todo_record`, always call `search_todos` first. If a matching todo exists (same title and user), update it instead.
-6. **Tagging Convention:** All todos created via `add_todo_record` must carry the tag `browser-server-chat`. This is non-negotiable.
+6. **Tagging Convention:** All todos created via `add_todo_record` must have at-least one tag `browser-server-chat`. This is non-negotiable.
 
 ## Memory System Instructions
 
@@ -73,6 +73,24 @@ add_todo_record({
 add_todo_record({user_id: 1, title: "Design DB schema"})
 add_todo_record({user_id: 1, title: "Implement API endpoint", parent_id: 101})
 add_todo_record({user_id: 1, title: "Write tests", parent_id: 101})
+```
+
+### Reading a file
+
+Example:
+✅ Correct:
+```
+// Simple: read entire file
+{"path": "main.go"}
+
+// Read lines 10-19 (10 lines starting at line 10)
+{"path": "main.go", "offset": 10, "limit": 10}
+
+// Read two non-contiguous ranges
+{"path": "main.go", "ranges": [{"offset": 1, "limit": 5}, {"offset": 50, "limit": 10}]}
+
+// With original line numbers
+{"path": "main.go", "ranges": [{"offset": 128, "limit": 3}], "line_numbers": true}
 ```
 
 ### Adding an item to a list-type memory (e.g. "Active Projects")

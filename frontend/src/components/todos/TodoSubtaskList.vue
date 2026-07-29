@@ -2,8 +2,9 @@
   <div class="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-800/60">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <button type="button" @click="expanded = !expanded" class="text-[10px] font-black text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-          {{ expanded ? '−' : '+' }} Subtasks ({{ subtaskList.length }})
+        <button type="button" @click="expanded = !expanded" class="inline-flex items-center gap-1 text-[10px] font-black text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+          <svg class="h-3 w-3 shrink-0 transition-transform" :class="expanded ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+          Subtasks ({{ subtasks.length }})
         </button>
         <TodoSubtaskProgress :done="progress.done" :total="progress.total" />
       </div>
@@ -114,12 +115,12 @@
               </button>
             </template>
 
-            <div v-if="isLoading" class="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"></div>
+
           </div>
         </template>
       </draggable>
 
-      <form @submit.prevent="onAddSubtask" class="flex items-center gap-2">
+      <form @submit.prevent="onAddSubtask" class="mt-2 flex items-center gap-2">
         <input
           v-model="newTitle"
           placeholder="Add subtask..."
@@ -138,14 +139,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, type PropType } from 'vue'
+import type { Todo, TodoPriority } from '../../types'
+import { ref, computed, watch, nextTick, type PropType } from 'vue'
 import draggable from 'vuedraggable'
 import { reorderTodos, updateTodo } from '../../lib/api'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
 import { useTodoSubtasks } from '../../composables/useTodoSubtasks'
-import type { Todo, TodoPriority } from '../../types'
 
 const props = defineProps({
   todo: { type: Object as PropType<Todo>, required: true },
@@ -159,13 +160,12 @@ const emit = defineEmits<{
 const expanded = ref(props.defaultExpanded)
 
 const userId = computed(() => props.todo.user_id)
-const { subtasks, progress, isLoading, loadSubtasks, addSubtask, toggleSubtask, removeSubtask } = useTodoSubtasks(computed(() => props.todo.id), userId)
+const { subtasks, progress, addSubtask, toggleSubtask, removeSubtask } = useTodoSubtasks(props.todo.subtasks || [], computed(() => props.todo.id), userId)
 
-onMounted(() => {
-  loadSubtasks()
-})
-
-const subtaskList = computed(() => subtasks.value)
+// Sync when parent re-fetches
+watch(() => props.todo.subtasks, (val) => {
+  subtasks.value = [...(val || [])]
+}, { deep: true })
 
 const newTitle = ref('')
 
@@ -203,7 +203,6 @@ async function saveEdit(subtask: Todo) {
 
   if (Object.keys(updates).length > 0) {
     await updateTodo(subtask.id, updates)
-    await loadSubtasks()
   }
   editingId.value = null
 }
@@ -221,7 +220,6 @@ function onRemoveSubtask(id: number) {
 async function onSubtaskEnd(event: any) {
   if (event.oldIndex === event.newIndex) return
   await reorderTodos(subtasks.value.map((t, idx) => ({ id: t.id, position: idx })))
-  await loadSubtasks()
 }
 
 function onAddSubtask() {

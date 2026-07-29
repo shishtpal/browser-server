@@ -466,7 +466,7 @@ func (r *SQLRepository) List(filter ListFilter) ([]models.TodoResponse, error) {
 	}
 	defer rows.Close()
 
-	var todos []models.TodoResponse
+	todos := []models.TodoResponse{}
 	for rows.Next() {
 		t, tagsJSON, err := ScanTodo(rows)
 		if err != nil {
@@ -475,8 +475,8 @@ func (r *SQLRepository) List(filter ListFilter) ([]models.TodoResponse, error) {
 		resp := TodoToResponse(t, tagsJSON)
 		if filter.Tag == "" {
 			childRows, cerr := r.db.Query("SELECT "+TodoColumns+" FROM todos WHERE parent_id = ? AND status != 'archived' ORDER BY pinned DESC, position ASC", t.ID)
+			children := []models.TodoResponse{}
 			if cerr == nil {
-				var children []models.TodoResponse
 				for childRows.Next() {
 					child, childTags, err := ScanTodo(childRows)
 					if err == nil {
@@ -484,10 +484,8 @@ func (r *SQLRepository) List(filter ListFilter) ([]models.TodoResponse, error) {
 					}
 				}
 				childRows.Close()
-				if len(children) > 0 {
-					resp.Subtasks = children
-				}
 			}
+			resp.Subtasks = children
 		}
 		todos = append(todos, resp)
 	}
@@ -506,8 +504,8 @@ func (r *SQLRepository) GetByID(id int) (*models.TodoResponse, error) {
 	resp := TodoToResponse(t, tagsJSON)
 
 	childRows, err := r.db.Query("SELECT "+TodoColumns+" FROM todos WHERE parent_id = ? ORDER BY pinned DESC, position ASC", t.ID)
+	children := []models.TodoResponse{}
 	if err == nil {
-		var children []models.TodoResponse
 		for childRows.Next() {
 			child, childTags, err := ScanTodo(childRows)
 			if err == nil {
@@ -515,10 +513,8 @@ func (r *SQLRepository) GetByID(id int) (*models.TodoResponse, error) {
 			}
 		}
 		childRows.Close()
-		if len(children) > 0 {
-			resp.Subtasks = children
-		}
 	}
+	resp.Subtasks = children
 	return &resp, nil
 }
 
@@ -631,7 +627,8 @@ func todoToUpdateResult(todoRow models.Todo, tagsJSON string) *UpdateResult {
 // TodoToResponse converts a models.Todo and tags JSON string to a models.TodoResponse.
 func TodoToResponse(t models.Todo, tagsJSON string) models.TodoResponse {
 	return models.TodoResponse{
-		Todo: t,
-		Tags: helpers.ParseTagsFromJSON(tagsJSON),
+		Todo:     t,
+		Tags:     helpers.ParseTagsFromJSON(tagsJSON),
+		Subtasks: []models.TodoResponse{},
 	}
 }

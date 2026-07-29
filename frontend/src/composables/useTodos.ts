@@ -8,11 +8,12 @@ import { useTodoSort } from './useTodoSort'
 
 import { useTodoReorder } from './useTodoReorder'
 import { isOverdue, isDueToday, isDueThisWeek } from './useTodoDueDate'
+import { useLocalStorage, useSessionStorage } from '@vueuse/core'
 
 export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<string | null>) {
-  const todos = ref<Todo[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const todos = useSessionStorage<Todo[]>(`bs.todos.todos`, [])
 
   const activeFilter = ref<'all' | 'active' | 'in_progress' | 'completed' | 'archived'>('all')
   const searchQuery = ref('')
@@ -75,7 +76,13 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const sort = useTodoSort(baseFiltered)
   const displayedTodos = sort.sorted
 
-  const expandedTodoId = ref<number | null>(null)
+  // Set of TODOs IDs user has clicked to expand for sub-tasks
+  const expandedTodoIds = useLocalStorage<Set<number>>(`bs.todos.expandedTodoIds`, new Set(), {
+    serializer: {
+      read: (v) => v ? new Set(JSON.parse(v)) : new Set(),
+      write: (v) => JSON.stringify([...v]),
+    },
+  })
 
   const loadTodos = async () => {
     if (!selectedUserId.value) return
@@ -197,6 +204,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     tags,
     sort,
     reorder,
-    expandedTodoId,
+    expandedTodoIds,
   }
 }

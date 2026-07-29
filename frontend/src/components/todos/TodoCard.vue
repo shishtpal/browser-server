@@ -43,16 +43,26 @@
           <button
             v-if="subtaskCount > 0"
             type="button"
-            @click="showSubtasks = !showSubtasks"
+            @click="toggleSubtaskVisibility"
             class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black text-indigo-500 transition hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-900/20"
           >
-            {{ showSubtasks ? '−' : '+' }} {{ subtaskCount }}
+            <svg class="h-3 w-3 shrink-0 transition-transform" :class="showSubtasks ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+            {{ subtaskCount }} subtask{{ subtaskCount !== 1 ? 's' : '' }}
+          </button>
+          <button
+            v-else
+            type="button"
+            @click="showSubtasks = true"
+            class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black text-indigo-500 transition hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-900/20"
+          >
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M12 5v14m-7-7h14" /></svg>
+            Add subtask
           </button>
           <TodoSubtaskProgress v-if="subtaskCount > 0" :done="subtaskDoneCount" :total="subtaskCount" />
           <span class="mt-1 inline-block rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 transition-colors dark:bg-slate-700 dark:text-slate-400">{{ formatDate(todo.updated_at) }}</span>
         </div>
-        <div v-if="showSubtasks && subtaskCount > 0" class="mt-2">
-          <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="$emit('toggle-subtask', $event)" />
+        <div v-if="showSubtasks" class="mt-2">
+          <TodoSubtaskList :todo="todo" @toggle-subtask="$emit('toggle-subtask', $event)" />
         </div>
       </div>
     </div>
@@ -82,10 +92,10 @@
 </template>
 
 <script setup lang="ts">
+import type { Todo } from '../../types'
 import { computed, ref } from 'vue'
 import { formatDate } from '../../lib/utils'
 import { getScreenshotUrl } from '../../lib/api'
-import type { Todo } from '../../types'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'
@@ -107,12 +117,16 @@ const emit = defineEmits<{
   'toggle-subtask': [todo: Todo]
 }>()
 
-const showSubtasks = ref(true)
-
 const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')
 
 const subtaskCount = computed(() => (props.todo.subtasks || []).length)
 const subtaskDoneCount = computed(() => (props.todo.subtasks || []).filter(s => s.status === 'completed').length)
+
+const showSubtasks = ref(false)
+
+function toggleSubtaskVisibility() {
+  showSubtasks.value = !showSubtasks.value
+}
 
 function confirmDelete() {
   if (window.confirm(`Delete "${props.todo.title}"?`)) {

@@ -75,7 +75,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
           d="M8 9h8M8 15h5M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z" />
       </svg>
-      <span class="text-slate-500 dark:text-slate-400">used</span>
+      <span class="text-slate-500 dark:text-slate-400">{{ isRetryCall ? 'requested' : 'used' }}</span>
       <span class="font-medium text-slate-800 dark:text-slate-200">{{ toolLabel }}</span>
       <span class="ml-0.5 font-medium" :class="toolStatus.className">{{ toolStatus.icon }} {{ toolStatus.label }}</span>
       <svg
@@ -91,18 +91,19 @@
         @submit="submitQuestionAnswers" />
       <div v-else-if="message.status === 'pending' && !toolData.decision"
         class="rounded border border-amber-200 bg-amber-50 p-3 dark:border-amber-950/20">
-        <p class="mb-2 text-[0.85em] text-amber-800 dark:text-amber-200">Review the command or arguments before allowing
-          this tool.</p>
+        <p class="mb-2 text-[0.85em] text-amber-800 dark:text-amber-200">{{ isRetryCall
+          ? (retryMessage || 'The AI provider failed while continuing after a tool call. Resume without the last tool-call turn?')
+          : 'Review the command or arguments before allowing this tool.' }}</p>
         <div class="flex flex-wrap items-center gap-2">
           <button
             class="rounded bg-emerald-600 px-3 py-1.5 text-[0.85em] font-semibold text-white transition hover:bg-emerald-700"
-            type="button" @click="emit('tool-decision', message.tool_call_id || '', true, '')">Allow</button>
+            type="button" @click="emit('tool-decision', message.tool_call_id || '', true, '')">{{ isRetryCall ? 'Resume' : 'Allow' }}</button>
           <button
             class="rounded border border-red-200 bg-white px-3 py-1.5 text-[0.85em] font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:hover:bg-red-950/30"
-            type="button" @click="emit('tool-decision', message.tool_call_id || '', false, '')">Reject</button>
+            type="button" @click="emit('tool-decision', message.tool_call_id || '', false, '')">{{ isRetryCall ? 'Stop' : 'Reject' }}</button>
           <input v-model="commentDraft"
             class="min-w-48 flex-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-[0.85em] outline-none focus:border-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
-            placeholder="Or send feedback instead…" @keydown.enter.prevent="submitComment" />
+            :placeholder="isRetryCall ? 'Or add instructions before resuming…' : 'Or send feedback instead…'" @keydown.enter.prevent="submitComment" />
           <button
             class="rounded bg-slate-700 px-3 py-1.5 text-[0.85em] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
             type="button" :disabled="!commentDraft.trim()" @click="submitComment">Send</button>
@@ -164,6 +165,11 @@ function submitComment() {
 }
 
 const isQuestionCall = computed(() => toolData.value.name === 'ask_questions')
+const isRetryCall = computed(() => toolData.value.name === 'retry_tool_call')
+const retryMessage = computed(() => {
+  if (!isRetryCall.value || !isRecord(toolData.value.args)) return ''
+  return typeof toolData.value.args.message === 'string' ? toolData.value.args.message : ''
+})
 const questionRequest = computed(() => {
   if (!isQuestionCall.value || !isRecord(toolData.value.args)) return null
   const questions = Array.isArray(toolData.value.args.questions) ? toolData.value.args.questions : []
@@ -228,6 +234,7 @@ const resultRecord = computed<Record<string, unknown> | null>(() =>
 
 const toolLabel = computed(() => {
   if (toolData.value.name === 'execute_command') return 'Shell'
+  if (toolData.value.name === 'retry_tool_call') return 'tool-call recovery'
   if (!toolData.value.name) return 'Tool'
   return toolData.value.name
     .split('_')
@@ -279,7 +286,11 @@ const toolSections = computed<ToolSection[]>(() => {
 
 const toolStatus = computed(() => {
   if (props.message.status === 'pending' && !toolData.value.decision) {
-    return { label: 'approval required', icon: '!', className: 'text-amber-600 dark:text-amber-400' }
+    return {
+      label: isRetryCall.value ? 'resume required' : 'approval required',
+      icon: '!',
+      className: 'text-amber-600 dark:text-amber-400',
+    }
   }
   if (toolData.value.decision === 'commented') {
     return { label: 'commented', icon: '•', className: 'text-amber-600 dark:text-amber-400' }
@@ -288,7 +299,7 @@ const toolStatus = computed(() => {
     return { label: 'answered', icon: '✓', className: 'text-emerald-600 dark:text-emerald-400' }
   }
   if (props.message.status === 'pending') {
-    return { label: 'running', icon: '•', className: 'text-blue-600 dark:text-blue-400' }
+    return { label: isRetryCall.value ? 'resuming' : 'running', icon: '•', className: 'text-blue-600 dark:text-blue-400' }
   }
   const exitCode = resultRecord.value?.exit_code
   const failed = props.message.status === 'error' || resultRecord.value?.error || (typeof exitCode === 'number' && exitCode !== 0)

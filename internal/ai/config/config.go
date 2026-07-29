@@ -129,10 +129,12 @@ type LoggingConfig struct {
 }
 
 type ChatConfig struct {
-	SystemPrompt       string  `json:"system_prompt"`
-	MaxHistoryMessages int     `json:"max_history_messages"`
-	Stream             bool    `json:"stream"`
-	Temperature        float64 `json:"temperature"`
+	SystemPrompt          string  `json:"system_prompt"`
+	MaxHistoryMessages    int     `json:"max_history_messages"`
+	Stream                bool    `json:"stream"`
+	Temperature           float64 `json:"temperature"`
+	ToolRetryAttempts     int     `json:"tool_retry_attempts"`
+	ToolRetryDelaySeconds int     `json:"tool_retry_delay_seconds"`
 }
 
 type SanitizedConfig struct {
@@ -284,6 +286,12 @@ func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 	}
 	if !nestedPresent(raw, "chat", "stream") {
 		cfg.Chat.Stream = true
+	}
+	if !nestedPresent(raw, "chat", "tool_retry_attempts") {
+		cfg.Chat.ToolRetryAttempts = 5
+	}
+	if !nestedPresent(raw, "chat", "tool_retry_delay_seconds") {
+		cfg.Chat.ToolRetryDelaySeconds = 5
 	}
 	for name, provider := range cfg.Providers {
 		if !providerFieldPresent(raw, name, "request_timeout_seconds") {
@@ -513,6 +521,12 @@ func validate(cfg *Config) error {
 	}
 	if cfg.Chat.Temperature < 0 || cfg.Chat.Temperature > 2 {
 		return fmt.Errorf("chat.temperature must be between 0 and 2")
+	}
+	if cfg.Chat.ToolRetryAttempts < 1 || cfg.Chat.ToolRetryAttempts > 20 {
+		return fmt.Errorf("chat.tool_retry_attempts must be between 1 and 20")
+	}
+	if cfg.Chat.ToolRetryDelaySeconds < 1 || cfg.Chat.ToolRetryDelaySeconds > 300 {
+		return fmt.Errorf("chat.tool_retry_delay_seconds must be between 1 and 300")
 	}
 	parent := filepath.Dir(cfg.ResolvePath(cfg.Logging.DBPath))
 	if err := os.MkdirAll(parent, 0755); err != nil {

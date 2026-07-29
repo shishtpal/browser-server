@@ -36,16 +36,18 @@ type pendingToolCall struct {
 }
 
 type Service struct {
-	cfg       *aiconfig.Config
-	store     *store.Store
-	profiles  *profiles.Registry
-	skills    *skills.Registry
-	clients   map[string]provider.Client
-	activeMu  sync.Mutex
-	active    map[string]context.CancelFunc
-	tools     *tools.Registry
-	pendingMu sync.Mutex
-	pending   map[string]pendingToolCall
+	cfg            *aiconfig.Config
+	store          *store.Store
+	profiles       *profiles.Registry
+	skills         *skills.Registry
+	clients        map[string]provider.Client
+	activeMu       sync.Mutex
+	active         map[string]context.CancelFunc
+	tools               *tools.Registry
+	pendingMu           sync.Mutex
+	pending             map[string]pendingToolCall
+	toolRetryDelay      time.Duration
+	toolRetryAttempts   int
 }
 
 type SubmitRequest struct {
@@ -90,6 +92,8 @@ func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Regi
 	return &Service{
 		cfg: cfg, store: st, profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{},
 		tools: tools.New(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools}), pending: map[string]pendingToolCall{},
+		toolRetryDelay:      time.Duration(cfg.Chat.ToolRetryDelaySeconds) * time.Second,
+		toolRetryAttempts:   cfg.Chat.ToolRetryAttempts,
 	}
 }
 
@@ -299,23 +303,19 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			providerMessages[0].Content += webSearchPromptFragment
 		}
 	}
-	var resp provider.ChatResponse
-	var providerErr error
 	complete := func() (provider.ChatResponse, error) {
 		if emit != nil {
-			resp, providerErr = client.Stream(generationCtx, chatReq, func(pe provider.Event) error {
+			return client.Stream(generationCtx, chatReq, func(pe provider.Event) error {
 				switch pe.Type {
 				case "text_delta":
 					return emit(Event{Type: "delta", MessageID: assistantMessage.ID, Content: pe.Text})
 				}
 				return nil
 			})
-		} else {
-			resp, providerErr = client.Complete(generationCtx, chatReq)
 		}
-		return resp, providerErr
+		return client.Complete(generationCtx, chatReq)
 	}
-	resp, providerErr = complete()
+	resp, providerErr := complete()
 	var toolMessages []store.Message
 	iterationLimitReached := false
 	for iteration := 0; providerErr == nil && len(resp.ToolCalls) > 0; iteration++ {
@@ -450,6 +450,19 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			break
 		}
 		resp, providerErr = complete()
+		if providerErr != nil {
+			resp, providerErr = s.retryToolContinuation(
+				generationCtx,
+				conversationID,
+				assistantMessage.ID,
+				req.YOLOMode,
+				&chatReq,
+				resp,
+				providerErr,
+				emit,
+				complete,
+			)
+		}
 	}
 	status := "completed"
 	logStatus := "success"

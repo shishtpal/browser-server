@@ -117,7 +117,7 @@ func (ft *fileReadTool) readFile(_ context.Context, raw json.RawMessage) (any, e
 	if ft.maxFileSizeWarnMB > 0 {
 		info, err := os.Stat(resolvedPath)
 		if err != nil {
-			return nil, fmt.Errorf("cannot access %q: %v", a.Path, err)
+			return nil, friendlyFileError(a.Path, err)
 		}
 		if info.Size() > int64(ft.maxFileSizeWarnMB)*1024*1024 {
 			return nil, fmt.Errorf("file %q is %.1f MB, which exceeds the %d MB limit", a.Path, float64(info.Size())/(1024*1024), ft.maxFileSizeWarnMB)
@@ -184,10 +184,21 @@ func (ft *fileReadTool) isBlocked(resolved string) bool {
 		if ok, _ := path.Match(pattern, base); ok {
 			return true
 		}
-		// Match a glob like **/.git/** — path.Match doesn't support **,
-		// so we check if the pattern contains the base path component
-		if strings.Contains(pattern, base) {
-			return true
+		// Support patterns like **/.env* by matching the suffix against any path segment.
+		if strings.HasPrefix(pattern, "**/") {
+			suffix := strings.TrimPrefix(pattern, "**/")
+			for _, segment := range strings.Split(slashed, "/") {
+				if ok, _ := path.Match(suffix, segment); ok {
+					return true
+				}
+			}
+		}
+		// Support patterns like **/.git/** by matching segments and descendants.
+		if strings.HasSuffix(pattern, "/**") {
+			prefix := strings.TrimSuffix(pattern, "/**")
+			if strings.HasPrefix(slashed, prefix) || strings.Contains(slashed, "/"+prefix+"/") {
+				return true
+			}
 		}
 	}
 	return false

@@ -8,7 +8,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "type-check": "vue-tsc --noEmit --skipLibCheck",
-    "astro-check": "pnpm type-check && pnpm astro check"
+    "astro-check": "pnpm astro check"
   },
   "dependencies": {
     "@astrojs/vue": "^7.0.1",

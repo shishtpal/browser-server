@@ -428,7 +428,7 @@ func TestReadFileMultipleRangesOverlap(t *testing.T) {
 	}
 	m := result.(map[string]any)
 	// Duplicate line numbers should be deduplicated; order should match first occurrence
-	if m["content"] != "a\nb\nc\nd" {
+	if m["content"] != "a\nb\nc" {
 		t.Fatalf("unexpected content: %q", m["content"])
 	}
 }

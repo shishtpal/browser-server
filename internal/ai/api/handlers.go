@@ -58,6 +58,10 @@ type updateConversationRequest struct {
 	Model    string `json:"model"`
 }
 
+type forkConversationRequest struct {
+	MessageID string `json:"message_id"`
+}
+
 type toolDecisionRequest struct {
 	Approved *bool  `json:"approved"`
 	Comment  string `json:"comment,omitempty"`
@@ -171,6 +175,7 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.GetConversation)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.UpdateConversation)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.DeleteConversation)).Methods("DELETE")
+	r.HandleFunc("/ai/conversations/{id}/fork", m.requireAI(m.ForkConversation)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages", m.requireAI(m.SubmitMessage)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.UpdateMessage)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.DeleteMessage)).Methods("DELETE")
@@ -420,6 +425,33 @@ func (m *Module) DeleteConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (m *Module) ForkConversation(w http.ResponseWriter, r *http.Request) {
+	sourceID := mux.Vars(r)["id"]
+	if m.service.IsActive(sourceID) {
+		writeError(w, http.StatusConflict, "generation_conflict", "Generation is active")
+		return
+	}
+	var req forkConversationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		return
+	}
+	if strings.TrimSpace(req.MessageID) == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "message_id is required")
+		return
+	}
+	conversation, err := m.store.ForkConversation(r.Context(), sourceID, req.MessageID)
+	if err != nil {
+		if store.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, "not_found", "Conversation or message not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "store_error", "Failed to branch conversation")
+		return
+	}
+	writeJSON(w, http.StatusCreated, conversation)
 }
 
 func (m *Module) ArchiveConversation(w http.ResponseWriter, r *http.Request) {

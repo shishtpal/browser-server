@@ -331,6 +331,10 @@ export function createAIConversation(data: CreateAIConversationInput = {}): Prom
   return client.createAIConversation(data)
 }
 
+export function forkAIConversation(id: string, messageId: string): Promise<AIConversation> {
+  return client.forkAIConversation(id, { message_id: messageId })
+}
+
 export function getAIConversation(id: string): Promise<AIConversationDetail> {
   return client.getAIConversation(id)
 }

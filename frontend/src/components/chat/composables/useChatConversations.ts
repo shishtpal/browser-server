@@ -4,6 +4,7 @@ import {
   archiveAIConversation,
   createAIConversation,
   deleteAIConversation,
+  forkAIConversation,
   getAIConversation,
   listAIConversations,
   listArchivedAIConversations,
@@ -64,6 +65,19 @@ export function useChatConversations() {
     activeConversation.value = detail.conversation
     messages.value = detail.messages ?? []
     return { provider: detail.conversation.provider, model: detail.conversation.model }
+  }
+
+  /**
+   * Branch from a message: creates a new conversation that copies all messages up to and
+   * including `messageId`, then makes it active. Returns the new conversation.
+   */
+  async function forkConversation(sourceId: string, messageId: string): Promise<AIConversation> {
+    const conversation = await forkAIConversation(sourceId, messageId)
+    conversations.value = [conversation, ...conversations.value.filter((c) => c.id !== conversation.id)]
+    activeConversation.value = conversation
+    const detail = await getAIConversation(conversation.id)
+    messages.value = detail.messages ?? []
+    return conversation
   }
 
   async function refreshConversation(id: string) {
@@ -197,6 +211,7 @@ export function useChatConversations() {
     // Actions
     loadConversations,
     createConversation,
+    forkConversation,
     selectConversation,
     refreshConversation,
     autoTitle,

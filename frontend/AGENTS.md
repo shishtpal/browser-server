@@ -68,9 +68,19 @@ components/chat/
 ├── markdown.ts             # Markdown rendering utility
 └── composables/
     ├── useChatConfig.ts        # AI config, provider/model state, YOLO mode persistence
-    ├── useChatConversations.ts # Conversation CRUD, search/filter, rename/delete modals
+    ├── useChatConversations.ts # Conversation CRUD, fork/branch, search/filter, rename/delete modals
     └── useChatMessaging.ts     # Send, stream (SSE), tool decisions, regenerate, stop
 ```
+
+### Branch a conversation from any message
+
+Every user and assistant bubble exposes a **Branch** action (git-branch icon). It calls
+`forkConversation(sourceId, messageId)` (in `useChatConversations.ts`), which POSTs to
+`POST /api/ai/conversations/{id}/fork` with `{ message_id }`. The backend copies every
+settled message up to **and including** the selected one into a brand-new conversation
+that inherits the source provider / model / profile / skills, then the UI activates the
+new branch so the user can keep chatting from that point. The source conversation is left
+untouched.
 
 `ChatPage.vue` composes these pieces and delegates business logic to the composables, keeping the top-level component focused on wiring.
 

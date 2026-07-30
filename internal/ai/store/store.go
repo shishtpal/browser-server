@@ -228,6 +228,85 @@ func (s *Store) CreateConversation(ctx context.Context, title, provider, model, 
 	return conversation, err
 }
 
+// ForkConversation creates a new conversation seeded with a copy of the source
+// conversation's messages, from the first message through uptoMessageID (inclusive).
+// The new conversation inherits the source provider/model/profile/skills. Superseded
+// messages and non-settled (pending) rows are skipped so only committed context is
+// carried over. Returns sql.ErrNoRows if uptoMessageID is not part of the source.
+func (s *Store) ForkConversation(ctx context.Context, sourceID, uptoMessageID string) (Conversation, error) {
+	source, messages, err := s.GetConversation(ctx, sourceID)
+	if err != nil {
+		return Conversation{}, err
+	}
+
+	// Determine the cut-off index (inclusive). uptoMessageID must exist in the source.
+	cutoff := -1
+	for i, m := range messages {
+		if m.ID == uptoMessageID {
+			cutoff = i
+			break
+		}
+	}
+	if cutoff < 0 {
+		return Conversation{}, sql.ErrNoRows
+	}
+
+	now := time.Now().UTC()
+	title := strings.TrimSpace(source.Title)
+	if title == "" {
+		title = "New chat"
+	}
+	title = title + " (branch)"
+	if len(title) > 120 {
+		title = title[:120]
+	}
+	skillsJSON, _ := json.Marshal(source.Skills)
+
+	forked := Conversation{
+		ID:        NewID("conv"),
+		Title:     title,
+		Provider:  source.Provider,
+		Model:     source.Model,
+		Profile:   source.Profile,
+		Skills:    source.Skills,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Conversation{}, err
+	}
+	defer tx.Rollback()
+
+	if _, err = tx.ExecContext(ctx,
+		`INSERT INTO conversations (id, title, provider, model, profile, skills, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		forked.ID, forked.Title, forked.Provider, forked.Model, forked.Profile, string(skillsJSON), formatTime(now), formatTime(now)); err != nil {
+		return Conversation{}, err
+	}
+
+	// Preserve relative ordering with a monotonically increasing timestamp so the
+	// copied messages sort identically to the source.
+	base := now
+	for i := 0; i <= cutoff; i++ {
+		src := messages[i]
+		if src.Status == "superseded" || src.Status == "pending" {
+			continue
+		}
+		created := base.Add(time.Duration(i) * time.Millisecond)
+		if _, err = tx.ExecContext(ctx,
+			`INSERT INTO messages (id, conversation_id, role, content, tool_call_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			NewID("msg"), forked.ID, src.Role, src.Content, nullString(src.ToolCallID), src.Status, formatTime(created)); err != nil {
+			return Conversation{}, err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return Conversation{}, err
+	}
+	return forked, nil
+}
+
 func (s *Store) ListConversations(ctx context.Context, query string, limit int) ([]Conversation, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 50

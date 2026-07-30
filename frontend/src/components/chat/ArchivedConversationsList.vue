@@ -20,8 +20,8 @@
         class="group relative cursor-pointer rounded-lg border border-slate-200 bg-slate-50/50 p-3 transition hover:bg-slate-100 dark:border-white/5 dark:bg-white/5 dark:hover:bg-white/10"
         @click="$emit('select', conversation.id)"
       >
-        <span class="block truncate text-sm font-semibold text-slate-400 dark:text-slate-500">{{ conversation.title }}</span>
-        <span class="mt-0.5 block truncate text-xs text-slate-400 dark:text-slate-500">
+        <span class="block truncate text-[0.82rem] font-semibold text-slate-400 dark:text-slate-500">{{ conversation.title }}</span>
+        <span class="mt-0.5 block truncate font-mono text-[0.66rem] text-slate-400 dark:text-slate-500">
           {{ conversation.model }} · {{ formatRelativeTime(conversation.updated_at) }}
         </span>
         <div class="absolute right-2 top-2 hidden gap-1 group-hover:flex">

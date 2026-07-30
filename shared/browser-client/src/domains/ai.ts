@@ -4,6 +4,7 @@ import type {
   AIConversationDetail,
   AIToolDecisionResponse,
   CreateAIConversationInput,
+  ForkAIConversationInput,
   SendAIMessageInput,
   SendAIMessageResponse,
   StopAIGenerationResponse,
@@ -29,6 +30,16 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
 
     createAIConversation(data: CreateAIConversationInput = {}): Promise<AIConversation> {
       return apiFetch<AIConversation>(baseUrl, 'POST', '/api/ai/conversations', data, getToken)
+    },
+
+    forkAIConversation(id: string, data: ForkAIConversationInput): Promise<AIConversation> {
+      return apiFetch<AIConversation>(
+        baseUrl,
+        'POST',
+        `/api/ai/conversations/${encodeURIComponent(id)}/fork`,
+        data,
+        getToken,
+      )
     },
 
     getAIConversation(id: string): Promise<AIConversationDetail> {

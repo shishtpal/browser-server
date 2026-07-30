@@ -1,6 +1,6 @@
 <template>
   <div class="border-t border-slate-200 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/80">
-    <form class="mx-auto w-full lg:px-4" @submit.prevent="submit">
+    <form class="mx-auto w-full max-w-4xl" @submit.prevent="submit">
       <!-- ── Prompt-applied indicator ── -->
       <Transition name="toast">
         <div
@@ -8,8 +8,8 @@
           class="mb-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-500/10"
         >
           <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[0.65rem] font-bold text-white">✓</span>
-          <span class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Prompt applied</span>
-          <span class="text-sm text-emerald-500 dark:text-emerald-400">— press Enter to send</span>
+          <span class="text-[0.8rem] font-medium text-emerald-700 dark:text-emerald-300">Prompt applied</span>
+          <span class="text-[0.8rem] text-emerald-500 dark:text-emerald-400">— press Enter to send</span>
         </div>
       </Transition>
 
@@ -26,23 +26,23 @@
 
         <!-- ── Input row ── -->
         <div
-          class="flex items-end rounded-2xl border transition-all duration-200"
+          class="flex items-end rounded-xl border transition-all duration-200"
           :class="[
             promptMode
               ? 'border-violet-300 bg-violet-50/50 shadow-lg shadow-violet-500/10 dark:border-violet-500/30 dark:bg-violet-950/20 dark:shadow-violet-500/5'
-              : 'border-slate-200 bg-white shadow-sm hover:shadow-md dark:border-white/10 dark:bg-slate-900',
+              : 'border-slate-200 bg-white shadow-sm focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/15 hover:shadow-md dark:border-white/10 dark:bg-slate-900',
             disabled && 'pointer-events-none opacity-60',
           ]"
         >
           <!-- Prompt-mode badge -->
-          <div v-if="promptMode" class="flex items-center gap-1.5 pl-4 pt-3">
+          <div v-if="promptMode" class="flex items-center gap-1.5 pl-3 pt-2.5">
             <span class="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 text-xs dark:bg-violet-500/20">🔍</span>
           </div>
 
           <textarea
             ref="textareaRef"
             v-model="localValue"
-            class="max-h-48 min-h-[52px] w-full flex-1 resize-none bg-transparent py-3 pl-4 pr-2 text-[1em] leading-relaxed outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            class="max-h-48 min-h-[46px] w-full flex-1 resize-none bg-transparent py-3 pl-3.5 pr-2 text-[0.92em] leading-relaxed outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
             :class="promptMode ? 'pl-2' : ''"
             :disabled="disabled"
             :placeholder="promptMode ? 'Search prompts…' : 'Message the assistant…'"
@@ -52,20 +52,20 @@
           />
 
           <!-- Action buttons -->
-          <div class="flex items-center gap-1.5 px-3 pb-2.5">
+          <div class="flex items-center gap-1.5 px-2.5 pb-2">
             <button
               v-if="busy"
-              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.85em] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[0.8em] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               type="button"
               @click="$emit('stop')"
             >
               Stop
             </button>
             <button
-              class="grid h-9 w-9 place-items-center rounded-xl transition-all duration-200"
+              class="grid h-8 w-8 place-items-center rounded-lg transition-all duration-200"
               :class="
                 canSend && !busy
-                  ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-gray-100'
+                  ? 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'
                   : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600'
               "
               :disabled="!canSend || busy"
@@ -81,17 +81,17 @@
       </div>
 
       <!-- ── Keyboard hints ── -->
-      <div class="mt-2 flex items-center justify-center gap-3 text-[0.75em] text-slate-400 dark:text-slate-500">
+      <div class="mt-2 flex items-center justify-center gap-3 text-[0.7rem] text-slate-400 dark:text-slate-500">
         <span>
-          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.7em] dark:border-white/10">↵</kbd> send
+          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10">↵</kbd> send
         </span>
         <span class="text-slate-300 dark:text-slate-600">·</span>
         <span>
-          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.7em] dark:border-white/10">⇧↵</kbd> new line
+          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10">⇧↵</kbd> new line
         </span>
         <span class="text-slate-300 dark:text-slate-600">·</span>
         <span>
-          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.7em] dark:border-white/10">/</kbd> prompts
+          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10">/</kbd> prompts
         </span>
       </div>
     </form>

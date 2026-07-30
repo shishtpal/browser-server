@@ -1,6 +1,6 @@
 <template>
   <div
-    class="grid h-[calc(100vh-57px)] max-w-full grid-cols-1 overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-white"
+    class="chat-shell grid h-[calc(100vh-57px)] max-w-full grid-cols-1 overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-white"
     :class="gridClass"
     :style="chatFontStyle"
   >
@@ -72,6 +72,7 @@
           @suggestion="useSuggestion"
           @copy="copyMessage"
           @delete="deleteMessage"
+          @branch="handleBranch"
           @tool-decision="handleToolDecision"
         />
 
@@ -178,6 +179,19 @@
 
     <!-- Copy toast -->
     <ChatCopyToast :visible="showCopyToast" />
+
+    <!-- Branch toast -->
+    <Transition name="toast">
+      <div
+        v-if="showBranchToast"
+        class="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-indigo-400/40 bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-600/30"
+      >
+        <span class="inline-flex items-center gap-2">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3v12m0 0a3 3 0 103 3M6 15a3 3 0 013-3h6a3 3 0 003-3V6m0 0a3 3 0 10-3-3 3 3 0 003 3z"/></svg>
+          Branched into a new conversation
+        </span>
+      </div>
+    </Transition>
 
     <!-- Memory Explorer modal -->
     <ChatMemoryExplorer
@@ -297,6 +311,7 @@ const {
   // Actions
   loadConversations,
   createConversation,
+  forkConversation,
   selectConversation,
   refreshConversation,
   autoTitle,
@@ -325,6 +340,7 @@ const draft = ref('')
 const error = ref('')
 const showMobileSidebar = ref(false)
 const showCopyToast = ref(false)
+const showBranchToast = ref(false)
 const showToolsPanel = ref(true)
 const showMemoryExplorer = ref(false)
 const showNewConversationModal = ref(false)
@@ -594,6 +610,29 @@ async function deleteMessage(messageId: string) {
     messages.value = messages.value.filter((message) => message.id !== messageId)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to delete message'
+  }
+}
+
+async function handleBranch(messageId: string) {
+  if (!activeConversation.value || isBusy.value || messageId.startsWith('temp-')) return
+  error.value = ''
+  try {
+    const source = activeConversation.value
+    const forked = await forkConversation(source.id, messageId)
+    // Carry the source conversation's runtime selection into the new branch.
+    selectedProvider.value = forked.provider
+    selectedModel.value = forked.model
+    selectedProfile.value = forked.profile || ''
+    setActiveSkills(forked.skills ?? [])
+    await loadConversations()
+    showBranchToast.value = true
+    setTimeout(() => { showBranchToast.value = false }, 2200)
+    nextTick(() => {
+      messageListRef.value?.scrollToBottom()
+      chatInputRef.value?.focus()
+    })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to branch conversation'
   }
 }
 

@@ -16,7 +16,7 @@ export function renderMarkdown(text: string): string {
   const codeBlocks: string[] = []
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
     const index = codeBlocks.push(
-      `<div class="not-prose group/code relative my-3"><button type="button" data-copy-code class="absolute right-2 top-2 rounded-md bg-slate-200/90 px-2 py-1 text-[0.7em] font-semibold text-slate-600 transition hover:bg-slate-300 sm:opacity-0 sm:group-hover/code:opacity-100 sm:focus:opacity-100 dark:bg-slate-700/90 dark:text-slate-200 dark:hover:bg-slate-600" title="Copy code" aria-label="Copy code">Copy</button><pre class="overflow-x-auto rounded-lg bg-slate-100 p-3 pr-14 text-[0.85em] dark:bg-slate-800"><code class="language-${lang}">${code.trim()}</code></pre></div>`
+      `<div class="not-prose group/code relative my-3"><button type="button" data-copy-code class="absolute right-2 top-2 rounded-md bg-slate-200/90 px-2 py-1 text-[0.7em] font-semibold text-slate-600 transition hover:bg-slate-300 sm:opacity-0 sm:group-hover/code:opacity-100 sm:focus:opacity-100 dark:bg-slate-700/90 dark:text-slate-200 dark:hover:bg-slate-600" title="Copy code" aria-label="Copy code">Copy</button><pre class="overflow-x-auto rounded-lg bg-slate-800 p-3 pr-14 text-[0.85em] text-slate-50 dark:bg-slate-800 dark:text-slate-100"><code class="language-${lang}">${code.trim()}</code></pre></div>`
     ) - 1
     return `\u0000CODE_BLOCK_${index}\u0000`
   })

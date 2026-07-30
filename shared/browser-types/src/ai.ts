@@ -89,6 +89,11 @@ export interface UpdateAIConversationInput {
   model?: string
 }
 
+export interface ForkAIConversationInput {
+  /** The message to branch from; the new conversation copies all messages up to and including this one. */
+  message_id: string
+}
+
 export interface UpdateAIMessageInput {
   content: string
 }

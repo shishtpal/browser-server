@@ -462,7 +462,7 @@ func validate(cfg *Config) error {
 		"update_todo_record": true,
 		"search_prompts":     true,
 		"manage_prompt":     true,
-		"search_history":     true, "search_calendar": true, "add_calendar_event": true, "execute_command": true,
+		"search_history":     true, "search_calendar": true, "manage_calendar": true, "execute_command": true,
 		"web_search": true, "web_fetch": true,
 		"read_file": true, "write_file": true, "edit_file": true, "multi_edit": true, "list_directory": true,
 		"delete_file": true, "move_file": true, "copy_file": true,

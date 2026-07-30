@@ -284,6 +284,12 @@ func ClosePromptDB() {
 	}
 }
 
+func CloseTodoDB() {
+	if TodoDB != nil {
+		TodoDB.Close()
+	}
+}
+
 func InsertSampleData() {
 	var count int
 

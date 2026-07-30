@@ -5,6 +5,21 @@
             "type": "integer",
             "minimum": 1
         },
+        "action": {
+            "type": "string",
+            "enum": [
+                "add",
+                "edit",
+                "remove",
+                "get"
+            ],
+            "description": "Action to perform: add, edit, remove, or get a calendar event"
+        },
+        "id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Calendar event ID (required for edit, remove, and get actions)"
+        },
         "title": {
             "type": "string",
             "minLength": 1,
@@ -39,12 +54,20 @@
             "type": "string",
             "enum": [
                 "pending",
+                "in_progress",
                 "completed",
+                "done",
+                "cancelled",
                 "archived"
             ]
         },
         "color": {
-            "type": "string"
+            "type": "string",
+            "description": "Hex color code (e.g. #3366FF). Defaults to #3366FF if not provided"
+        },
+        "domain": {
+            "type": "string",
+            "description": "Associated domain for the calendar event"
         },
         "tags": {
             "type": "array",
@@ -55,8 +78,7 @@
     },
     "required": [
         "user_id",
-        "title",
-        "start_date"
+        "action"
     ],
     "additionalProperties": false
 }

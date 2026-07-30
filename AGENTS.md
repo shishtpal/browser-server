@@ -251,7 +251,7 @@ in `internal/handlers/` and `internal/ai/tools/`:
 
 | Package | Used by |
 |---------|---------|
-| `internal/todo` | `handlers/todos.go`, `todo_subtasks.go`, `todo_reorder.go`, and the `add_todo_record`, `update_todo_record`, `add_calendar_event`, `search_todos`, `search_calendar` tools |
+| `internal/todo` | `handlers/todos.go`, `todo_subtasks.go`, `todo_reorder.go`, and the `add_todo_record`, `update_todo_record`, `manage_calendar`, `search_todos`, `search_calendar` tools |
 | `internal/prompt` | `handlers/prompts.go` and the `manage_prompt`, `search_prompts` tools |
 | `internal/bookmark` | `handlers/bookmarks.go`, `bookmark_import.go`, and the `search_bookmarks` tool |
 | `internal/history` | `handlers/history.go`, `history_import.go`, `search.go`, and the `search_history` tool |
@@ -449,7 +449,7 @@ known := map[string]bool{
 | `get_current_time` | `get_current_time.go` | Get server time in a timezone |
 | `search_todos` | `search_todos.go` | Search todo database (filter by status, priority, text) |
 | `search_calendar` | `search_calendar.go` | Search calendar events (todos with scheduled dates, date range filtering) |
-| `add_calendar_event` | `create_calendar_entry.go` | Create a calendar event (todo with start_date/end_date/rrule) |
+| `manage_calendar` | `manage_calendar.go` | Manage calendar events: add, edit, remove, get (todos with start_date/end_date/rrule) |
 | `search_bookmarks` | `search_bookmarks.go` | Search bookmark database |
 | `search_history` | `search_history.go` | Search browsing history |
 | `execute_command` | `execute_command.go` | Run a shell command (30s timeout) |

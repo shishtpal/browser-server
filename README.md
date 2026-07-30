@@ -200,7 +200,7 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
   },
   "tools": {
     "enabled": true,
-    "allowed": ["get_current_time", "ask_questions", "search_todos", "add_todo_record", "update_todo_record", "search_bookmarks", "search_history", "search_calendar", "add_calendar_event"],
+    "allowed": ["get_current_time", "ask_questions", "search_todos", "add_todo_record", "update_todo_record", "search_bookmarks", "search_history", "search_calendar", "manage_calendar"],
     "max_iterations": 100
   },
   "web_search": {

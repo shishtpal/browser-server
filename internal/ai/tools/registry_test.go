@@ -29,6 +29,56 @@ func TestFilesystemToolsAreRegistered(t *testing.T) {
 	}
 }
 
+func TestSearchToolValidatesArguments(t *testing.T) {
+	r := New(Options{Allowed: []string{SearchToolName, "read_file"}})
+	for _, raw := range []string{`{}`, `{"query":""}`, `{"query":"file","limit":6}`, `{"query":"file","unknown":true}`} {
+		if _, err := r.Search([]byte(raw)); err == nil {
+			t.Fatalf("Search(%s) succeeded, want validation error", raw)
+		}
+	}
+}
+
+func TestSearchToolRanksFiltersAndLimitsMatches(t *testing.T) {
+	allowed := []string{
+		SearchToolName,
+		"write_file",
+		"read_file",
+		"edit_file",
+		"copy_file",
+		"move_file",
+		"delete_file",
+		"missing_tool",
+	}
+	r := New(Options{Allowed: allowed})
+	result, err := r.Search([]byte(`{"query":"read_file"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Matches) == 0 || result.Matches[0].Name != "read_file" {
+		t.Fatalf("matches = %#v, want exact name first", result.Matches)
+	}
+	for _, match := range result.Matches {
+		if match.Name == SearchToolName || match.Name == "missing_tool" {
+			t.Fatalf("unexpected match %#v", match)
+		}
+	}
+
+	result, err = r.Search([]byte(`{"query":"file"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Matches) != 5 {
+		t.Fatalf("default match count = %d, want 5", len(result.Matches))
+	}
+	limited, err := r.Search([]byte(`{"query":"file","limit":2}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(limited.Matches) != 2 {
+		t.Fatalf("limited match count = %d, want 2", len(limited.Matches))
+	}
+}
+
 func TestWriteFileRequiresContent(t *testing.T) {
 	r := New()
 	path := filepath.Join(t.TempDir(), "empty.txt")

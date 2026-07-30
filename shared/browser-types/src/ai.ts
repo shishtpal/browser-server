@@ -105,6 +105,7 @@ export interface SendAIMessageInput {
   stream?: boolean
   tools_enabled?: boolean
   yolo_mode?: boolean
+  include_all_tool_definitions?: boolean
   active_tools?: string[]
   skills?: string[]
 }

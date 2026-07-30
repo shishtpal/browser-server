@@ -102,6 +102,7 @@
       :tools-enabled="userToolsEnabled"
       :model-supports-tools="selectedModelSupportsTools"
       :yolo-mode="yoloMode"
+      :include-all-tool-definitions="includeAllToolDefinitions"
       :available-tools="availableTools"
       :tools-by-category="toolsByCategory"
       :disabled-tools="disabledTools"
@@ -111,6 +112,7 @@
       @close="showToolsPanel = false"
       @update:tools-enabled="userToolsEnabled = $event"
       @update:yolo-mode="yoloMode = $event"
+      @update:include-all-tool-definitions="includeAllToolDefinitions = $event"
       @update:font-family="chatFontFamily = $event"
       @update:font-size="chatFontSize = $event"
       @toggle-tool="toggleTool"
@@ -264,6 +266,7 @@ const {
   activeSkills,
   yoloMode,
   userToolsEnabled,
+  includeAllToolDefinitions,
   disabledTools,
   configLabel,
   providerModels,
@@ -489,6 +492,7 @@ async function sendMessage(content?: string) {
         model: selectedModel.value,
         toolsEnabled: toolsEnabled.value,
         yoloMode: yoloMode.value,
+        includeAllToolDefinitions: includeAllToolDefinitions.value,
         streamEnabled: config.value?.chat?.stream !== false,
         activeTools: activeTools.value,
         skills: activeSkills.value,

@@ -13,6 +13,7 @@ interface SendOptions {
   model: string
   toolsEnabled: boolean
   yoloMode: boolean
+  includeAllToolDefinitions: boolean
   streamEnabled: boolean
   activeTools?: string[]
   skills?: string[]
@@ -98,6 +99,7 @@ export function useChatMessaging(
           stream: true,
           tools_enabled: options.toolsEnabled,
           yolo_mode: options.yoloMode,
+          include_all_tool_definitions: options.includeAllToolDefinitions,
           active_tools: options.activeTools,
           skills: options.skills?.length ? options.skills : undefined,
         },
@@ -182,6 +184,7 @@ export function useChatMessaging(
         stream: false,
         tools_enabled: options.toolsEnabled,
         yolo_mode: options.yoloMode,
+        include_all_tool_definitions: options.includeAllToolDefinitions,
         active_tools: options.activeTools,
         skills: options.skills?.length ? options.skills : undefined,
       })

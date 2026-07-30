@@ -18,6 +18,7 @@ export function useChatConfig() {
 
   const yoloMode = useLocalStorage(`bs.ai.yoloMode`, false)
   const userToolsEnabled = useLocalStorage(`bs.ai.userToolsEnabled`, true)
+  const includeAllToolDefinitions = useLocalStorage(`bs.ai.includeAllToolDefinitions`, false)
   const disabledTools = useLocalStorage<Set<string>>(`bs.ai.disabledTools`, new Set(), {
     serializer: {
       read: (v) => v ? new Set(JSON.parse(v)) : new Set(),
@@ -124,6 +125,7 @@ export function useChatConfig() {
     activeSkills,
     yoloMode,
     userToolsEnabled,
+    includeAllToolDefinitions,
     disabledTools,
     configLabel,
     providerModels,

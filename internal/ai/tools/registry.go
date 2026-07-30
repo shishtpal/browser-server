@@ -21,8 +21,9 @@ type Tool struct {
 
 // Registry holds all registered tools and provides lookup/execution.
 type Registry struct {
-	tools map[string]Tool
-	shell ShellInfo
+	tools   map[string]Tool
+	shell   ShellInfo
+	allowed []string
 }
 
 // Options configures optional subsystems when constructing a Registry.
@@ -31,12 +32,16 @@ type Options struct {
 	Skills    *skills.Registry
 	WebSearch config.WebSearchConfig
 	FileTools config.FileToolsConfig
+	Allowed   []string
 }
 
 // New creates a Registry with all built-in tools registered.
 func New(options ...Options) *Registry {
 	shell := DetectShell()
 	r := &Registry{tools: map[string]Tool{}, shell: shell}
+	if len(options) > 0 {
+		r.allowed = append([]string(nil), options[0].Allowed...)
+	}
 
 	var memory config.MemoryConfig
 	var skillsReg *skills.Registry
@@ -101,6 +106,9 @@ func New(options ...Options) *Registry {
 	registerGitPull(r)
 	registerGitMerge(r)
 
+	// Tool discovery is registered last so it can search the complete registry.
+	registerSearchTool(r)
+
 	return r
 }
 
@@ -134,6 +142,9 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	t, ok := r.tools[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown tool")
+	}
+	if t.Execute == nil {
+		return nil, fmt.Errorf("tool is not directly executable")
 	}
 	v, err := t.Execute(ctx, args)
 	if err != nil {

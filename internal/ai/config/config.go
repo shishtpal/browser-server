@@ -457,11 +457,11 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("tools.max_iterations must be between 1 and 500")
 	}
 	known := map[string]bool{
-		"get_current_time": true, "ask_questions": true, "search_bookmarks": true, "search_todos": true,
+		"search_tool": true, "get_current_time": true, "ask_questions": true, "search_bookmarks": true, "search_todos": true,
 		"add_todo_record":    true,
 		"update_todo_record": true,
 		"search_prompts":     true,
-		"manage_prompt":     true,
+		"manage_prompt":      true,
 		"search_history":     true, "search_calendar": true, "manage_calendar": true, "execute_command": true,
 		"web_search": true, "web_fetch": true,
 		"read_file": true, "write_file": true, "edit_file": true, "multi_edit": true, "list_directory": true,

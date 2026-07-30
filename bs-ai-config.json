@@ -29,6 +29,7 @@
     "tools": {
         "enabled": true,
         "allowed": [
+            "search_tool",
             "get_current_time",
             "ask_questions",
             "search_todos",

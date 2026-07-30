@@ -92,6 +92,22 @@
           </label>
         </section>
 
+        <!-- Tool definition loading -->
+        <section v-if="toolsEnabled">
+          <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-white/10">
+            <div>
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Include all tool definitions</span>
+              <p class="text-[10px] text-slate-400 dark:text-slate-500">Otherwise only search_tool is sent initially</p>
+            </div>
+            <input
+              type="checkbox"
+              :checked="includeAllToolDefinitions"
+              class="h-4 w-4 accent-indigo-600"
+              @change="$emit('update:includeAllToolDefinitions', ($event.target as HTMLInputElement).checked)"
+            />
+          </label>
+        </section>
+
         <!-- Available tools (grouped by category) -->
         <section v-if="toolsEnabled && availableTools.length > 0">
           <h3 class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Available Tools</h3>
@@ -261,6 +277,7 @@ const props = defineProps<{
   toolsEnabled: boolean
   modelSupportsTools: boolean
   yoloMode: boolean
+  includeAllToolDefinitions: boolean
   availableTools: string[]
   toolsByCategory: { category: string; tools: string[] }[]
   disabledTools: Set<string>
@@ -273,6 +290,7 @@ const emit = defineEmits<{
   close: []
   'update:toolsEnabled': [value: boolean]
   'update:yoloMode': [value: boolean]
+  'update:includeAllToolDefinitions': [value: boolean]
   'update:fontFamily': [value: string]
   'update:fontSize': [value: number]
   'toggle-tool': [name: string, enabled: boolean]

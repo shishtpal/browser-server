@@ -1,7 +1,7 @@
+import type { AnalyticsSummary, DomainUsage, TimelinePoint } from '../types'
 import { ref, computed, watch, type Ref } from 'vue'
 import { getAnalyticsSummary } from '../lib/api'
 import { formatDuration } from '../lib/utils'
-import type { AnalyticsSummary, DomainUsage, TimelinePoint } from '../types'
 
 export type DatePreset = 'today' | '7days' | '30days' | 'custom'
 export type GroupBy = 'day' | 'week' | 'month'

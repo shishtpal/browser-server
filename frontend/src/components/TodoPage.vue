@@ -4,7 +4,7 @@
       <template #stats>
         <StatCard :value="totalCount" label="Total" variant="dark" color="indigo" />
         <StatCard :value="activeCount" label="Active" variant="primary" color="indigo" />
-        <StatCard v-if="inProgressCount > 0" :value="inProgressCount" label="In Progress" variant="primary" color="blue" />
+        <StatCard v-if="inProgressCount > 0" :value="inProgressCount" label="In Progress" variant="primary" color="cyan" />
         <StatCard :value="completedCount" label="Done" variant="secondary" color="indigo" />
         <StatCard v-if="archivedCount > 0" :value="archivedCount" label="Archived" variant="secondary" color="indigo" />
         <StatCard v-if="overdueCount > 0" :value="overdueCount" label="Overdue" variant="dark" color="amber" />
@@ -399,7 +399,7 @@ async function onKanbanReorder(items: { id: number; position: number }[]) {
 
 async function onKanbanPriorityChange(payload: { todo: Todo; newPriority: string; items: { id: number; position: number }[] }) {
   await reorderTodos(payload.items)
-  await updateTodo(payload.todo.id, { priority: payload.newPriority })
+  await updateTodo(payload.todo.id, { priority: payload.newPriority as TodoPriority })
   await loadTodos()
 }
 

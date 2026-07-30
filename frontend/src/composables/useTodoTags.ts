@@ -11,8 +11,9 @@ export function useTodoTags(todos: Ref<Todo[]>) {
   })
 
   const filteredByTag: ComputedRef<Todo[]> = computed(() => {
-    if (!selectedTag.value) return todos.value
-    return todos.value.filter(t => (t.tags || []).includes(selectedTag.value))
+    const tag = selectedTag.value
+    if (!tag) return todos.value
+    return todos.value.filter(t => (t.tags || []).includes(tag))
   })
 
   const hasTagFilter = computed(() => selectedTag.value !== null)

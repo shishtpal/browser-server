@@ -14,6 +14,7 @@ import type {
   CreateHistoryInput,
   CreatePromptInput,
   CreateTodoInput,
+  GetTodosOptions,
   HealthResponse,
   History,
   HistoryImportResult,
@@ -52,7 +53,7 @@ export async function isServerOnline(): Promise<boolean> {
 
 // ─── Todos ───────────────────────────────────────────────
 
-export function getTodos(userId?: number, domain?: string, options?: { priority?: string; tag?: string; parent_id?: number; archived?: boolean; sort?: string; order?: string }): Promise<Todo[]> {
+export function getTodos(userId?: number, domain?: string, options?: GetTodosOptions): Promise<Todo[]> {
   return client.getTodos(userId, domain, options)
 }
 

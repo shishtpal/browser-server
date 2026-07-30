@@ -563,8 +563,8 @@ async function handleRestore() {
 
 // ─── Utilities ─────────────────────────────────────────
 
-function useSuggestion(text: string) {
-  draft.value = text
+function useSuggestion(text: string | { content?: string }) {
+  draft.value = typeof text === 'string' ? text : text.content ?? ''
   nextTick(() => chatInputRef.value?.focus())
 }
 

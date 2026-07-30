@@ -108,8 +108,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, type PropType } from 'vue'
 import type { PromptResponse } from '../../types'
+import { computed, nextTick, ref, watch, type PropType } from 'vue'
 
 const props = defineProps({
   results: { type: Array as PropType<PromptResponse[]>, default: () => [] },

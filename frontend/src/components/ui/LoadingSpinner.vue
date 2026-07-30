@@ -8,12 +8,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-interface Props {
+const props = withDefaults(defineProps<{
   message?: string
-  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber'
-}
-
-const props = withDefaults(defineProps<Props>(), {
+  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
+}>(), {
   message: 'Loading...',
   color: 'indigo'
 })
@@ -24,7 +22,8 @@ const colorClass = computed(() => {
     cyan: 'border-cyan-500',
     violet: 'border-violet-500',
     emerald: 'border-emerald-500',
-    amber: 'border-amber-500'
+    amber: 'border-amber-500',
+    rose: 'border-rose-500'
   }
   return colors[props.color]
 })

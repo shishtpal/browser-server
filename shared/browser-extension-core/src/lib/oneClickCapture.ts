@@ -3,12 +3,17 @@ import type { BrowserTab, ContextMenuClickInfo } from '../browserApi'
 import { getBrowserApi } from '../browserApi'
 import { dataUrlToBlob, isTrackableUrl } from './browser'
 import { getSettings, type ExtensionSettings } from './settings'
+import { downloadThumbnail } from './linkEnrichment/thumbnail'
+import { enrichLink, type LinkMetadata } from './linkEnrichment'
+import './linkEnrichment/youtube'
 
 const MENU_ROOT = 'browser-server-capture'
 const MENU_OPEN_WEB = 'browser-server-open-web'
 const MENU_BOOKMARK = 'browser-server-save-bookmark'
 const MENU_TODO = 'browser-server-create-todo'
 const MENU_TODO_SCREENSHOT = 'browser-server-create-todo-screenshot'
+const MENU_CALENDAR = 'browser-server-create-calendar'
+const MENU_CALENDAR_SCREENSHOT = 'browser-server-create-calendar-screenshot'
 const COMMAND_BOOKMARK = 'save-page-bookmark'
 const COMMAND_TODO = 'create-page-todo'
 const RETRY_ALARM = 'capture-sync'
@@ -16,7 +21,7 @@ const RETRY_ALARM = 'capture-sync'
 const QUEUE_DB = 'browser-server-capture-queue'
 const QUEUE_STORE = 'captures'
 
-type CaptureKind = 'bookmark' | 'todo'
+type CaptureKind = 'bookmark' | 'todo' | 'calendar'
 type FailureKind = 'transient' | 'auth' | 'permanent'
 
 interface PendingCapture {
@@ -29,6 +34,8 @@ interface PendingCapture {
   domain: string
   screenshot?: Blob
   todoId?: number
+  startDate?: string
+  tags?: string[]
   createdAt: number
 }
 
@@ -124,6 +131,10 @@ function captureDescription(url: string, selectionText?: string): string {
   return selection ? `${selection}\n\nSource: ${url}` : `Source: ${url}`
 }
 
+function formatToday(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -138,6 +149,26 @@ function classifyFailure(error: unknown): FailureKind {
   return error.status === 408 || error.status === 429 || error.status === 503 || error.status >= 500
     ? 'transient'
     : 'permanent'
+}
+
+/**
+ * Enrich a URL via registered link providers and download its thumbnail if available.
+ * Encapsulates the enrichment + thumbnail download pattern used by {@link buildCapture}.
+ */
+async function enrichAndDownloadThumbnail(url: string): Promise<{
+  title?: string
+  screenshot?: Blob
+  metadata?: LinkMetadata
+}> {
+  const metadata = (await enrichLink(url, { includeThumbnail: true })) ?? undefined
+  let screenshot: Blob | undefined
+  let title: string | undefined
+  if (metadata?.title) title = metadata.title
+  if (metadata?.thumbnail) {
+    const downloaded = await downloadThumbnail(metadata.thumbnail.url, metadata.thumbnail.filename)
+    if (downloaded) screenshot = downloaded.blob
+  }
+  return { title, screenshot, metadata }
 }
 
 function notify(title: string, message: string): void {
@@ -181,6 +212,8 @@ async function executeCapture(capture: PendingCapture, settings: ExtensionSettin
       description: capture.description,
       domain: capture.domain,
       capture_id: capture.id,
+      start_date: capture.startDate ?? null,
+      tags: capture.tags,
     })
     capture.todoId = todo.id
     await putCapture(capture)
@@ -206,7 +239,8 @@ async function submitCapture(capture: PendingCapture, settings: ExtensionSetting
     if (result === 'duplicate') {
       notify('Bookmark already saved', capture.title)
     } else {
-      notify(capture.kind === 'bookmark' ? 'Bookmark saved' : 'Todo created', capture.title)
+      const kindLabel = capture.kind === 'bookmark' ? 'Bookmark' : capture.kind === 'calendar' ? 'Calendar event' : 'Todo'
+      notify(`${kindLabel} saved`, capture.title)
     }
   } catch (error) {
     const failure = classifyFailure(error)
@@ -221,7 +255,7 @@ async function submitCapture(capture: PendingCapture, settings: ExtensionSetting
     }
 
     await deleteCapture(capture.id)
-    if (capture.kind === 'todo' && capture.todoId && capture.screenshot) {
+    if ((capture.kind === 'todo' || capture.kind === 'calendar') && capture.todoId && capture.screenshot) {
       notify('Todo created without screenshot', errorMessage(error))
     } else {
       notify('Capture failed', errorMessage(error))
@@ -250,6 +284,9 @@ async function buildCapture(
   }
 
   let screenshot: Blob | undefined
+  let enrichedTitle: string | undefined
+  let metadata: LinkMetadata | undefined
+
   if (includeScreenshot) {
     if (tab.windowId === undefined) {
       notify('Screenshot failed', 'The active browser window could not be found.')
@@ -261,17 +298,24 @@ async function buildCapture(
       notify('Screenshot failed', errorMessage(error))
       return null
     }
+  } else if (kind === 'calendar') {
+    const result = await enrichAndDownloadThumbnail(url)
+    enrichedTitle = result.title
+    screenshot = result.screenshot
+    metadata = result.metadata
   }
 
   return {
     id: crypto.randomUUID(),
     kind,
     userId,
-    title: tab.title?.trim() || url,
+    title: enrichedTitle ?? (tab.title?.trim() || url),
     url,
     description: captureDescription(url, selectionText),
     domain: domainFromUrl(url),
     screenshot,
+    startDate: kind === 'calendar' ? formatToday() : undefined,
+    tags: kind === 'calendar' ? (metadata?.source ? ['list', metadata.source] : ['list']) : undefined,
     createdAt: Date.now(),
   }
 }
@@ -295,6 +339,18 @@ async function captureTab(
   await serializeQueueOperation(() => submitCapture(capture, settings))
 }
 
+async function captureCalendarFromContext(
+  tab: BrowserTab | undefined,
+  info: ContextMenuClickInfo,
+  includeScreenshot = false,
+): Promise<void> {
+  const effectiveUrl = info.linkUrl
+  const effectiveTab = effectiveUrl
+    ? { ...tab, url: effectiveUrl, title: info.selectionText?.trim() || effectiveUrl }
+    : tab
+  await captureTab('calendar', effectiveTab, info.selectionText, includeScreenshot)
+}
+
 async function flushQueue(): Promise<void> {
   const settings = await getSettings()
   if (!configuredUser(settings)) return
@@ -316,7 +372,7 @@ async function flushQueue(): Promise<void> {
         break
       }
       await deleteCapture(capture.id)
-      if (capture.kind === 'todo' && capture.todoId && capture.screenshot) {
+      if ((capture.kind === 'todo' || capture.kind === 'calendar') && capture.todoId && capture.screenshot) {
         notify('Todo created without screenshot', errorMessage(error))
       } else {
         notify('Queued capture failed', errorMessage(error))
@@ -335,11 +391,13 @@ async function flushQueue(): Promise<void> {
 async function createContextMenus(): Promise<void> {
   const menus = getBrowserApi().contextMenus
   await menus.removeAll()
-  menus.create({ id: MENU_ROOT, title: 'Browser Server', contexts: ['page', 'selection'] })
-  menus.create({ id: MENU_OPEN_WEB, parentId: MENU_ROOT, title: 'Open Web App', contexts: ['page', 'selection'] })
+  menus.create({ id: MENU_ROOT, title: 'Browser Server', contexts: ['page', 'selection', 'link'] })
+  menus.create({ id: MENU_OPEN_WEB, parentId: MENU_ROOT, title: 'Open Web App', contexts: ['page', 'selection', 'link'] })
   menus.create({ id: MENU_BOOKMARK, parentId: MENU_ROOT, title: 'Save page as bookmark', contexts: ['page', 'selection'] })
   menus.create({ id: MENU_TODO, parentId: MENU_ROOT, title: 'Create todo from page', contexts: ['page', 'selection'] })
   menus.create({ id: MENU_TODO_SCREENSHOT, parentId: MENU_ROOT, title: 'Create todo with screenshot', contexts: ['page', 'selection'] })
+  menus.create({ id: MENU_CALENDAR, parentId: MENU_ROOT, title: 'Add as calendar event', contexts: ['page', 'selection', 'link'] })
+  menus.create({ id: MENU_CALENDAR_SCREENSHOT, parentId: MENU_ROOT, title: 'Add as calendar event with screenshot', contexts: ['page', 'selection', 'link'] })
 }
 
 export function initOneClickCapture(): void {
@@ -366,6 +424,12 @@ export function initOneClickCapture(): void {
         break
       case MENU_TODO_SCREENSHOT:
         void captureTab('todo', tab, info.selectionText, true).catch((error) => notify('Capture failed', errorMessage(error)))
+        break
+      case MENU_CALENDAR:
+        void captureCalendarFromContext(tab, info).catch((error) => notify('Capture failed', errorMessage(error)))
+        break
+      case MENU_CALENDAR_SCREENSHOT:
+        void captureCalendarFromContext(tab, info, true).catch((error) => notify('Capture failed', errorMessage(error)))
         break
     }
   })

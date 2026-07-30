@@ -115,7 +115,7 @@ export class FirefoxAdapter implements BrowserApi {
       id: string
       parentId?: string
       title: string
-      contexts: Array<'page' | 'selection'>
+      contexts: Array<'page' | 'selection' | 'link'>
     }) => {
       browser.menus.create(properties)
     },

@@ -19,6 +19,7 @@ export interface BrowserTab {
 export interface ContextMenuClickInfo {
   menuItemId: string | number
   pageUrl?: string
+  linkUrl?: string
   selectionText?: string
 }
 
@@ -100,7 +101,7 @@ export interface BrowserApi {
       id: string
       parentId?: string
       title: string
-      contexts: Array<'page' | 'selection'>
+      contexts: Array<'page' | 'selection' | 'link'>
     }): void
     onClicked: {
       addListener(callback: (info: ContextMenuClickInfo, tab?: BrowserTab) => void): void

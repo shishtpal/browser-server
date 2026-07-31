@@ -52,7 +52,7 @@ frontend/src/
 
 ### Chat module (`components/chat/`)
 
-The AI chat UI is fully modular, split into focused sub-components and composables:
+The AI chat UI is fully modular, split into focused sub-components and composables. The list of providers and models is read from `bs-ai-models.json` via `/api/ai/config`; behavior toggles such as `tools.allowed`, `memory`, and `skills` come from `bs-ai-config.json`.
 
 ```
 components/chat/
@@ -63,7 +63,7 @@ components/chat/
 ├── ChatBubble.vue          # Renders user, assistant (markdown), and tool messages
 ├── ChatInput.vue           # Auto-resizing textarea with send/stop controls
 ├── ChatRegenerateButton.vue# Regenerate the last assistant response
-├── ChatDisabledState.vue   # Placeholder when bs-ai-config.json is missing
+├── ChatDisabledState.vue   # Placeholder when bs-ai-config.json or bs-ai-models.json is missing
 ├── ChatCopyToast.vue       # Clipboard feedback toast
 ├── markdown.ts             # Markdown rendering utility
 └── composables/

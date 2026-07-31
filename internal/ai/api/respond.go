@@ -9,7 +9,7 @@ import (
 func (m *Module) requireAI(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if m == nil || m.cfg == nil || !m.cfg.Enabled || m.store == nil || m.service == nil {
-			writeError(w, http.StatusServiceUnavailable, "ai_disabled", "AI is disabled. Create bs-ai-config.json and restart the server.")
+			writeError(w, http.StatusServiceUnavailable, "ai_disabled", "AI is disabled. Create bs-ai-config.json and bs-ai-models.json and restart the server.")
 			return
 		}
 		next(w, r)

@@ -2,13 +2,15 @@ package config
 
 // NOTE: Must be relative to go compiled binary for portable app
 const defaultConfigFile = "bs-ai-config.json"
+const defaultModelsFile = "bs-ai-models.json"
 
 type Config struct {
 	Enabled         bool                      `json:"-"`
 	Path            string                    `json:"-"`
+	ModelsPath      string                    `json:"-"`
 	CORSEnabled     bool                      `json:"cors_enabled"`
 	DefaultProvider string                    `json:"default_provider"`
-	Providers       map[string]ProviderConfig `json:"providers"`
+	Providers       map[string]ProviderConfig `json:"-"`
 	Tools           ToolsConfig               `json:"tools"`
 	FileTools       FileToolsConfig           `json:"file_tools"`
 	WebSearch       WebSearchConfig           `json:"web_search"`

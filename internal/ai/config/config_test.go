@@ -30,6 +30,25 @@ func withConfigPath(t *testing.T, dir string) string {
 	return path
 }
 
+// withModelsPath sets BS_AI_MODELS_PATH to the given path for the duration of a
+// test, restoring the previous value on cleanup. The returned path is the file
+// tests must populate.
+func withModelsPath(t *testing.T, path string) string {
+	t.Helper()
+	prev, had := os.LookupEnv("BS_AI_MODELS_PATH")
+	if err := os.Setenv("BS_AI_MODELS_PATH", path); err != nil {
+		t.Fatalf("setenv: %v", err)
+	}
+	t.Cleanup(func() {
+		if had {
+			_ = os.Setenv("BS_AI_MODELS_PATH", prev)
+		} else {
+			_ = os.Unsetenv("BS_AI_MODELS_PATH")
+		}
+	})
+	return path
+}
+
 func writeConfig(t *testing.T, path string, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -40,9 +59,24 @@ func writeConfig(t *testing.T, path string, body string) {
 	}
 }
 
-func minimalProvider() string {
+func writeModelsFile(t *testing.T, path string, body string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+}
+
+func minimalProviderConfig() string {
 	return `{
-		"default_provider": "openrouter",
+		"default_provider": "openrouter"
+	}`
+}
+
+func minimalProviderModels() string {
+	return `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -54,6 +88,20 @@ func minimalProvider() string {
 			}
 		}
 	}`
+}
+
+func minimalProvider() string {
+	return minimalProviderConfig() + "\n" + minimalProviderModels()
+}
+
+func setupBothConfigAndModels(t *testing.T, configBody, modelsBody string) (configPath, modelsPath string) {
+	t.Helper()
+	dir := t.TempDir()
+	configPath = withConfigPath(t, dir)
+	modelsPath = withModelsPath(t, filepath.Join(dir, "bs-ai-models.json"))
+	writeConfig(t, configPath, configBody)
+	writeModelsFile(t, modelsPath, modelsBody)
+	return configPath, modelsPath
 }
 
 func TestLoadMissingConfigReturnsDisabled(t *testing.T) {
@@ -73,9 +121,98 @@ func TestLoadMissingConfigReturnsDisabled(t *testing.T) {
 	}
 }
 
-func TestLoadAppliesDefaults(t *testing.T) {
+func TestLoadMissingModelsFileReturnsDisabled(t *testing.T) {
 	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, minimalProvider())
+	writeConfig(t, path, minimalProviderConfig())
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Enabled {
+		t.Fatalf("expected disabled config when models file is missing")
+	}
+	if cfg.ModelsPath == "" {
+		t.Fatalf("expected ModelsPath to be set")
+	}
+	if cfg.Providers != nil && len(cfg.Providers) > 0 {
+		t.Fatalf("expected no providers loaded")
+	}
+}
+
+func TestLoadPrefersModelsFile(t *testing.T) {
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, minimalProviderModels())
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Enabled {
+		t.Fatalf("expected enabled config")
+	}
+	if len(cfg.Providers) != 1 {
+		t.Fatalf("expected 1 provider, got %d", len(cfg.Providers))
+	}
+	if _, ok := cfg.Providers["openrouter"]; !ok {
+		t.Fatalf("expected openrouter provider")
+	}
+}
+
+func TestLoadModelsFileParseError(t *testing.T) {
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, "{not json")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "parse AI models") {
+		t.Fatalf("expected parse AI models error, got %v", err)
+	}
+}
+
+func TestLoadRespectsBS_AI_MODELS_PATH(t *testing.T) {
+	dir := t.TempDir()
+	customModels := filepath.Join(dir, "custom-models.json")
+	configPath := withConfigPath(t, dir)
+	modelsPath := withModelsPath(t, customModels)
+	writeConfig(t, configPath, `{"default_provider": "openrouter"}`)
+	writeModelsFile(t, modelsPath, minimalProviderModels())
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.ModelsPath != customModels {
+		t.Fatalf("models path = %q, want %q", cfg.ModelsPath, customModels)
+	}
+	if !cfg.Enabled {
+		t.Fatalf("expected enabled config")
+	}
+	if len(cfg.Providers) != 1 {
+		t.Fatalf("expected 1 provider, got %d", len(cfg.Providers))
+	}
+}
+
+func TestLoadIgnoresProvidersInMainConfig(t *testing.T) {
+	path := withConfigPath(t, t.TempDir())
+	writeConfig(t, path, `{
+		"default_provider": "openrouter",
+		"providers": {
+			"openrouter": {
+				"type": "openai_compatible",
+				"base_url": "https://openrouter.ai/api/v1",
+				"api_key": "sk-test",
+				"models": [{"id": "model-a", "label": "Model A", "supports_tools": true, "default": true, "max_output_tokens": 4096}]
+			}
+		}
+	}`)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Enabled {
+		t.Fatalf("expected disabled config when models file is missing and main config has providers")
+	}
+	if cfg.Providers != nil && len(cfg.Providers) > 0 {
+		t.Fatalf("expected providers to be empty when sourced from missing models file")
+	}
+}
+
+func TestLoadAppliesDefaults(t *testing.T) {
+	_, _ = setupBothConfigAndModels(t, minimalProviderConfig(), minimalProviderModels())
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -98,9 +235,15 @@ func TestLoadAppliesDefaults(t *testing.T) {
 }
 
 func TestDefaultsPreserveExplicitValues(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
+	_, _ = setupBothConfigAndModels(t, `{
 		"default_provider": "openrouter",
+		"tools": {"max_iterations": 10},
+		"chat": {"temperature": 0.1, "stream": false, "max_history_messages": 5},
+		"logging": {"retention_days": 1, "max_payload_bytes": 1024},
+		"web_search": {"timeout_seconds": 1, "max_results": 2, "fallback": false, "cache_ttl_minutes": 1, "cache_max_entries": 1},
+		"memory": {"max_file_size_kb": 1, "retention_days": 1, "max_reference_depth": 1, "cache_size_limit_mb": 1},
+		"file_tools": {"max_read_bytes": 4096, "max_line_read_bytes": 4096, "max_line_count": 100, "max_file_size_warn_mb": 1}
+	}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -113,13 +256,7 @@ func TestDefaultsPreserveExplicitValues(t *testing.T) {
 					{"id": "model-a", "label": "Model A", "supports_tools": true, "default": true, "max_output_tokens": 1}
 				]
 			}
-		},
-		"tools": {"max_iterations": 10},
-		"chat": {"temperature": 0.1, "stream": false, "max_history_messages": 5},
-		"logging": {"retention_days": 1, "max_payload_bytes": 1024},
-		"web_search": {"timeout_seconds": 1, "max_results": 2, "fallback": false, "cache_ttl_minutes": 1, "cache_max_entries": 1},
-		"memory": {"max_file_size_kb": 1, "retention_days": 1, "max_reference_depth": 1, "cache_size_limit_mb": 1},
-		"file_tools": {"max_read_bytes": 4096, "max_line_read_bytes": 4096, "max_line_count": 100, "max_file_size_warn_mb": 1}
+		}
 	}`)
 	cfg, err := Load()
 	if err != nil {
@@ -138,9 +275,7 @@ func TestDefaultsPreserveExplicitValues(t *testing.T) {
 
 func TestResolveProviderSecret(t *testing.T) {
 	t.Setenv("BS_AI_TEST_KEY", "secret-value")
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
-		"default_provider": "openrouter",
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -161,9 +296,7 @@ func TestResolveProviderSecret(t *testing.T) {
 
 func TestResolveProviderSecretMissingEnv(t *testing.T) {
 	os.Unsetenv("BS_AI_TEST_KEY")
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
-		"default_provider": "openrouter",
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -179,9 +312,7 @@ func TestResolveProviderSecretMissingEnv(t *testing.T) {
 }
 
 func TestResolveEmptyEnvReference(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
-		"default_provider": "openrouter",
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -198,8 +329,7 @@ func TestResolveEmptyEnvReference(t *testing.T) {
 }
 
 func TestValidateRequiresDefaultProvider(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{"providers": {}}`)
+	_, _ = setupBothConfigAndModels(t, `{}`, `{"providers": {}}`)
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "default_provider is required") {
 		t.Fatalf("expected default_provider required, got %v", err)
@@ -207,9 +337,7 @@ func TestValidateRequiresDefaultProvider(t *testing.T) {
 }
 
 func TestValidateRequiresKnownProviderType(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
-		"default_provider": "openrouter",
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "unknown",
@@ -226,9 +354,7 @@ func TestValidateRequiresKnownProviderType(t *testing.T) {
 }
 
 func TestValidateAllowsLocalHost(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
-		"default_provider": "local",
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "local"}`, `{
 		"providers": {
 			"local": {
 				"type": "openai_compatible",
@@ -244,9 +370,7 @@ func TestValidateAllowsLocalHost(t *testing.T) {
 }
 
 func TestValidateRejectsNonHttpsRemote(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
-		"default_provider": "openrouter",
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -263,9 +387,7 @@ func TestValidateRejectsNonHttpsRemote(t *testing.T) {
 }
 
 func TestValidateRequiresExactlyOneDefaultModel(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
-		"default_provider": "openrouter",
+	_, _ = setupBothConfigAndModels(t, `{"default_provider": "openrouter"}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -285,9 +407,10 @@ func TestValidateRequiresExactlyOneDefaultModel(t *testing.T) {
 }
 
 func TestValidateRejectsUnknownToolName(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
+	_, _ = setupBothConfigAndModels(t, `{
 		"default_provider": "openrouter",
+		"tools": {"allowed": ["does_not_exist"]}
+	}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -295,8 +418,7 @@ func TestValidateRejectsUnknownToolName(t *testing.T) {
 				"api_key": "k",
 				"models": [{"id": "a", "label": "A", "supports_tools": true, "default": true, "max_output_tokens": 4096}]
 			}
-		},
-		"tools": {"allowed": ["does_not_exist"]}
+		}
 	}`)
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "unknown tool") {
@@ -305,9 +427,10 @@ func TestValidateRejectsUnknownToolName(t *testing.T) {
 }
 
 func TestValidateMemoryDirectoryMustBeSafe(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
+	_, _ = setupBothConfigAndModels(t, `{
 		"default_provider": "openrouter",
+		"memory": {"directory": "../escape"}
+	}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -315,8 +438,7 @@ func TestValidateMemoryDirectoryMustBeSafe(t *testing.T) {
 				"api_key": "k",
 				"models": [{"id": "a", "label": "A", "supports_tools": true, "default": true, "max_output_tokens": 4096}]
 			}
-		},
-		"memory": {"directory": "../escape"}
+		}
 	}`)
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "memory.directory") {
@@ -325,9 +447,10 @@ func TestValidateMemoryDirectoryMustBeSafe(t *testing.T) {
 }
 
 func TestValidateLoggingParentMustBeWritable(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
+	_, _ = setupBothConfigAndModels(t, `{
 		"default_provider": "openrouter",
+		"logging": {"db_path": "subdir/bs-ai.db"}
+	}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -335,8 +458,7 @@ func TestValidateLoggingParentMustBeWritable(t *testing.T) {
 				"api_key": "k",
 				"models": [{"id": "a", "label": "A", "supports_tools": true, "default": true, "max_output_tokens": 4096}]
 			}
-		},
-		"logging": {"db_path": "subdir/bs-ai.db"}
+		}
 	}`)
 	if _, err := Load(); err != nil {
 		t.Fatalf("expected valid config, got %v", err)
@@ -344,9 +466,10 @@ func TestValidateLoggingParentMustBeWritable(t *testing.T) {
 }
 
 func TestValidateChatRanges(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
+	_, _ = setupBothConfigAndModels(t, `{
 		"default_provider": "openrouter",
+		"chat": {"temperature": 5}
+	}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -354,8 +477,7 @@ func TestValidateChatRanges(t *testing.T) {
 				"api_key": "k",
 				"models": [{"id": "a", "label": "A", "supports_tools": true, "default": true, "max_output_tokens": 4096}]
 			}
-		},
-		"chat": {"temperature": 5}
+		}
 	}`)
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "chat.temperature") {
@@ -437,9 +559,13 @@ func TestResolvePathAbsoluteAndRelative(t *testing.T) {
 
 func TestResolveWebSearchEnvMissing(t *testing.T) {
 	os.Unsetenv("BS_AI_BRAVE_KEY")
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, `{
+	_, _ = setupBothConfigAndModels(t, `{
 		"default_provider": "openrouter",
+		"web_search": {
+			"enabled": true,
+			"providers": {"brave": {"enabled": true, "api_key": "env:BS_AI_BRAVE_KEY"}}
+		}
+	}`, `{
 		"providers": {
 			"openrouter": {
 				"type": "openai_compatible",
@@ -447,10 +573,6 @@ func TestResolveWebSearchEnvMissing(t *testing.T) {
 				"api_key": "k",
 				"models": [{"id": "a", "label": "A", "supports_tools": true, "default": true, "max_output_tokens": 4096}]
 			}
-		},
-		"web_search": {
-			"enabled": true,
-			"providers": {"brave": {"enabled": true, "api_key": "env:BS_AI_BRAVE_KEY"}}
 		}
 	}`)
 	_, err := Load()
@@ -488,8 +610,7 @@ func TestValidateFileToolsGlobs(t *testing.T) {
 }
 
 func TestParseErrorReturnsWrapped(t *testing.T) {
-	path := withConfigPath(t, t.TempDir())
-	writeConfig(t, path, "{not json")
+	_, _ = setupBothConfigAndModels(t, "{not json", minimalProviderModels())
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "parse AI config") {
 		t.Fatalf("expected wrapped parse error, got %v", err)

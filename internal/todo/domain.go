@@ -137,7 +137,7 @@ type ListFilter struct {
 	Domain       string
 	Priority     string
 	Tag          string
-	ParentID     int  // 0 → top-level (parent_id IS NULL); >0 → specific parent
+	ParentID     int // 0 → top-level (parent_id IS NULL); >0 → specific parent
 	SortField    string
 	SortOrder    string
 	ShowArchived bool

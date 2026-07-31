@@ -2,32 +2,32 @@ package config
 
 import "encoding/json"
 
-func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
+func applyDefaults(cfg *Config, mainRaw, modelsRaw map[string]json.RawMessage) {
 	if cfg.Providers == nil {
 		cfg.Providers = map[string]ProviderConfig{}
 	}
-	if _, present := raw["cors_enabled"]; !present {
+	if _, present := mainRaw["cors_enabled"]; !present {
 		cfg.CORSEnabled = true
 	}
-	if !nestedPresent(raw, "tools", "max_iterations") {
+	if !nestedPresent(mainRaw, "tools", "max_iterations") {
 		cfg.Tools.MaxIterations = 5
 	}
 	if cfg.WebSearch.DefaultProvider == "" {
 		cfg.WebSearch.DefaultProvider = "auto"
 	}
-	if !nestedPresent(raw, "web_search", "timeout_seconds") {
+	if !nestedPresent(mainRaw, "web_search", "timeout_seconds") {
 		cfg.WebSearch.TimeoutSeconds = 30
 	}
-	if !nestedPresent(raw, "web_search", "max_results") {
+	if !nestedPresent(mainRaw, "web_search", "max_results") {
 		cfg.WebSearch.MaxResults = 10
 	}
-	if !nestedPresent(raw, "web_search", "fallback") {
+	if !nestedPresent(mainRaw, "web_search", "fallback") {
 		cfg.WebSearch.Fallback = true
 	}
-	if !nestedPresent(raw, "web_search", "cache_ttl_minutes") {
+	if !nestedPresent(mainRaw, "web_search", "cache_ttl_minutes") {
 		cfg.WebSearch.CacheTTLMinutes = 5
 	}
-	if !nestedPresent(raw, "web_search", "cache_max_entries") {
+	if !nestedPresent(mainRaw, "web_search", "cache_max_entries") {
 		cfg.WebSearch.CacheMaxEntries = 100
 	}
 	if cfg.Memory.Directory == "" {
@@ -45,67 +45,67 @@ func applyDefaults(cfg *Config, raw map[string]json.RawMessage) {
 	if cfg.Memory.CacheDir == "" {
 		cfg.Memory.CacheDir = "cache"
 	}
-	if !nestedPresent(raw, "memory", "max_file_size_kb") {
+	if !nestedPresent(mainRaw, "memory", "max_file_size_kb") {
 		cfg.Memory.MaxFileSizeKB = 1024
 	}
-	if !nestedPresent(raw, "memory", "retention_days") {
+	if !nestedPresent(mainRaw, "memory", "retention_days") {
 		cfg.Memory.RetentionDays = 365
 	}
-	if !nestedPresent(raw, "memory", "max_reference_depth") {
+	if !nestedPresent(mainRaw, "memory", "max_reference_depth") {
 		cfg.Memory.MaxReferenceDepth = 5
 	}
-	if !nestedPresent(raw, "memory", "cache_size_limit_mb") {
+	if !nestedPresent(mainRaw, "memory", "cache_size_limit_mb") {
 		cfg.Memory.CacheSizeLimitMB = 100
 	}
 	if cfg.Logging.DBPath == "" {
 		cfg.Logging.DBPath = ".data/bs-ai.db"
 	}
-	if !nestedPresent(raw, "logging", "retention_days") {
+	if !nestedPresent(mainRaw, "logging", "retention_days") {
 		cfg.Logging.RetentionDays = 60
 	}
-	if !nestedPresent(raw, "logging", "max_payload_bytes") {
+	if !nestedPresent(mainRaw, "logging", "max_payload_bytes") {
 		cfg.Logging.MaxPayloadBytes = 1048576
 	}
 	if cfg.Chat.SystemPrompt == "" {
 		cfg.Chat.SystemPrompt = "You are a helpful assistant integrated into browser-server."
 	}
-	if !nestedPresent(raw, "chat", "max_history_messages") {
+	if !nestedPresent(mainRaw, "chat", "max_history_messages") {
 		cfg.Chat.MaxHistoryMessages = 30
 	}
-	if !nestedPresent(raw, "chat", "temperature") {
+	if !nestedPresent(mainRaw, "chat", "temperature") {
 		cfg.Chat.Temperature = 0.7
 	}
-	if !nestedPresent(raw, "chat", "stream") {
+	if !nestedPresent(mainRaw, "chat", "stream") {
 		cfg.Chat.Stream = true
 	}
-	if !nestedPresent(raw, "chat", "tool_retry_attempts") {
+	if !nestedPresent(mainRaw, "chat", "tool_retry_attempts") {
 		cfg.Chat.ToolRetryAttempts = 5
 	}
-	if !nestedPresent(raw, "chat", "tool_retry_delay_seconds") {
+	if !nestedPresent(mainRaw, "chat", "tool_retry_delay_seconds") {
 		cfg.Chat.ToolRetryDelaySeconds = 5
 	}
 	for name, provider := range cfg.Providers {
-		if !providerFieldPresent(raw, name, "request_timeout_seconds") {
+		if !providerFieldPresent(modelsRaw, name, "request_timeout_seconds") {
 			provider.RequestTimeoutSeconds = 120
 		}
-		if !providerFieldPresent(raw, name, "retry_attempts") {
+		if !providerFieldPresent(modelsRaw, name, "retry_attempts") {
 			provider.RetryAttempts = 10
 		}
-		if !providerFieldPresent(raw, name, "retry_delay_seconds") {
+		if !providerFieldPresent(modelsRaw, name, "retry_delay_seconds") {
 			provider.RetryDelaySeconds = 5
 		}
 		cfg.Providers[name] = provider
 	}
-	if !nestedPresent(raw, "file_tools", "max_read_bytes") {
+	if !nestedPresent(mainRaw, "file_tools", "max_read_bytes") {
 		cfg.FileTools.MaxReadBytes = 32768
 	}
-	if !nestedPresent(raw, "file_tools", "max_line_read_bytes") {
+	if !nestedPresent(mainRaw, "file_tools", "max_line_read_bytes") {
 		cfg.FileTools.MaxLineReadBytes = 65536
 	}
-	if !nestedPresent(raw, "file_tools", "max_line_count") {
+	if !nestedPresent(mainRaw, "file_tools", "max_line_count") {
 		cfg.FileTools.MaxLineCount = 5000
 	}
-	if !nestedPresent(raw, "file_tools", "max_file_size_warn_mb") {
+	if !nestedPresent(mainRaw, "file_tools", "max_file_size_warn_mb") {
 		cfg.FileTools.MaxFileSizeWarnMB = 100
 	}
 }

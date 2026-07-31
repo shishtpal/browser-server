@@ -90,7 +90,7 @@ func Init() (*Module, error) {
 			}
 		}
 	}()
-	log.Printf("AI enabled with %d provider(s); store: %s", len(cfg.Providers), dbPath)
+	log.Printf("AI enabled with %d provider(s) (models: %s); store: %s", len(cfg.Providers), cfg.ModelsPath, dbPath)
 	return module, nil
 }
 

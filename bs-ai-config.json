@@ -1,31 +1,6 @@
 {
     "cors_enabled": false,
     "default_provider": "openrouter",
-    "providers": {
-        "openrouter": {
-            "type": "openai_compatible",
-            "base_url": "https://openrouter.ai/api/v1",
-            "api_key": "env:OPENROUTER_API_KEY",
-            "request_timeout_seconds": 120,
-            "retry_attempts": 10,
-            "retry_delay_seconds": 5,
-            "models": [
-                {
-                    "id": "openai/gpt-4o-mini",
-                    "label": "GPT-4o Mini",
-                    "supports_tools": true,
-                    "default": true,
-                    "max_output_tokens": 4096
-                },
-                {
-                    "id": "anthropic/claude-sonnet-4",
-                    "label": "Claude Sonnet 4",
-                    "supports_tools": true,
-                    "max_output_tokens": 8192
-                }
-            ]
-        }
-    },
     "tools": {
         "enabled": true,
         "allowed": [
@@ -150,7 +125,8 @@
             "**/*.pem",
             "**/*.key",
             "**/node_modules/**",
-            "**/.git/**"
+            "**/.git/**",
+            "**/bs-ai-models.json"
         ]
     },
     "skills": {

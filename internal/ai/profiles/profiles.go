@@ -14,9 +14,9 @@ const (
 
 // Profile represents a single system prompt profile loaded from a .md file.
 type Profile struct {
-	Name    string `json:"name"`    // lowercase identifier derived from filename
-	Label   string `json:"label"`   // display name (filename without extension, preserving case)
-	Content string `json:"-"`       // markdown content (not exposed in JSON)
+	Name    string `json:"name"`  // lowercase identifier derived from filename
+	Label   string `json:"label"` // display name (filename without extension, preserving case)
+	Content string `json:"-"`     // markdown content (not exposed in JSON)
 }
 
 // Registry holds loaded profiles and provides lookup methods.

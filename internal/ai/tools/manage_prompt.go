@@ -26,13 +26,13 @@ func registerManagePrompt(r *Registry) {
 
 func managePrompt(ctx context.Context, raw json.RawMessage) (any, error) {
 	var a struct {
-		UserID      int       `json:"user_id"`
-		Action      string    `json:"action"`
+		UserID      int             `json:"user_id"`
+		Action      string          `json:"action"`
 		ID          json.RawMessage `json:"id"`
-		Title       *string   `json:"title"`
-		Content     *string   `json:"content"`
-		Description *string   `json:"description"`
-		Tags        *[]string `json:"tags"`
+		Title       *string         `json:"title"`
+		Content     *string         `json:"content"`
+		Description *string         `json:"description"`
+		Tags        *[]string       `json:"tags"`
 	}
 	if err := strict(raw, &a, map[string]bool{
 		"user_id": true, "action": true,

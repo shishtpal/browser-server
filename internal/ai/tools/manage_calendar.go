@@ -26,19 +26,19 @@ func registerManageCalendar(r *Registry) {
 
 func manageCalendar(ctx context.Context, raw json.RawMessage) (any, error) {
 	var a struct {
-		UserID      int       `json:"user_id"`
-		Action      string    `json:"action"`
+		UserID      int             `json:"user_id"`
+		Action      string          `json:"action"`
 		ID          json.RawMessage `json:"id"`
-		Title       *string   `json:"title"`
-		Description *string   `json:"description"`
-		StartDate   *string   `json:"start_date"`
-		EndDate     *string   `json:"end_date"`
-		Rrule       *string   `json:"rrule"`
-		Priority    *string   `json:"priority"`
-		Status      *string   `json:"status"`
-		Color       *string   `json:"color"`
-		Domain      *string   `json:"domain"`
-		Tags        *[]string `json:"tags"`
+		Title       *string         `json:"title"`
+		Description *string         `json:"description"`
+		StartDate   *string         `json:"start_date"`
+		EndDate     *string         `json:"end_date"`
+		Rrule       *string         `json:"rrule"`
+		Priority    *string         `json:"priority"`
+		Status      *string         `json:"status"`
+		Color       *string         `json:"color"`
+		Domain      *string         `json:"domain"`
+		Tags        *[]string       `json:"tags"`
 	}
 	if err := strict(raw, &a, map[string]bool{
 		"user_id": true, "action": true,

@@ -193,4 +193,3 @@ func TestManageCalendarEdit(t *testing.T) {
 		t.Fatalf("expected priority 'high', got %q", e.Priority)
 	}
 }
-

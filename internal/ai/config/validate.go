@@ -1,0 +1,161 @@
+package config
+
+import (
+	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// knownToolNames is the canonical list of tools that may appear in
+// tools.allowed. Keep this in one place so adding a new tool does not require
+// touching multiple call sites.
+var knownToolNames = map[string]bool{
+	"search_tool": true, "get_current_time": true, "ask_questions": true,
+	"search_bookmarks": true, "search_todos": true,
+	"add_todo_record":    true,
+	"update_todo_record": true,
+	"search_prompts":     true,
+	"manage_prompt":      true,
+	"search_history":     true, "search_calendar": true, "manage_calendar": true,
+	"execute_command": true,
+	"web_search":      true, "web_fetch": true,
+	"read_file": true, "write_file": true, "edit_file": true, "multi_edit": true, "list_directory": true,
+	"delete_file": true, "move_file": true, "copy_file": true,
+	"directory_tree": true,
+	"search_code":    true, "analyze_code": true, "get_diagnostics": true,
+	"git_status": true, "git_diff": true, "git_log": true,
+	"git_branch": true, "git_checkout": true, "git_commit": true,
+	"git_push": true, "git_pull": true, "git_merge": true,
+	"ai_remember": true, "ai_recall": true, "ai_search_memory": true,
+	"ai_list_memories": true, "ai_forget": true, "ai_update_memory": true,
+	"ai_resolve_references": true, "ai_lazy_memory": true, "ai_manage_cache": true,
+	"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
+}
+
+func validate(cfg *Config) error {
+	if cfg.DefaultProvider == "" {
+		return fmt.Errorf("default_provider is required")
+	}
+	if _, ok := cfg.Providers[cfg.DefaultProvider]; !ok {
+		return fmt.Errorf("default_provider %q is not configured", cfg.DefaultProvider)
+	}
+	for name, provider := range cfg.Providers {
+		if strings.TrimSpace(name) == "" {
+			return fmt.Errorf("provider name cannot be empty")
+		}
+		if provider.Type != "openai_compatible" {
+			return fmt.Errorf("provider %q has unsupported type %q", name, provider.Type)
+		}
+		parsed, err := url.Parse(provider.BaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+			return fmt.Errorf("provider %q base_url is invalid", name)
+		}
+		if parsed.Scheme != "https" && !isLocalHost(parsed.Hostname()) {
+			return fmt.Errorf("provider %q base_url must use https unless it is local", name)
+		}
+		if strings.TrimSpace(provider.APIKey) == "" {
+			return fmt.Errorf("provider %q api_key is required", name)
+		}
+		if provider.RequestTimeoutSeconds <= 0 || provider.RequestTimeoutSeconds > maxRequestTimeoutSeconds {
+			return fmt.Errorf("provider %q request_timeout_seconds must be between 1 and %d", name, maxRequestTimeoutSeconds)
+		}
+		if provider.RetryAttempts < 0 || provider.RetryAttempts > 20 {
+			return fmt.Errorf("provider %q retry_attempts must be between 0 and 20", name)
+		}
+		if provider.RetryDelaySeconds < 1 || provider.RetryDelaySeconds > 300 {
+			return fmt.Errorf("provider %q retry_delay_seconds must be between 1 and 300", name)
+		}
+		if len(provider.Models) == 0 {
+			return fmt.Errorf("provider %q must configure at least one model", name)
+		}
+		defaults := 0
+		modelIDs := map[string]bool{}
+		for _, model := range provider.Models {
+			if strings.TrimSpace(model.ID) == "" {
+				return fmt.Errorf("provider %q model id cannot be empty", name)
+			}
+			if modelIDs[model.ID] {
+				return fmt.Errorf("provider %q has duplicate model %q", name, model.ID)
+			}
+			modelIDs[model.ID] = true
+			if model.Default {
+				defaults++
+			}
+			if model.MaxOutputTokens <= 0 {
+				return fmt.Errorf("provider %q model %q max_output_tokens must be positive", name, model.ID)
+			}
+		}
+		if defaults != 1 {
+			return fmt.Errorf("provider %q must have exactly one default model", name)
+		}
+	}
+	if cfg.Tools.MaxIterations <= 0 || cfg.Tools.MaxIterations > 500 {
+		return fmt.Errorf("tools.max_iterations must be between 1 and 500")
+	}
+	for _, name := range cfg.Tools.Allowed {
+		if !knownToolNames[name] {
+			return fmt.Errorf("tools.allowed contains unknown tool %q", name)
+		}
+	}
+	if err := validateWebSearch(cfg.WebSearch); err != nil {
+		return err
+	}
+	if err := validateFileTools(cfg.FileTools); err != nil {
+		return err
+	}
+	if filepath.IsAbs(cfg.Memory.Directory) || strings.Contains(cfg.Memory.Directory, "..") {
+		return fmt.Errorf("memory.directory must be a safe relative path")
+	}
+	if filepath.IsAbs(cfg.Skills.Directory) || strings.Contains(cfg.Skills.Directory, "..") {
+		return fmt.Errorf("skills.directory must be a safe relative path")
+	}
+	for _, dir := range []string{cfg.Memory.PrimaryDir, cfg.Memory.RefsDir, cfg.Memory.CacheDir} {
+		if dir == "" || filepath.IsAbs(dir) || strings.Contains(dir, "..") || filepath.Base(dir) != dir {
+			return fmt.Errorf("memory subdirectories must be safe names")
+		}
+	}
+	if cfg.Memory.MaxFileSizeKB < 1 || cfg.Memory.MaxFileSizeKB > 10240 {
+		return fmt.Errorf("memory.max_file_size_kb must be between 1 and 10240")
+	}
+	if cfg.Memory.MaxReferenceDepth < 1 || cfg.Memory.MaxReferenceDepth > 20 {
+		return fmt.Errorf("memory.max_reference_depth must be between 1 and 20")
+	}
+	if cfg.Memory.RetentionDays < 1 || cfg.Memory.RetentionDays > 3650 {
+		return fmt.Errorf("memory.retention_days must be between 1 and 3650")
+	}
+	if cfg.Memory.CacheSizeLimitMB < 1 || cfg.Memory.CacheSizeLimitMB > 10240 {
+		return fmt.Errorf("memory.cache_size_limit_mb must be between 1 and 10240")
+	}
+	if cfg.Logging.RetentionDays < 1 || cfg.Logging.RetentionDays > 3650 {
+		return fmt.Errorf("logging.retention_days must be between 1 and 3650")
+	}
+	if cfg.Logging.MaxPayloadBytes < 1024 || cfg.Logging.MaxPayloadBytes > 10*1024*1024 {
+		return fmt.Errorf("logging.max_payload_bytes must be between 1024 and 10485760")
+	}
+	if cfg.Chat.MaxHistoryMessages < 1 || cfg.Chat.MaxHistoryMessages > 200 {
+		return fmt.Errorf("chat.max_history_messages must be between 1 and 200")
+	}
+	if cfg.Chat.Temperature < 0 || cfg.Chat.Temperature > 2 {
+		return fmt.Errorf("chat.temperature must be between 0 and 2")
+	}
+	if cfg.Chat.ToolRetryAttempts < 1 || cfg.Chat.ToolRetryAttempts > 20 {
+		return fmt.Errorf("chat.tool_retry_attempts must be between 1 and 20")
+	}
+	if cfg.Chat.ToolRetryDelaySeconds < 1 || cfg.Chat.ToolRetryDelaySeconds > 300 {
+		return fmt.Errorf("chat.tool_retry_delay_seconds must be between 1 and 300")
+	}
+	parent := filepath.Dir(cfg.ResolvePath(cfg.Logging.DBPath))
+	if err := os.MkdirAll(parent, 0755); err != nil {
+		return fmt.Errorf("logging database parent: %w", err)
+	}
+	probe, err := os.CreateTemp(parent, ".ai-write-test-")
+	if err != nil {
+		return fmt.Errorf("logging database parent is not writable: %w", err)
+	}
+	probeName := probe.Name()
+	probe.Close()
+	os.Remove(probeName)
+	return nil
+}

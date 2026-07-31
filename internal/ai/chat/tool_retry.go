@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	toolRetryName              = "retry_tool_call"
-	defaultToolRetryWait       = 5 * time.Second
+	toolRetryName               = "retry_tool_call"
+	defaultToolRetryWait        = 5 * time.Second
 	defaultMaxToolRetryAttempts = 5
 )
 

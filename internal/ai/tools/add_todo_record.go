@@ -25,18 +25,18 @@ func registerAddTodoRecord(r *Registry) {
 
 func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 	var a struct {
-		UserID      int                  `json:"user_id"`
-		Title       string               `json:"title"`
-		Description string               `json:"description"`
-		Domain      string               `json:"domain"`
-		ParentID    int                  `json:"parent_id"`
-		Priority    string               `json:"priority"`
-		Status      string               `json:"status"`
-		Color       string               `json:"color"`
-		Tags        []string             `json:"tags"`
-		Subtasks    []todo.SubtaskInput  `json:"subtasks"`
-		StartDate   *string              `json:"start_date"`
-		EndDate     *string              `json:"end_date"`
+		UserID      int                 `json:"user_id"`
+		Title       string              `json:"title"`
+		Description string              `json:"description"`
+		Domain      string              `json:"domain"`
+		ParentID    int                 `json:"parent_id"`
+		Priority    string              `json:"priority"`
+		Status      string              `json:"status"`
+		Color       string              `json:"color"`
+		Tags        []string            `json:"tags"`
+		Subtasks    []todo.SubtaskInput `json:"subtasks"`
+		StartDate   *string             `json:"start_date"`
+		EndDate     *string             `json:"end_date"`
 	}
 	if err := strict(raw, &a, map[string]bool{
 		"user_id": true, "title": true, "description": true, "domain": true,

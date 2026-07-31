@@ -113,7 +113,10 @@ func (r *SQLRepository) Create(input *CreateInput) (*CreateResult, error) {
 	if err := r.db.QueryRow("SELECT COALESCE(MAX(position), -1) FROM todos "+whereClause, posArgs...).Scan(&maxPos); err != nil {
 		return nil, err
 	}
-	position := int(maxPos.Int64) + 1
+	position := int(maxPos.Int64) - 1
+	if position > 0 {
+		position = -1
+	}
 
 	captureID := NullIfEmpty(input.CaptureID)
 	rrule := NullIfEmpty(input.Rrule)

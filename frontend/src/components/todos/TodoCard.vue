@@ -28,7 +28,7 @@
           <span v-if="todo.status === 'in_progress'" class="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">In Progress</span>
           <span v-if="todo.status === 'archived'" class="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-black text-gray-500 dark:bg-slate-700 dark:text-slate-400">Archived</span>
         </div>
-        <p v-if="todo.description" class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400">{{ todo.description }}</p>
+        <p v-if="todo.description" class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400" v-html="linkifyDescription(todo.description)"></p>
         <div class="mt-1 flex flex-wrap items-center gap-1">
           <TodoDueDateBadge v-if="todo.start_date" :due-date="todo.start_date" :status="todo.status" />
           <span v-if="todo.end_date && todo.end_date !== todo.start_date" class="inline-flex items-center gap-0.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-black text-slate-500 dark:bg-slate-700 dark:text-slate-400">
@@ -96,6 +96,7 @@ import type { Todo } from '../../types'
 import { computed, ref } from 'vue'
 import { formatDate } from '../../lib/utils'
 import { getScreenshotUrl } from '../../lib/api'
+import { linkifyDescription } from '../../lib/descriptionLinks'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'

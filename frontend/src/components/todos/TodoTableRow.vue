@@ -47,7 +47,7 @@
       </div>
     </td>
     <td class="max-w-xs px-3 py-3">
-      <span class="block truncate text-sm text-slate-500 transition-colors dark:text-slate-400">{{ todo.description || '—' }}</span>
+      <span class="block truncate text-sm text-slate-500 transition-colors dark:text-slate-400" v-html="todo.description ? linkifyDescription(todo.description) : '—'"></span>
     </td>
     <td class="px-3 py-3">
       <div class="flex flex-wrap items-center gap-1">
@@ -86,10 +86,11 @@
 </template>
 
 <script setup lang="ts">
+import type { Todo } from '../../types'
 import { computed } from 'vue'
 import { formatDate } from '../../lib/utils'
 import { getScreenshotUrl } from '../../lib/api'
-import type { Todo } from '../../types'
+import { linkifyDescription } from '../../lib/descriptionLinks'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'

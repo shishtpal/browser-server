@@ -79,11 +79,24 @@
               :style="{ backgroundColor: todo.color }"
             />
 
+            <!-- Screenshot -->
+            <a
+              v-if="todo.screenshot_path"
+              :href="screenshotUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-4 block"
+            >
+              <img
+                :src="screenshotUrl"
+                alt="Todo screenshot"
+                class="block max-h-64 w-full rounded-lg border border-gray-200 object-contain transition hover:opacity-90 dark:border-slate-600"
+              />
+            </a>
+
             <!-- Description -->
             <div v-if="todo.description" class="mt-4">
-              <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                {{ todo.description }}
-              </p>
+              <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300" v-html="linkifyDescription(todo.description)"></p>
             </div>
 
             <!-- Metadata grid -->
@@ -167,6 +180,8 @@
 import { computed } from 'vue'
 import { format } from 'date-fns'
 import type { Todo } from '../../types'
+import { linkifyDescription } from '../../lib/descriptionLinks'
+import { getScreenshotUrl } from '../../lib/api/todos'
 
 const props = defineProps<{
   todo: Todo | null
@@ -176,6 +191,8 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'edit', todo: Todo): void
 }>()
+
+const screenshotUrl = computed(() => (props.todo?.screenshot_path ? getScreenshotUrl(props.todo.id) : ''))
 
 function formatDate(raw: string | null | undefined): string {
   if (!raw) return '—'

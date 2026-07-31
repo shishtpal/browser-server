@@ -41,7 +41,7 @@
                   <span class="h-2 w-2 shrink-0 rounded-full" :class="priorityDot(todo.priority)"></span>
                   <span class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ todo.title }}</span>
                 </div>
-                <div v-if="todo.description" class="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-400">{{ todo.description }}</div>
+                <div v-if="todo.description" class="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-400" v-html="linkifyDescription(todo.description)"></div>
               </button>
             </div>
           </div>
@@ -55,6 +55,7 @@
 import { computed } from 'vue'
 import type { CalendarDay } from './types'
 import type { Todo } from '../../types'
+import { linkifyDescription } from '../../lib/descriptionLinks'
 
 const props = defineProps<{
   day: CalendarDay | undefined

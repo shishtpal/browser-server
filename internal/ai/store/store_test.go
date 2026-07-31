@@ -22,7 +22,7 @@ func TestBeginFinishAndDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.FinishTurn(ctx, a.ID, "world", "completed", RequestLog{ConversationID: c.ID, MessageID: a.ID, Provider: "p", Model: "m", Endpoint: "x", Status: "success"}); err != nil {
+	if _, err = s.FinishTurn(ctx, a.ID, "world", "completed", RequestLog{ConversationID: c.ID, MessageID: a.ID, Provider: "p", Model: "m", Endpoint: "x", Status: "success"}); err != nil {
 		t.Fatal(err)
 	}
 	if err = s.DeleteConversation(ctx, c.ID); err != nil {
@@ -54,7 +54,7 @@ func TestForkConversation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.FinishTurn(ctx, a1.ID, "first answer", "completed", RequestLog{ConversationID: src.ID, MessageID: a1.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
+	if _, err = s.FinishTurn(ctx, a1.ID, "first answer", "completed", RequestLog{ConversationID: src.ID, MessageID: a1.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Millisecond)
@@ -63,7 +63,7 @@ func TestForkConversation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.FinishTurn(ctx, a2.ID, "second answer", "completed", RequestLog{ConversationID: src.ID, MessageID: a2.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
+	if _, err = s.FinishTurn(ctx, a2.ID, "second answer", "completed", RequestLog{ConversationID: src.ID, MessageID: a2.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -109,5 +109,55 @@ func TestForkConversation(t *testing.T) {
 	// Unknown message id -> not found.
 	if _, err := s.ForkConversation(ctx, src.ID, "msg_missing"); !IsNotFound(err) {
 		t.Fatalf("expected not found for unknown message, got %v", err)
+	}
+}
+
+func TestBeginRegenerationDoesNotDuplicateUserMessages(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "ai.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	conversation, err := s.CreateConversation(ctx, "test", "provider", "model", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, assistant, err := s.BeginTurn(ctx, conversation.ID, "initial request")
+	if err != nil {
+		t.Fatal(err)
+	}
+	appended, err := s.AddMessage(ctx, conversation.ID, "user", "additional context", "completed", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.FinishTurn(ctx, assistant.ID, "first answer", "completed", RequestLog{
+		ConversationID: conversation.ID, MessageID: assistant.ID, Provider: "provider", Model: "model", Endpoint: "x", Status: "success",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	latestUser, replacement, err := s.BeginRegeneration(ctx, conversation.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latestUser.ID != appended.ID || replacement.Status != "pending" {
+		t.Fatalf("latest user=%#v replacement=%#v", latestUser, replacement)
+	}
+	_, messages, err := s.GetConversation(ctx, conversation.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	users := 0
+	for _, message := range messages {
+		if message.Role == "user" {
+			users++
+		}
+		if message.ID == assistant.ID && message.Status != "superseded" {
+			t.Fatalf("original assistant status = %q", message.Status)
+		}
+	}
+	if users != 2 || len(messages) != 4 {
+		t.Fatalf("messages after regeneration = %#v", messages)
 	}
 }

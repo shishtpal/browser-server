@@ -35,6 +35,8 @@ type Service struct {
 	clients           map[string]provider.Client
 	activeMu          sync.Mutex
 	active            map[string]context.CancelFunc
+	appendMu          sync.Mutex
+	appendWindows     map[string]*appendWindow
 	tools             *tools.Registry
 	pendingMu         sync.Mutex
 	pending           map[string]pendingToolCall
@@ -52,6 +54,7 @@ type SubmitRequest struct {
 	IncludeAllToolDefinitions bool     `json:"include_all_tool_definitions"`
 	ActiveTools               []string `json:"active_tools,omitempty"`
 	Skills                    []string `json:"skills,omitempty"`
+	regenerate                bool
 }
 
 type SubmitResponse struct {
@@ -83,7 +86,7 @@ func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Regi
 		)
 	}
 	return &Service{
-		cfg: cfg, store: st, profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{},
+		cfg: cfg, store: st, profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{}, appendWindows: map[string]*appendWindow{},
 		tools: tools.New(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed}), pending: map[string]pendingToolCall{},
 		toolRetryDelay:    time.Duration(cfg.Chat.ToolRetryDelaySeconds) * time.Second,
 		toolRetryAttempts: cfg.Chat.ToolRetryAttempts,
@@ -123,9 +126,13 @@ func (s *Service) Submit(ctx context.Context, conversationID string, req SubmitR
 	return s.SubmitStream(ctx, conversationID, req, nil)
 }
 
+func (s *Service) Regenerate(ctx context.Context, conversationID string) (SubmitResponse, error) {
+	return s.SubmitStream(ctx, conversationID, SubmitRequest{regenerate: true}, nil)
+}
+
 func (s *Service) SubmitStream(ctx context.Context, conversationID string, req SubmitRequest, emit func(Event) error) (SubmitResponse, error) {
 	content := strings.TrimSpace(req.Content)
-	if content == "" {
+	if content == "" && !req.regenerate {
 		return SubmitResponse{}, fmt.Errorf("message content is required")
 	}
 	if len(content) > maxMessageBytes {
@@ -165,7 +172,12 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	}
 	defer s.finish(conversationID)
 
-	userMessage, assistantMessage, err := s.store.BeginTurn(ctx, conversationID, content)
+	var userMessage, assistantMessage store.Message
+	if req.regenerate {
+		userMessage, assistantMessage, err = s.store.BeginRegeneration(ctx, conversationID)
+	} else {
+		userMessage, assistantMessage, err = s.store.BeginTurn(ctx, conversationID, content)
+	}
 	if err != nil {
 		cancel()
 		return SubmitResponse{}, err
@@ -240,11 +252,24 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			break
 		}
 		chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "assistant", ToolCalls: resp.ToolCalls})
+		appendWindow, windowErr := s.openAppendWindow(generationCtx, conversationID)
+		if windowErr != nil {
+			providerErr = windowErr
+			break
+		}
+		if emit != nil {
+			if emitErr := emit(Event{Type: "append_window", Status: "open"}); emitErr != nil {
+				s.closeAppendWindow(conversationID, appendWindow)
+				providerErr = emitErr
+				break
+			}
+		}
 		loadedAtResponseStart := make(map[string]bool, len(loadedToolSet))
 		for name := range loadedToolSet {
 			loadedAtResponseStart[name] = true
 		}
-		toolMessages, providerErr = s.processToolCalls(
+		var iterationToolMessages []store.Message
+		iterationToolMessages, providerErr = s.processToolCalls(
 			generationCtx,
 			conversationID,
 			assistantMessage.ID,
@@ -258,8 +283,18 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			&req,
 			emit,
 		)
+		toolMessages = append(toolMessages, iterationToolMessages...)
+		appendedMessages := s.closeAppendWindow(conversationID, appendWindow)
+		if emit != nil {
+			if emitErr := emit(Event{Type: "append_window", Status: "closed"}); emitErr != nil && providerErr == nil {
+				providerErr = emitErr
+			}
+		}
 		if providerErr != nil {
 			break
+		}
+		for _, message := range appendedMessages {
+			chatReq.Messages = append(chatReq.Messages, provider.Message{Role: "user", Content: message.Content})
 		}
 		resp, providerErr = complete()
 		if providerErr != nil {

@@ -22,7 +22,10 @@ func IsNotFound(err error) bool {
 }
 
 func formatTime(t time.Time) string {
-	return t.UTC().Format(time.RFC3339Nano)
+	// SQLite sorts these TEXT values lexically. A fixed-width fractional part
+	// keeps nanosecond-adjacent messages in chronological order; RFC3339Nano's
+	// trimmed zeroes can make a later timestamp sort before its prefix.
+	return t.UTC().Format("2006-01-02T15:04:05.000000000Z")
 }
 
 func parseTime(value string) time.Time {

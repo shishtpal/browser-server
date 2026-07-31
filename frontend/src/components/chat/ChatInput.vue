@@ -54,6 +54,14 @@
           <!-- Action buttons -->
           <div class="flex items-center gap-1.5 px-2.5 pb-2">
             <button
+              v-if="busy && canAppend"
+              class="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.8em] font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="!canSubmit || isAppending"
+              type="submit"
+            >
+              {{ isAppending ? 'Appending…' : 'Append context' }}
+            </button>
+            <button
               v-if="busy"
               class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[0.8em] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               type="button"
@@ -62,13 +70,14 @@
               Stop
             </button>
             <button
+              v-if="!busy"
               class="grid h-8 w-8 place-items-center rounded-lg transition-all duration-200"
               :class="
-                canSend && !busy
+                canSubmit
                   ? 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'
                   : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600'
               "
-              :disabled="!canSend || busy"
+              :disabled="!canSubmit"
               type="submit"
               title="Send message"
             >
@@ -108,12 +117,15 @@ const props = defineProps<{
   modelValue: string
   disabled: boolean
   busy: boolean
+  canAppend: boolean
+  isAppending: boolean
   userId?: number | null
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   send: [content: string]
+  append: [content: string]
   stop: []
   selectPrompt: [prompt: PromptResponse]
 }>()
@@ -146,7 +158,11 @@ watch(() => props.modelValue, (v) => {
   }
 })
 
-const canSend = computed(() => !props.disabled && !props.busy && localValue.value.trim().length > 0)
+const canSubmit = computed(() =>
+  !props.disabled
+  && localValue.value.trim().length > 0
+  && (!props.busy || (props.canAppend && !props.isAppending)),
+)
 
 /* ───── prompt-mode state ───── */
 const promptMode = ref(false)
@@ -176,6 +192,8 @@ function autoResize() {
 /* ───── input handler ───── */
 function onInput() {
   autoResize()
+
+  emit('update:modelValue', localValue.value)
 
   const value = localValue.value
 
@@ -317,11 +335,15 @@ function onKeydown(event: KeyboardEvent) {
 
 /* ───── submit ───── */
 function submit() {
-  if (!canSend.value) return
+  if (!canSubmit.value) return
   // In prompt mode, Enter selects from the dropdown — don't send
   if (promptMode.value) return
 
   const content = localValue.value.trim()
+  if (props.busy) {
+    emit('append', content)
+    return
+  }
   localValue.value = ''
   emit('update:modelValue', '')
   emit('send', content)

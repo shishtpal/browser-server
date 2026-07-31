@@ -57,7 +57,7 @@ func (s *Service) buildTerminalResult(generationCtx context.Context, req finishT
 	httpStatus := nullableStatus(req.resp.HTTPStatus)
 	terminalCtx, terminalCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer terminalCancel()
-	persistErr := s.store.FinishTurn(terminalCtx, req.assistantMessage.ID, content, status, store.RequestLog{
+	completedAt, persistErr := s.store.FinishTurn(terminalCtx, req.assistantMessage.ID, content, status, store.RequestLog{
 		ConversationID:   req.conversationID,
 		MessageID:        req.assistantMessage.ID,
 		Provider:         req.providerName,
@@ -78,6 +78,7 @@ func (s *Service) buildTerminalResult(generationCtx context.Context, req finishT
 	if persistErr != nil {
 		return "", "", "", "", "", fmt.Errorf("persist terminal AI result: %w", persistErr)
 	}
+	req.assistantMessage.CreatedAt = completedAt
 	return status, logStatus, errCode, errMessage, content, nil
 }
 

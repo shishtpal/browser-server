@@ -233,6 +233,11 @@ func withoutLastToolTurn(messages []provider.Message) ([]provider.Message, []pro
 			continue
 		}
 		clean := append([]provider.Message(nil), messages[:i]...)
+		for _, message := range messages[i+1:] {
+			if message.Role == "user" {
+				clean = append(clean, message)
+			}
+		}
 		ignored := append([]provider.ToolCall(nil), messages[i].ToolCalls...)
 		return clean, ignored, true
 	}

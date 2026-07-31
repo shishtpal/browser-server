@@ -3,9 +3,8 @@ package api
 import (
 	"browser-server/internal/ai/chat"
 	"browser-server/internal/ai/store"
-	"bytes"
 	"encoding/json"
-	"io"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -15,6 +14,38 @@ import (
 type toolDecisionRequest struct {
 	Approved *bool  `json:"approved"`
 	Comment  string `json:"comment,omitempty"`
+}
+
+func (m *Module) AppendMessage(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		return
+	}
+	content := strings.TrimSpace(req.Content)
+	if content == "" || len(content) > 512*1024 {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Message content is required and must not exceed 524288 bytes")
+		return
+	}
+	message, err := m.service.AppendMessage(r.Context(), mux.Vars(r)["id"], content)
+	if err != nil {
+		switch {
+		case errors.Is(err, chat.ErrAppendWindowClosed):
+			writeError(w, http.StatusConflict, "append_window_closed", "No tool call is accepting appended context")
+		case errors.Is(err, chat.ErrAppendByteLimit):
+			writeError(w, http.StatusRequestEntityTooLarge, "append_window_limit", "Append window byte limit reached")
+		case errors.Is(err, chat.ErrAppendMessageLimit):
+			writeError(w, http.StatusTooManyRequests, "append_window_limit", "Append window message limit reached")
+		case store.IsNotFound(err):
+			writeError(w, http.StatusNotFound, "not_found", "Conversation not found")
+		default:
+			writeError(w, http.StatusInternalServerError, "store_error", "Failed to append message")
+		}
+		return
+	}
+	writeJSON(w, http.StatusCreated, message)
 }
 
 func (m *Module) SubmitMessage(w http.ResponseWriter, r *http.Request) {
@@ -90,34 +121,12 @@ func (m *Module) Regenerate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 409, "generation_conflict", "Generation is active")
 		return
 	}
-	old, err := m.store.SupersedeLatestAssistant(r.Context(), id)
+	result, err := m.service.Regenerate(r.Context(), id)
 	if err != nil {
 		m.writeSubmitError(w, err)
 		return
 	}
-	_, messages, err := m.store.GetConversation(r.Context(), id)
-	if err != nil {
-		m.writeSubmitError(w, err)
-		return
-	}
-	content := ""
-	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Role == "user" && messages[i].CreatedAt.Before(old.CreatedAt) {
-			content = messages[i].Content
-			break
-		}
-	}
-	if content == "" {
-		writeError(w, 400, "invalid_request", "No user message to regenerate")
-		return
-	}
-	m.SubmitMessage(w, rWithJSON(r, chat.SubmitRequest{Content: content, Stream: boolPtr(false)}))
-}
-func boolPtr(v bool) *bool { return &v }
-func rWithJSON(r *http.Request, v any) *http.Request {
-	b, _ := json.Marshal(v)
-	r.Body = io.NopCloser(bytes.NewReader(b))
-	return r
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (m *Module) StopGeneration(w http.ResponseWriter, r *http.Request) {

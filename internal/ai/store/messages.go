@@ -36,6 +36,49 @@ func (s *Store) BeginTurn(ctx context.Context, conversationID, content string) (
 	return user, assistant, nil
 }
 
+// BeginRegeneration supersedes the latest assistant and creates its pending
+// replacement without duplicating any user messages from the existing turn.
+func (s *Store) BeginRegeneration(ctx context.Context, conversationID string) (Message, Message, error) {
+	now := time.Now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Message{}, Message{}, err
+	}
+	defer tx.Rollback()
+
+	var oldAssistantID string
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM messages WHERE conversation_id = ? AND role = 'assistant' AND status != 'superseded' ORDER BY created_at DESC, rowid DESC LIMIT 1`, conversationID).Scan(&oldAssistantID); err != nil {
+		return Message{}, Message{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE messages SET status = 'superseded' WHERE id = ?`, oldAssistantID); err != nil {
+		return Message{}, Message{}, err
+	}
+
+	var user Message
+	var created string
+	if err := tx.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id, ''), status, created_at FROM messages WHERE conversation_id = ? AND role = 'user' AND status = 'completed' ORDER BY created_at DESC, rowid DESC LIMIT 1`, conversationID).
+		Scan(&user.ID, &user.ConversationID, &user.Role, &user.Content, &user.ToolCallID, &user.Status, &created); err != nil {
+		return Message{}, Message{}, err
+	}
+	user.CreatedAt = parseTime(created)
+	assistant := Message{ID: NewID("msg"), ConversationID: conversationID, Role: "assistant", Status: "pending", CreatedAt: now}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO messages (id, conversation_id, role, content, status, created_at) VALUES (?, ?, ?, '', 'pending', ?)`, assistant.ID, conversationID, assistant.Role, formatTime(now)); err != nil {
+		return Message{}, Message{}, err
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE conversations SET updated_at = ? WHERE id = ?`, formatTime(now), conversationID)
+	if err != nil {
+		return Message{}, Message{}, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil || n != 1 {
+		return Message{}, Message{}, fmt.Errorf("conversation update affected %d rows: %w", n, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return Message{}, Message{}, err
+	}
+	return user, assistant, nil
+}
+
 func (s *Store) AddMessage(ctx context.Context, conversationID, role, content, status, toolCallID string) (Message, error) {
 	now := time.Now().UTC()
 	message := Message{
@@ -121,28 +164,60 @@ func (s *Store) DeleteMessage(ctx context.Context, id string) (string, error) {
 }
 
 // FinishTurn commits terminal message state and its mandatory audit row together.
-func (s *Store) FinishTurn(ctx context.Context, messageID, content, status string, log RequestLog) error {
+func (s *Store) FinishTurn(ctx context.Context, messageID, content, status string, log RequestLog) (time.Time, error) {
+	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
 	defer tx.Rollback()
-	res, err := tx.ExecContext(ctx, `UPDATE messages SET content = ?, status = ? WHERE id = ?`, content, status, messageID)
+	rows, err := tx.QueryContext(ctx, `SELECT created_at FROM messages WHERE conversation_id = ? AND id != ?`, log.ConversationID, messageID)
 	if err != nil {
-		return err
+		return time.Time{}, err
+	}
+	for rows.Next() {
+		var created string
+		if err := rows.Scan(&created); err != nil {
+			rows.Close()
+			return time.Time{}, err
+		}
+		if latest := parseTime(created); !now.After(latest) {
+			now = latest.Add(time.Nanosecond)
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return time.Time{}, err
+	}
+	if err := rows.Err(); err != nil {
+		return time.Time{}, err
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE messages SET content = ?, status = ?, created_at = ? WHERE id = ?`, content, status, formatTime(now), messageID)
+	if err != nil {
+		return time.Time{}, err
 	}
 	n, err := res.RowsAffected()
 	if err != nil || n != 1 {
-		return fmt.Errorf("terminal message update affected %d rows: %w", n, err)
+		return time.Time{}, fmt.Errorf("terminal message update affected %d rows: %w", n, err)
+	}
+	res, err = tx.ExecContext(ctx, `UPDATE conversations SET updated_at = ? WHERE id = ?`, formatTime(now), log.ConversationID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	n, err = res.RowsAffected()
+	if err != nil || n != 1 {
+		return time.Time{}, fmt.Errorf("conversation update affected %d rows: %w", n, err)
 	}
 	if log.ID == "" {
 		log.ID = NewID("req")
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO request_logs (id, conversation_id, message_id, provider, model, endpoint, request_payload, response_payload, payload_truncated, http_status, prompt_tokens, completion_tokens, total_tokens, latency_ms, status, error_code, error_message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, log.ID, nullString(log.ConversationID), nullString(log.MessageID), log.Provider, log.Model, log.Endpoint, nullString(log.RequestPayload), nullString(log.ResponsePayload), boolInt(log.PayloadTruncated), log.HTTPStatus, log.PromptTokens, log.CompletionTokens, log.TotalTokens, log.LatencyMS, log.Status, nullString(log.ErrorCode), nullString(log.ErrorMessage), formatTime(time.Now().UTC()))
+	_, err = tx.ExecContext(ctx, `INSERT INTO request_logs (id, conversation_id, message_id, provider, model, endpoint, request_payload, response_payload, payload_truncated, http_status, prompt_tokens, completion_tokens, total_tokens, latency_ms, status, error_code, error_message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, log.ID, nullString(log.ConversationID), nullString(log.MessageID), log.Provider, log.Model, log.Endpoint, nullString(log.RequestPayload), nullString(log.ResponsePayload), boolInt(log.PayloadTruncated), log.HTTPStatus, log.PromptTokens, log.CompletionTokens, log.TotalTokens, log.LatencyMS, log.Status, nullString(log.ErrorCode), nullString(log.ErrorMessage), formatTime(now))
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return time.Time{}, err
+	}
+	return now, nil
 }
 
 func (s *Store) SupersedeLatestAssistant(ctx context.Context, conversationID string) (Message, error) {

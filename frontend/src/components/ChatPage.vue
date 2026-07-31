@@ -87,8 +87,11 @@
           v-model="draft"
           :disabled="!config?.enabled"
           :busy="isBusy"
+          :can-append="canAppend"
+          :is-appending="isAppending"
           :user-id="currentUserId"
           @send="sendMessage"
+          @append="appendContext"
           @stop="handleStop"
           @select-prompt="useSuggestion"
         />
@@ -322,9 +325,12 @@ const {
 
 const {
   isBusy,
+  canAppend,
+  isAppending,
   canRegenerate,
   visibleMessages,
   send,
+  append,
   decideToolCall,
   regenerate,
   stop,
@@ -506,6 +512,18 @@ async function sendMessage(content?: string) {
     )
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to send message'
+  }
+}
+
+async function appendContext(content: string) {
+  const text = content.trim()
+  if (!text || !activeConversation.value) return
+  const conversationId = activeConversation.value.id
+  const draftAtSubmit = draft.value
+  error.value = ''
+  const appended = await append(text, conversationId, (msg) => { error.value = msg })
+  if (appended && activeConversation.value?.id === conversationId && draft.value === draftAtSubmit) {
+    draft.value = ''
   }
 }
 

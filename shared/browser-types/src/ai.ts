@@ -110,6 +110,10 @@ export interface SendAIMessageInput {
   skills?: string[]
 }
 
+export interface AppendAIMessageInput {
+  content: string
+}
+
 export interface AIUsage {
   prompt_tokens?: number
   completion_tokens?: number
@@ -133,7 +137,7 @@ export interface AIToolDecisionResponse {
 }
 
 /** SSE event types emitted during streaming AI message generation. */
-export type AIStreamEventType = 'delta' | 'tool_call' | 'tool_result' | 'done' | 'error'
+export type AIStreamEventType = 'delta' | 'tool_call' | 'tool_result' | 'append_window' | 'done' | 'error'
 
 export interface AIStreamDeltaEvent {
   type: 'delta'
@@ -145,7 +149,12 @@ export interface AIStreamToolCallEvent {
   type: 'tool_call'
   message_id: string
   tool_call: { id: string; name: string; arguments: string }
-  status: 'pending' | 'approved'
+  status: 'pending' | 'approved' | 'error'
+}
+
+export interface AIStreamAppendWindowEvent {
+  type: 'append_window'
+  status: 'open' | 'closed'
 }
 
 export interface AIStreamToolResultEvent {
@@ -174,5 +183,6 @@ export type AIStreamEvent =
   | AIStreamDeltaEvent
   | AIStreamToolCallEvent
   | AIStreamToolResultEvent
+  | AIStreamAppendWindowEvent
   | AIStreamDoneEvent
   | AIStreamErrorEvent

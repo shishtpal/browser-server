@@ -1,6 +1,7 @@
 import type { AIConversation, AIMessage, AIStreamEvent } from '@browser-server/shared-types'
 import { computed, ref } from 'vue'
 import {
+  appendAIMessage,
   decideAIToolCall,
   regenerateAIMessage,
   sendAIMessage,
@@ -25,6 +26,8 @@ export function useChatMessaging(
   setMessages: (msgs: AIMessage[]) => void,
 ) {
   const isBusy = ref(false)
+  const canAppend = ref(false)
+  const isAppending = ref(false)
   let streamController: AbortController | null = null
 
   const canRegenerate = computed(() => {
@@ -60,6 +63,7 @@ export function useChatMessaging(
     onDone: (conversationId: string, firstMessage: string) => Promise<void>,
     onError: (msg: string) => void,
   ) {
+    canAppend.value = false
     isBusy.value = true
     const msgs = getMessages()
 
@@ -106,6 +110,9 @@ export function useChatMessaging(
         (event: AIStreamEvent) => {
           const currentMessages = getMessages()
           switch (event.type) {
+            case 'append_window':
+              canAppend.value = event.status === 'open'
+              break
             case 'delta': {
               const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
               if (idx >= 0) {
@@ -144,6 +151,7 @@ export function useChatMessaging(
               break
             }
             case 'done': {
+              canAppend.value = false
               void onDone(conversationId, text).finally(() => {
                 isBusy.value = false
                 streamController = null
@@ -151,6 +159,7 @@ export function useChatMessaging(
               break
             }
             case 'error': {
+              canAppend.value = false
               const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
               if (idx >= 0) {
                 const msg = { ...currentMessages[idx], status: 'error' as const }
@@ -164,6 +173,7 @@ export function useChatMessaging(
           }
         },
         (err) => {
+          canAppend.value = false
           const currentMessages = getMessages()
           const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
           if (idx >= 0) {
@@ -202,6 +212,40 @@ export function useChatMessaging(
     }
   }
 
+  async function append(
+    text: string,
+    conversationId: string,
+    onError: (msg: string) => void,
+  ): Promise<boolean> {
+    const content = text.trim()
+    if (!content || !isBusy.value || !canAppend.value || isAppending.value) return false
+    isAppending.value = true
+    try {
+      const message = await appendAIMessage(conversationId, { content })
+      if (getActiveConversation()?.id !== conversationId) return true
+      const currentMessages = getMessages()
+      if (currentMessages.some((item) => item.id === message.id)) return true
+      const pendingAssistant = currentMessages.findIndex(
+        (item) => item.conversation_id === conversationId && item.role === 'assistant' && item.status === 'pending',
+      )
+      if (pendingAssistant >= 0) {
+        setMessages([
+          ...currentMessages.slice(0, pendingAssistant),
+          message,
+          ...currentMessages.slice(pendingAssistant),
+        ])
+      } else {
+        setMessages([...currentMessages, message])
+      }
+      return true
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to append context')
+      return false
+    } finally {
+      isAppending.value = false
+    }
+  }
+
   async function decideToolCall(callId: string, approved: boolean, comment: string, onError: (msg: string) => void) {
     const conv = getActiveConversation()
     if (!conv) return
@@ -236,6 +280,7 @@ export function useChatMessaging(
   }
 
   async function stop(conversationId: string) {
+    canAppend.value = false
     if (streamController) {
       streamController.abort()
       streamController = null
@@ -249,15 +294,20 @@ export function useChatMessaging(
   }
 
   function cleanup() {
+    canAppend.value = false
+    isAppending.value = false
     streamController?.abort()
     streamController = null
   }
 
   return {
     isBusy,
+    canAppend,
+    isAppending,
     canRegenerate,
     visibleMessages,
     send,
+    append,
     decideToolCall,
     regenerate,
     stop,

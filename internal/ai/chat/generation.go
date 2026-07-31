@@ -35,11 +35,12 @@ func (s *Service) IsActive(id string) bool {
 
 func (s *Service) Stop(conversationID string) bool {
 	s.activeMu.Lock()
-	defer s.activeMu.Unlock()
 	cancel, ok := s.active[conversationID]
 	if ok {
 		cancel()
 	}
+	s.activeMu.Unlock()
+	s.closeConversationAppendWindow(conversationID)
 	return ok
 }
 
@@ -53,6 +54,7 @@ func (s *Service) Close() {
 	for _, c := range cancels {
 		c()
 	}
+	s.closeAllAppendWindows()
 	for i := 0; i < 50; i++ {
 		s.activeMu.Lock()
 		n := len(s.active)

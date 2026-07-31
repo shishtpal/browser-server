@@ -5,6 +5,7 @@ import type {
   AIMessage,
   AIStreamEvent,
   AIToolDecisionResponse,
+  AppendAIMessageInput,
   CreateAIConversationInput,
   SendAIMessageInput,
   SendAIMessageResponse,
@@ -45,6 +46,10 @@ export function deleteAIConversation(id: string): Promise<void> {
 
 export function sendAIMessage(id: string, data: SendAIMessageInput): Promise<SendAIMessageResponse> {
   return client.sendAIMessage(id, data)
+}
+
+export function appendAIMessage(id: string, data: AppendAIMessageInput): Promise<AIMessage> {
+  return client.appendAIMessage(id, data)
 }
 
 export function sendAIMessageStream(

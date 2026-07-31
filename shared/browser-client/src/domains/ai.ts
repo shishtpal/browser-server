@@ -2,7 +2,9 @@ import type {
   AIConfig,
   AIConversation,
   AIConversationDetail,
+  AIMessage,
   AIToolDecisionResponse,
+  AppendAIMessageInput,
   CreateAIConversationInput,
   ForkAIConversationInput,
   SendAIMessageInput,
@@ -80,6 +82,16 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
         'POST',
         `/api/ai/conversations/${encodeURIComponent(id)}/messages`,
         { ...data, stream: false },
+        getToken,
+      )
+    },
+
+    appendAIMessage(id: string, data: AppendAIMessageInput): Promise<AIMessage> {
+      return apiFetch<AIMessage>(
+        baseUrl,
+        'POST',
+        `/api/ai/conversations/${encodeURIComponent(id)}/messages/append`,
+        data,
         getToken,
       )
     },

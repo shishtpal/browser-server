@@ -50,6 +50,21 @@ func addTodoRecord(ctx context.Context, raw json.RawMessage) (any, error) {
 		a.Subtasks = []todo.SubtaskInput{}
 	}
 
+	// Append the chat-origin tag so every todo created via this AI tool is
+	// easy to filter/search/audit. Dedupe first: if the model already
+	// supplied the tag, don't add a duplicate.
+	const chatOriginTag = "browser-server-chat"
+	hasTag := false
+	for _, t := range a.Tags {
+		if t == chatOriginTag {
+			hasTag = true
+			break
+		}
+	}
+	if !hasTag {
+		a.Tags = append(a.Tags, chatOriginTag)
+	}
+
 	createInput := todo.CreateInput{
 		UserID:      a.UserID,
 		Title:       a.Title,

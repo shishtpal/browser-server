@@ -136,12 +136,12 @@ func executeCommand(shell ShellInfo) func(context.Context, json.RawMessage) (any
 
 		stdoutTruncated := false
 		stderrTruncated := false
-		if len(outBytes) > maxOutputBytes {
-			outBytes = outBytes[:maxOutputBytes]
+		if len(outBytes) > maxCommandOutputBytes {
+			outBytes = truncateBytesUTF8(outBytes, maxCommandOutputBytes)
 			stdoutTruncated = true
 		}
-		if len(errBytes) > maxOutputBytes {
-			errBytes = errBytes[:maxOutputBytes]
+		if len(errBytes) > maxCommandOutputBytes {
+			errBytes = truncateBytesUTF8(errBytes, maxCommandOutputBytes)
 			stderrTruncated = true
 		}
 

@@ -23,7 +23,7 @@ func registerDirectoryTree(r *Registry) {
 	})
 }
 
-func directoryTree(_ context.Context, raw json.RawMessage) (any, error) {
+func directoryTree(ctx context.Context, raw json.RawMessage) (any, error) {
 	var a struct {
 		Path           string   `json:"path"`
 		MaxDepth       int      `json:"max_depth"`
@@ -69,7 +69,7 @@ func directoryTree(_ context.Context, raw json.RawMessage) (any, error) {
 	builder.WriteString(filepath.Base(absPath))
 	builder.WriteString("/\n")
 
-	truncated := buildTree(&builder, a.Path, a.MaxDepth, 0, ignoreSet)
+	truncated := buildTree(&builder, a.Path, a.MaxDepth, 0, ignoreSet, outputBudget(ctx))
 
 	return map[string]any{
 		"path":      a.Path,
@@ -81,7 +81,7 @@ func directoryTree(_ context.Context, raw json.RawMessage) (any, error) {
 // buildTree uses indentation-based output (2 spaces per level) which is
 // significantly more token-efficient than box-drawing connectors while
 // remaining fully parseable by both humans and LLMs.
-func buildTree(builder *strings.Builder, dir string, maxDepth, currentDepth int, ignoreSet map[string]bool) bool {
+func buildTree(builder *strings.Builder, dir string, maxDepth, currentDepth int, ignoreSet map[string]bool, budget int) bool {
 	if currentDepth >= maxDepth {
 		return false
 	}
@@ -102,7 +102,7 @@ func buildTree(builder *strings.Builder, dir string, maxDepth, currentDepth int,
 	indent := strings.Repeat("  ", currentDepth+1)
 
 	for _, entry := range filtered {
-		if builder.Len() > maxOutput-512 {
+		if builder.Len() > budget {
 			builder.WriteString(indent)
 			builder.WriteString("[truncated]\n")
 			return true
@@ -113,7 +113,7 @@ func buildTree(builder *strings.Builder, dir string, maxDepth, currentDepth int,
 
 		if entry.IsDir() {
 			builder.WriteString("/\n")
-			if truncated := buildTree(builder, filepath.Join(dir, entry.Name()), maxDepth, currentDepth+1, ignoreSet); truncated {
+			if truncated := buildTree(builder, filepath.Join(dir, entry.Name()), maxDepth, currentDepth+1, ignoreSet, budget); truncated {
 				return true
 			}
 		} else {

@@ -57,7 +57,7 @@ func gitDiff(ctx context.Context, raw json.RawMessage) (any, error) {
 		args = append(args, "--", a.Path)
 	}
 
-	diff, err := runGit(ctx, a.WorkingDir, args...)
+	diff, err := runGitWithLimit(ctx, a.WorkingDir, limitsFrom(ctx).gitMaxDiffOutput, args...)
 	if err != nil {
 		return nil, err
 	}

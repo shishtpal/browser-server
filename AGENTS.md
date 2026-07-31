@@ -8,7 +8,7 @@ It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `fr
 
 ## Current repo notes
 
-- The AI module now supports richer workflows through `web_search`, `file_tools`, `memory`, and `skills` sections in `bs-ai-config.json`; keep config examples and documentation aligned with the schema in `internal/ai/config/config.go`.
+- AI configuration is split into two sibling files: `bs-ai-config.json` for behavior toggles (tools, chat, memory, web/file/skills settings, `default_provider`, `cors_enabled`) and `bs-ai-models.json` for the provider/model catalog. Keep config examples and documentation aligned with the schema in `internal/ai/config/types.go`.
 - Prompt management and prompt folders are part of the shared domain model under `internal/prompt/`; they should remain the single source of truth for prompt validation and storage.
 - When changing shared domain code, keep HTTP concerns in handlers and tool-argument validation in AI tools rather than duplicating logic in both layers.
 
@@ -40,61 +40,6 @@ This root `AGENTS.md` covers the Go backend and cross-cutting concerns. Each fro
 - **Package manager**: pnpm 11 (workspace defined in `pnpm-workspace.yaml`)
 - **Build**: PowerShell script (`scripts/build.ps1`), `CGO_ENABLED=1` required
 - **Auth**: opaque operator-level API token (Bearer header), generated via `server token generate`
-
-## Project Structure
-
-```
-browser-server/
-├── cmd/server/main.go          # CLI entry point, router setup, and static serving
-├── internal/
-│   ├── ai/                     # AI chat module and server-side tool runtime
-│   │   ├── api/handlers.go     # /api/ai/* HTTP handlers and lifecycle setup
-│   │   ├── chat/service.go    # Conversation orchestration, streaming, tool-call loops
-│   │   ├── config/config.go   # bs-ai-config.json parsing and validation
-│   │   ├── profiles/          # Provider/model profile definitions
-│   │   ├── provider/          # OpenAI-compatible LLM client abstraction
-│   │   ├── skills/            # Skill definitions and activation helpers
-│   │   ├── store/store.go     # SQLite persistence for conversations and messages
-│   │   └── tools/             # Tool registry and tool implementations
-│   ├── auth/token.go           # Token generation, loading, and validation
-│   ├── bookmark/               # Bookmark domain logic, storage, and renderers
-│   ├── db/db.go                # SQLite connection management and schema init
-│   ├── handlers/              # REST handlers for todos, bookmarks, history, prompts, wallet, etc.
-│   │   ├── prompts.go         # Prompt CRUD and folder-aware handlers
-│   │   ├── search.go          # Combined bookmark/history omnibox search
-│   │   ├── todos.go          # Todo CRUD handlers
-│   │   ├── todo_reorder.go   # Todo ordering handlers
-│   │   ├── todo_subtasks.go  # Todo subtask handlers
-│   │   └── ...               # Additional domain handlers
-│   ├── helpers/               # Shared request parsing and helper utilities
-│   ├── history/               # History domain logic and storage
-│   ├── middleware/            # Auth, CORS, and logging middleware
-│   ├── models/models.go       # Shared API/domain structs
-│   ├── prompt/                # Prompt domain model, storage, and renderers
-│   ├── search/                # Shared search helpers and models
-│   ├── todo/                  # Todo domain logic, validation, and storage
-│   └── ...
-├── frontend/                  # Astro + Vue web app (see frontend/AGENTS.md)
-├── extension/                 # Chromium extension wrapper (see extension/AGENTS.md)
-├── extension-firefox/         # Firefox extension wrapper
-├── shared/                    # Shared TypeScript workspace packages
-│   ├── browser-client/       # Canonical typed API client
-│   ├── browser-extension-core/ # Shared extension UI/runtime logic
-│   ├── browser-modal/        # Shared modal primitives
-│   ├── browser-types/        # Shared domain/API types
-│   └── browser-utils/        # Pure helper utilities
-├── plans/                     # Design and implementation notes
-├── scripts/build.ps1         # Full build script for web app + Go binary
-├── bin/                      # Build output and runtime assets
-├── package.json               # Root workspace scripts and dependencies
-├── pnpm-workspace.yaml        # pnpm workspace config
-├── go.mod / go.sum            # Go module definition
-├── bs-ai-config.json          # AI chat configuration, tools, web/file/memory/skill settings
-├── README.md                  # Setup, usage, extension, and development guide
-├── PRD.md                     # Product requirements and API documentation
-├── AGENTS.md                  # This file
-└── ROADMAP.md                 # Completed and planned work
-```
 
 ## Building
 
@@ -157,13 +102,30 @@ Bookmark tags are stored as JSON strings in SQLite and parsed/presented as `[]st
 
 The AI chat module lives in `internal/ai/` and is self-contained — it manages its own config, database, providers, and tools. It is initialized in `cmd/server/main.go` via `aiapi.Init()` and registers its routes on the authenticated `/api` subrouter.
 
-### Configuration (`bs-ai-config.json`)
+### Configuration
 
-Place `bs-ai-config.json` next to the server binary. The module reads it at startup; if the file is missing or has `"enabled": false` the feature is reported as disabled to the frontend. Key sections:
+Place two sibling files next to the server binary: `bs-ai-config.json` for behavior toggles and `bs-ai-models.json` for the provider/model catalog. The module reads them at startup; if the main file is missing or has `"enabled": false`, the feature is reported as disabled. If `bs-ai-models.json` is missing while the main config exists, AI is also disabled.
+
+Key sections in `bs-ai-config.json`:
 
 ```jsonc
 {
   "default_provider": "openrouter",
+  "tools": { "enabled": true, "allowed": ["get_current_time", "search_bookmarks"], "max_iterations": 5 },
+  "chat": { "system_prompt": "...", "max_history_messages": 30, "stream": true, "temperature": 0.7 },
+  "logging": { "enabled": true, "db_path": ".data/bs-ai.db", "retention_days": 60 },
+  "web_search": { ... },
+  "file_tools": { ... },
+  "memory": { ... },
+  "skills": { ... },
+  "cors_enabled": false
+}
+```
+
+Provider/model catalog in `bs-ai-models.json`:
+
+```jsonc
+{
   "providers": {
     "<name>": {
       "type": "openai_compatible",
@@ -176,10 +138,7 @@ Place `bs-ai-config.json` next to the server binary. The module reads it at star
         { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true }
       ]
     }
-  },
-  "tools": { "enabled": true, "allowed": ["get_current_time", "search_bookmarks"], "max_iterations": 5 },
-  "chat": { "system_prompt": "...", "max_history_messages": 30, "stream": true, "temperature": 0.7 },
-  "logging": { "enabled": true, "db_path": ".data/bs-ai.db", "retention_days": 60 }
+  }
 }
 ```
 
@@ -187,51 +146,23 @@ API keys that start with `env:` are resolved from the corresponding environment 
 
 Provider requests retry transient failures (network errors, timeouts, HTTP `429`/`5xx`, and malformed provider responses). `retry_attempts` is the number of retries after the initial request (`0` disables retries; valid range `0`-`20`), and `retry_delay_seconds` is the fixed delay between attempts (valid range `1`-`300`). Both regular and streaming completions use this policy, but a stream is never retried after it has emitted an event because doing so could duplicate output. Retry waits honor context cancellation.
 
+### How to add an AI tool
+
+1. Implement the tool in `internal/ai/tools/` (register it in `registry.go`).
+2. Add the JSON schema beside the code (e.g. `schemas/<tool>.json`).
+3. If the tool should be selectable/allowed by operators, list it in the `tools.allowed` array of `bs-ai-config.json`.
+4. Update the `tools` description in `internal/ai/tools/` and any relevant `AGENTS.md`/`README.md` sections.
+
 ### Architecture
 
 | Package | Responsibility |
 |---------|---------------|
-| `ai/config` | Parses `bs-ai-config.json`, resolves env-based keys, exposes typed config |
+| `ai/config` | Parses `bs-ai-config.json` and `bs-ai-models.json`, resolves env-based keys, exposes typed config |
 | `ai/provider` | LLM abstraction; currently supports OpenAI-compatible (OpenRouter, OpenAI, etc.) |
 | `ai/store` | SQLite persistence for conversations + messages |
 | `ai/tools` | Registry of server-side tools the model can invoke (e.g. `get_current_time`, `search_bookmarks`) |
 | `ai/chat` | Orchestration: builds prompts, streams completions, handles multi-turn tool-call loops |
 | `ai/api` | HTTP handlers for all `/api/ai/*` routes + the `Init()` / `Register()` / `Close()` lifecycle |
-
-### API endpoints
-
-All under `/api/ai/` (token-protected):
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/ai/config` | Sanitized config (no secrets) + model catalog for the frontend |
-| GET | `/ai/conversations` | List conversations (params: `q`, `limit`) |
-| POST | `/ai/conversations` | Create a conversation |
-| GET | `/ai/conversations/{id}` | Get conversation with all messages |
-| PATCH | `/ai/conversations/{id}` | Rename or change model |
-| DELETE | `/ai/conversations/{id}` | Delete conversation |
-| POST | `/ai/conversations/{id}/messages` | Send a user message (supports SSE streaming) |
-| POST | `/ai/conversations/{id}/tool-calls/{callID}` | Approve or reject a pending tool call |
-| POST | `/ai/conversations/{id}/stop` | Cancel active generation |
-| POST | `/ai/conversations/{id}/regenerate` | Supersede last response and regenerate |
-
-The `/messages` endpoint supports both synchronous JSON responses and SSE streaming (controlled by the `stream` body field). During streaming, tool calls that require user approval pause the stream until the frontend submits a decision via the `/tool-calls/{callID}` endpoint.
-
-### Frontend integration
-
-The web app's chat page is at `frontend/src/components/ChatPage.vue` and is composed of:
-- `chat/ChatTopBar.vue` — provider/model selects, YOLO mode toggle
-- `chat/ChatSidebar.vue` — conversation list with search
-- `chat/ChatMessageList.vue` — scrollable messages with empty-state suggestions
-- `chat/ChatBubble.vue` — renders user, assistant (markdown), and tool messages
-- `chat/ChatInput.vue` — auto-resizing textarea with send/stop
-- `chat/ChatRegenerateButton.vue` — regenerate the last assistant response
-- `chat/ChatMobileDrawer.vue` — mobile conversation list
-- `chat/ChatDisabledState.vue` — placeholder when AI is not configured
-- `chat/ChatCopyToast.vue` — clipboard feedback toast
-- `chat/composables/useChatConfig.ts` — config, provider/model state, YOLO mode
-- `chat/composables/useChatConversations.ts` — conversation CRUD, rename/delete
-- `chat/composables/useChatMessaging.ts` — send, stream, tool decisions, regenerate, stop
 
 ## Search / Omnibox
 

@@ -213,7 +213,7 @@ func TestMultiEditBoundsResultAndDryRunOutput(t *testing.T) {
 	})
 
 	t.Run("dry-run output", func(t *testing.T) {
-		path := writeMultiEditFixture(t, t.TempDir(), "test.txt", strings.Repeat("a", maxOutput))
+		path := writeMultiEditFixture(t, t.TempDir(), "test.txt", strings.Repeat("a", defaultMaxOutput))
 		result, err := multiEdit(context.Background(), multiEditArgs(t, []multiEditOp{
 			{Path: path, Find: "a", Replace: "b", All: true},
 		}, true))
@@ -224,7 +224,7 @@ func TestMultiEditBoundsResultAndDryRunOutput(t *testing.T) {
 		if response["error"] != "diff_too_large" {
 			t.Fatalf("unexpected response: %#v", response)
 		}
-		assertMultiEditContent(t, path, strings.Repeat("a", maxOutput))
+		assertMultiEditContent(t, path, strings.Repeat("a", defaultMaxOutput))
 	})
 }
 

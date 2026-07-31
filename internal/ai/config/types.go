@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 // NOTE: Must be relative to go compiled binary for portable app
 const defaultConfigFile = "bs-ai-config.json"
 const defaultModelsFile = "bs-ai-models.json"
@@ -44,9 +46,38 @@ type ModelConfig struct {
 }
 
 type ToolsConfig struct {
-	Enabled       bool     `json:"enabled"`
-	Allowed       []string `json:"allowed"`
-	MaxIterations int      `json:"max_iterations"`
+	Enabled        bool     `json:"enabled"`
+	Allowed        []string `json:"allowed"`
+	MaxIterations  int      `json:"max_iterations"`
+	MaxOutput      int      `json:"max_output"`
+	MaxDiffOutput  int      `json:"max_diff_output"`
+	GitTimeoutSecs int      `json:"git_timeout_seconds"`
+}
+
+// MaxOutputBytes returns the configured max output limit clamped to a sane
+// minimum, so callers can safely use it without checking zero.
+func (t ToolsConfig) MaxOutputBytes() int {
+	if t.MaxOutput <= 0 {
+		return 32 * 1024
+	}
+	return t.MaxOutput
+}
+
+// MaxDiffOutputBytes returns the configured diff output limit. It falls back to
+// the general max output when a diff-specific value is not configured.
+func (t ToolsConfig) MaxDiffOutputBytes() int {
+	if t.MaxDiffOutput <= 0 {
+		return t.MaxOutputBytes()
+	}
+	return t.MaxDiffOutput
+}
+
+// GitTimeout returns the configured git timeout clamped to a positive value.
+func (t ToolsConfig) GitTimeout() time.Duration {
+	if t.GitTimeoutSecs <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(t.GitTimeoutSecs) * time.Second
 }
 
 type FileToolsConfig struct {

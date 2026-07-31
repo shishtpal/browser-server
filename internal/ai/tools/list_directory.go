@@ -23,7 +23,7 @@ func registerListDirectory(r *Registry) {
 	})
 }
 
-func listDirectory(_ context.Context, raw json.RawMessage) (any, error) {
+func listDirectory(ctx context.Context, raw json.RawMessage) (any, error) {
 	var a struct {
 		Path string `json:"path"`
 	}
@@ -66,7 +66,7 @@ func listDirectory(_ context.Context, raw json.RawMessage) (any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode directory entry: %w", err)
 		}
-		if outputBytes+len(encoded)+1 > maxOutput-512 {
+		if outputBytes+len(encoded)+1 > outputBudget(ctx) {
 			truncated = true
 			break
 		}

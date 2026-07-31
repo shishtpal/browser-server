@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // knownToolNames is the canonical list of tools that may appear in
@@ -93,6 +94,18 @@ func validate(cfg *Config) error {
 	}
 	if cfg.Tools.MaxIterations <= 0 || cfg.Tools.MaxIterations > 500 {
 		return fmt.Errorf("tools.max_iterations must be between 1 and 500")
+	}
+	// max_output must leave room for the tools' JSON response envelope (the
+	// tools package reserves resultHeadroom, 2048 bytes, per result) plus a
+	// usable payload, so the minimum is 4 KiB rather than 1 KiB.
+	if cfg.Tools.MaxOutput < 4*1024 || cfg.Tools.MaxOutput > 512*1024 {
+		return fmt.Errorf("tools.max_output must be between 4096 and 524288")
+	}
+	if cfg.Tools.MaxDiffOutput != 0 && (cfg.Tools.MaxDiffOutput < 1*1024 || cfg.Tools.MaxDiffOutput > 512*1024) {
+		return fmt.Errorf("tools.max_diff_output must be between 1024 and 524288 or 0 to use max_output")
+	}
+	if cfg.Tools.GitTimeoutSecs < 1 || cfg.Tools.GitTimeoutSecs > int(10*time.Minute/time.Second) {
+		return fmt.Errorf("tools.git_timeout_seconds must be between 1 and %d", int(10*time.Minute/time.Second))
 	}
 	for _, name := range cfg.Tools.Allowed {
 		if !knownToolNames[name] {

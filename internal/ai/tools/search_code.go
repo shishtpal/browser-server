@@ -166,7 +166,7 @@ func searchCode(ctx context.Context, raw json.RawMessage) (any, error) {
 					ContextAfter:  append([]string{}, lines[i+1:hi]...),
 				}
 				probe, _ := json.Marshal(map[string]any{"matches": append(matches, m), "total_matches": total, "truncated": true, "search_time_ms": 0})
-				if len(probe) > maxOutput-resultHeadroom {
+				if len(probe) > outputBudget(ctx) {
 					truncated = true
 					continue
 				}

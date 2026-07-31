@@ -24,6 +24,7 @@ type Registry struct {
 	tools   map[string]Tool
 	shell   ShellInfo
 	allowed []string
+	limits  toolLimits
 }
 
 // Options configures optional subsystems when constructing a Registry.
@@ -32,15 +33,23 @@ type Options struct {
 	Skills    *skills.Registry
 	WebSearch config.WebSearchConfig
 	FileTools config.FileToolsConfig
+	Tools     config.ToolsConfig
 	Allowed   []string
 }
 
 // New creates a Registry with all built-in tools registered.
 func New(options ...Options) *Registry {
 	shell := DetectShell()
-	r := &Registry{tools: map[string]Tool{}, shell: shell}
+	r := &Registry{tools: map[string]Tool{}, shell: shell, limits: defaultToolLimits()}
 	if len(options) > 0 {
-		r.allowed = append([]string(nil), options[0].Allowed...)
+		o := options[0]
+		r.allowed = append([]string(nil), o.Allowed...)
+		r.limits = toolLimits{
+			maxOutput:        o.Tools.MaxOutputBytes(),
+			gitTimeout:       o.Tools.GitTimeout(),
+			gitMaxOutput:     o.Tools.MaxOutputBytes(),
+			gitMaxDiffOutput: o.Tools.MaxDiffOutputBytes(),
+		}
 	}
 
 	var memory config.MemoryConfig
@@ -146,12 +155,12 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	if t.Execute == nil {
 		return nil, fmt.Errorf("tool is not directly executable")
 	}
-	v, err := t.Execute(ctx, args)
+	v, err := t.Execute(withToolLimits(ctx, r.limits), args)
 	if err != nil {
 		return nil, err
 	}
 	b, err := json.Marshal(v)
-	if len(b) > maxOutput {
+	if len(b) > r.limits.maxOutput {
 		return nil, fmt.Errorf("tool output exceeds limit")
 	}
 	return b, err

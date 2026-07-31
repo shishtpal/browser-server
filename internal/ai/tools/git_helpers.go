@@ -8,10 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
-
-const gitTimeout = 30 * time.Second
 
 // validateRef rejects ref names that start with '-' to prevent them being
 // interpreted as git flags.
@@ -25,6 +22,13 @@ func validateRef(ref string) error {
 // runGit executes a git command with discrete arguments (safe from injection).
 // If dir is empty, defaults to the server binary's directory.
 func runGit(ctx context.Context, dir string, args ...string) (string, error) {
+	return runGitWithLimit(ctx, dir, limitsFrom(ctx).gitMaxOutput, args...)
+}
+
+// runGitWithLimit executes a git command and truncates the output to the
+// provided byte limit (0 means no truncation). This lets git_diff use a
+// diff-specific limit while other git tools share the general max_output.
+func runGitWithLimit(ctx context.Context, dir string, limit int, args ...string) (string, error) {
 	if dir == "" {
 		ex, err := os.Executable()
 		if err != nil {
@@ -33,7 +37,7 @@ func runGit(ctx context.Context, dir string, args ...string) (string, error) {
 		dir = filepath.Dir(ex)
 	}
 
-	cmdCtx, cancel := context.WithTimeout(ctx, gitTimeout)
+	cmdCtx, cancel := context.WithTimeout(ctx, limitsFrom(ctx).gitTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(cmdCtx, "git", args...)
@@ -45,7 +49,7 @@ func runGit(ctx context.Context, dir string, args ...string) (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		if cmdCtx.Err() == context.DeadlineExceeded {
-			return "", fmt.Errorf("git command timed out after %v", gitTimeout)
+			return "", fmt.Errorf("git command timed out after %v", limitsFrom(ctx).gitTimeout)
 		}
 		errMsg := strings.TrimSpace(stderr.String())
 		if errMsg == "" {
@@ -55,8 +59,8 @@ func runGit(ctx context.Context, dir string, args ...string) (string, error) {
 	}
 
 	out := stdout.String()
-	if len(out) > maxOutput {
-		out = out[:maxOutput] + "\n... (output truncated)"
+	if limit > 0 && len(out) > limit {
+		out = truncateUTF8(out, limit) + "\n... (output truncated)"
 	}
 	return out, nil
 }

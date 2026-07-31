@@ -195,7 +195,7 @@ func getDiagnostics(ctx context.Context, raw json.RawMessage) (any, error) {
 				continue
 			}
 			probe, _ := json.Marshal(append(diags, d))
-			if len(diags) >= a.Max || len(probe) > maxOutput-resultHeadroom {
+			if len(diags) >= a.Max || len(probe) > outputBudget(ctx) {
 				truncated = true
 				continue
 			}
@@ -209,14 +209,14 @@ func getDiagnostics(ctx context.Context, raw json.RawMessage) (any, error) {
 			if message == "" {
 				message = e.Error()
 			}
-			if len(message) > maxOutput/2 {
-				message = string([]byte(message)[:maxOutput/2])
+			if len(message) > maxOutputFrom(ctx)/2 {
+				message = truncateUTF8(message, maxOutputFrom(ctx)/2)
 				truncated = true
 			}
 			d := codeDiagnostic{File: a.Path, Range: diagnosticRange{}, Severity: run.severity, Source: "go" + run.name, Message: message}
 			counts[run.severity+"s"]++
 			probe, _ := json.Marshal(append(diags, d))
-			if severityAllowed(a.Severity, run.severity) && len(diags) < a.Max && len(probe) <= maxOutput-resultHeadroom {
+			if severityAllowed(a.Severity, run.severity) && len(diags) < a.Max && len(probe) <= outputBudget(ctx) {
 				diags = append(diags, d)
 			} else if severityAllowed(a.Severity, run.severity) {
 				truncated = true

@@ -200,10 +200,10 @@ func multiEdit(ctx context.Context, raw json.RawMessage) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(encoded) > maxOutput {
+		if len(encoded) > maxOutputFrom(ctx) {
 			return map[string]any{
 				"ok": false, "error": "diff_too_large",
-				"message": fmt.Sprintf("Dry-run diff exceeds the %d-byte tool output limit.", maxOutput),
+				"message": fmt.Sprintf("Dry-run diff exceeds the %d-byte tool output limit.", maxOutputFrom(ctx)),
 			}, nil
 		}
 		return response, nil

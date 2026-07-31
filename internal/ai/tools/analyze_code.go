@@ -257,7 +257,7 @@ func analyzeCode(ctx context.Context, raw json.RawMessage) (any, error) {
 		}
 		entry := map[string]any{"file": path, "package": f.Name.Name, "imports": imps, "symbols": syms}
 		probe, _ := json.Marshal(map[string]any{"files": append(files, entry), "summary": map[string]any{"files_analyzed": filesAnalyzed, "total_functions": funcs, "total_types": typesN, "total_imports": importsN}, "truncated": true})
-		if len(probe) > maxOutput-resultHeadroom {
+		if len(probe) > outputBudget(ctx) {
 			truncated = true
 			continue
 		}

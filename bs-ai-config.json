@@ -3,6 +3,10 @@
     "default_provider": "openrouter",
     "tools": {
         "enabled": true,
+        "max_output": 32768,
+        "max_diff_output": 32768,
+        "git_timeout_seconds": 30,
+        "max_iterations": 100,
         "allowed": [
             "search_tool",
             "get_current_time",
@@ -53,8 +57,7 @@
             "activate_skill",
             "deactivate_skill",
             "get_active_skills"
-        ],
-        "max_iterations": 100
+        ]
     },
     "web_search": {
         "enabled": true,

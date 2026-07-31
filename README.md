@@ -101,7 +101,10 @@ The token and data directories are created when their corresponding commands run
 | `PORT` | `9191` | Server port when `--port` is not supplied |
 | `DATA_PATH` | `.data/` beside the executable | SQLite databases and screenshot files |
 | `SERVER_TOKEN_PATH` | `.bs-token` beside the executable | Operator token file |
-| `bs-ai-config.json` | beside the executable | AI chat configuration (see [AI Chat](#ai-chat)) |
+| `bs-ai-config.json` | beside the executable | AI chat behavior config (tools, chat, memory, web/file/skills settings) |
+| `bs-ai-models.json` | beside the executable | AI provider/model catalog |
+| `BS_AI_CONFIG_PATH` | — | Override path to `bs-ai-config.json` |
+| `BS_AI_MODELS_PATH` | — | Override path to `bs-ai-models.json` |
 
 Examples:
 
@@ -178,12 +181,41 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
 
 ### Setup
 
-1. Create `bs-ai-config.json` next to the server binary:
+Create two sibling files next to the server binary: `bs-ai-config.json` for behavior toggles and `bs-ai-models.json` for the provider/model catalog. Provider API keys are read from environment variables.
+
+`bs-ai-config.json`:
 
 ```json
 {
   "cors_enabled": false,
   "default_provider": "openrouter",
+  "tools": {
+    "enabled": true,
+    "allowed": ["search_tool", "get_current_time", "search_todos", "read_file", "write_file"],
+    "max_iterations": 100
+  },
+  "web_search": {
+    "enabled": true,
+    "default_provider": "auto",
+    "timeout_seconds": 30,
+    "max_results": 10,
+    "fallback": true
+  },
+  "memory": {
+    "directory": ".memory"
+  },
+  "skills": {
+    "enabled": true,
+    "directory": ".skills"
+  },
+  "chat": { "system_prompt": "You are a helpful assistant.", "stream": true, "temperature": 0.7 }
+}
+```
+
+`bs-ai-models.json`:
+
+```json
+{
   "providers": {
     "openrouter": {
       "type": "openai_compatible",
@@ -197,46 +229,20 @@ The server includes an optional AI chat feature that connects to OpenAI-compatib
         { "id": "anthropic/claude-sonnet-4", "label": "Claude Sonnet 4", "supports_tools": true, "max_output_tokens": 8192 }
       ]
     }
-  },
-  "tools": {
-    "enabled": true,
-    "allowed": ["search_tool", "get_current_time", "ask_questions", "search_todos", "add_todo_record", "update_todo_record", "search_bookmarks", "search_history", "search_calendar", "manage_calendar"],
-    "max_iterations": 100
-  },
-  "web_search": {
-    "enabled": true,
-    "default_provider": "auto",
-    "timeout_seconds": 30,
-    "max_results": 10,
-    "fallback": true
-  },
-  "file_tools": {
-    "max_read_bytes": 32768,
-    "max_line_count": 5000,
-    "allowed_extensions": []
-  },
-  "memory": {
-    "enabled": true,
-    "directory": ".memory"
-  },
-  "skills": {
-    "enabled": true,
-    "directory": ".skills"
-  },
-  "chat": { "system_prompt": "You are a helpful assistant.", "stream": true, "temperature": 0.7 }
+  }
 }
 ```
 
-2. Set the API key environment variable (e.g. `$env:OPENROUTER_API_KEY = "sk-..."`) and restart the server.
+Set the API key environment variable (e.g. `$env:OPENROUTER_API_KEY = "sk-..."`) and restart the server. You can also set `BS_AI_CONFIG_PATH` or `BS_AI_MODELS_PATH` to point at a different location.
 
-The web app will show the AI Chat page once the config is detected. If the file is missing, the chat page displays a "disabled" state with instructions.
+The web app will show the AI Chat page once both files are detected. If either file is missing, the chat page displays a "disabled" state with instructions.
 
 Cross-origin API access is disabled by default.
 Set `"cors_enabled": true` and restart the server to enable it, so the frontend development server can call the API from another port.
 
 ### Provider retries
 
-Retry behavior is configured independently for each provider:
+Retry behavior is configured independently for each provider in `bs-ai-models.json`:
 
 | Setting | Default | Valid range | Description |
 | --- | --- | --- | --- |
@@ -331,7 +337,7 @@ For changes you intend to contribute, use a fork and a short-lived branch instea
    git push -u origin feat/short-description
    ```
 
-Keep pull requests focused and explain what changed, why it changed, and which checks passed. Never commit generated output or local secrets, including `bin/`, `dist/`, `node_modules/`, `.data/`, `.bs-token`, or `.env` files.
+Keep pull requests focused and explain what changed, why it changed, and which checks passed. Never commit generated output or local secrets, including `bin/`, `dist/`, `node_modules/`, `.data/`, `.bs-token`, `.env` files, or AI config files that contain real API keys.
 
 ## Repository layout
 
@@ -346,7 +352,8 @@ shared/browser-types/          Shared domain and API types
 shared/browser-utils/          Framework-free utilities
 shared/browser-extension-core/ Shared Vue extension UI and runtime logic
 scripts/build.ps1              Web app + Go release build
-bs-ai-config.json              AI chat configuration (providers, models, tools)
+bs-ai-config.json              AI chat behavior config (tools, chat, memory, etc.)
+bs-ai-models.json              AI provider/model catalog
 PRD.md                         Detailed product and API documentation
 ROADMAP.md                     Completed and planned work
 ```

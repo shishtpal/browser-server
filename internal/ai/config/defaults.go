@@ -12,6 +12,15 @@ func applyDefaults(cfg *Config, mainRaw, modelsRaw map[string]json.RawMessage) {
 	if !nestedPresent(mainRaw, "tools", "max_iterations") {
 		cfg.Tools.MaxIterations = 5
 	}
+	if !nestedPresent(mainRaw, "tools", "max_output") {
+		cfg.Tools.MaxOutput = 32 * 1024
+	}
+	if !nestedPresent(mainRaw, "tools", "max_diff_output") {
+		cfg.Tools.MaxDiffOutput = 0
+	}
+	if !nestedPresent(mainRaw, "tools", "git_timeout_seconds") {
+		cfg.Tools.GitTimeoutSecs = 30
+	}
 	if cfg.WebSearch.DefaultProvider == "" {
 		cfg.WebSearch.DefaultProvider = "auto"
 	}

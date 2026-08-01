@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("Frontend", "Server", "All")]
+    [ValidateSet("Frontend", "Server", "AIModelsRefresh", "All")]
     [string]$Target = "All"
 )
 
@@ -66,6 +66,21 @@ function Build-Server {
     Write-Host "Go binary built successfully: $GoOutput" -ForegroundColor Green
 }
 
+function Build-AIModelsRefresh {
+    Write-Host "`n==> Building bs-models-refresh..." -ForegroundColor Cyan
+    Set-Location -LiteralPath $ProjectRoot
+
+    $GoOutput = Join-Path $BinDir "bs-models-refresh.exe"
+    Write-Host "Running: go build -o `"$GoOutput`" ./cmd/bs-models-refresh" -ForegroundColor Gray
+    go build -o $GoOutput ./cmd/bs-models-refresh
+
+    if (-not (Test-Path $GoOutput)) {
+        Write-Host "ERROR: bs-models-refresh.exe not found after build." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "bs-models-refresh.exe built successfully: $GoOutput" -ForegroundColor Green
+}
+
 switch ($Target) {
     "Frontend" {
         Build-Frontend
@@ -73,9 +88,13 @@ switch ($Target) {
     "Server" {
         Build-Server
     }
+    "AIModelsRefresh" {
+        Build-AIModelsRefresh
+    }
     "All" {
         Build-Frontend
         Build-Server
+        Build-AIModelsRefresh
     }
 }
 

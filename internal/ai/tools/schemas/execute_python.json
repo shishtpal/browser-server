@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "code": {
+            "type": "string",
+            "description": "Python 3 source code to execute. State is NOT preserved between calls; print() anything you need to see.",
+            "maxLength": 32768
+        },
+        "packages": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Optional PyPI packages to install for this run, e.g. [\"pandas\", \"httpx\"]. Cached between runs by uv.",
+            "maxItems": 20
+        },
+        "working_dir": {
+            "type": "string",
+            "description": "Optional working directory for the Python process. Defaults to the system temp directory."
+        },
+        "timeout_seconds": {
+            "type": "integer",
+            "description": "Timeout in seconds (1-120). Defaults to 30. First run with new packages may be slower while uv downloads them.",
+            "minimum": 1,
+            "maximum": 120
+        }
+    },
+    "required": [
+        "code"
+    ],
+    "additionalProperties": false
+}

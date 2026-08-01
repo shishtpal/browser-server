@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"browser-server/internal/ai/config"
 )
 
 // validateRef rejects ref names that start with '-' to prevent them being
@@ -21,14 +23,14 @@ func validateRef(ref string) error {
 
 // runGit executes a git command with discrete arguments (safe from injection).
 // If dir is empty, defaults to the server binary's directory.
-func runGit(ctx context.Context, dir string, args ...string) (string, error) {
-	return runGitWithLimit(ctx, dir, limitsFrom(ctx).gitMaxOutput, args...)
+func runGit(ctx context.Context, dir string, paths config.PathsConfig, args ...string) (string, error) {
+	return runGitWithLimit(ctx, dir, limitsFrom(ctx).gitMaxOutput, paths, args...)
 }
 
 // runGitWithLimit executes a git command and truncates the output to the
 // provided byte limit (0 means no truncation). This lets git_diff use a
 // diff-specific limit while other git tools share the general max_output.
-func runGitWithLimit(ctx context.Context, dir string, limit int, args ...string) (string, error) {
+func runGitWithLimit(ctx context.Context, dir string, limit int, paths config.PathsConfig, args ...string) (string, error) {
 	if dir == "" {
 		ex, err := os.Executable()
 		if err != nil {
@@ -40,8 +42,11 @@ func runGitWithLimit(ctx context.Context, dir string, limit int, args ...string)
 	cmdCtx, cancel := context.WithTimeout(ctx, limitsFrom(ctx).gitTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(cmdCtx, "git", args...)
+	cmd := exec.CommandContext(cmdCtx, resolveBinary("git", paths), args...)
 	cmd.Dir = dir
+	if env := childEnv(paths); env != nil {
+		cmd.Env = env
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

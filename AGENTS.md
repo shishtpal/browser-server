@@ -118,9 +118,27 @@ Key sections in `bs-ai-config.json`:
   "file_tools": { ... },
   "memory": { ... },
   "skills": { ... },
+  "paths": { "additional_dirs": [], "binaries": {} },
   "cors_enabled": false
 }
 ```
+
+### Configured PATHs
+
+The `paths` section in `bs-ai-config.json` lets the operator specify additional directories and explicit binary overrides so AI tools (`execute_command`, `execute_python`, git tools, `get_diagnostics`) can find executables that are not on the server's inherited PATH:
+
+```jsonc
+"paths": {
+  "additional_dirs": ["/opt/homebrew/bin", "/usr/local/go/bin"],
+  "binaries": { "git": "/usr/local/git/bin/git" }
+}
+```
+
+- `additional_dirs` are prepended to the `PATH` of child processes and searched (in order) before the system PATH.
+- `binaries` maps a binary name to an explicit full path; highest priority, bypasses PATH entirely.
+- Both are optional; empty/missing `paths` = inherit parent process PATH.
+- Relative paths are resolved against the config file's directory.
+- Limits: 20 additional dirs, 30 binaries.
 
 Provider/model catalog in `bs-ai-models.json`:
 

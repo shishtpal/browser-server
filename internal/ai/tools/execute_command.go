@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"browser-server/internal/ai/config"
 )
 
 const maxCommandTimeout = 30 * time.Second
@@ -68,7 +70,7 @@ func DetectShell() ShellInfo {
 //go:embed schemas/execute_command.json
 var executeCommandSchema []byte
 
-func registerExecuteCommand(r *Registry, shell ShellInfo) {
+func registerExecuteCommand(r *Registry, shell ShellInfo, paths config.PathsConfig) {
 	schema := bytes.ReplaceAll(executeCommandSchema, []byte("{{SHELL_NAME}}"), []byte(shell.Name))
 	r.add(Tool{
 		Name:     "execute_command",
@@ -78,11 +80,11 @@ func registerExecuteCommand(r *Registry, shell ShellInfo) {
 			shell.Platform, shell.Name, shell.Name,
 		),
 		Schema:  json.RawMessage(schema),
-		Execute: executeCommand(shell),
+		Execute: executeCommand(shell, paths),
 	})
 }
 
-func executeCommand(shell ShellInfo) func(context.Context, json.RawMessage) (any, error) {
+func executeCommand(shell ShellInfo, paths config.PathsConfig) func(context.Context, json.RawMessage) (any, error) {
 	return func(ctx context.Context, raw json.RawMessage) (any, error) {
 		var a struct {
 			Command    string `json:"command"`
@@ -114,15 +116,18 @@ func executeCommand(shell ShellInfo) func(context.Context, json.RawMessage) (any
 		var cmd *exec.Cmd
 		switch shell.Name {
 		case "powershell":
-			cmd = exec.CommandContext(cmdCtx, "powershell", "-NoProfile", "-NonInteractive", "-Command", a.Command)
+			cmd = exec.CommandContext(cmdCtx, resolveBinary("powershell", paths), "-NoProfile", "-NonInteractive", "-Command", a.Command)
 		case "cmd":
-			cmd = exec.CommandContext(cmdCtx, "cmd", "/C", a.Command)
+			cmd = exec.CommandContext(cmdCtx, resolveBinary("cmd", paths), "/C", a.Command)
 		default:
-			cmd = exec.CommandContext(cmdCtx, shell.Name, "-c", a.Command)
+			cmd = exec.CommandContext(cmdCtx, resolveBinary(shell.Name, paths), "-c", a.Command)
 		}
 
 		if a.WorkingDir != "" {
 			cmd.Dir = a.WorkingDir
+		}
+		if env := childEnv(paths); env != nil {
+			cmd.Env = env
 		}
 
 		var stdout, stderr bytes.Buffer

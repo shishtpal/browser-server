@@ -21,6 +21,7 @@ var knownToolNames = map[string]bool{
 	"manage_prompt":      true,
 	"search_history":     true, "search_calendar": true, "manage_calendar": true,
 	"execute_command": true,
+	"execute_python":  true,
 	"web_search":      true, "web_fetch": true,
 	"read_file": true, "write_file": true, "edit_file": true, "multi_edit": true, "list_directory": true,
 	"delete_file": true, "move_file": true, "copy_file": true,
@@ -92,7 +93,7 @@ func validate(cfg *Config) error {
 			return fmt.Errorf("provider %q must have exactly one default model", name)
 		}
 	}
-	if cfg.Tools.MaxIterations <= 0 || cfg.Tools.MaxIterations > 500 {
+	if cfg.Tools.MaxIterations < 0 || cfg.Tools.MaxIterations > 500 {
 		return fmt.Errorf("tools.max_iterations must be between 1 and 500")
 	}
 	// max_output must leave room for the tools' JSON response envelope (the
@@ -116,6 +117,9 @@ func validate(cfg *Config) error {
 		return err
 	}
 	if err := validateFileTools(cfg.FileTools); err != nil {
+		return err
+	}
+	if err := validatePaths(cfg.Paths, cfg); err != nil {
 		return err
 	}
 	if filepath.IsAbs(cfg.Memory.Directory) || strings.Contains(cfg.Memory.Directory, "..") {

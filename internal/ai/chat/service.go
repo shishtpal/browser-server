@@ -87,7 +87,7 @@ func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Regi
 	}
 	return &Service{
 		cfg: cfg, store: st, profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{}, appendWindows: map[string]*appendWindow{},
-		tools: tools.New(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed}), pending: map[string]pendingToolCall{},
+		tools: tools.New(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths}), pending: map[string]pendingToolCall{},
 		toolRetryDelay:    time.Duration(cfg.Chat.ToolRetryDelaySeconds) * time.Second,
 		toolRetryAttempts: cfg.Chat.ToolRetryAttempts,
 	}

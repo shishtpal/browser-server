@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"browser-server/internal/ai/config"
 )
 
 func writeTempCode(t *testing.T, dir, name, content string) string {
@@ -75,7 +77,7 @@ func TestDiagnosticsParsingAndUnsupportedLanguage(t *testing.T) {
 	}
 	dir := t.TempDir()
 	writeTempCode(t, dir, "main.ts", "const x = 1\n")
-	if _, err := getDiagnostics(context.Background(), json.RawMessage(`{"path":`+quoteJSON(dir)+`,"language":"typescript"}`)); err == nil {
+	if _, err := getDiagnostics(config.PathsConfig{})(context.Background(), json.RawMessage(`{"path":`+quoteJSON(dir)+`,"language":"typescript"}`)); err == nil {
 		t.Fatal("expected unsupported language error")
 	}
 }

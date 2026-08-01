@@ -25,6 +25,7 @@ type Registry struct {
 	shell   ShellInfo
 	allowed []string
 	limits  toolLimits
+	paths   config.PathsConfig
 }
 
 // Options configures optional subsystems when constructing a Registry.
@@ -35,6 +36,7 @@ type Options struct {
 	FileTools config.FileToolsConfig
 	Tools     config.ToolsConfig
 	Allowed   []string
+	Paths     config.PathsConfig
 }
 
 // New creates a Registry with all built-in tools registered.
@@ -50,6 +52,7 @@ func New(options ...Options) *Registry {
 			gitMaxOutput:     o.Tools.MaxOutputBytes(),
 			gitMaxDiffOutput: o.Tools.MaxDiffOutputBytes(),
 		}
+		r.paths = o.Paths
 	}
 
 	var memory config.MemoryConfig
@@ -79,7 +82,8 @@ func New(options ...Options) *Registry {
 	registerSearchCalendar(r)
 	registerSearchBookmarks(r)
 	registerSearchHistory(r)
-	registerExecuteCommand(r, shell)
+	registerExecuteCommand(r, shell, r.paths)
+	registerExecutePython(r, r.paths)
 	if len(options) > 0 && options[0].WebSearch.Enabled {
 		registerWebTools(r, options[0].WebSearch)
 	}
@@ -102,18 +106,18 @@ func New(options ...Options) *Registry {
 	// Code intelligence tools
 	registerSearchCode(r)
 	registerAnalyzeCode(r)
-	registerGetDiagnostics(r)
+	registerGetDiagnostics(r, r.paths)
 
 	// Git tools
-	registerGitStatus(r)
-	registerGitDiff(r)
-	registerGitLog(r)
-	registerGitBranch(r)
-	registerGitCheckout(r)
-	registerGitCommit(r)
-	registerGitPush(r)
-	registerGitPull(r)
-	registerGitMerge(r)
+	registerGitStatus(r, r.paths)
+	registerGitDiff(r, r.paths)
+	registerGitLog(r, r.paths)
+	registerGitBranch(r, r.paths)
+	registerGitCheckout(r, r.paths)
+	registerGitCommit(r, r.paths)
+	registerGitPush(r, r.paths)
+	registerGitPull(r, r.paths)
+	registerGitMerge(r, r.paths)
 
 	// Tool discovery is registered last so it can search the complete registry.
 	registerSearchTool(r)

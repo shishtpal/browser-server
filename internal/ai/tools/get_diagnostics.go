@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"browser-server/internal/ai/config"
 )
 
 //go:embed schemas/get_diagnostics.json
@@ -96,152 +98,158 @@ func canonicalDiagnosticFile(dir, name string) string {
 
 const maxCommandOutput = 256 << 10
 
-func registerGetDiagnostics(r *Registry) {
+func registerGetDiagnostics(r *Registry, paths config.PathsConfig) {
 	r.add(Tool{
 		Name:        "get_diagnostics",
 		Category:    "Code Intelligence",
 		Description: "Get Go build and vet diagnostics",
 		Schema:      json.RawMessage(getDiagnosticsSchema),
-		Execute:     getDiagnostics,
+		Execute:     getDiagnostics(paths),
 	})
 }
 
-func getDiagnostics(ctx context.Context, raw json.RawMessage) (any, error) {
-	ctx, cancel := context.WithTimeout(ctx, codeToolTimeout)
-	defer cancel()
-	var a struct {
-		Path           string `json:"path"`
-		Language       string `json:"language"`
-		Severity       string `json:"severity"`
-		IncludeRelated bool   `json:"include_related"`
-		Max            int    `json:"max_results"`
-	}
-	if err := strict(raw, &a, map[string]bool{"path": true, "language": true, "severity": true, "include_related": true, "max_results": true}); err != nil {
-		return nil, err
-	}
-	if strings.TrimSpace(a.Path) == "" {
-		return nil, fmt.Errorf("path is required")
-	}
-	if a.Language == "" {
-		a.Language = "auto"
-	}
-	if a.Language != "go" && a.Language != "auto" {
-		return nil, fmt.Errorf("language %q is not supported in Phase 1; only go and auto are supported", a.Language)
-	}
-	if a.Severity == "" {
-		a.Severity = "warning"
-	}
-	if !map[string]bool{"error": true, "warning": true, "info": true, "hint": true, "all": true}[a.Severity] {
-		return nil, fmt.Errorf("invalid severity")
-	}
-	if a.Max == 0 {
-		a.Max = 100
-	}
-	if a.Max < 1 || a.Max > 200 {
-		return nil, fmt.Errorf("max_results must be 1 to 200")
-	}
-	st, err := os.Stat(a.Path)
-	if err != nil {
-		return nil, err
-	}
-	dir := a.Path
-	target := "./..."
-	if !st.IsDir() {
-		if filepath.Ext(a.Path) != ".go" && a.Language == "auto" {
-			return nil, fmt.Errorf("could not auto-detect Go from path")
+func getDiagnostics(paths config.PathsConfig) func(ctx context.Context, raw json.RawMessage) (any, error) {
+	return func(ctx context.Context, raw json.RawMessage) (any, error) {
+		ctx, cancel := context.WithTimeout(ctx, codeToolTimeout)
+		defer cancel()
+		var a struct {
+			Path           string `json:"path"`
+			Language       string `json:"language"`
+			Severity       string `json:"severity"`
+			IncludeRelated bool   `json:"include_related"`
+			Max            int    `json:"max_results"`
 		}
-		dir = filepath.Dir(a.Path)
-		target = "."
-	}
-	diags := []codeDiagnostic{}
-	counts := map[string]int{"errors": 0, "warnings": 0, "info": 0, "hints": 0}
-	truncated := false
-	var wantedFile string
-	if !st.IsDir() {
-		wantedFile, _ = filepath.Abs(a.Path)
-		wantedFile = filepath.Clean(wantedFile)
-	}
-	buildDiagnostics := 0
-	for _, run := range []struct{ name, severity string }{{"build", "error"}, {"vet", "warning"}} {
-		if run.name == "vet" && buildDiagnostics > 0 {
-			break
+		if err := strict(raw, &a, map[string]bool{"path": true, "language": true, "severity": true, "include_related": true, "max_results": true}); err != nil {
+			return nil, err
 		}
-		cmd := exec.CommandContext(ctx, "go", run.name, target)
-		cmd.Dir = dir
-		out := &cappedBuffer{limit: maxCommandOutput}
-		cmd.Stdout, cmd.Stderr = out, out
-		e := cmd.Run()
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
+		if strings.TrimSpace(a.Path) == "" {
+			return nil, fmt.Errorf("path is required")
 		}
-		if e != nil {
-			if _, ok := e.(*exec.ExitError); !ok {
-				return nil, fmt.Errorf("start go %s: %w", run.name, e)
-			}
+		if a.Language == "" {
+			a.Language = "auto"
 		}
-		truncated = truncated || out.truncated
-		positioned := 0
-		for _, line := range strings.Split(out.String(), "\n") {
-			d, ok := parseDiagnostic(line, run.severity, "go"+run.name)
-			if !ok {
-				continue
-			}
-			if wantedFile != "" && !strings.EqualFold(canonicalDiagnosticFile(dir, d.File), wantedFile) {
-				continue
-			}
-			positioned++
-			counts[run.severity+"s"]++
-			if !severityAllowed(a.Severity, run.severity) {
-				continue
-			}
-			probe, _ := json.Marshal(append(diags, d))
-			if len(diags) >= a.Max || len(probe) > outputBudget(ctx) {
-				truncated = true
-				continue
-			}
-			diags = append(diags, d)
+		if a.Language != "go" && a.Language != "auto" {
+			return nil, fmt.Errorf("language %q is not supported in Phase 1; only go and auto are supported", a.Language)
 		}
-		if run.name == "build" {
-			buildDiagnostics = positioned
+		if a.Severity == "" {
+			a.Severity = "warning"
 		}
-		if e != nil && positioned == 0 {
-			message := strings.TrimSpace(out.String())
-			if message == "" {
-				message = e.Error()
+		if !map[string]bool{"error": true, "warning": true, "info": true, "hint": true, "all": true}[a.Severity] {
+			return nil, fmt.Errorf("invalid severity")
+		}
+		if a.Max == 0 {
+			a.Max = 100
+		}
+		if a.Max < 1 || a.Max > 200 {
+			return nil, fmt.Errorf("max_results must be 1 to 200")
+		}
+		st, err := os.Stat(a.Path)
+		if err != nil {
+			return nil, err
+		}
+		dir := a.Path
+		target := "./..."
+		if !st.IsDir() {
+			if filepath.Ext(a.Path) != ".go" && a.Language == "auto" {
+				return nil, fmt.Errorf("could not auto-detect Go from path")
 			}
-			if len(message) > maxOutputFrom(ctx)/2 {
-				message = truncateUTF8(message, maxOutputFrom(ctx)/2)
-				truncated = true
+			dir = filepath.Dir(a.Path)
+			target = "."
+		}
+		diags := []codeDiagnostic{}
+		counts := map[string]int{"errors": 0, "warnings": 0, "info": 0, "hints": 0}
+		truncated := false
+		var wantedFile string
+		if !st.IsDir() {
+			wantedFile, _ = filepath.Abs(a.Path)
+			wantedFile = filepath.Clean(wantedFile)
+		}
+		buildDiagnostics := 0
+		goBin := resolveBinary("go", paths)
+		for _, run := range []struct{ name, severity string }{{"build", "error"}, {"vet", "warning"}} {
+			if run.name == "vet" && buildDiagnostics > 0 {
+				break
 			}
-			d := codeDiagnostic{File: a.Path, Range: diagnosticRange{}, Severity: run.severity, Source: "go" + run.name, Message: message}
-			counts[run.severity+"s"]++
-			probe, _ := json.Marshal(append(diags, d))
-			if severityAllowed(a.Severity, run.severity) && len(diags) < a.Max && len(probe) <= outputBudget(ctx) {
+			cmd := exec.CommandContext(ctx, goBin, run.name, target)
+			cmd.Dir = dir
+			if env := childEnv(paths); env != nil {
+				cmd.Env = env
+			}
+			out := &cappedBuffer{limit: maxCommandOutput}
+			cmd.Stdout, cmd.Stderr = out, out
+			e := cmd.Run()
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			if e != nil {
+				if _, ok := e.(*exec.ExitError); !ok {
+					return nil, fmt.Errorf("start go %s: %w", run.name, e)
+				}
+			}
+			truncated = truncated || out.truncated
+			positioned := 0
+			for _, line := range strings.Split(out.String(), "\n") {
+				d, ok := parseDiagnostic(line, run.severity, "go"+run.name)
+				if !ok {
+					continue
+				}
+				if wantedFile != "" && !strings.EqualFold(canonicalDiagnosticFile(dir, d.File), wantedFile) {
+					continue
+				}
+				positioned++
+				counts[run.severity+"s"]++
+				if !severityAllowed(a.Severity, run.severity) {
+					continue
+				}
+				probe, _ := json.Marshal(append(diags, d))
+				if len(diags) >= a.Max || len(probe) > outputBudget(ctx) {
+					truncated = true
+					continue
+				}
 				diags = append(diags, d)
-			} else if severityAllowed(a.Severity, run.severity) {
-				truncated = true
 			}
 			if run.name == "build" {
-				buildDiagnostics = 1
+				buildDiagnostics = positioned
+			}
+			if e != nil && positioned == 0 {
+				message := strings.TrimSpace(out.String())
+				if message == "" {
+					message = e.Error()
+				}
+				if len(message) > maxOutputFrom(ctx)/2 {
+					message = truncateUTF8(message, maxOutputFrom(ctx)/2)
+					truncated = true
+				}
+				d := codeDiagnostic{File: a.Path, Range: diagnosticRange{}, Severity: run.severity, Source: "go" + run.name, Message: message}
+				counts[run.severity+"s"]++
+				probe, _ := json.Marshal(append(diags, d))
+				if severityAllowed(a.Severity, run.severity) && len(diags) < a.Max && len(probe) <= outputBudget(ctx) {
+					diags = append(diags, d)
+				} else if severityAllowed(a.Severity, run.severity) {
+					truncated = true
+				}
+				if run.name == "build" {
+					buildDiagnostics = 1
+				}
 			}
 		}
-	}
-	checked := 0
-	if !st.IsDir() {
-		checked = 1
-	} else {
-		_ = filepath.WalkDir(dir, func(_ string, d os.DirEntry, e error) error {
-			if e != nil {
+		checked := 0
+		if !st.IsDir() {
+			checked = 1
+		} else {
+			_ = filepath.WalkDir(dir, func(_ string, d os.DirEntry, e error) error {
+				if e != nil {
+					return nil
+				}
+				if d.IsDir() && (d.Name() == ".git" || d.Name() == "node_modules") {
+					return filepath.SkipDir
+				}
+				if !d.IsDir() && filepath.Ext(d.Name()) == ".go" {
+					checked++
+				}
 				return nil
-			}
-			if d.IsDir() && (d.Name() == ".git" || d.Name() == "node_modules") {
-				return filepath.SkipDir
-			}
-			if !d.IsDir() && filepath.Ext(d.Name()) == ".go" {
-				checked++
-			}
-			return nil
-		})
+			})
+		}
+		return map[string]any{"diagnostics": diags, "summary": map[string]any{"errors": counts["errors"], "warnings": counts["warnings"], "info": counts["info"], "hints": counts["hints"], "files_checked": checked}, "truncated": truncated}, nil
 	}
-	return map[string]any{"diagnostics": diags, "summary": map[string]any{"errors": counts["errors"], "warnings": counts["warnings"], "info": counts["info"], "hints": counts["hints"], "files_checked": checked}, "truncated": truncated}, nil
 }

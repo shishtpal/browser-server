@@ -20,6 +20,19 @@ type Config struct {
 	Skills          SkillsConfig              `json:"skills"`
 	Logging         LoggingConfig             `json:"logging"`
 	Chat            ChatConfig                `json:"chat"`
+	Paths           PathsConfig               `json:"paths"`
+}
+
+// PathsConfig lets the operator configure additional PATH directories and
+// explicit binary overrides so AI tools can find executables that are not on
+// the server process's inherited PATH.
+type PathsConfig struct {
+	// AdditionalDirs are prepended to the PATH of child processes. They are
+	// also searched (in order) before the system PATH when resolving a binary.
+	AdditionalDirs []string `json:"additional_dirs"`
+	// Binaries maps a binary name to an explicit full path. Highest priority;
+	// bypasses PATH entirely.
+	Binaries map[string]string `json:"binaries"`
 }
 
 type SkillsConfig struct {

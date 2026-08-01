@@ -9,6 +9,7 @@ require (
 
 require (
 	github.com/go-shiori/go-readability v0.0.0-20251205110129-5db1dc9836f0
+	github.com/gorilla/websocket v1.5.3
 	golang.org/x/net v0.56.0
 	golang.org/x/time v0.15.0
 	gopkg.in/yaml.v3 v3.0.1

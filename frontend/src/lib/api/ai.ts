@@ -1,5 +1,6 @@
 import type {
   AIConfig,
+  AIVoiceConfig,
   AIConversation,
   AIConversationDetail,
   AIMessage,
@@ -18,6 +19,10 @@ import { API_BASE, authHeaders, client } from './client'
 
 export function getAIConfig(): Promise<AIConfig> {
   return client.getAIConfig()
+}
+
+export function getAIVoiceConfig(): Promise<AIVoiceConfig> {
+  return client.getAIVoiceConfig()
 }
 
 export function listAIConversations(query?: string, limit?: number): Promise<AIConversation[]> {

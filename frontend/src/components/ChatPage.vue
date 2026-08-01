@@ -1,61 +1,30 @@
 <template>
   <div
     class="chat-shell grid h-[calc(100vh-57px)] max-w-full grid-cols-1 overflow-hidden bg-white text-slate-900 dark:bg-slate-950 dark:text-white"
-    :class="gridClass"
-    :style="chatFontStyle"
-  >
+    :class="gridClass" :style="chatFontStyle">
     <!-- Desktop sidebar -->
-    <ChatSidebar
-      class="hidden lg:flex"
-      :conversations="filteredConversations"
-      :active-id="activeConversation?.id ?? null"
-      :search="search"
-      :status-label="configLabel"
-      :disabled="!config?.enabled || isBusy"
-      :archived-conversations="archivedConversations"
-      :show-archived="showArchived"
-      @new="startConversation"
-      @select="handleSelectConversation"
-      @rename="openRename"
-      @delete="confirmDelete"
-      @archive="confirmArchive"
-      @restore="confirmRestore"
-      @toggle-archived="toggleArchived"
-      @update:search="search = $event"
-    />
+    <ChatSidebar class="hidden lg:flex" :conversations="filteredConversations"
+      :active-id="activeConversation?.id ?? null" :search="search" :status-label="configLabel"
+      :disabled="!config?.enabled || isBusy" :archived-conversations="archivedConversations"
+      :show-archived="showArchived" @new="startConversation" @select="handleSelectConversation" @rename="openRename"
+      @delete="confirmDelete" @archive="confirmArchive" @restore="confirmRestore" @toggle-archived="toggleArchived"
+      @update:search="search = $event" />
 
     <!-- Main panel -->
     <section class="flex h-full flex-col overflow-hidden">
-      <ChatTopBar
-        :profiles="profiles"
-        :selected-profile="selectedProfile"
-        :profile-locked="profileLocked"
-        :skills="skills"
-        :active-skills="activeSkills"
-        :provider-names="providerNames"
-        :selected-provider="selectedProvider"
-        :selected-model="selectedModel"
-        :models="providerModels"
-        :supports-tools="selectedModelSupportsTools"
-        :tools-enabled="toolsEnabled"
-        :yolo-mode="yoloMode"
-        :disabled="!config?.enabled || isBusy"
-        :title="activeConversation?.title"
-        :download-disabled="!activeConversation"
-        :show-tools-panel="showToolsPanel"
-        :show-memory-explorer="showMemoryExplorer"
-        :show-prompt-manager="showPromptManager"
-        @toggle-sidebar="showMobileSidebar = true"
-        @update:selected-profile="selectedProfile = $event"
-        @update:selected-provider="selectedProvider = $event"
-        @update:selected-model="selectedModel = $event"
-        @update:yolo-mode="yoloMode = $event"
-        @toggle-skill="toggleSkill($event)"
-        @download="downloadConversation"
+      <ChatTopBar :profiles="profiles" :selected-profile="selectedProfile" :profile-locked="profileLocked"
+        :skills="skills" :active-skills="activeSkills" :provider-names="providerNames"
+        :selected-provider="selectedProvider" :selected-model="selectedModel" :models="providerModels"
+        :supports-tools="selectedModelSupportsTools" :tools-enabled="toolsEnabled" :yolo-mode="yoloMode"
+        :disabled="!config?.enabled || isBusy" :title="activeConversation?.title"
+        :download-disabled="!activeConversation" :show-tools-panel="showToolsPanel"
+        :show-memory-explorer="showMemoryExplorer" :show-prompt-manager="showPromptManager"
+        @toggle-sidebar="showMobileSidebar = true" @update:selected-profile="selectedProfile = $event"
+        @update:selected-provider="selectedProvider = $event" @update:selected-model="selectedModel = $event"
+        @update:yolo-mode="yoloMode = $event" @toggle-skill="toggleSkill($event)" @download="downloadConversation"
         @toggle-tools-panel="showToolsPanel = !showToolsPanel"
         @toggle-memory-explorer="showMemoryExplorer = !showMemoryExplorer"
-        @toggle-prompt-manager="showPromptManager = !showPromptManager"
-      />
+        @toggle-prompt-manager="showPromptManager = !showPromptManager" />
 
       <!-- Error banner -->
       <ErrorBanner v-if="error" :message="error" :on-retry="() => (error = '')" class="mx-4 mt-3 shrink-0" />
@@ -65,122 +34,92 @@
 
       <!-- Chat area -->
       <template v-else>
-        <ChatMessageList
-          ref="messageListRef"
-          :messages="visibleMessages"
-          :loading="isBusy"
-          @suggestion="useSuggestion"
-          @copy="copyMessage"
-          @delete="deleteMessage"
-          @branch="handleBranch"
-          @tool-decision="handleToolDecision"
-        />
+        <ChatMessageList ref="messageListRef" :messages="visibleMessages" :loading="isBusy" @suggestion="useSuggestion"
+          @copy="copyMessage" @delete="deleteMessage" @branch="handleBranch" @tool-decision="handleToolDecision" />
 
-        <ChatRegenerateButton
-          :visible="canRegenerate"
-          :disabled="isBusy"
-          @regenerate="handleRegenerate"
-        />
+        <ChatRegenerateButton :visible="canRegenerate" :disabled="isBusy" @regenerate="handleRegenerate" />
 
-        <ChatInput
-          ref="chatInputRef"
-          v-model="draft"
-          :disabled="!config?.enabled"
-          :busy="isBusy"
-          :can-append="canAppend"
-          :is-appending="isAppending"
-          :user-id="currentUserId"
-          @send="sendMessage"
-          @append="appendContext"
-          @stop="handleStop"
-          @select-prompt="useSuggestion"
-        />
+        <ChatInput ref="chatInputRef" v-model="draft" :disabled="!config?.enabled" :busy="isBusy"
+          :can-append="canAppend" :is-appending="isAppending" :user-id="currentUserId" @send="sendMessage"
+          @append="appendContext" @stop="handleStop" @voice="showVoiceModal = true" @select-prompt="useSuggestion" />
       </template>
     </section>
 
     <!-- Right tools panel (desktop) -->
-    <ChatToolsPanel
-      v-if="showToolsPanel"
-      class="hidden lg:flex"
-      :tools-enabled="userToolsEnabled"
-      :model-supports-tools="selectedModelSupportsTools"
-      :yolo-mode="yoloMode"
-      :include-all-tool-definitions="includeAllToolDefinitions"
-      :available-tools="availableTools"
-      :tools-by-category="toolsByCategory"
-      :disabled-tools="disabledTools"
-      :tool-calls="toolCallEntries"
-      :font-family="chatFontFamily"
-      :font-size="chatFontSize"
-      :raw-tool-output="rawToolOutput"
-      @close="showToolsPanel = false"
-      @update:tools-enabled="userToolsEnabled = $event"
-      @update:yolo-mode="yoloMode = $event"
-      @update:include-all-tool-definitions="includeAllToolDefinitions = $event"
-      @update:font-family="chatFontFamily = $event"
-      @update:font-size="chatFontSize = $event"
-      @update:raw-tool-output="rawToolOutput = $event"
-      @toggle-tool="toggleTool"
-    />
+    <ChatToolsPanel v-if="showToolsPanel" class="hidden lg:flex" :tools-enabled="userToolsEnabled"
+      :model-supports-tools="selectedModelSupportsTools" :yolo-mode="yoloMode"
+      :include-all-tool-definitions="includeAllToolDefinitions" :available-tools="availableTools"
+      :tools-by-category="toolsByCategory" :disabled-tools="disabledTools" :tool-calls="toolCallEntries"
+      :font-family="chatFontFamily" :font-size="chatFontSize" :raw-tool-output="rawToolOutput"
+      @close="showToolsPanel = false" @update:tools-enabled="userToolsEnabled = $event"
+      @update:yolo-mode="yoloMode = $event" @update:include-all-tool-definitions="includeAllToolDefinitions = $event"
+      @update:font-family="chatFontFamily = $event" @update:font-size="chatFontSize = $event"
+      @update:raw-tool-output="rawToolOutput = $event" @toggle-tool="toggleTool" />
 
     <!-- Mobile sidebar drawer -->
-    <ChatMobileDrawer
-      :open="showMobileSidebar"
-      :conversations="filteredConversations"
-      :active-id="activeConversation?.id ?? null"
-      :disabled="!config?.enabled || isBusy"
-      :archived-conversations="archivedConversations"
-      :show-archived="showArchived"
-      @close="showMobileSidebar = false"
+    <ChatMobileDrawer :open="showMobileSidebar" :conversations="filteredConversations"
+      :active-id="activeConversation?.id ?? null" :disabled="!config?.enabled || isBusy"
+      :archived-conversations="archivedConversations" :show-archived="showArchived" @close="showMobileSidebar = false"
       @new="startConversation(); showMobileSidebar = false"
-      @select="handleSelectConversation($event); showMobileSidebar = false"
-      @rename="openRename"
-      @delete="confirmDelete"
-      @archive="confirmArchive"
-      @restore="confirmRestore"
-      @toggle-archived="toggleArchived"
-    />
+      @select="handleSelectConversation($event); showMobileSidebar = false" @rename="openRename" @delete="confirmDelete"
+      @archive="confirmArchive" @restore="confirmRestore" @toggle-archived="toggleArchived" />
+
+    <!-- Voice typing modal -->
+    <ChatVoiceTypingModal :open="showVoiceModal" @close="showVoiceModal = false" @use="useVoiceTranscript" />
 
     <!-- Rename modal -->
     <Modal :open="showRenameModal" title="Rename conversation" @close="showRenameModal = false">
       <form @submit.prevent="handleRename">
-        <input
-          v-model="renameTitle"
+        <input v-model="renameTitle"
           class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 dark:border-white/10 dark:bg-slate-900"
-          placeholder="Conversation title"
-          autofocus
-        />
+          placeholder="Conversation title" autofocus />
         <div class="mt-4 flex justify-end gap-2">
-          <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" type="button" @click="showRenameModal = false">Cancel</button>
-          <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white dark:bg-white dark:text-slate-900" type="submit">Save</button>
+          <button
+            class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
+            type="button" @click="showRenameModal = false">Cancel</button>
+          <button
+            class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white dark:bg-white dark:text-slate-900"
+            type="submit">Save</button>
         </div>
       </form>
     </Modal>
 
     <!-- Archive confirmation modal -->
     <Modal :open="showArchiveModal" title="Archive conversation" @close="showArchiveModal = false">
-      <p class="text-sm text-slate-600 dark:text-slate-400">Archive "<strong>{{ archiveTarget?.title }}</strong>"? It will be moved to the Archived section.</p>
+      <p class="text-sm text-slate-600 dark:text-slate-400">Archive "<strong>{{ archiveTarget?.title }}</strong>"? It
+        will
+        be moved to the Archived section.</p>
       <div class="mt-4 flex justify-end gap-2">
-        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" type="button" @click="showArchiveModal = false">Cancel</button>
-        <button class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700" type="button" @click="handleArchive">Archive</button>
+        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
+          type="button" @click="showArchiveModal = false">Cancel</button>
+        <button class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700" type="button"
+          @click="handleArchive">Archive</button>
       </div>
     </Modal>
 
     <!-- Restore confirmation modal -->
     <Modal :open="showRestoreModal" title="Restore conversation" @close="showRestoreModal = false">
-      <p class="text-sm text-slate-600 dark:text-slate-400">Restore "<strong>{{ restoreTarget?.title }}</strong>"? It will reappear in the main list.</p>
+      <p class="text-sm text-slate-600 dark:text-slate-400">Restore "<strong>{{ restoreTarget?.title }}</strong>"? It
+        will
+        reappear in the main list.</p>
       <div class="mt-4 flex justify-end gap-2">
-        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" type="button" @click="showRestoreModal = false">Cancel</button>
-        <button class="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700" type="button" @click="handleRestore">Restore</button>
+        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
+          type="button" @click="showRestoreModal = false">Cancel</button>
+        <button class="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700" type="button"
+          @click="handleRestore">Restore</button>
       </div>
     </Modal>
 
     <!-- Delete confirmation modal -->
     <Modal :open="showDeleteModal" title="Delete conversation" @close="showDeleteModal = false">
-      <p class="text-sm text-slate-600 dark:text-slate-400">Are you sure you want to delete "<strong>{{ deleteTarget?.title }}</strong>"? This action cannot be undone.</p>
+      <p class="text-sm text-slate-600 dark:text-slate-400">Are you sure you want to delete "<strong>{{
+        deleteTarget?.title
+          }}</strong>"? This action cannot be undone.</p>
       <div class="mt-4 flex justify-end gap-2">
-        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" type="button" @click="showDeleteModal = false">Cancel</button>
-        <button class="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700" type="button" @click="handleDelete">Delete</button>
+        <button class="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
+          type="button" @click="showDeleteModal = false">Cancel</button>
+        <button class="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700" type="button"
+          @click="handleDelete">Delete</button>
       </div>
     </Modal>
 
@@ -189,48 +128,31 @@
 
     <!-- Branch toast -->
     <Transition name="toast">
-      <div
-        v-if="showBranchToast"
-        class="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-indigo-400/40 bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-600/30"
-      >
+      <div v-if="showBranchToast"
+        class="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-indigo-400/40 bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-600/30">
         <span class="inline-flex items-center gap-2">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3v12m0 0a3 3 0 103 3M6 15a3 3 0 013-3h6a3 3 0 003-3V6m0 0a3 3 0 10-3-3 3 3 0 003 3z"/></svg>
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6 3v12m0 0a3 3 0 103 3M6 15a3 3 0 013-3h6a3 3 0 003-3V6m0 0a3 3 0 10-3-3 3 3 0 003 3z" />
+          </svg>
           Branched into a new conversation
         </span>
       </div>
     </Transition>
 
     <!-- Memory Explorer modal -->
-    <ChatMemoryExplorer
-      :open="showMemoryExplorer"
-      :conversation-id="activeConversation?.id ?? ''"
-      :messages="messages"
-      @close="showMemoryExplorer = false"
-      @updated="messages = $event"
-    />
+    <ChatMemoryExplorer :open="showMemoryExplorer" :conversation-id="activeConversation?.id ?? ''" :messages="messages"
+      @close="showMemoryExplorer = false" @updated="messages = $event" />
 
     <!-- Prompt Manager modal -->
-    <PromptManager
-      :open="showPromptManager"
-      :user-id="currentUserId"
-      @select="applyPromptFromManager"
-      @close="showPromptManager = false"
-    />
+    <PromptManager :open="showPromptManager" :user-id="currentUserId" @select="applyPromptFromManager"
+      @close="showPromptManager = false" />
 
     <!-- New Conversation modal -->
-    <ChatNewConversationModal
-      :open="showNewConversationModal"
-      :profiles="profiles"
-      :provider-names="providerNames"
-      :providers="config?.providers ?? {}"
-      :skills="skills"
-      :default-provider="selectedProvider"
-      :default-model="selectedModel"
-      :default-profile="profileLocked ? '' : selectedProfile"
-      :default-skills="activeSkills"
-      @close="showNewConversationModal = false"
-      @create="handleNewConversationCreate"
-    />
+    <ChatNewConversationModal :open="showNewConversationModal" :profiles="profiles" :provider-names="providerNames"
+      :providers="config?.providers ?? {}" :skills="skills" :default-provider="selectedProvider"
+      :default-model="selectedModel" :default-profile="profileLocked ? '' : selectedProfile"
+      :default-skills="activeSkills" @close="showNewConversationModal = false" @create="handleNewConversationCreate" />
   </div>
 </template>
 
@@ -251,6 +173,7 @@ import ChatCopyToast from './chat/ChatCopyToast.vue'
 import ChatToolsPanel from './chat/ChatToolsPanel.vue'
 import ChatMemoryExplorer from './chat/ChatMemoryExplorer.vue'
 import ChatNewConversationModal from './chat/ChatNewConversationModal.vue'
+import ChatVoiceTypingModal from './chat/ChatVoiceTypingModal.vue'
 import type { NewConversationResult } from './chat/ChatNewConversationModal.vue'
 import type { ToolCallEntry } from './chat/ChatToolsPanel.vue'
 import { useChatConfig } from './chat/composables/useChatConfig'
@@ -356,11 +279,22 @@ const showToolsPanel = ref(true)
 const showMemoryExplorer = ref(false)
 const showNewConversationModal = ref(false)
 const showPromptManager = ref(false)
+const showVoiceModal = ref(false)
 
 // Archive/Restore local state
 const chatFontFamily = useLocalStorage(`bs.ai.chatFontFamily`, 'system-ui')
 const chatFontSize = useLocalStorage(`bs.ai.chatFontSize`, 14)
-const rawToolOutput = useLocalStorage<boolean | null>('bs.ai.rawToolOutput', null)
+const rawToolOutput = useLocalStorage<boolean | null>('bs.ai.rawToolOutput', null, {
+  serializer: {
+    read: (v) => {
+      if (v == null) return null
+      if (v === 'true') return true
+      if (v === 'false') return false
+      return null
+    },
+    write: (v) => String(v),
+  },
+})
 
 const messageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null)
 const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
@@ -591,6 +525,13 @@ async function handleRestore() {
 
 function useSuggestion(text: string | { content?: string }) {
   draft.value = typeof text === 'string' ? text : text.content ?? ''
+  nextTick(() => chatInputRef.value?.focus())
+}
+
+function useVoiceTranscript(text: string) {
+  const existing = draft.value.trimEnd()
+  draft.value = existing ? `${existing} ${text.trim()}` : text.trim()
+  showVoiceModal.value = false
   nextTick(() => chatInputRef.value?.focus())
 }
 

@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"bufio"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 )
@@ -24,6 +26,20 @@ func (r *statusRecorder) Flush() {
 	if flusher, ok := r.ResponseWriter.(http.Flusher); ok {
 		flusher.Flush()
 	}
+}
+
+// Hijack preserves WebSocket upgrade support exposed by the underlying
+// response writer.
+func (r *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := r.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, http.ErrNotSupported
+	}
+	conn, rw, err := hijacker.Hijack()
+	if err == nil {
+		r.status = http.StatusSwitchingProtocols
+	}
+	return conn, rw, err
 }
 
 func Logging(next http.Handler) http.Handler {

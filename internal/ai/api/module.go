@@ -6,6 +6,7 @@ import (
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
+	"browser-server/internal/ai/voice"
 	"context"
 	"fmt"
 	"log"
@@ -22,6 +23,7 @@ type Module struct {
 	service  *chat.Service
 	profiles *profiles.Registry
 	skills   *skills.Registry
+	voice    *voice.Config
 	stop     chan struct{}
 	wg       sync.WaitGroup
 }
@@ -40,6 +42,11 @@ func Init() (*Module, error) {
 		return module, nil
 	}
 	baseDir := filepath.Dir(cfg.Path)
+	voiceCfg, err := voice.Load(baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("load AI voice config: %w", err)
+	}
+	module.voice = voiceCfg
 	profileReg, err := profiles.Load(baseDir)
 	if err != nil {
 		return nil, fmt.Errorf("load profiles: %w", err)
@@ -72,6 +79,7 @@ func Init() (*Module, error) {
 		return nil, fmt.Errorf("AI retention cleanup: %w", err)
 	}
 	module.store = st
+	module.voice = voiceCfg
 	module.service = chat.NewService(cfg, st, profileReg, skillReg)
 	module.stop = make(chan struct{})
 	module.wg.Add(1)
@@ -121,6 +129,10 @@ func (m *Module) Profiles() *profiles.Registry {
 
 func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/config", m.Config).Methods("GET")
+	if m.voice != nil {
+		r.HandleFunc("/ai/voice/config", m.VoiceConfig).Methods("GET")
+		r.Handle("/ai/voice/transcribe", &voice.Proxy{Config: m.voice}).Methods("GET")
+	}
 	r.HandleFunc("/ai/skills", m.requireAI(m.ListSkills)).Methods("GET")
 	r.HandleFunc("/ai/skills/{name}", m.requireAI(m.GetSkill)).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.ListConversations)).Methods("GET")

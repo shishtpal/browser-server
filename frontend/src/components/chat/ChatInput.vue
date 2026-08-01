@@ -54,6 +54,18 @@
           <!-- Action buttons -->
           <div class="flex items-center gap-1.5 px-2.5 pb-2">
             <button
+              class="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:bg-white/10"
+              :disabled="disabled"
+              type="button"
+              aria-label="Voice typing"
+              :title="disabled ? 'Voice typing is unavailable while AI chat is disabled' : 'Voice typing'"
+              @click="$emit('voice')"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3zM5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8" />
+              </svg>
+            </button>
+            <button
               v-if="busy && canAppend"
               class="rounded-lg bg-indigo-600 px-3 py-1.5 text-[0.8em] font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="!canSubmit || isAppending"
@@ -127,6 +139,7 @@ const emit = defineEmits<{
   send: [content: string]
   append: [content: string]
   stop: []
+  voice: []
   selectPrompt: [prompt: PromptResponse]
 }>()
 

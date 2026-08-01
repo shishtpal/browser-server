@@ -1,5 +1,6 @@
 import type {
   AIConfig,
+  AIVoiceConfig,
   AIConversation,
   AIConversationDetail,
   AIMessage,
@@ -18,6 +19,10 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
   return {
     getAIConfig(): Promise<AIConfig> {
       return apiFetch<AIConfig>(baseUrl, 'GET', '/api/ai/config', undefined, getToken)
+    },
+
+    getAIVoiceConfig(): Promise<AIVoiceConfig> {
+      return apiFetch<AIVoiceConfig>(baseUrl, 'GET', '/api/ai/voice/config', undefined, getToken)
     },
 
     listAIConversations(query?: string, limit?: number): Promise<AIConversation[]> {

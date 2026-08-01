@@ -103,8 +103,10 @@ The token and data directories are created when their corresponding commands run
 | `SERVER_TOKEN_PATH` | `.bs-token` beside the executable | Operator token file |
 | `bs-ai-config.json` | beside the executable | AI chat behavior config (tools, chat, memory, web/file/skills settings) |
 | `bs-ai-models.json` | beside the executable | AI provider/model catalog |
+| `bs-ai-voice.json` | beside `bs-ai-config.json` | Optional voice typing providers, models, languages, and recording limits |
 | `BS_AI_CONFIG_PATH` | — | Override path to `bs-ai-config.json` |
 | `BS_AI_MODELS_PATH` | — | Override path to `bs-ai-models.json` |
+| `BS_AI_VOICE_PATH` | — | Override path to `bs-ai-voice.json` |
 
 Examples:
 
@@ -239,6 +241,16 @@ The web app will show the AI Chat page once both files are detected. If either f
 
 Cross-origin API access is disabled by default.
 Set `"cors_enabled": true` and restart the server to enable it, so the frontend development server can call the API from another port.
+
+### Voice typing
+
+AI Chat voice typing is configured independently in `bs-ai-voice.json`. The supplied file defines Sarvam's streaming speech-to-text service with Auto, Hindi, and English language choices and is disabled by default. Set `"enabled": true` and provide the server-side key before startup:
+
+```powershell
+$env:SARVAM_API_KEY = "your-key"
+```
+
+The browser sends mono PCM audio to the token-protected `/api/ai/voice/transcribe` WebSocket. Browser Server validates the configured provider/model/language and adds the Sarvam API-key header upstream, so the secret is never exposed to the web app. Set `"enabled": false` in `bs-ai-voice.json` to disable voice typing, or remove the optional file. Use `BS_AI_VOICE_PATH` to load it from another location.
 
 ### Provider retries
 

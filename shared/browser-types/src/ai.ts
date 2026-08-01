@@ -45,6 +45,43 @@ export interface AIModelConfig {
   max_output_tokens: number
 }
 
+/** Secret-free voice configuration returned to browser clients. */
+export interface AIVoiceConfig {
+  enabled: boolean
+  default_provider?: string
+  languages: AIVoiceLanguage[]
+  recording: AIVoiceRecordingConfig
+  providers: Record<string, AIVoiceProviderConfig>
+}
+
+export interface AIVoiceLanguage {
+  code: string
+  label: string
+}
+
+export interface AIVoiceRecordingConfig {
+  silence_duration_ms: number
+  speech_threshold: number
+  max_duration_seconds: number
+  max_frame_bytes: number
+  max_audio_bytes: number
+}
+
+export interface AIVoiceProviderConfig {
+  type: string
+  enabled: boolean
+  models: AIVoiceModelConfig[]
+}
+
+export interface AIVoiceModelConfig {
+  id: string
+  label: string
+  sample_rate: 8000 | 16000
+  mode?: string
+  input_audio_codec?: string
+  default: boolean
+}
+
 export interface AIConversation {
   id: string
   title: string

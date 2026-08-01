@@ -1,0 +1,35 @@
+{
+  "enabled": false,
+  "default_provider": "sarvam",
+  "languages": [
+    { "code": "unknown", "label": "Auto" },
+    { "code": "hi-IN", "label": "Hindi" },
+    { "code": "en-IN", "label": "English" }
+  ],
+  "recording": {
+    "silence_duration_ms": 1400,
+    "speech_threshold": 0.025,
+    "max_duration_seconds": 120,
+    "max_frame_bytes": 65536,
+    "max_audio_bytes": 4194304
+  },
+  "providers": {
+    "sarvam": {
+      "type": "sarvam_streaming",
+      "enabled": true,
+      "base_url": "wss://api.sarvam.ai/speech-to-text/ws",
+      "api_key": "env:SARVAM_API_KEY",
+      "request_timeout_seconds": 150,
+      "models": [
+        {
+          "id": "saaras:v4",
+          "label": "Saaras v4",
+          "sample_rate": 16000,
+          "mode": "transcribe",
+          "input_audio_codec": "pcm_s16le",
+          "default": true
+        }
+      ]
+    }
+  }
+}

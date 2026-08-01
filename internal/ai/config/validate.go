@@ -113,6 +113,11 @@ func validate(cfg *Config) error {
 			return fmt.Errorf("tools.allowed contains unknown tool %q", name)
 		}
 	}
+	for _, name := range cfg.Tools.RawOutput {
+		if !knownToolNames[name] {
+			return fmt.Errorf("tools.raw_output contains unknown tool %q", name)
+		}
+	}
 	if err := validateWebSearch(cfg.WebSearch); err != nil {
 		return err
 	}

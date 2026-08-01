@@ -108,6 +108,32 @@
           </label>
         </section>
 
+        <!-- Tool output mode -->
+        <section v-if="toolsEnabled">
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Tool output mode</span>
+          <div class="mt-1.5 grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-white p-1 dark:border-white/10 dark:bg-slate-900">
+            <button
+              type="button"
+              class="rounded-md px-2 py-1 text-[10px] font-bold transition"
+              :class="rawToolOutput === true ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10'"
+              @click="$emit('update:rawToolOutput', true)"
+            >Raw</button>
+            <button
+              type="button"
+              class="rounded-md px-2 py-1 text-[10px] font-bold transition"
+              :class="rawToolOutput === null ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10'"
+              @click="$emit('update:rawToolOutput', null)"
+            >Auto</button>
+            <button
+              type="button"
+              class="rounded-md px-2 py-1 text-[10px] font-bold transition"
+              :class="rawToolOutput === false ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10'"
+              @click="$emit('update:rawToolOutput', false)"
+            >JSON</button>
+          </div>
+          <p class="mt-1 text-[10px] text-slate-400 dark:text-slate-500">Raw returns bare text; Auto follows the server config allowlist; JSON wraps results in an envelope.</p>
+        </section>
+
         <!-- Available tools (grouped by category) -->
         <section v-if="toolsEnabled && availableTools.length > 0">
           <h3 class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Available Tools</h3>
@@ -284,6 +310,8 @@ const props = defineProps<{
   toolCalls: ToolCallEntry[]
   fontFamily: string
   fontSize: number
+  /** true = force raw, false = force JSON, null = follow server config */
+  rawToolOutput: boolean | null
 }>()
 
 const emit = defineEmits<{
@@ -293,6 +321,7 @@ const emit = defineEmits<{
   'update:includeAllToolDefinitions': [value: boolean]
   'update:fontFamily': [value: string]
   'update:fontSize': [value: number]
+  'update:rawToolOutput': [value: boolean | null]
   'toggle-tool': [name: string, enabled: boolean]
 }>()
 

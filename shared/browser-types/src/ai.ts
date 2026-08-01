@@ -108,6 +108,8 @@ export interface SendAIMessageInput {
   include_all_tool_definitions?: boolean
   active_tools?: string[]
   skills?: string[]
+  /** true = force raw tool output, false = force JSON, omitted = follow server config allowlist */
+  raw_tool_output?: boolean
 }
 
 export interface AppendAIMessageInput {

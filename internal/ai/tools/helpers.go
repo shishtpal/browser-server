@@ -34,6 +34,7 @@ type toolLimits struct {
 	gitTimeout       time.Duration
 	gitMaxOutput     int
 	gitMaxDiffOutput int
+	rawOutput        map[string]bool
 }
 
 func defaultToolLimits() toolLimits {
@@ -59,6 +60,26 @@ func limitsFrom(ctx context.Context) toolLimits {
 		return l
 	}
 	return defaultToolLimits()
+}
+
+type rawOverrideKey struct{}
+
+// WithRawOutputOverride attaches a per-request raw-output override to ctx.
+// nil means "use the config tools.raw_output allowlist"; true forces raw
+// output for every tool that has a RawContentFunc; false forces JSON for every
+// tool. This is how the chat UI toggles raw vs JSON per message without
+// editing bs-ai-config.json.
+func WithRawOutputOverride(ctx context.Context, override *bool) context.Context {
+	return context.WithValue(ctx, rawOverrideKey{}, override)
+}
+
+// rawOverrideFrom returns the per-request raw-output override attached to ctx,
+// or nil when the config allowlist should be used.
+func rawOverrideFrom(ctx context.Context) *bool {
+	if v, ok := ctx.Value(rawOverrideKey{}).(*bool); ok {
+		return v
+	}
+	return nil
 }
 
 // maxOutputFrom returns the configured output limit for this invocation.
@@ -165,4 +186,35 @@ func (r contextReader) Read(p []byte) (int, error) {
 	default:
 		return r.reader.Read(p)
 	}
+}
+
+// rawMapField returns a RawContentFunc that extracts a named string field from
+// a map result.
+func rawMapField(field string) func(any) ([]byte, bool) {
+	return func(v any) ([]byte, bool) {
+		m, ok := v.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		s, ok := m[field].(string)
+		if !ok {
+			return nil, false
+		}
+		return []byte(s), true
+	}
+}
+
+// rawTrue returns "true" as raw output.
+func rawTrue(v any) ([]byte, bool) {
+	return []byte("true"), true
+}
+
+// rawString returns the string value of v as raw output, falling back to false
+// if v is not a string.
+func rawString(v any) ([]byte, bool) {
+	s, ok := v.(string)
+	if !ok {
+		return nil, false
+	}
+	return []byte(s), true
 }

@@ -17,6 +17,12 @@ type Tool struct {
 	Category    string
 	Schema      json.RawMessage
 	Execute     func(context.Context, json.RawMessage) (any, error)
+	// RawContentFunc extracts raw output from an Execute result. When the tool
+	// is listed in tools.raw_output (or a request forces raw mode), the
+	// registry calls this function instead of JSON-marshaling. Return
+	// (bytes, true) to use raw output; (nil, false) to fall back to JSON
+	// marshaling. When nil, the tool never produces raw output.
+	RawContentFunc func(any) ([]byte, bool)
 }
 
 // Registry holds all registered tools and provides lookup/execution.
@@ -51,6 +57,10 @@ func New(options ...Options) *Registry {
 			gitTimeout:       o.Tools.GitTimeout(),
 			gitMaxOutput:     o.Tools.MaxOutputBytes(),
 			gitMaxDiffOutput: o.Tools.MaxDiffOutputBytes(),
+		}
+		r.limits.rawOutput = map[string]bool{}
+		for _, name := range o.Tools.RawOutput {
+			r.limits.rawOutput[name] = true
 		}
 		r.paths = o.Paths
 	}
@@ -159,12 +169,37 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	if t.Execute == nil {
 		return nil, fmt.Errorf("tool is not directly executable")
 	}
-	v, err := t.Execute(withToolLimits(ctx, r.limits), args)
+	// Attach this registry's limits to the caller's context so both the tool
+	// function and the output checks below see the same values (raw_output
+	// allowlist, max_output, git settings). Reading limitsFrom(ctx) without
+	// this would silently use the defaults because callers normally pass a
+	// plain context.
+	ctx = withToolLimits(ctx, r.limits)
+	v, err := t.Execute(ctx, args)
 	if err != nil {
 		return nil, err
 	}
+
+	// Decide raw vs JSON: a per-request override (WithRawOutputOverride) wins;
+	// otherwise fall back to the config tools.raw_output allowlist. Forced raw
+	// mode only applies to tools that actually provide a RawContentFunc; tools
+	// without one always fall through to JSON.
+	lim := limitsFrom(ctx)
+	useRaw := lim.rawOutput[name]
+	if override := rawOverrideFrom(ctx); override != nil {
+		useRaw = *override
+	}
+	if useRaw && t.RawContentFunc != nil {
+		if raw, ok := t.RawContentFunc(v); ok {
+			if len(raw) > lim.maxOutput {
+				return nil, fmt.Errorf("tool output exceeds limit")
+			}
+			return raw, nil
+		}
+	}
+
 	b, err := json.Marshal(v)
-	if len(b) > r.limits.maxOutput {
+	if len(b) > lim.maxOutput {
 		return nil, fmt.Errorf("tool output exceeds limit")
 	}
 	return b, err

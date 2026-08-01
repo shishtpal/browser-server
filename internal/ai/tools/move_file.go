@@ -20,6 +20,7 @@ func registerMoveFile(r *Registry) {
 		Description: "Move or rename a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
 		Schema:      json.RawMessage(moveFileSchema),
 		Execute:     moveFile,
+		RawContentFunc: rawTrue,
 	})
 }
 

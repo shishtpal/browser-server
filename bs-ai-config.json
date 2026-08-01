@@ -19,6 +19,18 @@
         "max_diff_output": 32768,
         "git_timeout_seconds": 30,
         "max_iterations": 100,
+        "raw_output": [
+            "read_file",
+            "git_diff",
+            "directory_tree",
+            "write_file",
+            "delete_file",
+            "copy_file",
+            "move_file",
+            "edit_file",
+            "web_search",
+            "web_fetch"
+        ],
         "allowed": [
             "search_tool",
             "get_current_time",

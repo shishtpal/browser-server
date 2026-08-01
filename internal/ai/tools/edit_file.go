@@ -22,6 +22,7 @@ func registerEditFile(r *Registry) {
 		Description: "Apply a unified diff patch to an existing file. The patch must contain --- and +++ file headers and at least one @@ hunk. Context lines must match exactly; use read_file first to inspect the file. Use write_file for new files.",
 		Schema:      json.RawMessage(editFileSchema),
 		Execute:     editFile,
+		RawContentFunc: rawEditFileResult,
 	})
 }
 
@@ -297,4 +298,20 @@ func joinFileLines(lines []string, lineEnding string) string {
 		return ""
 	}
 	return strings.Join(lines, lineEnding) + lineEnding
+}
+
+// rawEditFileResult handles the edit_file raw output: dry-run returns the
+// preview content, regular runs return "true".
+func rawEditFileResult(v any) ([]byte, bool) {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	// Dry-run: return the preview content itself
+	if has, _ := m["dry_run"].(bool); has {
+		if s, ok := m["preview"].(string); ok {
+			return []byte(s), true
+		}
+	}
+	return []byte("true"), true
 }

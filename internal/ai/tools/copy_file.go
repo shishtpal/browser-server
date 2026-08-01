@@ -21,6 +21,7 @@ func registerCopyFile(r *Registry) {
 		Description: "Copy a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
 		Schema:      json.RawMessage(copyFileSchema),
 		Execute:     copyFile,
+		RawContentFunc: rawTrue,
 	})
 }
 

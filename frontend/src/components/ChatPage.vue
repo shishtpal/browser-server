@@ -112,12 +112,14 @@
       :tool-calls="toolCallEntries"
       :font-family="chatFontFamily"
       :font-size="chatFontSize"
+      :raw-tool-output="rawToolOutput"
       @close="showToolsPanel = false"
       @update:tools-enabled="userToolsEnabled = $event"
       @update:yolo-mode="yoloMode = $event"
       @update:include-all-tool-definitions="includeAllToolDefinitions = $event"
       @update:font-family="chatFontFamily = $event"
       @update:font-size="chatFontSize = $event"
+      @update:raw-tool-output="rawToolOutput = $event"
       @toggle-tool="toggleTool"
     />
 
@@ -358,6 +360,7 @@ const showPromptManager = ref(false)
 // Archive/Restore local state
 const chatFontFamily = useLocalStorage(`bs.ai.chatFontFamily`, 'system-ui')
 const chatFontSize = useLocalStorage(`bs.ai.chatFontSize`, 14)
+const rawToolOutput = useLocalStorage<boolean | null>('bs.ai.rawToolOutput', null)
 
 const messageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null)
 const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
@@ -502,6 +505,7 @@ async function sendMessage(content?: string) {
         streamEnabled: config.value?.chat?.stream !== false,
         activeTools: activeTools.value,
         skills: activeSkills.value,
+        rawToolOutput: rawToolOutput.value ?? undefined,
       },
       async (conversationId, firstMessage) => {
         await refreshConversation(conversationId)

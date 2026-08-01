@@ -18,6 +18,8 @@ interface SendOptions {
   streamEnabled: boolean
   activeTools?: string[]
   skills?: string[]
+  /** true = force raw tool output, false = force JSON, undefined = follow server config allowlist */
+  rawToolOutput?: boolean
 }
 
 export function useChatMessaging(
@@ -93,20 +95,23 @@ export function useChatMessaging(
 
     const useStream = options.streamEnabled || options.toolsEnabled
 
+    const payload = {
+      content: text,
+      provider: options.provider,
+      model: options.model,
+      stream: useStream,
+      tools_enabled: options.toolsEnabled,
+      yolo_mode: options.yoloMode,
+      include_all_tool_definitions: options.includeAllToolDefinitions,
+      active_tools: options.activeTools,
+      skills: options.skills?.length ? options.skills : undefined,
+      raw_tool_output: options.rawToolOutput,
+    }
+
     if (useStream) {
       streamController = sendAIMessageStream(
         conversationId,
-        {
-          content: text,
-          provider: options.provider,
-          model: options.model,
-          stream: true,
-          tools_enabled: options.toolsEnabled,
-          yolo_mode: options.yoloMode,
-          include_all_tool_definitions: options.includeAllToolDefinitions,
-          active_tools: options.activeTools,
-          skills: options.skills?.length ? options.skills : undefined,
-        },
+        payload,
         (event: AIStreamEvent) => {
           const currentMessages = getMessages()
           switch (event.type) {
@@ -187,17 +192,7 @@ export function useChatMessaging(
       )
     } else {
       // Non-streaming fallback
-      const result = await sendAIMessage(conversationId, {
-        content: text,
-        provider: options.provider,
-        model: options.model,
-        stream: false,
-        tools_enabled: options.toolsEnabled,
-        yolo_mode: options.yoloMode,
-        include_all_tool_definitions: options.includeAllToolDefinitions,
-        active_tools: options.activeTools,
-        skills: options.skills?.length ? options.skills : undefined,
-      })
+      const result = await sendAIMessage(conversationId, payload)
 
       const currentMessages = getMessages().filter((m) => m.id !== tempUserId && m.id !== tempAssistantId)
       const newMessages: AIMessage[] = [result.user_message]

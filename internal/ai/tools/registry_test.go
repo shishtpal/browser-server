@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"browser-server/internal/ai/config"
 )
 
 func TestStrictToolArguments(t *testing.T) {
@@ -128,6 +130,65 @@ func TestDeleteFileDoesNotTrimApprovedPath(t *testing.T) {
 	}
 	if string(content) != "trimmed" {
 		t.Fatalf("trimmed-path content = %q, want %q", content, "trimmed")
+	}
+}
+
+func TestExecuteRawOutputOverride(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sample.txt")
+	if err := os.WriteFile(path, []byte("hello raw"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	args := []byte(`{"path":` + quoted(path) + `}`)
+
+	// Default (no config allowlist, no override): JSON envelope.
+	r := New()
+	out, err := r.Execute(context.Background(), "read_file", args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(out) {
+		t.Fatalf("default read_file output = %q, want JSON", out)
+	}
+
+	// Force raw via context override -> bare content, no JSON envelope.
+	raw := true
+	ctx := WithRawOutputOverride(context.Background(), &raw)
+	out, err = r.Execute(ctx, "read_file", args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != "hello raw" {
+		t.Fatalf("forced raw read_file output = %q, want %q", out, "hello raw")
+	}
+
+	// Force JSON via context override on a config-raw-enabled registry.
+	r2 := New(Options{Tools: config.ToolsConfig{RawOutput: []string{"read_file"}}})
+	forceJSON := false
+	out, err = r2.Execute(WithRawOutputOverride(context.Background(), &forceJSON), "read_file", args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(out) {
+		t.Fatalf("forced JSON read_file output = %q, want JSON envelope", out)
+	}
+
+	// Config allowlist still applies when no override is present.
+	out, err = r2.Execute(context.Background(), "read_file", args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != "hello raw" {
+		t.Fatalf("config raw read_file output = %q, want %q", out, "hello raw")
+	}
+
+	// Tools without RawContentFunc stay JSON even when raw is forced.
+	out, err = r.Execute(ctx, "get_current_time", []byte(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(out) {
+		t.Fatalf("get_current_time output = %q, want JSON even in forced raw mode", out)
 	}
 }
 

@@ -54,7 +54,12 @@ type SubmitRequest struct {
 	IncludeAllToolDefinitions bool     `json:"include_all_tool_definitions"`
 	ActiveTools               []string `json:"active_tools,omitempty"`
 	Skills                    []string `json:"skills,omitempty"`
-	regenerate                bool
+	// RawToolOutput overrides tool output encoding for this request: true
+	// forces raw output for every tool that supports it, false forces JSON.
+	// nil (omitted) uses the tools.raw_output config allowlist. Lets the UI
+	// toggle raw vs JSON per message without editing config.
+	RawToolOutput *bool `json:"raw_tool_output,omitempty"`
+	regenerate    bool
 }
 
 type SubmitResponse struct {
@@ -171,6 +176,12 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 		return SubmitResponse{}, ErrConflict
 	}
 	defer s.finish(conversationID)
+
+	// Per-request raw/JSON output toggle: wrap the generation context so
+	// Registry.Execute() honors it for every tool call in this turn.
+	if req.RawToolOutput != nil {
+		generationCtx = tools.WithRawOutputOverride(generationCtx, req.RawToolOutput)
+	}
 
 	var userMessage, assistantMessage store.Message
 	if req.regenerate {

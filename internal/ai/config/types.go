@@ -61,6 +61,7 @@ type ModelConfig struct {
 type ToolsConfig struct {
 	Enabled        bool     `json:"enabled"`
 	Allowed        []string `json:"allowed"`
+	RawOutput      []string `json:"raw_output"`
 	MaxIterations  int      `json:"max_iterations"`
 	MaxOutput      int      `json:"max_output"`
 	MaxDiffOutput  int      `json:"max_diff_output"`

@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -189,5 +190,54 @@ func TestToolDecisionDeliversComment(t *testing.T) {
 	}
 	if comment != "use a different argument" {
 		t.Fatalf("expected comment delivered, got %q", comment)
+	}
+}
+
+func TestToolResultFieldNeverBreaksMarshal(t *testing.T) {
+	// Raw-output mode returns arbitrary text (e.g. a git diff) which is not
+	// valid JSON; embedding it as json.RawMessage used to fail with
+	// "invalid character 'd' looking for beginning of value".
+	tests := []struct {
+		name   string
+		result []byte
+	}{
+		{"raw git diff", []byte("diff --git a/x b/x\nindex 123..456\n--- a/x\n+++ b/x\n")},
+		{"raw directory tree", []byte("directory tree:\n├── main.go\n└── go.mod\n")},
+		{"empty", nil},
+		{"json object", []byte(`{"content":"hello"}`)},
+		{"json array", []byte(`[1,2,3]`)},
+		{"json scalar string", []byte(`"quoted"`)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content, err := json.Marshal(map[string]any{
+				"tool":     "read_file",
+				"args":     map[string]any{},
+				"result":   toolResultField(tt.result),
+				"decision": "approved",
+			})
+			if err != nil {
+				t.Fatalf("marshal failed for %q: %v", string(tt.result), err)
+			}
+			var parsed map[string]any
+			if err := json.Unmarshal(content, &parsed); err != nil {
+				t.Fatalf("output is not valid JSON: %v", err)
+			}
+			if len(tt.result) == 0 {
+				if got, _ := parsed["result"].(string); got != "" {
+					t.Fatalf("expected empty result string, got %#v", parsed["result"])
+				}
+			}
+		})
+	}
+}
+
+func TestToolResultFieldPreservesJSON(t *testing.T) {
+	res := toolResultField([]byte(`{"content":"hello"}`))
+	if _, ok := res.(json.RawMessage); !ok {
+		t.Fatalf("expected json.RawMessage for valid JSON, got %T", res)
+	}
+	if res := toolResultField([]byte(`diff --git a/x b/x`)); res != "diff --git a/x b/x" {
+		t.Fatalf("expected plain string for raw text, got %T %v", res, res)
 	}
 }

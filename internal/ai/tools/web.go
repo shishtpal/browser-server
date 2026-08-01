@@ -62,6 +62,7 @@ func registerWebTools(r *Registry, cfg config.WebSearchConfig) {
 		Description: "Search the web for current information. Returns titles, URLs, and snippets. Use for up-to-date documentation, news, releases, or other time-sensitive facts.",
 		Schema:      json.RawMessage(webSearchSchema),
 		Execute:     w.search,
+		RawContentFunc: rawString,
 	})
 	r.add(Tool{
 		Name:        "web_fetch",
@@ -69,6 +70,7 @@ func registerWebTools(r *Registry, cfg config.WebSearchConfig) {
 		Description: "Fetch and extract readable content from a public URL. Use after web_search to read a specific article or documentation page.",
 		Schema:      json.RawMessage(webFetchSchema),
 		Execute:     w.fetch,
+		RawContentFunc: rawString,
 	})
 }
 

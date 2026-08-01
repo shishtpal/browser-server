@@ -20,6 +20,7 @@ func registerWriteFile(r *Registry) {
 		Description: "Create or overwrite a UTF-8 text file on the server filesystem, creating parent directories as needed",
 		Schema:      json.RawMessage(writeFileSchema),
 		Execute:     writeFile,
+		RawContentFunc: rawTrue,
 	})
 }
 

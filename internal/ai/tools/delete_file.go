@@ -19,6 +19,7 @@ func registerDeleteFile(r *Registry) {
 		Description: "Delete a file from the server filesystem",
 		Schema:      json.RawMessage(deleteFileSchemaFS),
 		Execute:     deleteFile,
+		RawContentFunc: rawTrue,
 	})
 }
 

@@ -19,6 +19,7 @@ func registerGitDiff(r *Registry, paths config.PathsConfig) {
 		Description: "View git diff output (working tree, staged, or between commits)",
 		Schema:      json.RawMessage(gitDiffSchema),
 		Execute:     gitDiff(paths),
+		RawContentFunc: rawMapField("diff"),
 	})
 }
 

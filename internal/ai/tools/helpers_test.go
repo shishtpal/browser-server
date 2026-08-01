@@ -64,18 +64,47 @@ func TestLimitsFromDefaults(t *testing.T) {
 	if l.gitMaxOutput != defaultMaxOutput || l.gitMaxDiffOutput != defaultMaxOutput {
 		t.Errorf("git limits = %d/%d, want %d/%d", l.gitMaxOutput, l.gitMaxDiffOutput, defaultMaxOutput, defaultMaxOutput)
 	}
+	if l.rawOutput != nil {
+		t.Errorf("rawOutput = %v, want nil default", l.rawOutput)
+	}
 }
 
 func TestWithToolLimitsRoundtrip(t *testing.T) {
+	// Compare field-by-field: toolLimits contains a map (rawOutput), so the
+	// struct is not directly comparable with !=.
 	want := toolLimits{
 		maxOutput:        12345,
 		gitTimeout:       7 * time.Second,
 		gitMaxOutput:     23456,
 		gitMaxDiffOutput: 34567,
+		rawOutput:        map[string]bool{"read_file": true},
 	}
 	ctx := withToolLimits(context.Background(), want)
-	if got := limitsFrom(ctx); got != want {
+	got := limitsFrom(ctx)
+	if got.maxOutput != want.maxOutput ||
+		got.gitTimeout != want.gitTimeout ||
+		got.gitMaxOutput != want.gitMaxOutput ||
+		got.gitMaxDiffOutput != want.gitMaxDiffOutput {
 		t.Fatalf("limitsFrom = %+v, want %+v", got, want)
+	}
+	if len(got.rawOutput) != len(want.rawOutput) || !got.rawOutput["read_file"] {
+		t.Fatalf("rawOutput = %v, want %v", got.rawOutput, want.rawOutput)
+	}
+}
+
+func TestRawOutputOverride(t *testing.T) {
+	if got := rawOverrideFrom(context.Background()); got != nil {
+		t.Fatalf("rawOverrideFrom(background) = %v, want nil", got)
+	}
+	raw := true
+	ctx := WithRawOutputOverride(context.Background(), &raw)
+	if got := rawOverrideFrom(ctx); got == nil || *got != true {
+		t.Fatalf("rawOverrideFrom(override true) = %v, want true", got)
+	}
+	jsonMode := false
+	ctx = WithRawOutputOverride(context.Background(), &jsonMode)
+	if got := rawOverrideFrom(ctx); got == nil || *got != false {
+		t.Fatalf("rawOverrideFrom(override false) = %v, want false", got)
 	}
 }
 

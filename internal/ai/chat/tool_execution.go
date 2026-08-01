@@ -45,7 +45,7 @@ func (s *Service) processToolCalls(
 				// Update sessionSkills from the handler
 				sessionSkills = s.getUpdatedSessionSkills(call, sessionSkills)
 				toolContentBytes, _ := json.Marshal(map[string]any{
-					"tool": call.Name, "args": json.RawMessage(call.Arguments), "result": json.RawMessage(skillResult), "decision": "approved",
+					"tool": call.Name, "args": json.RawMessage(call.Arguments), "result": toolResultField(skillResult), "decision": "approved",
 				})
 				toolMsg, addErr := s.store.AddMessage(generationCtx, conversationID, "tool", string(toolContentBytes), "completed", call.ID)
 				if addErr != nil {
@@ -160,7 +160,7 @@ func (s *Service) processToolCalls(
 			displayArgs = call.Arguments
 		}
 		toolContentBytes, marshalErr := json.Marshal(map[string]any{
-			"tool": call.Name, "args": displayArgs, "result": json.RawMessage(result), "decision": decision,
+			"tool": call.Name, "args": displayArgs, "result": toolResultField(result), "decision": decision,
 		})
 		if marshalErr != nil {
 			return toolMessages, marshalErr
@@ -177,4 +177,18 @@ func (s *Service) processToolCalls(
 		}
 	}
 	return toolMessages, nil
+}
+
+// toolResultField converts a tool result for storage/emission as a JSON value
+// when possible, falling back to a plain string. Tool results can be arbitrary
+// text in raw-output mode (e.g. a git diff or directory tree), which is not
+// valid JSON and therefore cannot be embedded as json.RawMessage.
+func toolResultField(result []byte) any {
+	if len(result) == 0 {
+		return ""
+	}
+	if json.Valid(result) {
+		return json.RawMessage(result)
+	}
+	return string(result)
 }

@@ -137,9 +137,31 @@
         <!-- Available tools (grouped by category) -->
         <section v-if="toolsEnabled && availableTools.length > 0">
           <h3 class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Available Tools</h3>
-          <div class="space-y-2.5">
+          <!-- Search input -->
+          <div class="relative mb-2">
+            <Search class="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" :aria-hidden="true" />
+            <input
+              v-model="toolSearchQuery"
+              type="search"
+              placeholder="Search tools…"
+              aria-label="Search tools"
+              class="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-7 pr-7 text-xs text-slate-700 placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:placeholder-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500"
+            />
+            <button
+              v-if="toolSearchQuery"
+              type="button"
+              class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              aria-label="Clear search"
+              title="Clear search"
+              @click="clearSearch"
+            >
+              <X class="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <!-- Tool list -->
+          <div v-if="filteredToolsByCategory.length > 0" class="space-y-2.5">
             <div
-              v-for="group in toolsByCategory"
+              v-for="group in filteredToolsByCategory"
               :key="group.category"
               class="rounded-lg border border-slate-200 overflow-hidden dark:border-white/10"
             >
@@ -147,10 +169,10 @@
               <div class="flex items-center gap-2 bg-slate-100/80 px-3 py-1.5 dark:bg-slate-800/60">
                 <input
                   type="checkbox"
-                  :checked="isCategoryFullyEnabled(group.tools)"
-                  :indeterminate="isCategoryPartial(group.tools)"
+                  :checked="isCategoryFullyEnabled(visibleToggleTools(group.tools))"
+                  :indeterminate="isCategoryPartial(visibleToggleTools(group.tools))"
                   class="h-3.5 w-3.5 accent-indigo-600"
-                  @change="toggleCategory(group.tools, ($event.target as HTMLInputElement).checked)"
+                  @change="toggleCategory(visibleToggleTools(group.tools), ($event.target as HTMLInputElement).checked)"
                 />
                 <button
                   type="button"
@@ -169,7 +191,7 @@
                 </button>
               </div>
               <!-- Tools within category -->
-              <div v-show="!collapsed.has(group.category)" class="divide-y divide-slate-100 dark:divide-white/5">
+              <div v-show="isCategoryVisible(group.category)" class="divide-y divide-slate-100 dark:divide-white/5">
                 <label
                   v-for="tool in group.tools"
                   :key="tool"
@@ -186,6 +208,18 @@
                 </label>
               </div>
             </div>
+          </div>
+          <!-- No results -->
+          <div v-if="toolsEnabled && availableTools.length > 0 && filteredToolsByCategory.length === 0" class="py-4 text-center">
+            <p class="text-xs text-slate-400 dark:text-slate-500">No tools match &quot;{{ toolSearchQuery }}&quot;.</p>
+            <button
+              type="button"
+              class="mt-2 inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              @click="clearSearch"
+            >
+              <X class="h-3 w-3" />
+              Clear search
+            </button>
           </div>
         </section>
 
@@ -275,7 +309,8 @@
 </template>
 
 <script setup lang="ts">
-import { onUnmounted, reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref } from 'vue'
+import { Search, X } from '@lucide/vue'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 500
@@ -342,6 +377,31 @@ watch(activeTab, (val) => {
 })
 
 // ─── Category grouping logic ───────────────────────────
+
+const toolSearchQuery = ref('')
+
+const filteredToolsByCategory = computed(() => {
+  const q = toolSearchQuery.value.toLowerCase().trim()
+  if (!q) return props.toolsByCategory
+  return props.toolsByCategory
+    .map(g => ({ category: g.category, tools: g.tools.filter(t => t.toLowerCase().includes(q)) }))
+    .filter(g => g.tools.length > 0)
+})
+
+function isCategoryVisible(category: string): boolean {
+  if (!toolSearchQuery.value.trim()) return !collapsed.has(category)
+  return true
+}
+
+function visibleToggleTools(tools: string[]): string[] {
+  const q = toolSearchQuery.value.toLowerCase().trim()
+  if (!q) return tools
+  return tools.filter(t => t.toLowerCase().includes(q))
+}
+
+function clearSearch() {
+  toolSearchQuery.value = ''
+}
 
 const collapsed = reactive(new Set<string>())
 

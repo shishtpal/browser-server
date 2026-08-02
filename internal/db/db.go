@@ -284,6 +284,18 @@ func ClosePromptDB() {
 	}
 }
 
+func CloseBookmarkDB() {
+	if BookmarkDB != nil {
+		BookmarkDB.Close()
+	}
+}
+
+func CloseHistoryDB() {
+	if HistoryDB != nil {
+		HistoryDB.Close()
+	}
+}
+
 func CloseTodoDB() {
 	if TodoDB != nil {
 		TodoDB.Close()

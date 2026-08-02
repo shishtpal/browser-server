@@ -126,18 +126,21 @@ func TestList(t *testing.T) {
 	}
 }
 
-func TestSearch(t *testing.T) {
+func TestSearchCandidates(t *testing.T) {
 	setupDB(t)
 
 	insertRow(t, 1, "https://example.com/hello", "Hello World", time.Now(), 10)
 	insertRow(t, 1, "https://example.com/goodbye", "Goodbye World", time.Now(), 20)
 
-	results, err := Search(ctx, 1, "hello", "", 10)
+	set, err := SearchCandidates(ctx, 1, "", 100)
 	if err != nil {
-		t.Fatalf("Search: %v", err)
+		t.Fatalf("SearchCandidates: %v", err)
 	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result for 'hello', got %d", len(results))
+	if set.Truncated {
+		t.Fatal("expected no truncation for 100 candidates")
+	}
+	if len(set.Candidates) != 2 {
+		t.Fatalf("expected 2 candidates, got %d", len(set.Candidates))
 	}
 }
 

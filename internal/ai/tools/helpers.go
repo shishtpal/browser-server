@@ -160,6 +160,101 @@ func strict(raw json.RawMessage, dst any, allowed map[string]bool) error {
 	return json.Unmarshal(raw, dst)
 }
 
+func validateSearchPagination(raw json.RawMessage, legacy string) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return err
+	}
+	for _, name := range []string{"page", "page_size", legacy} {
+		value, ok := fields[name]
+		if !ok {
+			continue
+		}
+		var n int
+		if err := json.Unmarshal(value, &n); err != nil || n < 1 {
+			return fmt.Errorf("%s must be at least 1", name)
+		}
+	}
+	return nil
+}
+
+// resolvePageSize resolves the page size for a search request, supporting the
+// legacy limit alias. It rejects requests that set both page_size and limit,
+// clamps page_size to the 1–100 range, validates limit against oldMax (the
+// tool-specific legacy maximum), and falls back to defaultSize when neither is
+// provided.
+func resolvePageSize(pageSize, limit, oldMax, defaultSize int) (int, error) {
+	if pageSize != 0 && limit != 0 {
+		return 0, fmt.Errorf("cannot specify both page_size and limit")
+	}
+	if pageSize != 0 {
+		if pageSize < 1 || pageSize > 100 {
+			return 0, fmt.Errorf("page_size must be between 1 and 100")
+		}
+		return pageSize, nil
+	}
+	if limit != 0 {
+		if limit < 1 || limit > oldMax {
+			return 0, fmt.Errorf("limit must be 1 to %d", oldMax)
+		}
+		return limit, nil
+	}
+	return defaultSize, nil
+}
+
+// fitSearchEnvelope keeps complete result objects within the configured tool
+// output budget. Search totals continue to describe the evaluated candidate
+// set, while truncated makes the partial response explicit.
+//
+// Results are ordered by relevance, so when the budget is exceeded the least
+// relevant (trailing) results are dropped first. Instead of re-marshaling the
+// whole envelope once per dropped result (O(n^2) when the budget is small), the
+// largest fitting prefix is found by binary search: the marshaled size grows
+// monotonically with the number of results, so only O(log n) marshals are
+// needed.
+func fitSearchEnvelope(ctx context.Context, envelope map[string]any) map[string]any {
+	results, ok := envelope["results"].([]map[string]any)
+	if !ok {
+		return envelope
+	}
+	budget := outputBudget(ctx)
+
+	// fits reports whether the envelope marshals within budget with the first
+	// k results. Marshaled size is monotonic in k, which is what makes the
+	// binary search below sound.
+	fits := func(k int) bool {
+		orig := envelope["results"]
+		envelope["results"] = results[:k]
+		encoded, err := json.Marshal(envelope)
+		envelope["results"] = orig
+		return err == nil && len(encoded) <= budget
+	}
+
+	// Fast path: the full result set already fits.
+	if fits(len(results)) {
+		return envelope
+	}
+
+	// The largest fitting prefix is in [0, len(results)). The fast path above
+	// guarantees hi = len(results) does not fit; lo tracks the best prefix found
+	// so far and ends as the largest k that fits (0 when even an empty result set
+	// overflows the budget). Narrow the range until lo and hi are adjacent.
+	lo, hi := 0, len(results)
+	for lo+1 < hi {
+		mid := lo + (hi-lo)/2
+		if fits(mid) {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+
+	envelope["results"] = results[:lo]
+	envelope["truncated"] = true
+	envelope["has_more"] = true
+	return envelope
+}
+
 // validateGlobs validates that all provided glob patterns are syntactically correct.
 func validateGlobs(patterns ...[]string) error {
 	for _, set := range patterns {

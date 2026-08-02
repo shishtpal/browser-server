@@ -32,17 +32,22 @@ func insertTestTodo(t *testing.T, userID int, title, tagsJSON, status, priority,
 	return id
 }
 
-func callSearchTodos(t *testing.T, input string) ([]map[string]any, error) {
+func callSearchTodos(t *testing.T, input string) (map[string]any, error) {
 	t.Helper()
 	res, err := searchTodos(context.Background(), json.RawMessage(input))
 	if err != nil {
 		return nil, err
 	}
-	rows, ok := res.([]map[string]any)
+	page, ok := res.(map[string]any)
 	if !ok {
-		t.Fatalf("expected []map[string]any, got %T", res)
+		t.Fatalf("expected map envelope, got %T", res)
 	}
-	return rows, nil
+	return page, nil
+}
+
+func pageResults(page map[string]any) []map[string]any {
+	results, _ := page["results"].([]map[string]any)
+	return results
 }
 
 func rowsHaveTitle(rows []map[string]any, title string) bool {
@@ -75,10 +80,11 @@ func TestSearchTodosTagFiltering(t *testing.T) {
 	insertTestTodo(t, 2, "Other user work", `["work"]`, "pending", "medium", "")
 
 	t.Run("single exact tag", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":1,"tags":["work"]}`)
+		page, err := callSearchTodos(t, `{"user_id":1,"tags":["work"]}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 3 {
 			t.Fatalf("expected 3 rows, got %d", len(rows))
 		}
@@ -93,63 +99,70 @@ func TestSearchTodosTagFiltering(t *testing.T) {
 				t.Errorf("unexpected row %q matched", not)
 			}
 		}
+		assertScoresPresent(t, rows)
 	})
 
 	t.Run("multiple tags use AND semantics", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":1,"tags":["work","urgent"]}`)
+		page, err := callSearchTodos(t, `{"user_id":1,"tags":["work","urgent"]}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Urgent work" {
 			t.Fatalf("expected only Urgent work, got %v", rows)
 		}
 	})
 
 	t.Run("tag filter composes with status", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":1,"tags":["work"],"status":"done"}`)
+		page, err := callSearchTodos(t, `{"user_id":1,"tags":["work"],"status":"done"}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Done work" {
 			t.Fatalf("expected only Done work, got %v", rows)
 		}
 	})
 
 	t.Run("tag filter composes with priority", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":1,"tags":["work"],"priority":"high"}`)
+		page, err := callSearchTodos(t, `{"user_id":1,"tags":["work"],"priority":"high"}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Work task" {
 			t.Fatalf("expected only Work task, got %v", rows)
 		}
 	})
 
 	t.Run("tag filter composes with text query", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":1,"tags":["work"],"query":"urgent"}`)
+		page, err := callSearchTodos(t, `{"user_id":1,"tags":["work"],"query":"urgent"}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Urgent work" {
 			t.Fatalf("expected only Urgent work, got %v", rows)
 		}
 	})
 
 	t.Run("results are scoped to the requested user", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":2,"tags":["work"]}`)
+		page, err := callSearchTodos(t, `{"user_id":2,"tags":["work"]}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Other user work" {
 			t.Fatalf("expected only Other user work, got %v", rows)
 		}
 	})
 
 	t.Run("every result includes parsed tags with empty array for untagged", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":1}`)
+		page, err := callSearchTodos(t, `{"user_id":1}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 5 {
 			t.Fatalf("expected 5 rows, got %d", len(rows))
 		}
@@ -169,13 +182,24 @@ func TestSearchTodosTagFiltering(t *testing.T) {
 	})
 
 	t.Run("omitting tags preserves existing search behavior", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":1,"status":"pending"}`)
+		page, err := callSearchTodos(t, `{"user_id":1,"status":"pending"}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		// user 1 has 4 pending todos and 1 done todo.
 		if len(rows) != 4 {
 			t.Fatalf("expected 4 pending rows, got %d", len(rows))
+		}
+	})
+
+	t.Run("page metadata present", func(t *testing.T) {
+		page, err := callSearchTodos(t, `{"user_id":1}`)
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+		if page["page"] != 1 || page["page_size"] != 10 || page["total"] != 5 || page["has_more"] != false || page["truncated"] != false {
+			t.Fatalf("unexpected page metadata: %v", page)
 		}
 	})
 }
@@ -196,48 +220,110 @@ func rowTagsPtr(row *map[string]any) any {
 	return rowsTags(*row)
 }
 
-func TestSearchTodosLimitValidation(t *testing.T) {
+func assertScoresPresent(t *testing.T, rows []map[string]any) {
+	t.Helper()
+	for _, r := range rows {
+		score, ok := r["score"].(float64)
+		if !ok {
+			t.Fatalf("row %v missing float64 score", r["title"])
+		}
+		if score < 0 || score > 1 {
+			t.Fatalf("row %v score %f out of range", r["title"], score)
+		}
+	}
+}
+
+func TestSearchTodosPaginationAndLegacyLimit(t *testing.T) {
 	dir := t.TempDir()
 	db.InitTodoDB(dir)
 	t.Cleanup(db.CloseTodoDB)
 
-	// Seed 25 todos for user 3 so limit 50 can return more than 20 rows.
 	for i := 0; i < 25; i++ {
 		insertTestTodo(t, 3, "Bulk", `["bulk"]`, "pending", "medium", "")
 	}
 	insertTestTodo(t, 3, "Zero default check", `[]`, "pending", "medium", "")
 
-	t.Run("limit 50 accepted and returns more than 20", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":3,"limit":50}`)
+	t.Run("legacy limit 50 accepted", func(t *testing.T) {
+		page, err := callSearchTodos(t, `{"user_id":3,"limit":50}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
-		if len(rows) != 26 {
-			t.Fatalf("expected 26 rows, got %d", len(rows))
+		if page["page_size"] != 50 {
+			t.Fatalf("expected page_size 50, got %v", page["page_size"])
+		}
+		if page["total"] != 26 {
+			t.Fatalf("expected total 26, got %v", page["total"])
+		}
+		if len(pageResults(page)) != 26 {
+			t.Fatalf("expected 26 rows, got %d", len(pageResults(page)))
 		}
 	})
 
-	t.Run("limit 51 rejected", func(t *testing.T) {
+	t.Run("legacy limit 51 rejected", func(t *testing.T) {
 		_, err := callSearchTodos(t, `{"user_id":3,"limit":51}`)
 		if err == nil || !contains(err.Error(), "limit must be 1 to 50") {
 			t.Fatalf("expected limit error, got %v", err)
 		}
 	})
 
-	t.Run("limit 0 defaults to 10", func(t *testing.T) {
-		rows, err := callSearchTodos(t, `{"user_id":3}`)
+	t.Run("page_size 100 accepted", func(t *testing.T) {
+		page, err := callSearchTodos(t, `{"user_id":3,"page_size":100}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
-		if len(rows) != 10 {
-			t.Fatalf("expected default limit 10, got %d", len(rows))
+		if page["page_size"] != 100 {
+			t.Fatalf("expected page_size 100, got %v", page["page_size"])
 		}
 	})
 
-	t.Run("negative limit rejected", func(t *testing.T) {
-		_, err := callSearchTodos(t, `{"user_id":3,"limit":-1}`)
-		if err == nil || !contains(err.Error(), "limit must be 1 to 50") {
-			t.Fatalf("expected limit error, got %v", err)
+	t.Run("page_size 101 rejected", func(t *testing.T) {
+		_, err := callSearchTodos(t, `{"user_id":3,"page_size":101}`)
+		if err == nil || !contains(err.Error(), "page_size must be between 1 and 100") {
+			t.Fatalf("expected page_size error, got %v", err)
+		}
+	})
+
+	t.Run("both page_size and limit rejected", func(t *testing.T) {
+		_, err := callSearchTodos(t, `{"user_id":3,"page_size":10,"limit":10}`)
+		if err == nil || !contains(err.Error(), "cannot specify both page_size and limit") {
+			t.Fatalf("expected both error, got %v", err)
+		}
+	})
+
+	t.Run("explicit zero page rejected", func(t *testing.T) {
+		_, err := callSearchTodos(t, `{"user_id":3,"page":0}`)
+		if err == nil || !contains(err.Error(), "page must be at least 1") {
+			t.Fatalf("expected page validation error, got %v", err)
+		}
+	})
+
+	t.Run("default limit 10", func(t *testing.T) {
+		page, err := callSearchTodos(t, `{"user_id":3}`)
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+		if page["page_size"] != 10 || page["total"] != 26 || !page["has_more"].(bool) || len(pageResults(page)) != 10 {
+			t.Fatalf("unexpected default page: %v", page)
+		}
+	})
+
+	t.Run("page 2 returns next set", func(t *testing.T) {
+		page, err := callSearchTodos(t, `{"user_id":3,"page":2,"page_size":10}`)
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+		if page["page"] != 2 || page["has_more"] != true || len(pageResults(page)) != 10 {
+			t.Fatalf("unexpected page 2: %v", page)
+		}
+	})
+
+	t.Run("page 3 returns last set", func(t *testing.T) {
+		page, err := callSearchTodos(t, `{"user_id":3,"page":3,"page_size":10}`)
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+		if page["page"] != 3 || page["has_more"] != false || len(pageResults(page)) != 6 {
+			t.Fatalf("unexpected page 3: %v", page)
 		}
 	})
 }

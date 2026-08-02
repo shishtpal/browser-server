@@ -2,76 +2,74 @@ package history
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"browser-server/internal/db"
 	"browser-server/internal/models"
+	"browser-server/internal/searchengine"
 )
 
-// ListOptions filters the flat history listing.
-type ListOptions struct {
-	UserID int
-	URL    string
-	Limit  int
-	Offset int
-}
+// HistoryCandidate is the search-engine candidate type for history.
+type HistoryCandidate = searchengine.Candidate[models.History]
 
-// List returns history entries ordered by most recently visited, optionally
-// filtered by user and a URL substring. When Limit > 0 the result is paged.
-func List(ctx context.Context, opts ListOptions) ([]models.History, error) {
-	where := []string{"1=1"}
-	args := make([]any, 0, 3)
-	if opts.UserID > 0 {
-		where = append(where, "user_id = ?")
-		args = append(args, opts.UserID)
-	}
-	if opts.URL != "" {
-		where = append(where, "url LIKE ?")
-		args = append(args, "%"+opts.URL+"%")
-	}
-	query := "SELECT " + Columns + " FROM history WHERE " + strings.Join(where, " AND ") +
-		" ORDER BY visited_at DESC"
-	if opts.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, opts.Limit)
-		if opts.Offset > 0 {
-			query += " OFFSET ?"
-			args = append(args, opts.Offset)
-		}
-	}
-	rows, err := db.HistoryDB.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	return ScanAll(rows)
-}
+// HistoryCandidateSet is a set of history candidates.
+type HistoryCandidateSet = searchengine.CandidateSet[models.History]
 
-// Search finds history entries matching a query and optional domain, most
-// recently visited first, scoped to one user.
-//
-// When query contains multiple whitespace-separated terms, every term must
-// match (AND) against url OR title, giving multi-word searches meaningful
-// results rather than a single substring match.
-func Search(ctx context.Context, userID int, query, domain string, limit int) ([]models.History, error) {
+// SearchCandidates loads history entries for fuzzy ranking. It does not apply
+// the final term AND SQL, but it does apply ownership and optional exact
+// domain filtering. It is intended for the search_history AI tool.
+func SearchCandidates(ctx context.Context, userID int, domain string, maxCandidates int) (HistoryCandidateSet, error) {
 	where := []string{"user_id = ?"}
 	args := []any{userID}
-	if query != "" {
-		clause, termArgs := SearchTerms(query, "url", "title")
-		// SearchTerms returns a clause prefixed with " AND "; strip it so it
-		// can be used as a bare WHERE condition.
-		where = append(where, clause[5:])
-		args = append(args, termArgs...)
-	}
 	if domain != "" {
 		where = append(where, "domain = ?")
 		args = append(args, domain)
 	}
-	args = append(args, limit)
-	rows, err := db.HistoryDB.QueryContext(ctx,
-		"SELECT "+Columns+" FROM history WHERE "+strings.Join(where, " AND ")+
-			" ORDER BY visited_at DESC LIMIT ?", args...)
-	if err != nil {
-		return nil, err
+	query := "SELECT " + Columns + " FROM history WHERE " + strings.Join(where, " AND ") + " ORDER BY visited_at DESC, id DESC"
+	if maxCandidates > 0 {
+		query += " LIMIT ?"
+		args = append(args, maxCandidates+1)
 	}
-	return ScanAll(rows)
+	rows, err := db.HistoryDB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return HistoryCandidateSet{}, err
+	}
+	entries, err := ScanAll(rows)
+	if err != nil {
+		return HistoryCandidateSet{}, err
+	}
+	truncated := maxCandidates > 0 && len(entries) > maxCandidates
+	if truncated {
+		entries = entries[:maxCandidates]
+	}
+	candidates := make([]HistoryCandidate, len(entries))
+	for i, h := range entries {
+		candidates[i] = HistoryCandidate{
+			Key: fmt.Sprintf("history:%d", h.ID),
+			Fields: []searchengine.Field{
+				{Name: "title", Text: h.Title, Weight: 10},
+				{Name: "url", Text: h.URL, Weight: 7},
+				{Name: "domain", Text: h.Domain, Weight: 5},
+			},
+			Value:      h,
+			SourceRank: i,
+		}
+	}
+	return HistoryCandidateSet{Candidates: candidates, Truncated: truncated}, nil
+}
+
+// SearchHitMap renders a scored history entry as the map the search_history
+// tool returns, preserving the existing fields of history.SearchMap plus a
+// score.
+func SearchHitMap(h models.History, score float64) map[string]any {
+	return map[string]any{
+		"id":         h.ID,
+		"url":        h.URL,
+		"title":      h.Title,
+		"domain":     h.Domain,
+		"visited_at": h.VisitedAt,
+		"duration":   h.Duration,
+		"score":      score,
+	}
 }

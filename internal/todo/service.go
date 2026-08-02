@@ -586,6 +586,7 @@ func ScanTodo(scanner interface{ Scan(...any) error }) (models.Todo, string, err
 		pid := int(parentID.Int64)
 		todoRow.ParentID = &pid
 	}
+	todoRow.Tags = tagsJSON
 	return todoRow, tagsJSON, nil
 }
 

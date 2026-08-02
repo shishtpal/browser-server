@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"browser-server/internal/db"
 	"browser-server/internal/helpers"
+	"browser-server/internal/models"
+	"browser-server/internal/searchengine"
 	"browser-server/internal/todo"
 )
 
@@ -19,7 +20,7 @@ func registerSearchTodos(r *Registry) {
 	r.add(Tool{
 		Name:        "search_todos",
 		Category:    "General",
-		Description: "Search the local todo database. Can filter by status, priority, text query across title/description, and exact tags. Results include each todo's tags. When multiple tags are given, every tag must be present on a returned todo (AND semantics).",
+		Description: "Search the local todo database. Can filter by status, priority, text query across title/description, and exact tags. Results include each todo's tags and a relevance score. Supports one-based pagination (page, page_size). When multiple tags are given, every tag must be present on a returned todo (AND semantics). The legacy `limit` argument is deprecated and maps to `page_size` when `page_size` is omitted.",
 		Schema:      json.RawMessage(searchTodosSchema),
 		Execute:     searchTodos,
 	})
@@ -32,9 +33,14 @@ func searchTodos(ctx context.Context, raw json.RawMessage) (any, error) {
 		Status   string   `json:"status"`
 		Priority string   `json:"priority"`
 		Tags     []string `json:"tags"`
+		Page     int      `json:"page"`
+		PageSize int      `json:"page_size"`
 		Limit    int      `json:"limit"`
 	}
-	if err := strict(raw, &a, map[string]bool{"user_id": true, "query": true, "status": true, "priority": true, "tags": true, "limit": true}); err != nil {
+	if err := strict(raw, &a, map[string]bool{"user_id": true, "query": true, "status": true, "priority": true, "tags": true, "page": true, "page_size": true, "limit": true}); err != nil {
+		return nil, err
+	}
+	if err := validateSearchPagination(raw, "limit"); err != nil {
 		return nil, err
 	}
 	if a.UserID < 1 {
@@ -43,12 +49,6 @@ func searchTodos(ctx context.Context, raw json.RawMessage) (any, error) {
 	a.Query = strings.TrimSpace(a.Query)
 	if len(a.Query) > 200 {
 		return nil, fmt.Errorf("query too long")
-	}
-	if a.Limit == 0 {
-		a.Limit = 10
-	}
-	if a.Limit < 1 || a.Limit > 50 {
-		return nil, fmt.Errorf("limit must be 1 to 50")
 	}
 	if a.Priority != "" && !todo.IsValidPriority(a.Priority) {
 		return nil, fmt.Errorf("priority must be one of: low, medium, high, urgent")
@@ -62,68 +62,41 @@ func searchTodos(ctx context.Context, raw json.RawMessage) (any, error) {
 		}
 	}
 
-	// Build dynamic query
-	where := []string{"user_id = ?"}
-	args := []any{a.UserID}
-
-	if a.Query != "" {
-		where = append(where, "(title LIKE ? OR description LIKE ?)")
-		args = append(args, "%"+a.Query+"%", "%"+a.Query+"%")
-	}
-	if a.Status != "" {
-		where = append(where, "status = ?")
-		args = append(args, a.Status)
-	}
-	if a.Priority != "" {
-		where = append(where, "priority = ?")
-		args = append(args, a.Priority)
-	}
-	for _, tag := range a.Tags {
-		where = append(where, "EXISTS (SELECT 1 FROM json_each(todos.tags) WHERE json_each.value = ?)")
-		args = append(args, tag)
-	}
-
-	args = append(args, a.Limit)
-	q := fmt.Sprintf(
-		`SELECT id, title, description, status, priority, pinned, start_date, end_date, tags FROM todos WHERE %s ORDER BY updated_at DESC LIMIT ?`,
-		strings.Join(where, " AND "),
-	)
-
-	rows, err := db.TodoDB.QueryContext(ctx, q, args...)
+	pageSize, err := resolvePageSize(a.PageSize, a.Limit, 50, 10)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var out []map[string]any
-	for rows.Next() {
-		var id int
-		var title, description, status, priority, tagsJSON string
-		var pinned bool
-		var startDate, endDate *string
-		if err := rows.Scan(&id, &title, &description, &status, &priority, &pinned, &startDate, &endDate, &tagsJSON); err != nil {
-			return nil, err
-		}
-		tags := helpers.ParseTagsFromJSON(tagsJSON)
+	loader := func(ctx context.Context, req searchengine.CandidateRequest) (searchengine.CandidateSet[models.Todo], error) {
+		return todo.SearchCandidates(ctx, todo.SearchFilter{
+			UserID:   a.UserID,
+			Status:   a.Status,
+			Priority: a.Priority,
+			Tags:     a.Tags,
+		}, req)
+	}
+
+	page, err := searchengine.Search(ctx, searchengine.Request{Query: a.Query, Page: a.Page, PageSize: pageSize}, loader)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]map[string]any, 0, len(page.Results))
+	for _, hit := range page.Results {
+		t := hit.Value
+		tags := helpers.ParseTagsFromJSON(t.Tags)
 		if tags == nil {
 			tags = []string{}
 		}
-		entry := map[string]any{
-			"id":          id,
-			"title":       title,
-			"description": description,
-			"status":      status,
-			"priority":    priority,
-			"pinned":      pinned,
-			"tags":        tags,
-		}
-		if startDate != nil {
-			entry["start_date"] = *startDate
-		}
-		if endDate != nil {
-			entry["end_date"] = *endDate
-		}
-		out = append(out, entry)
+		out = append(out, todo.TodoSearchHitMap(t, tags, hit.Score))
 	}
-	return out, rows.Err()
+	return fitSearchEnvelope(ctx, map[string]any{
+		"query":     a.Query,
+		"page":      page.Page,
+		"page_size": page.PageSize,
+		"total":     page.Total,
+		"has_more":  page.HasMore,
+		"truncated": page.Truncated,
+		"results":   out,
+	}), nil
 }

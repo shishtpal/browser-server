@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"browser-server/internal/bookmark"
+	"browser-server/internal/models"
+	"browser-server/internal/searchengine"
 )
 
 //go:embed schemas/search_bookmarks.json
@@ -17,7 +19,7 @@ func registerSearchBookmarks(r *Registry) {
 	r.add(Tool{
 		Name:        "search_bookmarks",
 		Category:    "General",
-		Description: "Search the local bookmark database. Can filter by text query across title, URL, and description. When no query is given, returns the most recently updated bookmarks (up to the limit).",
+		Description: "Search the local bookmark database. Can filter by text query across title, URL, and description. Results include a relevance score. Supports one-based pagination (page, page_size). When no query is given, returns the most recently updated bookmarks (up to the page size). The legacy `limit` argument is deprecated and maps to `page_size` when `page_size` is omitted.",
 		Schema:      json.RawMessage(searchBookmarksSchema),
 		Execute:     searchBookmarks,
 	})
@@ -25,11 +27,17 @@ func registerSearchBookmarks(r *Registry) {
 
 func searchBookmarks(ctx context.Context, raw json.RawMessage) (any, error) {
 	var a struct {
-		UserID int    `json:"user_id"`
-		Query  string `json:"query"`
-		Limit  int    `json:"limit"`
+		UserID   int      `json:"user_id"`
+		Query    string   `json:"query"`
+		Tags     []string `json:"tags"`
+		Page     int      `json:"page"`
+		PageSize int      `json:"page_size"`
+		Limit    int      `json:"limit"`
 	}
-	if err := strict(raw, &a, map[string]bool{"user_id": true, "query": true, "limit": true}); err != nil {
+	if err := strict(raw, &a, map[string]bool{"user_id": true, "query": true, "tags": true, "page": true, "page_size": true, "limit": true}); err != nil {
+		return nil, err
+	}
+	if err := validateSearchPagination(raw, "limit"); err != nil {
 		return nil, err
 	}
 	if a.UserID < 1 {
@@ -39,21 +47,37 @@ func searchBookmarks(ctx context.Context, raw json.RawMessage) (any, error) {
 	if len(a.Query) > 200 {
 		return nil, fmt.Errorf("query must be 200 characters or fewer")
 	}
-	if a.Limit == 0 {
-		a.Limit = 10
-	}
-	if a.Limit < 1 || a.Limit > 20 {
-		return nil, fmt.Errorf("limit must be between 1 and 20")
+	for i, tag := range a.Tags {
+		if len(tag) > 100 {
+			return nil, fmt.Errorf("tags[%d] must be 100 characters or fewer", i)
+		}
 	}
 
-	bookmarks, err := bookmark.Search(ctx, a.UserID, a.Query, a.Limit)
+	pageSize, err := resolvePageSize(a.PageSize, a.Limit, 20, 10)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]map[string]any, 0, len(bookmarks))
-	for _, b := range bookmarks {
-		out = append(out, bookmark.SearchMap(b))
+	loader := func(ctx context.Context, req searchengine.CandidateRequest) (searchengine.CandidateSet[models.Bookmark], error) {
+		return bookmark.SearchCandidates(ctx, a.UserID, a.Tags, "", req.MaxCandidates)
 	}
-	return out, nil
+
+	page, err := searchengine.Search(ctx, searchengine.Request{Query: a.Query, Page: a.Page, PageSize: pageSize}, loader)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]map[string]any, 0, len(page.Results))
+	for _, hit := range page.Results {
+		out = append(out, bookmark.SearchHitMap(hit.Value, hit.Score))
+	}
+	return fitSearchEnvelope(ctx, map[string]any{
+		"query":     a.Query,
+		"page":      page.Page,
+		"page_size": page.PageSize,
+		"total":     page.Total,
+		"has_more":  page.HasMore,
+		"truncated": page.Truncated,
+		"results":   out,
+	}), nil
 }

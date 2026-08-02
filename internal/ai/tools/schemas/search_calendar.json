@@ -32,12 +32,24 @@
                 "type": "string",
                 "maxLength": 100
             },
-            "description": "Filter by exact tags. Every requested tag must be present on a returned event (AND semantics); matching is case-sensitive and never matches substrings. Results include each event's tags."
+            "description": "Filter by exact tags. Every requested tag must be present on a returned event (AND semantics); matching is case-sensitive and never matches substrings. Results include each event's tags and a relevance score."
+        },
+        "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "One-based page number. Defaults to 1."
+        },
+        "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Number of results per page. Defaults to 10; maximum is 100."
         },
         "limit": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 50
+            "maximum": 50,
+            "description": "Deprecated. Use page_size instead. If page_size is omitted, limit is used as the page size."
         }
     },
     "required": [

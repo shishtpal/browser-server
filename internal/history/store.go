@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"browser-server/internal/db"
@@ -80,6 +81,44 @@ func Delete(ctx context.Context, id int) (bool, error) {
 		return false, err
 	}
 	return rows > 0, nil
+}
+
+// ListOptions filters the flat history listing.
+type ListOptions struct {
+	UserID int
+	URL    string
+	Limit  int
+	Offset int
+}
+
+// List returns history entries ordered by most recently visited, optionally
+// filtered by user and a URL substring. When Limit > 0 the result is paged.
+func List(ctx context.Context, opts ListOptions) ([]models.History, error) {
+	where := []string{"1=1"}
+	args := make([]any, 0, 3)
+	if opts.UserID > 0 {
+		where = append(where, "user_id = ?")
+		args = append(args, opts.UserID)
+	}
+	if opts.URL != "" {
+		where = append(where, "url LIKE ?")
+		args = append(args, "%"+opts.URL+"%")
+	}
+	query := "SELECT " + Columns + " FROM history WHERE " + strings.Join(where, " AND ") +
+		" ORDER BY visited_at DESC"
+	if opts.Limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, opts.Limit)
+		if opts.Offset > 0 {
+			query += " OFFSET ?"
+			args = append(args, opts.Offset)
+		}
+	}
+	rows, err := db.HistoryDB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return ScanAll(rows)
 }
 
 // ExistingURLs returns the set of URLs already recorded for a user, used by

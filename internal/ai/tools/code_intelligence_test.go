@@ -34,17 +34,18 @@ func TestSearchCodeLiteralFiltersAndContext(t *testing.T) {
 	if result["total_matches"].(int) != 1 {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-	encoded, _ := json.Marshal(result["matches"])
-	var matches []struct {
+	encoded, _ := json.Marshal(result["results"])
+	var results []struct {
+		File          string   `json:"file"`
 		Line          int      `json:"line"`
 		Column        int      `json:"column"`
 		ContextBefore []string `json:"context_before"`
 	}
-	if err := json.Unmarshal(encoded, &matches); err != nil {
+	if err := json.Unmarshal(encoded, &results); err != nil {
 		t.Fatal(err)
 	}
-	if len(matches) != 1 || matches[0].Line != 2 || matches[0].Column != 7 || len(matches[0].ContextBefore) != 1 {
-		t.Fatalf("unexpected matches: %#v", matches)
+	if len(results) != 1 || results[0].Line != 2 || results[0].Column != 7 || len(results[0].ContextBefore) != 1 {
+		t.Fatalf("unexpected matches: %#v", results)
 	}
 }
 

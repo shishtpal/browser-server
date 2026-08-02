@@ -21,17 +21,17 @@ func sameStrings(a, b []string) bool {
 	return true
 }
 
-func callSearchCalendar(t *testing.T, input string) ([]map[string]any, error) {
+func callSearchCalendar(t *testing.T, input string) (map[string]any, error) {
 	t.Helper()
 	res, err := searchCalendar(context.Background(), json.RawMessage(input))
 	if err != nil {
 		return nil, err
 	}
-	rows, ok := res.([]map[string]any)
+	page, ok := res.(map[string]any)
 	if !ok {
-		t.Fatalf("expected []map[string]any, got %T", res)
+		t.Fatalf("expected map envelope, got %T", res)
 	}
-	return rows, nil
+	return page, nil
 }
 
 func TestSearchCalendarTagFiltering(t *testing.T) {
@@ -48,10 +48,11 @@ func TestSearchCalendarTagFiltering(t *testing.T) {
 	insertTestTodo(t, 2, "Other user meeting", `["work"]`, "pending", "medium", "2026-08-05")
 
 	t.Run("single exact tag", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"]}`)
+		page, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"]}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 3 {
 			t.Fatalf("expected 3 rows, got %d", len(rows))
 		}
@@ -66,23 +67,26 @@ func TestSearchCalendarTagFiltering(t *testing.T) {
 				t.Errorf("unexpected row %q matched", not)
 			}
 		}
+		assertScoresPresent(t, rows)
 	})
 
 	t.Run("multiple tags use AND semantics", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":1,"tags":["work","urgent"]}`)
+		page, err := callSearchCalendar(t, `{"user_id":1,"tags":["work","urgent"]}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Standup" {
 			t.Fatalf("expected only Standup, got %v", rows)
 		}
 	})
 
 	t.Run("unscheduled tagged todos are excluded even without tag filter", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":1}`)
+		page, err := callSearchCalendar(t, `{"user_id":1}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if rowsHaveTitle(rows, "Unscheduled work") {
 			t.Fatal("unscheduled todo leaked into calendar results")
 		}
@@ -92,50 +96,55 @@ func TestSearchCalendarTagFiltering(t *testing.T) {
 	})
 
 	t.Run("tag filter composes with date range", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"],"from":"2026-08-02","to":"2026-08-02"}`)
+		page, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"],"from":"2026-08-02","to":"2026-08-02"}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Standup" {
 			t.Fatalf("expected only Standup, got %v", rows)
 		}
 	})
 
 	t.Run("tag filter composes with status", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"],"status":"done"}`)
+		page, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"],"status":"done"}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Retro" {
 			t.Fatalf("expected only Retro, got %v", rows)
 		}
 	})
 
 	t.Run("tag filter composes with text query", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"],"query":"standup"}`)
+		page, err := callSearchCalendar(t, `{"user_id":1,"tags":["work"],"query":"standup"}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Standup" {
 			t.Fatalf("expected only Standup, got %v", rows)
 		}
 	})
 
 	t.Run("results are scoped to the requested user", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":2,"tags":["work"]}`)
+		page, err := callSearchCalendar(t, `{"user_id":2,"tags":["work"]}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		if len(rows) != 1 || rows[0]["title"] != "Other user meeting" {
 			t.Fatalf("expected only Other user meeting, got %v", rows)
 		}
 	})
 
 	t.Run("every result includes parsed tags with empty array for untagged", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":1}`)
+		page, err := callSearchCalendar(t, `{"user_id":1}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
+		rows := pageResults(page)
 		for _, r := range rows {
 			if _, ok := r["tags"].([]string); !ok {
 				t.Errorf("row %v has no []string tags field", r["title"])
@@ -150,9 +159,19 @@ func TestSearchCalendarTagFiltering(t *testing.T) {
 			t.Fatalf("expected Standup tags [work urgent], got %v", rowTagsPtr(standup))
 		}
 	})
+
+	t.Run("page metadata present", func(t *testing.T) {
+		page, err := callSearchCalendar(t, `{"user_id":1}`)
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+		if page["page"] != 1 || page["page_size"] != 10 || page["total"] != 5 || page["has_more"] != false || page["truncated"] != false {
+			t.Fatalf("unexpected page metadata: %v", page)
+		}
+	})
 }
 
-func TestSearchCalendarLimitValidation(t *testing.T) {
+func TestSearchCalendarPaginationAndLegacyLimit(t *testing.T) {
 	dir := t.TempDir()
 	db.InitTodoDB(dir)
 	t.Cleanup(db.CloseTodoDB)
@@ -161,37 +180,50 @@ func TestSearchCalendarLimitValidation(t *testing.T) {
 		insertTestTodo(t, 4, "Event", `["bulk"]`, "pending", "medium", "2026-08-01")
 	}
 
-	t.Run("limit 50 accepted and returns more than 20", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":4,"limit":50}`)
+	t.Run("legacy limit 50 accepted", func(t *testing.T) {
+		page, err := callSearchCalendar(t, `{"user_id":4,"limit":50}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
-		if len(rows) != 25 {
-			t.Fatalf("expected 25 rows, got %d", len(rows))
+		if page["page_size"] != 50 || page["total"] != 25 || len(pageResults(page)) != 25 {
+			t.Fatalf("unexpected page: %v", page)
 		}
 	})
 
-	t.Run("limit 51 rejected", func(t *testing.T) {
+	t.Run("legacy limit 51 rejected", func(t *testing.T) {
 		_, err := callSearchCalendar(t, `{"user_id":4,"limit":51}`)
 		if err == nil || !contains(err.Error(), "limit must be 1 to 50") {
 			t.Fatalf("expected limit error, got %v", err)
 		}
 	})
 
-	t.Run("limit 0 defaults to 10", func(t *testing.T) {
-		rows, err := callSearchCalendar(t, `{"user_id":4}`)
+	t.Run("page_size 100 accepted", func(t *testing.T) {
+		page, err := callSearchCalendar(t, `{"user_id":4,"page_size":100}`)
 		if err != nil {
 			t.Fatalf("search failed: %v", err)
 		}
-		if len(rows) != 10 {
-			t.Fatalf("expected default limit 10, got %d", len(rows))
+		if page["page_size"] != 100 || page["total"] != 25 || len(pageResults(page)) != 25 {
+			t.Fatalf("unexpected page: %v", page)
 		}
 	})
 
-	t.Run("negative limit rejected", func(t *testing.T) {
-		_, err := callSearchCalendar(t, `{"user_id":4,"limit":-1}`)
-		if err == nil || !contains(err.Error(), "limit must be 1 to 50") {
-			t.Fatalf("expected limit error, got %v", err)
+	t.Run("default limit 10", func(t *testing.T) {
+		page, err := callSearchCalendar(t, `{"user_id":4}`)
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+		if page["page_size"] != 10 || page["total"] != 25 || !page["has_more"].(bool) || len(pageResults(page)) != 10 {
+			t.Fatalf("unexpected default page: %v", page)
+		}
+	})
+
+	t.Run("page 2 returns next set", func(t *testing.T) {
+		page, err := callSearchCalendar(t, `{"user_id":4,"page":2,"page_size":10}`)
+		if err != nil {
+			t.Fatalf("search failed: %v", err)
+		}
+		if page["page"] != 2 || page["has_more"] != true || len(pageResults(page)) != 10 {
+			t.Fatalf("unexpected page 2: %v", page)
 		}
 	})
 }

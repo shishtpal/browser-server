@@ -1,18 +1,14 @@
 package tools
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
 	"time"
-	"unicode/utf8"
+
+	"browser-server/internal/codesearch"
+	"browser-server/internal/searchengine"
 )
 
 //go:embed schemas/search_code.json
@@ -22,7 +18,7 @@ func registerSearchCode(r *Registry) {
 	r.add(Tool{
 		Name:        "search_code",
 		Category:    "Code Intelligence",
-		Description: "Search source files using regex, literal, or fixed-string matching",
+		Description: "Search source files using regex, literal, or fixed-string matching. Results include a relevance score and are paginated with one-based page/page_size. The legacy `max_results` argument is deprecated and maps to `page_size` when `page_size` is omitted.",
 		Schema:      json.RawMessage(searchCodeSchema),
 		Execute:     searchCode,
 	})
@@ -39,17 +35,19 @@ func searchCode(ctx context.Context, raw json.RawMessage) (any, error) {
 		Exclude       []string `json:"exclude"`
 		CaseSensitive bool     `json:"case_sensitive"`
 		WholeWord     bool     `json:"whole_word"`
+		Page          int      `json:"page"`
+		PageSize      int      `json:"page_size"`
 		MaxResults    int      `json:"max_results"`
 		ContextLines  *int     `json:"context_lines"`
 	}
-	if err := strict(raw, &a, map[string]bool{"pattern": true, "path": true, "include": true, "exclude": true, "case_sensitive": true, "whole_word": true, "max_results": true, "context_lines": true, "type": true}); err != nil {
+	if err := strict(raw, &a, map[string]bool{"pattern": true, "path": true, "include": true, "exclude": true, "case_sensitive": true, "whole_word": true, "page": true, "page_size": true, "max_results": true, "context_lines": true, "type": true}); err != nil {
+		return nil, err
+	}
+	if err := validateSearchPagination(raw, "max_results"); err != nil {
 		return nil, err
 	}
 	if a.Pattern == "" || len(a.Pattern) > 500 {
 		return nil, fmt.Errorf("pattern is required and must not exceed 500 characters")
-	}
-	if a.Path == "" {
-		a.Path = "."
 	}
 	if a.Type == "" {
 		a.Type = "regex"
@@ -57,11 +55,8 @@ func searchCode(ctx context.Context, raw json.RawMessage) (any, error) {
 	if a.Type != "regex" && a.Type != "literal" && a.Type != "fixed" {
 		return nil, fmt.Errorf("type must be regex, literal, or fixed")
 	}
-	if a.MaxResults == 0 {
-		a.MaxResults = 50
-	}
-	if a.MaxResults < 1 || a.MaxResults > 100 {
-		return nil, fmt.Errorf("max_results must be 1 to 100")
+	if err := validateGlobs(a.Include, a.Exclude); err != nil {
+		return nil, err
 	}
 	contextLines := 2
 	if a.ContextLines != nil {
@@ -70,113 +65,44 @@ func searchCode(ctx context.Context, raw json.RawMessage) (any, error) {
 	if contextLines < 0 || contextLines > 10 {
 		return nil, fmt.Errorf("context_lines must be 0 to 10")
 	}
-	if err := validateGlobs(a.Include, a.Exclude); err != nil {
+
+	pageSize, err := resolvePageSize(a.PageSize, a.MaxResults, 100, 10)
+	if err != nil {
 		return nil, err
 	}
-	pattern := a.Pattern
-	if a.Type != "regex" {
-		pattern = regexp.QuoteMeta(pattern)
-	}
-	if a.WholeWord {
-		pattern = `\b(?:` + pattern + `)\b`
-	}
-	if !a.CaseSensitive {
-		pattern = `(?i)` + pattern
-	}
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("invalid pattern: %w", err)
-	}
-	type match struct {
-		File          string   `json:"file"`
-		Line          int      `json:"line"`
-		Column        int      `json:"column"`
-		Match         string   `json:"match"`
-		ContextBefore []string `json:"context_before"`
-		ContextAfter  []string `json:"context_after"`
-	}
+
 	start := time.Now()
-	matches := []match{}
-	total := 0
-	truncated := false
-	err = filepath.WalkDir(a.Path, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if d.IsDir() {
-			rel, _ := filepath.Rel(a.Path, path)
-			if path != a.Path && (d.Name() == ".git" || d.Name() == "node_modules" || globMatch(a.Exclude, rel) || globMatch(a.Exclude, rel+"/")) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		rel, _ := filepath.Rel(a.Path, path)
-		if len(a.Include) > 0 && !globMatch(a.Include, rel) || globMatch(a.Exclude, rel) {
-			return nil
-		}
-		info, e := d.Info()
-		if e != nil {
-			return e
-		}
-		if info.Size() > maxSourceSize {
-			truncated = true
-			return nil
-		}
-		file, e := os.Open(path)
-		if e != nil {
-			return e
-		}
-		data, e := io.ReadAll(io.LimitReader(file, maxSourceSize+1))
-		_ = file.Close()
-		if e != nil {
-			return e
-		}
-		if len(data) > maxSourceSize {
-			truncated = true
-			return nil
-		}
-		if !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
-			return nil
-		}
-		lines := strings.Split(string(data), "\n")
-		for i, line := range lines {
-			for _, loc := range re.FindAllStringIndex(line, -1) {
-				total++
-				if len(matches) >= a.MaxResults {
-					truncated = true
-					continue
-				}
-				lo := i - contextLines
-				if lo < 0 {
-					lo = 0
-				}
-				hi := i + contextLines + 1
-				if hi > len(lines) {
-					hi = len(lines)
-				}
-				m := match{
-					File:          path,
-					Line:          i + 1,
-					Column:        loc[0] + 1,
-					Match:         line[loc[0]:loc[1]],
-					ContextBefore: append([]string{}, lines[lo:i]...),
-					ContextAfter:  append([]string{}, lines[i+1:hi]...),
-				}
-				probe, _ := json.Marshal(map[string]any{"matches": append(matches, m), "total_matches": total, "truncated": true, "search_time_ms": 0})
-				if len(probe) > outputBudget(ctx) {
-					truncated = true
-					continue
-				}
-				matches = append(matches, m)
-			}
-		}
-		return nil
-	})
+	loader := func(ctx context.Context, req searchengine.CandidateRequest) (searchengine.CandidateSet[codesearch.Match], error) {
+		return codesearch.CandidateSet(ctx, codesearch.Options{
+			Root: a.Path, Pattern: a.Pattern, Type: a.Type, Include: a.Include,
+			Exclude: a.Exclude, CaseSensitive: a.CaseSensitive, WholeWord: a.WholeWord,
+			ContextLines: contextLines, MaxSourceSize: maxSourceSize, MaxCandidates: req.MaxCandidates,
+		})
+	}
+
+	page, err := searchengine.Search(ctx, searchengine.Request{Query: a.Pattern, Page: a.Page, PageSize: pageSize}, loader,
+		searchengine.WithStrategy[codesearch.Match](searchengine.ExactStrategy[codesearch.Match]()))
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"matches": matches, "total_matches": total, "truncated": truncated, "search_time_ms": time.Since(start).Milliseconds()}, nil
+
+	results := make([]map[string]any, len(page.Results))
+	for i, hit := range page.Results {
+		m := hit.Value
+		results[i] = map[string]any{
+			"file": m.File, "line": m.Line, "column": m.Column, "match": m.Match,
+			"context_before": m.ContextBefore, "context_after": m.ContextAfter, "score": hit.Score,
+		}
+	}
+	return fitSearchEnvelope(ctx, map[string]any{
+		"query":          a.Pattern,
+		"page":           page.Page,
+		"page_size":      page.PageSize,
+		"total":          page.Total,
+		"has_more":       page.HasMore,
+		"truncated":      page.Truncated,
+		"results":        results,
+		"total_matches":  page.Total,
+		"search_time_ms": time.Since(start).Milliseconds(),
+	}), nil
 }

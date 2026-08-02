@@ -139,6 +139,7 @@
       />
 
       <div v-else>
+        <!-- Desktop list (md+): the table, kanban, and grid branches below form one v-if/v-else-if chain. -->
         <div v-if="view === 'list'" class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
           <table class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700">
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
@@ -200,6 +201,21 @@
           />
         </div>
 
+        <div v-else-if="view === 'grid'">
+          <TodoGridView
+            :todos="displayedTodos"
+            @toggle="toggleTodo"
+            @toggle-pin="togglePinned"
+            @archive="archiveTodo"
+            @restore="restoreTodo"
+            @view-screenshot="openScreenshot"
+            @start-edit="openEditModal"
+            @delete="confirmDelete"
+            @toggle-subtask="onSubtaskToggled"
+          />
+        </div>
+
+        <!-- Mobile list (md-): separate element that intentionally stays v-if (NOT part of the chain above) so it renders together with the desktop table when view === 'list'. -->
         <draggable v-if="view === 'list'" v-model="listTodos" item-key="id" handle=".drag-handle" @end="onListDragEnd" tag="ul" class="space-y-2 md:hidden">
           <template #item="{ element: todo }">
             <TodoCard
@@ -238,6 +254,7 @@
 <script setup lang="ts">
 import type { Todo, TodoPriority, CreateTodoInput } from '../types'
 import { ref, watch, computed } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
 import draggable from 'vuedraggable'
 import { useUser } from '../composables/useUser'
 import { useTodos } from '../composables/useTodos'
@@ -256,6 +273,7 @@ import TodoCard from './todos/TodoCard.vue'
 import TodoKanbanBoard from './todos/TodoKanbanBoard.vue'
 import TodoViewToggle from './todos/TodoViewToggle.vue'
 import TodoSortBar from './todos/TodoSortBar.vue'
+import TodoGridView from './todos/TodoGridView.vue'
 import TodoSubtaskList from './todos/TodoSubtaskList.vue'
 import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
 import { useModal } from '@browser-server/shared-modal'
@@ -322,7 +340,7 @@ if (selectedUserId.value) {
   loadTodos()
 }
 
-const view = ref<'list' | 'kanban'>('list')
+const view = useLocalStorage<'list' | 'kanban' | 'grid'>(`bs.todos.view`, 'list')
 
 const listTodos = ref<Todo[]>([])
 

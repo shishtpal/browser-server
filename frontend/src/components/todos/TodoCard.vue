@@ -93,10 +93,9 @@
 
 <script setup lang="ts">
 import type { Todo } from '../../types'
-import { computed, ref } from 'vue'
 import { formatDate } from '../../lib/utils'
-import { getScreenshotUrl } from '../../lib/api'
 import { linkifyDescription } from '../../lib/descriptionLinks'
+import { useTodoDisplay } from '../../composables/useTodoDisplay'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'
@@ -118,20 +117,8 @@ const emit = defineEmits<{
   'toggle-subtask': [todo: Todo]
 }>()
 
-const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')
-
-const subtaskCount = computed(() => (props.todo.subtasks || []).length)
-const subtaskDoneCount = computed(() => (props.todo.subtasks || []).filter(s => s.status === 'completed').length)
-
-const showSubtasks = ref(false)
-
-function toggleSubtaskVisibility() {
-  showSubtasks.value = !showSubtasks.value
-}
-
-function confirmDelete() {
-  if (window.confirm(`Delete "${props.todo.title}"?`)) {
-    emit('delete', props.todo.id)
-  }
-}
+const { screenshotUrl, subtaskCount, subtaskDoneCount, showSubtasks, toggleSubtaskVisibility, confirmDelete } = useTodoDisplay(
+  () => props.todo,
+  (id) => emit('delete', id),
+)
 </script>

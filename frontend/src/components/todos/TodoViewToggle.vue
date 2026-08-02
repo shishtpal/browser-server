@@ -20,14 +20,24 @@
       </svg>
       Kanban
     </button>
+    <button
+      type="button"
+      @click="$emit('update:view', 'grid')"
+      :class="['flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-black transition', view === 'grid' ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200']"
+    >
+      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z" />
+      </svg>
+      Grid
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 interface Props {
-  view: 'list' | 'kanban'
+  view: 'list' | 'kanban' | 'grid'
 }
 
 defineProps<Props>()
-defineEmits<{ 'update:view': [value: 'list' | 'kanban'] }>()
+defineEmits<{ 'update:view': [value: 'list' | 'kanban' | 'grid'] }>()
 </script>

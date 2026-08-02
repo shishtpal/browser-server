@@ -71,8 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, type PropType } from 'vue'
+import type { PropType } from 'vue'
 import type { Todo } from '../../types'
+import { useTodoDisplay } from '../../composables/useTodoDisplay'
 import TodoPriorityBadge from './TodoPriorityBadge.vue'
 import TodoDueDateBadge from './TodoDueDateBadge.vue'
 import TodoTagBadges from './TodoTagBadges.vue'
@@ -83,15 +84,6 @@ const props = defineProps({
   todo: { type: Object as PropType<Todo>, required: true },
 })
 
-const subtaskCount = computed(() => (props.todo.subtasks || []).length)
-const subtaskDoneCount = computed(() => (props.todo.subtasks || []).filter(s => s.status === 'completed').length)
-
-const showSubtasks = ref(false)
-
-function toggleSubtaskVisibility() {
-  showSubtasks.value = !showSubtasks.value
-}
-
 const emit = defineEmits<{
   toggle: [todo: Todo]
   'toggle-subtask': [todo: Todo]
@@ -99,9 +91,8 @@ const emit = defineEmits<{
   delete: [id: number]
 }>()
 
-function confirmDelete() {
-  if (window.confirm(`Delete "${props.todo.title}"?`)) {
-    emit('delete', props.todo.id)
-  }
-}
+const { subtaskCount, subtaskDoneCount, showSubtasks, toggleSubtaskVisibility, confirmDelete } = useTodoDisplay(
+  () => props.todo,
+  (id) => emit('delete', id),
+)
 </script>

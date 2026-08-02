@@ -26,12 +26,21 @@ type Config struct {
 // PathsConfig lets the operator configure additional PATH directories and
 // explicit binary overrides so AI tools can find executables that are not on
 // the server process's inherited PATH.
+//
+// Binaries behave differently for the two kinds of tools:
+//   - Tools that launch a known binary directly (get_diagnostics, git tools,
+//     execute_python) use the exact mapped path, bypassing PATH.
+//   - Child shell processes (execute_command) receive the mapped binaries'
+//     parent directories in PATH, so a command that calls the binary by its
+//     basename (e.g. `go version`) resolves to the configured file.
 type PathsConfig struct {
 	// AdditionalDirs are prepended to the PATH of child processes. They are
 	// also searched (in order) before the system PATH when resolving a binary.
 	AdditionalDirs []string `json:"additional_dirs"`
-	// Binaries maps a binary name to an explicit full path. Highest priority;
-	// bypasses PATH entirely.
+	// Binaries maps a binary name to an explicit full path. Direct known-binary
+	// tools use the exact path; shell commands see the mapped binary's parent
+	// directory prepended to their PATH, so the key should match the executable
+	// basename (without a platform extension) for shell name resolution.
 	Binaries map[string]string `json:"binaries"`
 }
 

@@ -134,8 +134,18 @@ The `paths` section in `bs-ai-config.json` lets the operator specify additional 
 }
 ```
 
+Windows example — make `go` available to `execute_command`:
+
+```jsonc
+"paths": {
+  "additional_dirs": [],
+  "binaries": { "go": "D:/Tools/lang.go/bin/go.exe" }
+}
+```
+
 - `additional_dirs` are prepended to the `PATH` of child processes and searched (in order) before the system PATH.
-- `binaries` maps a binary name to an explicit full path; highest priority, bypasses PATH entirely.
+- `binaries` maps a binary name to an explicit full path. Tools that invoke a known binary directly (`get_diagnostics`, git tools, `execute_python`) use the exact mapped path, bypassing PATH entirely.
+- For commands run by `execute_command`, the parent directories of mapped binaries are prepended to the child `PATH` (before `additional_dirs`), so a command such as `go version` resolves to the configured executable. The mapping key must match the executable's basename without a platform extension (`.exe`, `.cmd`, `.bat`, `.com`) for shell name resolution; arbitrary aliases (e.g. `"go": "custom-tool.exe"`) are honored by direct tools but not by `execute_command`.
 - Both are optional; empty/missing `paths` = inherit parent process PATH.
 - Relative paths are resolved against the config file's directory.
 - Limits: 20 additional dirs, 30 binaries.

@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"browser-server/internal/ai/config"
@@ -42,27 +43,80 @@ func resolveBinary(name string, paths config.PathsConfig) string {
 	return name
 }
 
-// childEnv returns os.Environ() with PATH modified to prepend additional_dirs.
-// Returns nil (inherit parent env) when no additional dirs are configured, so
-// callers can leave cmd.Env unset for the default behavior.
+// childEnv returns os.Environ() with PATH modified to prepend directories from
+// both configured path sources, in precedence order:
+//
+//  1. parent directories of explicit paths.binaries entries (keys sorted so
+//     precedence is deterministic across server starts), then
+//  2. paths.additional_dirs in their configured order.
+//
+// Both precede the inherited PATH. Directories are cleaned with filepath.Clean
+// and deduplicated preserving first occurrence (case-insensitively on
+// Windows). Returns nil (inherit parent env) when neither source is
+// configured, so callers can leave cmd.Env unset for the default behavior.
 func childEnv(paths config.PathsConfig) []string {
-	if len(paths.AdditionalDirs) == 0 {
+	dirs := childPathDirs(paths)
+	if len(dirs) == 0 {
 		return nil
 	}
 	env := os.Environ()
 	currentPath := os.Getenv("PATH")
 	sep := string(os.PathListSeparator)
-	newPath := strings.Join(paths.AdditionalDirs, sep)
+	newPath := strings.Join(dirs, sep)
 	if currentPath != "" {
 		newPath += sep + currentPath
 	}
 	for i, e := range env {
+		// PATH may appear as "Path=" on Windows; compare case-insensitively.
 		if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
 			env[i] = "PATH=" + newPath
 			return env
 		}
 	}
 	return append(env, "PATH="+newPath)
+}
+
+// childPathDirs returns the directories to prepend to a child process PATH:
+// the parent directories of paths.binaries entries (sorted by binary key, so
+// precedence never depends on map iteration order), followed by
+// paths.additional_dirs in their configured order. Directories are cleaned
+// with filepath.Clean and deduplicated preserving first occurrence;
+// comparison is case-insensitive on Windows.
+func childPathDirs(paths config.PathsConfig) []string {
+	var dirs []string
+	seen := make(map[string]bool)
+	addDir := func(dir string) {
+		dir = filepath.Clean(dir)
+		if dir == "" || dir == "." {
+			return
+		}
+		key := dir
+		if runtime.GOOS == "windows" {
+			key = strings.ToLower(key)
+		}
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		dirs = append(dirs, dir)
+	}
+
+	if paths.Binaries != nil {
+		keys := make([]string, 0, len(paths.Binaries))
+		for k := range paths.Binaries {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if p := paths.Binaries[k]; p != "" {
+				addDir(filepath.Dir(p))
+			}
+		}
+	}
+	for _, dir := range paths.AdditionalDirs {
+		addDir(dir)
+	}
+	return dirs
 }
 
 // stripExecExt returns name without a Windows executable extension

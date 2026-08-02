@@ -3,7 +3,7 @@
     "properties": {
         "command": {
             "type": "string",
-            "description": "The shell command to execute. Use {{SHELL_NAME}} syntax.",
+            "description": "The shell command to execute. Use {{SHELL_NAME}} syntax. Executables configured in paths.binaries (or found in paths.additional_dirs) are resolvable by name inside the child shell.",
             "maxLength": 4096
         },
         "working_dir": {

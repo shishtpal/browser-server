@@ -53,6 +53,7 @@ func ProviderNames() []string {
 func init() {
 	Register(openRouterProvider{})
 	Register(openCodeProvider{})
+	Register(huggingfaceProvider{})
 }
 
 func unknownProviderError(name string) error {

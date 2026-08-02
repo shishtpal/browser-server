@@ -1,5 +1,5 @@
 // Command bs-models-refresh refreshes the model catalog in bs-ai-models.json
-// from a supported provider (openrouter.ai, opencode.ai), preserving existing
+// from a supported provider (openrouter.ai, opencode.ai, huggingface.co), preserving existing
 // entries and appending only new models.
 package main
 
@@ -35,7 +35,7 @@ func run() int {
 		configPath   string
 		modelsPath   string
 	)
-	flag.StringVar(&providerName, "provider", "", "provider name to refresh (openrouter.ai, opencode.ai)")
+	flag.StringVar(&providerName, "provider", "", "provider name to refresh (openrouter.ai, opencode.ai, huggingface.co)")
 	flag.StringVar(&configPath, "config", "", "path to bs-ai-config.json")
 	flag.StringVar(&modelsPath, "models", "", "path to bs-ai-models.json")
 	flag.Usage = usage

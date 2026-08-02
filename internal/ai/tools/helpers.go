@@ -87,6 +87,21 @@ func maxOutputFrom(ctx context.Context) int {
 	return limitsFrom(ctx).maxOutput
 }
 
+// outputLimitFor returns the maximum result size allowed for a tool's final
+// output. Tools with a dedicated output cap (git_diff uses max_diff_output)
+// are honored; every other tool is bounded by the general max_output. The
+// same cap applies to raw and JSON-encoded output so the diff-specific limit
+// is not silently overridden by Registry.Execute's generic size check.
+func outputLimitFor(name string, lim toolLimits) int {
+	if name == "git_diff" {
+		if lim.gitMaxDiffOutput > 0 {
+			return lim.gitMaxDiffOutput
+		}
+		return lim.maxOutput
+	}
+	return lim.maxOutput
+}
+
 // outputBudget returns the payload budget a tool may fill before the JSON
 // response envelope (keys, braces, summary fields) pushes the marshaled result
 // over the configured limit. resultHeadroom bytes are reserved for that

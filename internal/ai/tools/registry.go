@@ -189,9 +189,10 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	if override := rawOverrideFrom(ctx); override != nil {
 		useRaw = *override
 	}
+	outLimit := outputLimitFor(name, lim)
 	if useRaw && t.RawContentFunc != nil {
 		if raw, ok := t.RawContentFunc(v); ok {
-			if len(raw) > lim.maxOutput {
+			if len(raw) > outLimit {
 				return nil, fmt.Errorf("tool output exceeds limit")
 			}
 			return raw, nil
@@ -199,7 +200,7 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	}
 
 	b, err := json.Marshal(v)
-	if len(b) > lim.maxOutput {
+	if len(b) > outLimit {
 		return nil, fmt.Errorf("tool output exceeds limit")
 	}
 	return b, err

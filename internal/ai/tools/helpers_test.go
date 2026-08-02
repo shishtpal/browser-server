@@ -135,3 +135,26 @@ func TestTruncateBytesUTF8(t *testing.T) {
 		t.Errorf("truncateBytesUTF8(%q, 100) = %q, want unchanged", b, got)
 	}
 }
+
+func TestOutputLimitFor(t *testing.T) {
+	base := toolLimits{maxOutput: 4096, gitMaxDiffOutput: 51200}
+	tests := []struct {
+		name string
+		tool string
+		lim  toolLimits
+		want int
+	}{
+		{"git diff uses its diff limit", "git_diff", base, 51200},
+		{"git diff falls back to max output when diff limit unset", "git_diff", toolLimits{maxOutput: 4096}, 4096},
+		{"read_file uses max output", "read_file", base, 4096},
+		{"other git tools use max output", "git_log", base, 4096},
+		{"generic tools use max output", "write_file", base, 4096},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := outputLimitFor(tt.tool, tt.lim); got != tt.want {
+				t.Errorf("outputLimitFor(%q) = %d, want %d", tt.tool, got, tt.want)
+			}
+		})
+	}
+}

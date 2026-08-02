@@ -192,6 +192,95 @@ func TestExecuteRawOutputOverride(t *testing.T) {
 	}
 }
 
+// stubGitDiff replaces the registered git_diff with a deterministic stub so
+// the output-limit gate can be tested without a real git repository.
+func stubGitDiff(r *Registry, diff string) {
+	r.add(Tool{
+		Name: "git_diff",
+		Execute: func(context.Context, json.RawMessage) (any, error) {
+			return map[string]any{"diff": diff}, nil
+		},
+		RawContentFunc: rawMapField("diff"),
+	})
+}
+
+// stubRawTool registers a raw-output tool returning a fixed string.
+func stubRawTool(r *Registry, name, content string) {
+	r.add(Tool{
+		Name: name,
+		Execute: func(context.Context, json.RawMessage) (any, error) {
+			return content, nil
+		},
+		RawContentFunc: rawString,
+	})
+}
+
+func TestExecuteGitDiffUsesDiffLimitRaw(t *testing.T) {
+	r := New(Options{
+		Tools: config.ToolsConfig{
+			MaxOutput:     4096,
+			MaxDiffOutput: 51200,
+			RawOutput:     []string{"git_diff"},
+		},
+	})
+	big := repeat("x", 20000) // > max_output (4096), < max_diff_output (51200)
+	stubGitDiff(r, big)
+	out, err := r.Execute(context.Background(), "git_diff", []byte(`{}`))
+	if err != nil {
+		t.Fatalf("git_diff raw output within max_diff_output must succeed, got error: %v", err)
+	}
+	if string(out) != big {
+		t.Fatalf("raw git_diff output length = %d, want %d", len(out), len(big))
+	}
+}
+
+func TestExecuteGitDiffUsesDiffLimitJSON(t *testing.T) {
+	r := New(Options{
+		Tools: config.ToolsConfig{
+			MaxOutput:     4096,
+			MaxDiffOutput: 51200,
+		},
+	})
+	stubGitDiff(r, repeat("x", 20000))
+	out, err := r.Execute(context.Background(), "git_diff", []byte(`{}`))
+	if err != nil {
+		t.Fatalf("git_diff JSON output within max_diff_output must succeed, got error: %v", err)
+	}
+	if !json.Valid(out) {
+		t.Fatalf("git_diff output = %.60q..., want JSON envelope", out)
+	}
+}
+
+func TestExecuteGitDiffRejectsOverDiffLimit(t *testing.T) {
+	r := New(Options{
+		Tools: config.ToolsConfig{
+			MaxOutput:     4096,
+			MaxDiffOutput: 8192,
+			RawOutput:     []string{"git_diff"},
+		},
+	})
+	stubGitDiff(r, repeat("x", 20000))
+	_, err := r.Execute(context.Background(), "git_diff", []byte(`{}`))
+	if err == nil || err.Error() != "tool output exceeds limit" {
+		t.Fatalf("git_diff output over max_diff_output error = %v, want %q", err, "tool output exceeds limit")
+	}
+}
+
+func TestExecuteOtherToolsStillUseMaxOutput(t *testing.T) {
+	r := New(Options{
+		Tools: config.ToolsConfig{
+			MaxOutput:     4096,
+			MaxDiffOutput: 51200,
+			RawOutput:     []string{"read_file"},
+		},
+	})
+	stubRawTool(r, "read_file", repeat("x", 20000))
+	_, err := r.Execute(context.Background(), "read_file", []byte(`{}`))
+	if err == nil || err.Error() != "tool output exceeds limit" {
+		t.Fatalf("read_file over max_output error = %v, want %q", err, "tool output exceeds limit")
+	}
+}
+
 func quoted(value string) string {
 	b, _ := json.Marshal(value)
 	return string(b)

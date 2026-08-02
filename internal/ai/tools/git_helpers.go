@@ -12,6 +12,9 @@ import (
 	"browser-server/internal/ai/config"
 )
 
+// truncMarker is appended when git output is cut at the byte limit.
+const truncMarker = "\n... (output truncated)"
+
 // validateRef rejects ref names that start with '-' to prevent them being
 // interpreted as git flags.
 func validateRef(ref string) error {
@@ -65,7 +68,13 @@ func runGitWithLimit(ctx context.Context, dir string, limit int, paths config.Pa
 
 	out := stdout.String()
 	if limit > 0 && len(out) > limit {
-		out = truncateUTF8(out, limit) + "\n... (output truncated)"
+		// Reserve room for the marker so the returned output stays within the
+		// configured byte limit instead of exceeding it by the marker length.
+		budget := limit - len(truncMarker)
+		if budget < 0 {
+			budget = 0
+		}
+		out = truncateUTF8(out, budget) + truncMarker
 	}
 	return out, nil
 }

@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="flex h-full min-h-0 flex-col border-r border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/40">
+    class="flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-900/40">
     <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-3.5 py-3 dark:border-white/10">
       <div class="min-w-0">
         <h1 class="flex items-center gap-1.5 text-[0.95rem] font-bold tracking-tight">

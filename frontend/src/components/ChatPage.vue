@@ -11,7 +11,7 @@
       @update:search="search = $event" />
 
     <!-- Main panel -->
-    <section class="flex h-full flex-col overflow-hidden">
+    <section class="flex h-full min-h-0 flex-col overflow-hidden">
       <ChatTopBar :profiles="profiles" :selected-profile="selectedProfile" :profile-locked="profileLocked"
         :skills="skills" :active-skills="activeSkills" :provider-names="providerNames"
         :selected-provider="selectedProvider" :selected-model="selectedModel" :models="providerModels"

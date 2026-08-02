@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" class="chat-scroll flex-1 overflow-y-auto bg-slate-50/40 dark:bg-slate-950" @scroll="handleScroll">
+  <div ref="container" class="chat-scroll min-h-0 flex-1 overflow-y-auto bg-slate-50/40 dark:bg-slate-950" @scroll="handleScroll">
     <div class="mx-auto w-full space-y-5 px-4 py-6 lg:px-6">
       <!-- Empty state -->
       <div v-if="messages.length === 0 && !loading" class="flex min-h-[56vh] flex-col items-center justify-center text-center">

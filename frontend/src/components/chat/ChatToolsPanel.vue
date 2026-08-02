@@ -1,7 +1,7 @@
 <template>
   <aside
     ref="panelRef"
-    class="relative flex min-h-0 h-full flex-col border-l border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-slate-900/60"
+    class="relative flex min-h-0 h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-slate-900/60"
     :style="{ width: panelWidth + 'px' }"
   >
     <!-- Resize handle -->

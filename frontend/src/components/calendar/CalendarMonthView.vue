@@ -22,6 +22,9 @@
         class="group relative flex min-h-[70px] sm:min-h-[110px] flex-col bg-white p-1.5 sm:p-2 transition-all duration-150 hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-850 cursor-pointer"
         :class="cellClass(day)"
         @click="onCellClick(day)"
+        @dragover.prevent="onDragOver(day, $event)"
+        @dragleave.prevent="onDragLeave(day, $event)"
+        @drop.prevent="onDrop(day, $event)"
       >
         <!-- Top Row: Date & Count Badge -->
         <div class="flex items-center justify-between mb-1">
@@ -64,6 +67,8 @@
             :key="todo.id"
             :todo="todo"
             @click="emit('todoClick', todo)"
+            @drag-start="onDragStart"
+            @drag-end="onDragEnd"
           />
 
           <!-- "+X more" Button -->
@@ -87,6 +92,7 @@ import { computed } from 'vue'
 import type { CalendarDay } from './types'
 import type { Todo } from '../../types'
 import CalendarTodoChip from './CalendarTodoChip.vue'
+import { useCalendarDragDrop, todoFromPayload } from '../../composables/useCalendarDragDrop'
 
 const props = defineProps<{
   days: CalendarDay[]
@@ -96,9 +102,12 @@ const emit = defineEmits<{
   (e: 'click', date: string): void
   (e: 'showMore', date: string): void
   (e: 'todoClick', todo: Todo): void
+  (e: 'todoMove', payload: { todo: Todo; date: string }): void
 }>()
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+const { dragOverDate, getDragPayload, hasCalendarPayload, isDropAllowed } = useCalendarDragDrop()
 
 const weekDays = computed(() => {
   return props.days.map((day) => ({
@@ -111,6 +120,9 @@ const rowCount = computed(() => Math.ceil(props.days.length / 7))
 
 function cellClass(day: CalendarDay & { dayNumber: number }) {
   const classes: string[] = []
+  if (dragOverDate.value === day.date) {
+    classes.push('ring-2 ring-inset ring-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/30')
+  }
   if (!day.isCurrentMonth) {
     classes.push('bg-slate-50/50 dark:bg-slate-950/40 opacity-40')
   }
@@ -118,6 +130,39 @@ function cellClass(day: CalendarDay & { dayNumber: number }) {
     classes.push('bg-slate-50/30 dark:bg-slate-900/60')
   }
   return classes.join(' ')
+}
+
+function onDragOver(day: CalendarDay & { dayNumber: number }, event: DragEvent) {
+  if (!hasCalendarPayload(event.dataTransfer)) return
+  const payload = getDragPayload(event.dataTransfer)
+  if (!isDropAllowed(payload, day.date)) return
+  event.dataTransfer!.dropEffect = 'move'
+  dragOverDate.value = day.date
+}
+
+function onDragLeave(day: CalendarDay & { dayNumber: number }, event: DragEvent) {
+  if (dragOverDate.value !== day.date) return
+  const target = event.currentTarget as HTMLElement | null
+  const related = event.relatedTarget as Node | null
+  if (target && related && target.contains(related)) return
+  dragOverDate.value = null
+}
+
+function onDrop(day: CalendarDay & { dayNumber: number }, event: DragEvent) {
+  const payload = getDragPayload(event.dataTransfer)
+  dragOverDate.value = null
+  if (!isDropAllowed(payload, day.date)) return
+  const todo = todoFromPayload(payload, props.days.flatMap((d) => d.todos))
+  if (!todo) return
+  emit('todoMove', { todo, date: day.date })
+}
+
+function onDragStart() {
+  dragOverDate.value = null
+}
+
+function onDragEnd() {
+  dragOverDate.value = null
 }
 
 function dateClass(day: CalendarDay & { dayNumber: number }) {

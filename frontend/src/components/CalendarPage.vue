@@ -38,6 +38,7 @@
           @click="openCreateModal"
           @show-more="showDayTodos"
           @todo-click="openEditModal"
+          @todo-move="handleTodoMove"
         />
       </div>
 
@@ -46,6 +47,7 @@
           :days="weekDays"
           @click="openCreateModal"
           @todo-click="openEditModal"
+          @todo-move="handleTodoMove"
         />
       </div>
 
@@ -180,6 +182,10 @@ async function handleCreate(data: CreateTodoInput) {
 
 async function handleUpdate(id: number, data: Partial<Todo>) {
   await updateTodoItem(id, data)
+}
+
+async function handleTodoMove(payload: { todo: Todo; date: string }) {
+  await updateTodoItem(payload.todo.id, { start_date: payload.date })
 }
 
 async function handleDelete() {

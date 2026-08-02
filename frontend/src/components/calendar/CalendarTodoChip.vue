@@ -2,8 +2,11 @@
   <button
     type="button"
     class="group flex w-full items-center gap-1.5 rounded-md border px-2 py-1 text-left text-xs font-medium transition-all duration-150 active:scale-[0.98]"
-    :class="chipStyle"
-    @click.stop="emit('click', todo)"
+    :class="[chipStyle, isDragging ? 'opacity-50 cursor-grabbing' : 'cursor-grab']"
+    draggable="true"
+    @click.stop="onClick"
+    @dragstart.stop="onDragStart"
+    @dragend.stop="onDragEnd"
   >
     <!-- Priority Dot / Status Indicator -->
     <span 
@@ -22,8 +25,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Todo } from '../../types'
+import { DRAG_MIME_TYPE } from '../../composables/useCalendarDragDrop'
 
 const props = defineProps<{
   todo: Todo
@@ -31,9 +35,34 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'click', todo: Todo): void
+  (e: 'dragStart', todo: Todo): void
+  (e: 'dragEnd', todo: Todo): void
 }>()
 
 const isCompleted = computed(() => props.todo.status === 'completed')
+const isDragging = ref(false)
+
+function onClick() {
+  if (isDragging.value) return
+  emit('click', props.todo)
+}
+
+function onDragStart(event: DragEvent) {
+  isDragging.value = true
+  event.dataTransfer?.setData(DRAG_MIME_TYPE, JSON.stringify({
+    id: props.todo.id,
+    startDate: props.todo.start_date,
+  }))
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+  }
+  emit('dragStart', props.todo)
+}
+
+function onDragEnd() {
+  isDragging.value = false
+  emit('dragEnd', props.todo)
+}
 
 const priorityDot = computed(() => {
   if (isCompleted.value) return 'bg-slate-300 dark:bg-slate-600'

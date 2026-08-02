@@ -171,6 +171,54 @@ func TestManageCalendarRemoveAndGet(t *testing.T) {
 	}
 }
 
+func TestManageCalendarTagsSurviveAddGetEdit(t *testing.T) {
+	dir := t.TempDir()
+	db.InitTodoDB(dir)
+	t.Cleanup(db.CloseTodoDB)
+
+	_, err := manageCalendar(context.Background(), json.RawMessage(`{"user_id":1,"action":"add","title":"Tagged Meeting","start_date":"2026-08-01","tags":["work","urgent"]}`))
+	if err != nil {
+		t.Fatalf("failed to add event: %v", err)
+	}
+
+	// Tags survive add -> get.
+	got, err := manageCalendar(context.Background(), json.RawMessage(`{"user_id":1,"action":"get","id":1}`))
+	if err != nil {
+		t.Fatalf("failed to get event: %v", err)
+	}
+	m := got.(map[string]any)
+	tags, ok := m["tags"].([]string)
+	if !ok || !sameStrings(tags, []string{"work", "urgent"}) {
+		t.Fatalf("expected tags [work urgent], got %v", m["tags"])
+	}
+
+	// Tags survive edit, replacing the stored set.
+	edited, err := manageCalendar(context.Background(), json.RawMessage(`{"user_id":1,"action":"edit","id":1,"tags":["meeting"]}`))
+	if err != nil {
+		t.Fatalf("failed to edit event: %v", err)
+	}
+	e := edited.(*todo.UpdateResult)
+	if !sameStrings(e.Tags, []string{"meeting"}) {
+		t.Fatalf("expected tags [meeting], got %v", e.Tags)
+	}
+
+	// Get reflects the edited tags.
+	got2, err := manageCalendar(context.Background(), json.RawMessage(`{"user_id":1,"action":"get","id":1}`))
+	if err != nil {
+		t.Fatalf("failed to get event: %v", err)
+	}
+	m2 := got2.(map[string]any)
+	if tags2, ok := m2["tags"].([]string); !ok || !sameStrings(tags2, []string{"meeting"}) {
+		t.Fatalf("expected tags [meeting] after edit, got %v", m2["tags"])
+	}
+
+	// Overlong tags are rejected consistently on add.
+	_, err = manageCalendar(context.Background(), json.RawMessage(`{"user_id":1,"action":"add","title":"Bad","start_date":"2026-08-01","tags":["`+repeat("x", 101)+`"]}`))
+	if err == nil || !contains(err.Error(), "tags[0]") {
+		t.Fatalf("expected overlong tag error, got %v", err)
+	}
+}
+
 func TestManageCalendarEdit(t *testing.T) {
 	dir := t.TempDir()
 	db.InitTodoDB(dir)

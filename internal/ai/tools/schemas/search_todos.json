@@ -27,10 +27,18 @@
                 "urgent"
             ]
         },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "maxLength": 100
+            },
+            "description": "Filter by exact tags. Every requested tag must be present on a returned todo (AND semantics); matching is case-sensitive and never matches substrings. Results include each todo's tags."
+        },
         "limit": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20
+            "maximum": 50
         }
     },
     "required": [

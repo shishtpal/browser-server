@@ -71,7 +71,7 @@
               :disabled="!canSubmit || isAppending"
               type="submit"
             >
-              {{ isAppending ? 'Appending…' : 'Append context' }}
+              {{ isAppending ? 'Appending…' : 'Append' }}
             </button>
             <button
               v-if="busy"

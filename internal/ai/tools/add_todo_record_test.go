@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+
+	"browser-server/internal/db"
+	"browser-server/internal/todo"
 )
 
 func TestAddTodoRecordValidation(t *testing.T) {
@@ -115,6 +118,42 @@ func TestAddTodoRecordSubtaskTitleDefaultsWhenOmitted(t *testing.T) {
 	}()
 	if validationErr != nil && contains(validationErr.Error(), "title") {
 		t.Fatalf("subtask without title should default, got: %v", validationErr)
+	}
+}
+
+func TestAddTodoRecordPersistsAndDedupesTags(t *testing.T) {
+	dir := t.TempDir()
+	db.InitTodoDB(dir)
+	t.Cleanup(db.CloseTodoDB)
+
+	res, err := addTodoRecord(context.Background(), json.RawMessage(`{"user_id":1,"title":"Tagged","tags":["work"],"subtasks":[{"title":"Sub","tags":["subtag"]}]}`))
+	if err != nil {
+		t.Fatalf("addTodoRecord failed: %v", err)
+	}
+	cr, ok := res.(*todo.CreateResult)
+	if !ok {
+		t.Fatalf("expected *todo.CreateResult, got %T", res)
+	}
+	// Explicit tags are persisted along with one browser-server-chat tag.
+	if !sameStrings(cr.Tags, []string{"work", "browser-server-chat"}) {
+		t.Fatalf("expected tags [work browser-server-chat], got %v", cr.Tags)
+	}
+	// Subtask tags survive creation.
+	if len(cr.Subtasks) != 1 {
+		t.Fatalf("expected 1 subtask, got %d", len(cr.Subtasks))
+	}
+	if !sameStrings(cr.Subtasks[0].Tags, []string{"subtag"}) {
+		t.Fatalf("expected subtask tags [subtag], got %v", cr.Subtasks[0].Tags)
+	}
+
+	// An explicitly supplied browser-server-chat tag is deduplicated.
+	res2, err := addTodoRecord(context.Background(), json.RawMessage(`{"user_id":1,"title":"Chat tagged","tags":["browser-server-chat"]}`))
+	if err != nil {
+		t.Fatalf("addTodoRecord failed: %v", err)
+	}
+	cr2 := res2.(*todo.CreateResult)
+	if !sameStrings(cr2.Tags, []string{"browser-server-chat"}) {
+		t.Fatalf("expected tags [browser-server-chat], got %v", cr2.Tags)
 	}
 }
 

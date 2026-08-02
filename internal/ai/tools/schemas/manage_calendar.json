@@ -72,8 +72,10 @@
         "tags": {
             "type": "array",
             "items": {
-                "type": "string"
-            }
+                "type": "string",
+                "maxLength": 100
+            },
+            "description": "Each tag must be 100 characters or fewer"
         }
     },
     "required": [

@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+
+	"browser-server/internal/db"
+	"browser-server/internal/todo"
 )
 
 func TestUpdateTodoRecordValidation(t *testing.T) {
@@ -89,6 +92,38 @@ func TestUpdateTodoRecordValidation(t *testing.T) {
 				t.Fatalf("expected error containing %q, got %q", tt.wantErr, err.Error())
 			}
 		})
+	}
+}
+
+func TestUpdateTodoRecordReplacesAndClearsTags(t *testing.T) {
+	dir := t.TempDir()
+	db.InitTodoDB(dir)
+	t.Cleanup(db.CloseTodoDB)
+
+	// Create a tagged todo directly so tag state is fully controlled.
+	insertTestTodo(t, 1, "Original", `["a","b"]`, "pending", "medium", "")
+
+	// Updating tags replaces the stored set.
+	res, err := updateTodoRecord(context.Background(), json.RawMessage(`{"user_id":1,"id":1,"tags":["c"]}`))
+	if err != nil {
+		t.Fatalf("updateTodoRecord failed: %v", err)
+	}
+	ur, ok := res.(*todo.UpdateResult)
+	if !ok {
+		t.Fatalf("expected *todo.UpdateResult, got %T", res)
+	}
+	if !sameStrings(ur.Tags, []string{"c"}) {
+		t.Fatalf("expected tags [c], got %v", ur.Tags)
+	}
+
+	// An explicit empty array clears tags.
+	res2, err := updateTodoRecord(context.Background(), json.RawMessage(`{"user_id":1,"id":1,"tags":[]}`))
+	if err != nil {
+		t.Fatalf("updateTodoRecord failed: %v", err)
+	}
+	ur2 := res2.(*todo.UpdateResult)
+	if len(ur2.Tags) != 0 {
+		t.Fatalf("expected cleared tags, got %v", ur2.Tags)
 	}
 }
 

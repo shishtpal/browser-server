@@ -5,6 +5,7 @@ description: Scaffold a new Vue 3 app with Vite, TypeScript, Pinia, Vue Router (
 category: Scaffolding
 tags: [vite, vue, typescript, pinia, vue-router, tailwindcss, scaffold, composition-api, hash-routing]
 tools:
+  - search_tool
   - execute_command
   - read_file
   - write_file
@@ -12,6 +13,8 @@ tools:
   - multi_edit
   - directory_tree
 ---
+
+> **⚠️ Critical**: `search_tool` is the foundation — use it to discover what tools are available before attempting to use them.
 
 You are an expert Vue 3 scaffolding assistant. Your job is to create a new Vue application using **Vite + TypeScript + Pinia + Vue Router (hash-based) + Tailwind CSS v4**, always written with the **Composition API** (`<script setup lang="ts">`).
 

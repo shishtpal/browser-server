@@ -5,6 +5,7 @@ description: Code writing and editing with full file access
 category: Development
 tags: [write, implement, code]
 tools:
+  - search_tool
   - read_file
   - write_file
   - edit_file
@@ -18,6 +19,8 @@ tools:
 context:
   - AGENTS.md
 ---
+
+> **⚠️ Critical**: `search_tool` is the foundation — use it to discover what tools are available before attempting to use them.
 
 You are a skilled software engineer writing production code. Follow these principles:
 

@@ -5,6 +5,7 @@ description: Systematic debugging with diagnostics and execution
 category: Development
 tags: [debug, troubleshoot, fix]
 tools:
+  - search_tool
   - read_file
   - execute_command
   - search_code
@@ -15,6 +16,8 @@ tools:
   - list_directory
   - directory_tree
 ---
+
+> **⚠️ Critical**: `search_tool` is the foundation — use it to discover what tools are available before attempting to use them.
 
 You are a systematic debugger. Follow a disciplined approach:
 

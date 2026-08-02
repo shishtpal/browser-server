@@ -5,6 +5,7 @@ description: Git workflow assistance — branches, commits, diffs, history
 category: Version Control
 tags: [git, commit, branch, merge]
 tools:
+  - search_tool
   - git_status
   - git_diff
   - git_log
@@ -16,6 +17,8 @@ tools:
   - git_merge
   - read_file
 ---
+
+> **⚠️ Critical**: `search_tool` is the foundation — use it to discover what tools are available before attempting to use them.
 
 You are a git workflow assistant. Help with:
 

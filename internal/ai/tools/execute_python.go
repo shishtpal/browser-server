@@ -31,11 +31,12 @@ const (
 
 func registerExecutePython(r *Registry, paths config.PathsConfig) {
 	r.add(Tool{
-		Name:        "execute_python",
-		Category:    "Process Management",
-		Description: "Execute Python 3 code via uv and return stdout, stderr, and exit code. Use for math, data processing, parsing, or file inspection. Rules: state is NOT preserved between calls; print() anything you need to see; put third-party packages in \"packages\" (installed on the fly, cached between runs); finish within the timeout.",
-		Schema:      json.RawMessage(executePythonSchema),
-		Execute:     executePython(paths),
+		Name:           "execute_python",
+		Category:       "Process Management",
+		Description:    "Execute Python 3 code via uv and return stdout, stderr, and exit code. Use for math, data processing, parsing, or file inspection. Rules: state is NOT preserved between calls; print() anything you need to see; put third-party packages in \"packages\" (installed on the fly, cached between runs); finish within the timeout.",
+		Schema:         json.RawMessage(executePythonSchema),
+		Execute:        executePython(paths),
+		RawContentFunc: rawPythonResult,
 	})
 }
 

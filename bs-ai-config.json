@@ -29,7 +29,8 @@
             "move_file",
             "edit_file",
             "web_search",
-            "web_fetch"
+            "web_fetch",
+            "execute_python"
         ],
         "allowed": [
             "search_tool",

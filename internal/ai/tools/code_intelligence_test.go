@@ -30,8 +30,11 @@ func TestSearchCodeLiteralFiltersAndContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(map[string]any)
-	if result["total_matches"].(int) != 1 {
+	result, err := value.(searchCodeEnvelope).AsMap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if intFrom(result, "total_matches") != 1 {
 		t.Fatalf("unexpected result: %#v", result)
 	}
 	encoded, _ := json.Marshal(result["results"])

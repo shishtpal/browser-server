@@ -18,9 +18,10 @@ func registerSearchCode(r *Registry) {
 	r.add(Tool{
 		Name:        "search_code",
 		Category:    "Code Intelligence",
-		Description: "Search source files using regex, literal, or fixed-string matching. Results include a relevance score and are paginated with one-based page/page_size. The legacy `max_results` argument is deprecated and maps to `page_size` when `page_size` is omitted.",
+		Description: "Search source files using regex, literal, or fixed-string matching. Results include a relevance score and are paginated with one-based page/page_size. The legacy `max_results` argument is deprecated and maps to `page_size` when `page_size` is omitted. When raw output is enabled for this tool, results are rendered as compact plain text instead of JSON.",
 		Schema:      json.RawMessage(searchCodeSchema),
 		Execute:     searchCode,
+		RawContentFunc: rawSearchCodeFormatter,
 	})
 }
 
@@ -94,15 +95,15 @@ func searchCode(ctx context.Context, raw json.RawMessage) (any, error) {
 			"context_before": m.ContextBefore, "context_after": m.ContextAfter, "score": hit.Score,
 		}
 	}
-	return fitSearchEnvelope(ctx, map[string]any{
-		"query":          a.Pattern,
-		"page":           page.Page,
-		"page_size":      page.PageSize,
-		"total":          page.Total,
-		"has_more":       page.HasMore,
-		"truncated":      page.Truncated,
-		"results":        results,
-		"total_matches":  page.Total,
-		"search_time_ms": time.Since(start).Milliseconds(),
-	}), nil
+	return makeSearchCodeEnvelope(
+		a.Pattern,
+		page.Page,
+		page.PageSize,
+		page.Total,
+		page.Total,
+		page.HasMore,
+		page.Truncated,
+		time.Since(start).Milliseconds(),
+		results,
+	), nil
 }

@@ -46,8 +46,19 @@ func callSearchTodos(t *testing.T, input string) (map[string]any, error) {
 }
 
 func pageResults(page map[string]any) []map[string]any {
-	results, _ := page["results"].([]map[string]any)
-	return results
+	if raw, ok := page["results"].([]map[string]any); ok {
+		return raw
+	}
+	if raw, ok := page["results"].([]interface{}); ok {
+		out := make([]map[string]any, len(raw))
+		for i, item := range raw {
+			if m, ok := item.(map[string]any); ok {
+				out[i] = m
+			}
+		}
+		return out
+	}
+	return nil
 }
 
 func rowsHaveTitle(rows []map[string]any, title string) bool {

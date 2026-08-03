@@ -25,11 +25,11 @@ func callSearchCode(t *testing.T, input string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	page, ok := res.(map[string]any)
+	env, ok := res.(searchCodeEnvelope)
 	if !ok {
-		t.Fatalf("expected map envelope, got %T", res)
+		t.Fatalf("expected searchCodeEnvelope, got %T", res)
 	}
-	return page, nil
+	return env.AsMap()
 }
 
 func TestSearchCodeBasic(t *testing.T) {
@@ -45,12 +45,12 @@ func TestSearchCodeBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
 	}
-	if page["page"] != 1 || page["page_size"] != 10 || page["total"] == 0 || page["truncated"] != false {
+	if intFrom(page, "page") != 1 || intFrom(page, "page_size") != 10 || intFrom(page, "total") == 0 || page["truncated"] != false {
 		t.Fatalf("unexpected metadata: %v", page)
 	}
 	results := pageResults(page)
 	if len(results) == 0 {
-		t.Fatal("expected code results")
+		t.Fatalf("expected code results, got %#v", page)
 	}
 	assertScoresPresent(t, results)
 }
@@ -65,10 +65,10 @@ func TestSearchCodeEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
 	}
-	if page["total_matches"] == 0 {
+	if intFrom(page, "total_matches") == 0 {
 		t.Fatal("expected total_matches > 0")
 	}
-	if page["search_time_ms"] == 0 {
+	if intFrom(page, "search_time_ms") == 0 {
 		t.Fatal("expected search_time_ms")
 	}
 	if _, ok := page["results"]; !ok {
@@ -87,7 +87,7 @@ func TestSearchCodeLegacyMaxResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
 	}
-	if page["page_size"] != 5 || len(pageResults(page)) != 5 || page["has_more"] != true {
+	if intFrom(page, "page_size") != 5 || len(pageResults(page)) != 5 || page["has_more"] != true {
 		t.Fatalf("unexpected page: %v", page)
 	}
 }
@@ -103,7 +103,7 @@ func TestSearchCodePagination(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
 	}
-	if page["page"] != 2 || len(pageResults(page)) != 3 || page["has_more"] != true {
+	if intFrom(page, "page") != 2 || len(pageResults(page)) != 3 || page["has_more"] != true {
 		t.Fatalf("unexpected page: %v", page)
 	}
 }

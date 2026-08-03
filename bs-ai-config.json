@@ -43,6 +43,7 @@
             "edit_file",
             "web_search",
             "web_fetch",
+            "search_code",
             "execute_python"
         ],
         "allowed": [

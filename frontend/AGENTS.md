@@ -52,7 +52,7 @@ frontend/src/
 
 ### Chat module (`components/chat/`)
 
-The AI chat UI is fully modular, split into focused sub-components and composables. The list of providers and models is read from `bs-ai-models.json` via `/api/ai/config`; behavior toggles such as `tools.allowed`, `memory`, and `skills` come from `bs-ai-config.json`.
+The AI chat UI is fully modular, split into focused sub-components and composables. The list of providers and models is read from `bs-ai-models.json` via `/api/ai/config`; behavior toggles such as `tools.allowed`, `memory`, and `skills` come from `bs-ai-config.json`. Optional MCP servers are connected only by the backend; the frontend receives sanitized status plus their runtime tool names/categories through `/api/ai/config` and must use the same selection, approval, and SSE paths as built-in tools.
 
 ```
 components/chat/

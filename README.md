@@ -103,9 +103,11 @@ The token and data directories are created when their corresponding commands run
 | `SERVER_TOKEN_PATH` | `.bs-token` beside the executable | Operator token file |
 | `bs-ai-config.json` | beside the executable | AI chat behavior config (tools, chat, memory, web/file/skills settings) |
 | `bs-ai-models.json` | beside the executable | AI provider/model catalog |
+| `bs-ai-mcp.json` | beside `bs-ai-config.json` | Optional local or remote MCP tool servers |
 | `bs-ai-voice.json` | beside `bs-ai-config.json` | Optional voice typing providers, models, languages, and recording limits |
 | `BS_AI_CONFIG_PATH` | — | Override path to `bs-ai-config.json` |
 | `BS_AI_MODELS_PATH` | — | Override path to `bs-ai-models.json` |
+| `BS_AI_MCP_PATH` | — | Override path to `bs-ai-mcp.json` |
 | `BS_AI_VOICE_PATH` | — | Override path to `bs-ai-voice.json` |
 
 Examples:
@@ -242,6 +244,39 @@ The web app will show the AI Chat page once both files are detected. If either f
 Cross-origin API access is disabled by default.
 Set `"cors_enabled": true` and restart the server to enable it, so the frontend development server can call the API from another port.
 
+### MCP tool servers
+
+AI Chat can discover tools from optional Model Context Protocol servers. Copy `bs-ai-mcp.json.example` to `bs-ai-mcp.json` beside `bs-ai-config.json`, then configure local stdio commands or remote Streamable HTTP endpoints:
+
+```json
+{
+  "mcpServers": {
+    "local-tools": {
+      "command": "example-mcp-server",
+      "args": ["--workspace", "."],
+      "cwd": ".",
+      "env": {
+        "EXAMPLE_API_KEY": "env:EXAMPLE_API_KEY"
+      },
+      "allowed_tools": []
+    },
+    "remote-tools": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "Authorization": "env:EXAMPLE_MCP_AUTHORIZATION"
+      },
+      "allowed_tools": ["search"]
+    }
+  }
+}
+```
+
+An empty `allowed_tools` list permits every tool discovered from that server. Browser Server exposes each usable tool under a collision-safe name such as `mcp_local-tools_search` and groups it under `MCP: local-tools` in the Chat tools panel. MCP tools use the same per-tool toggles, `search_tool` discovery, approval/YOLO policy, skill restrictions, output limits, persistence, and cancellation path as built-in tools.
+
+Values beginning with `env:` are resolved from the Browser Server process environment at startup. For an `Authorization` header, the referenced environment value must contain the complete header value, such as `Bearer ...`. Never put credentials directly in the JSON file. The authenticated `/api/ai/config` response reports only sanitized server status and public tool names.
+
+Local stdio entries execute the configured program with Browser Server's operating-system permissions, so treat `bs-ai-mcp.json` as privileged operator configuration. Remote endpoints must use HTTPS except for loopback development servers. One unreachable server is reported as unavailable without disabling built-in tools or other connected MCP servers. Configuration and tool catalogs are loaded at startup; restart Browser Server after changing the file. Use `BS_AI_MCP_PATH` to load it from another location.
+
 ### Voice typing
 
 AI Chat voice typing is configured independently in `bs-ai-voice.json`. The supplied file defines Sarvam's streaming speech-to-text service with Auto, Hindi, and English language choices and is disabled by default. Set `"enabled": true` and provide the server-side key before startup:
@@ -366,6 +401,7 @@ shared/browser-extension-core/ Shared Vue extension UI and runtime logic
 scripts/build.ps1              Web app + Go release build
 bs-ai-config.json              AI chat behavior config (tools, chat, memory, etc.)
 bs-ai-models.json              AI provider/model catalog
+bs-ai-mcp.json.example         Optional MCP tool server configuration example
 PRD.md                         Detailed product and API documentation
 ROADMAP.md                     Completed and planned work
 ```

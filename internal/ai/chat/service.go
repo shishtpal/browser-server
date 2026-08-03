@@ -108,6 +108,17 @@ type Event struct {
 }
 
 func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Registry, skillReg *skills.Registry) *Service {
+	service, err := NewServiceWithTools(cfg, st, profileReg, skillReg, nil)
+	if err != nil {
+		panic(err)
+	}
+	return service
+}
+
+// NewServiceWithTools creates a chat service with externally discovered tools.
+// External registration errors are returned so startup cannot silently expose
+// a different implementation under a colliding tool name.
+func NewServiceWithTools(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Registry, skillReg *skills.Registry, external []tools.Tool) (*Service, error) {
 	clients := map[string]provider.Client{}
 	for name, item := range cfg.Providers {
 		clients[name] = provider.NewOpenAICompatibleClient(
@@ -118,12 +129,16 @@ func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Regi
 			time.Duration(item.RetryDelaySeconds)*time.Second,
 		)
 	}
+	registry, err := tools.NewWithExternal(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths, External: external})
+	if err != nil {
+		return nil, err
+	}
 	return &Service{
 		cfg: cfg, store: st, attachmentsDir: attachments.Dir(cfg.ResolvePath(".data")), profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{}, appendWindows: map[string]*appendWindow{},
-		tools: tools.New(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths}), pending: map[string]pendingToolCall{},
+		tools: registry, pending: map[string]pendingToolCall{},
 		toolRetryDelay:    time.Duration(cfg.Chat.ToolRetryDelaySeconds) * time.Second,
 		toolRetryAttempts: cfg.Chat.ToolRetryAttempts,
-	}
+	}, nil
 }
 
 func (s *Service) DefaultSelection() (string, string) {

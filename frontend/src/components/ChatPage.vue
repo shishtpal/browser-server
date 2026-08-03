@@ -54,7 +54,7 @@
     <ChatToolsPanel v-if="showToolsPanel" class="hidden lg:flex" :tools-enabled="userToolsEnabled"
       :model-supports-tools="selectedModelSupportsTools" :yolo-mode="yoloMode"
       :include-all-tool-definitions="includeAllToolDefinitions" :available-tools="availableTools"
-      :tools-by-category="toolsByCategory" :disabled-tools="disabledTools" :tool-calls="toolCallEntries"
+      :tools-by-category="toolsByCategory" :disabled-tools="disabledTools" :tool-calls="toolCallEntries" :mcp="mcp"
       :font-family="chatFontFamily" :font-size="chatFontSize" :raw-tool-output="rawToolOutput"
       @close="showToolsPanel = false" @update:tools-enabled="userToolsEnabled = $event"
       @update:yolo-mode="yoloMode = $event" @update:include-all-tool-definitions="includeAllToolDefinitions = $event"
@@ -202,6 +202,7 @@ const {
   selectedProfile,
   profiles,
   skills,
+  mcp,
   activeSkills,
   yoloMode,
   userToolsEnabled,

@@ -71,6 +71,20 @@
           </p>
         </section>
 
+        <!-- MCP server status -->
+        <section v-if="mcp.configured" class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-slate-900">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">MCP servers</span>
+            <span class="text-[10px] text-slate-400 dark:text-slate-500">{{ connectedMCPServers }} connected · {{ mcpToolCount }} tools</span>
+          </div>
+          <div v-if="unavailableMCPServers.length > 0" class="mt-2 space-y-1.5">
+            <div v-for="server in unavailableMCPServers" :key="server.name" class="rounded-md bg-red-50 px-2 py-1.5 dark:bg-red-950/30">
+              <p class="text-[10px] font-bold text-red-700 dark:text-red-300">{{ server.name }} unavailable</p>
+              <p v-if="server.error" class="mt-0.5 text-[10px] text-red-600/80 dark:text-red-400/80">{{ server.error }}</p>
+            </div>
+          </div>
+        </section>
+
         <!-- YOLO mode -->
         <section v-if="toolsEnabled">
           <label
@@ -311,6 +325,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { Search, X } from '@lucide/vue'
+import type { AIMCPConfig } from '@browser-server/shared-types'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 500
@@ -343,6 +358,7 @@ const props = defineProps<{
   toolsByCategory: { category: string; tools: string[] }[]
   disabledTools: Set<string>
   toolCalls: ToolCallEntry[]
+  mcp: AIMCPConfig
   fontFamily: string
   fontSize: number
   /** true = force raw, false = force JSON, null = follow server config */
@@ -387,6 +403,10 @@ const filteredToolsByCategory = computed(() => {
     .map(g => ({ category: g.category, tools: g.tools.filter(t => t.toLowerCase().includes(q)) }))
     .filter(g => g.tools.length > 0)
 })
+
+const connectedMCPServers = computed(() => props.mcp.servers.filter(server => server.status === 'connected').length)
+const unavailableMCPServers = computed(() => props.mcp.servers.filter(server => server.status === 'unavailable'))
+const mcpToolCount = computed(() => props.mcp.servers.reduce((total, server) => total + (server.tools?.length ?? 0), 0))
 
 function isCategoryVisible(category: string): boolean {
   if (!toolSearchQuery.value.trim()) return !collapsed.has(category)

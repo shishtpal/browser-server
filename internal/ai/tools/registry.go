@@ -43,10 +43,28 @@ type Options struct {
 	Tools     config.ToolsConfig
 	Allowed   []string
 	Paths     config.PathsConfig
+	External  []Tool
 }
 
 // New creates a Registry with all built-in tools registered.
 func New(options ...Options) *Registry {
+	r, err := newRegistry(options...)
+	if err != nil {
+		// New is retained for built-in-only callers. External callers must use
+		// NewWithExternal so registration errors cannot be ignored.
+		panic(err)
+	}
+	return r
+}
+
+// NewWithExternal creates a Registry and returns validation or collision
+// errors from externally discovered tools instead of silently overwriting a
+// built-in registration.
+func NewWithExternal(options Options) (*Registry, error) {
+	return newRegistry(options)
+}
+
+func newRegistry(options ...Options) (*Registry, error) {
 	shell := DetectShell()
 	r := &Registry{tools: map[string]Tool{}, shell: shell, limits: defaultToolLimits()}
 	if len(options) > 0 {
@@ -129,10 +147,26 @@ func New(options ...Options) *Registry {
 	registerGitPull(r, r.paths)
 	registerGitMerge(r, r.paths)
 
+	if len(options) > 0 {
+		for _, external := range options[0].External {
+			if external.Name == "" || external.Execute == nil || len(external.Schema) == 0 {
+				return nil, fmt.Errorf("invalid external tool registration %q", external.Name)
+			}
+			if _, exists := r.tools[external.Name]; exists {
+				return nil, fmt.Errorf("external tool %q conflicts with an existing tool", external.Name)
+			}
+			var schema map[string]any
+			if err := json.Unmarshal(external.Schema, &schema); err != nil || schema == nil {
+				return nil, fmt.Errorf("external tool %q has an invalid schema", external.Name)
+			}
+			r.add(external)
+		}
+	}
+
 	// Tool discovery is registered last so it can search the complete registry.
 	registerSearchTool(r)
 
-	return r
+	return r, nil
 }
 
 // add registers a tool in the registry.

@@ -3,6 +3,19 @@ export interface AIProfile {
   label: string
 }
 
+export interface AIMCPServerStatus {
+  name: string
+  status: 'connected' | 'unavailable' | 'disabled'
+  tools?: string[]
+  warnings?: string[]
+  error?: string
+}
+
+export interface AIMCPConfig {
+  configured: boolean
+  servers: AIMCPServerStatus[]
+}
+
 export interface AISkill {
   name: string
   label: string
@@ -30,6 +43,7 @@ export interface AIConfig {
   }
   profiles: AIProfile[]
   skills: AISkill[]
+  mcp?: AIMCPConfig
 }
 
 export interface AIProviderConfig {

@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "enabled": true,
+      "command": "D:\\Tools\\cli.vite-plus\\bin\\npx.exe",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ],
+      "cwd": ".",
+      "allowed_tools": [],
+      "connect_timeout_seconds": 15,
+      "call_timeout_seconds": 60
+    },
+    "remote-example": {
+      "enabled": false,
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "Authorization": "env:EXAMPLE_MCP_AUTHORIZATION"
+      },
+      "allowed_tools": [
+        "search"
+      ],
+      "connect_timeout_seconds": 15,
+      "call_timeout_seconds": 60
+    }
+  }
+}

@@ -34,6 +34,9 @@ export function useChatConfig() {
   /** Available skills from the server config */
   const skills = computed<AISkill[]>(() => config.value?.skills ?? [])
 
+  /** Sanitized MCP server availability reported by the backend. */
+  const mcp = computed(() => config.value?.mcp ?? { configured: false, servers: [] })
+
   const configLabel = computed(() => {
     if (!config.value) return 'Loading…'
     return config.value.enabled ? `Ready · ${selectedModel.value.split('/').pop() || 'select model'}` : 'Disabled'
@@ -130,6 +133,7 @@ export function useChatConfig() {
     selectedProfile,
     profiles,
     skills,
+    mcp,
     activeSkills,
     yoloMode,
     userToolsEnabled,

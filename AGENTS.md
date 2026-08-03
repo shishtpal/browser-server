@@ -8,7 +8,7 @@ It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `fr
 
 ## Current repo notes
 
-- AI configuration is split into two sibling files: `bs-ai-config.json` for behavior toggles (tools, chat, memory, web/file/skills settings, `default_provider`, `cors_enabled`) and `bs-ai-models.json` for the provider/model catalog. Keep config examples and documentation aligned with the schema in `internal/ai/config/types.go`.
+- AI configuration uses sibling files: `bs-ai-config.json` for behavior toggles, `bs-ai-models.json` for the provider/model catalog, and optional `bs-ai-mcp.json` for external MCP tool servers. Keep config examples and documentation aligned with `internal/ai/config` and `internal/ai/mcp`.
 - Prompt management and prompt folders are part of the shared domain model under `internal/prompt/`; they should remain the single source of truth for prompt validation and storage.
 - When changing shared domain code, keep HTTP concerns in handlers and tool-argument validation in AI tools rather than duplicating logic in both layers.
 
@@ -106,6 +106,8 @@ The AI chat module lives in `internal/ai/` and is self-contained — it manages 
 
 Place two sibling files next to the server binary: `bs-ai-config.json` for behavior toggles and `bs-ai-models.json` for the provider/model catalog. The module reads them at startup; if the main file is missing or has `"enabled": false`, the feature is reported as disabled. If `bs-ai-models.json` is missing while the main config exists, AI is also disabled.
 
+An optional `bs-ai-mcp.json` sibling configures stdio or Streamable HTTP MCP servers. `internal/ai/mcp` owns protocol transports, discovery, public-name routing, result normalization, and session lifecycle. MCP tools are appended to the validated runtime allowlist and adapted into `internal/ai/tools`; they must continue to use the normal active-tool, skill, approval, output-limit, persistence, and cancellation path. The browser remains MCP-protocol agnostic.
+
 Key sections in `bs-ai-config.json`:
 
 ```jsonc
@@ -186,6 +188,7 @@ Provider requests retry transient failures (network errors, timeouts, HTTP `429`
 | Package | Responsibility |
 |---------|---------------|
 | `ai/config` | Parses `bs-ai-config.json` and `bs-ai-models.json`, resolves env-based keys, exposes typed config |
+| `ai/mcp` | Parses optional `bs-ai-mcp.json`, connects MCP servers, discovers/routes tools, and owns sessions |
 | `ai/provider` | LLM abstraction; currently supports OpenAI-compatible (OpenRouter, OpenAI, etc.) |
 | `ai/store` | SQLite persistence for conversations + messages |
 | `ai/tools` | Registry of server-side tools the model can invoke (e.g. `get_current_time`, `search_bookmarks`) |

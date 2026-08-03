@@ -81,6 +81,53 @@ func TestSearchToolRanksFiltersAndLimitsMatches(t *testing.T) {
 	}
 }
 
+func TestExternalToolIsSearchableAndExecutable(t *testing.T) {
+	const name = "mcp_docs_search"
+	schema, _ := json.Marshal(map[string]any{
+		"type":                 "object",
+		"properties":           map[string]any{},
+		"additionalProperties": false,
+	})
+	r, err := NewWithExternal(Options{
+		Allowed: []string{SearchToolName, name},
+		External: []Tool{{
+			Name:        name,
+			Description: "Search external documentation",
+			Category:    "MCP: docs",
+			Schema:      schema,
+			Execute: func(context.Context, json.RawMessage) (any, error) {
+				return map[string]any{"ok": true}, nil
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	searchArgs, _ := json.Marshal(map[string]any{"query": "external documentation"})
+	result, err := r.Search(searchArgs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Matches) != 1 || result.Matches[0].Name != name || result.Matches[0].Category != "MCP: docs" {
+		t.Fatalf("matches = %#v", result.Matches)
+	}
+	out, err := r.Execute(context.Background(), name, json.RawMessage(`{}`))
+	if err != nil || !json.Valid(out) {
+		t.Fatalf("external execution output = %q, err = %v", out, err)
+	}
+}
+
+func TestExternalToolCannotOverwriteBuiltin(t *testing.T) {
+	_, err := NewWithExternal(Options{External: []Tool{{
+		Name:    "read_file",
+		Schema:  json.RawMessage("{}"),
+		Execute: func(context.Context, json.RawMessage) (any, error) { return nil, nil },
+	}}})
+	if err == nil {
+		t.Fatal("expected external tool collision rejection")
+	}
+}
+
 func TestWriteFileRequiresContent(t *testing.T) {
 	r := New()
 	path := filepath.Join(t.TempDir(), "empty.txt")

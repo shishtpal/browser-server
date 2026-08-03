@@ -12,6 +12,17 @@ type Message struct {
 	Content    string     `json:"content,omitempty"`
 	ToolCallID string     `json:"tool_call_id,omitempty"`
 	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	// ImageParts, when non-empty, serializes Content as an array of OpenAI
+	// content parts ([{type:text}, {type:image_url}...]) instead of a plain
+	// string. Built from validated private files at request time; never
+	// persisted and never logged.
+	ImageParts []ImagePart `json:"-"`
+}
+
+// ImagePart is one multimodal image payload (an RFC 2397 data URL) for
+// vision-capable OpenAI-compatible models.
+type ImagePart struct {
+	DataURL string
 }
 
 type ToolCall struct {

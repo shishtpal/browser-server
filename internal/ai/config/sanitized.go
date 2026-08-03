@@ -18,6 +18,7 @@ type SanitizedModel struct {
 	ID              string `json:"id"`
 	Label           string `json:"label"`
 	SupportsTools   bool   `json:"supports_tools"`
+	SupportsVision  bool   `json:"supports_vision"`
 	Default         bool   `json:"default"`
 	MaxOutputTokens int    `json:"max_output_tokens"`
 }
@@ -30,9 +31,20 @@ type SanitizedTools struct {
 }
 
 type SanitizedChat struct {
-	MaxHistoryMessages int     `json:"max_history_messages"`
-	Stream             bool    `json:"stream"`
-	Temperature        float64 `json:"temperature"`
+	MaxHistoryMessages int                    `json:"max_history_messages"`
+	Stream             bool                   `json:"stream"`
+	Temperature        float64                `json:"temperature"`
+	Attachments        SanitizedChatAttachments `json:"attachments"`
+}
+
+// SanitizedChatAttachments exposes the upload limits (without any operator
+// secrets) so browser clients can pre-validate selections against server rules.
+type SanitizedChatAttachments struct {
+	Enabled          bool     `json:"enabled"`
+	AllowedMIMETypes []string `json:"allowed_mime_types"`
+	MaxImages        int      `json:"max_images"`
+	MaxImageBytes    int      `json:"max_image_bytes"`
+	MaxTotalBytes    int      `json:"max_total_bytes"`
 }
 
 func (cfg *Config) Sanitized(categories map[string]string) SanitizedConfig {
@@ -50,6 +62,13 @@ func (cfg *Config) Sanitized(categories map[string]string) SanitizedConfig {
 			MaxHistoryMessages: cfg.Chat.MaxHistoryMessages,
 			Stream:             cfg.Chat.Stream,
 			Temperature:        cfg.Chat.Temperature,
+			Attachments: SanitizedChatAttachments{
+				Enabled:          cfg.Chat.Attachments.Enabled,
+				AllowedMIMETypes: append([]string{}, cfg.Chat.Attachments.AllowedMIMETypes...),
+				MaxImages:        cfg.Chat.Attachments.MaxImages,
+				MaxImageBytes:    cfg.Chat.Attachments.MaxImageBytes,
+				MaxTotalBytes:    cfg.Chat.Attachments.MaxTotalBytes,
+			},
 		},
 	}
 	if out.Tools.Categories == nil {
@@ -69,6 +88,7 @@ func (cfg *Config) Sanitized(categories map[string]string) SanitizedConfig {
 				ID:              model.ID,
 				Label:           label,
 				SupportsTools:   model.SupportsTools,
+				SupportsVision:  model.SupportsVision,
 				Default:         model.Default,
 				MaxOutputTokens: model.MaxOutputTokens,
 			})

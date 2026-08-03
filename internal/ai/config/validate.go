@@ -36,6 +36,43 @@ var knownToolNames = map[string]bool{
 	"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
 }
 
+// supportedAttachmentTypes is the closed set of image MIME types the feature
+// accepts. It mirrors the shared AIImageAttachment content_type union and is
+// enforced both here (config validation) and at upload time (file signatures).
+var supportedAttachmentTypes = map[string]bool{
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
+	"image/gif":  true,
+}
+
+func validateAttachments(cfg ChatAttachmentsConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if len(cfg.AllowedMIMETypes) == 0 {
+		return fmt.Errorf("chat.attachments.allowed_mime_types must not be empty")
+	}
+	for _, mime := range cfg.AllowedMIMETypes {
+		if !supportedAttachmentTypes[mime] {
+			return fmt.Errorf("chat.attachments.allowed_mime_types contains unsupported type %q", mime)
+		}
+	}
+	if cfg.MaxImages < 1 || cfg.MaxImages > 20 {
+		return fmt.Errorf("chat.attachments.max_images must be between 1 and 20")
+	}
+	if cfg.MaxImageBytes < 64*1024 || cfg.MaxImageBytes > 10*1024*1024 {
+		return fmt.Errorf("chat.attachments.max_image_bytes must be between 65536 and 10485760")
+	}
+	if cfg.MaxTotalBytes < cfg.MaxImageBytes || cfg.MaxTotalBytes > 100*1024*1024 {
+		return fmt.Errorf("chat.attachments.max_total_bytes must be at least max_image_bytes and at most 104857600")
+	}
+	if cfg.RetentionHours < 1 || cfg.RetentionHours > 720 {
+		return fmt.Errorf("chat.attachments.retention_hours must be between 1 and 720")
+	}
+	return nil
+}
+
 func validate(cfg *Config) error {
 	if cfg.DefaultProvider == "" {
 		return fmt.Errorf("default_provider is required")
@@ -167,6 +204,9 @@ func validate(cfg *Config) error {
 	}
 	if cfg.Chat.ToolRetryDelaySeconds < 1 || cfg.Chat.ToolRetryDelaySeconds > 300 {
 		return fmt.Errorf("chat.tool_retry_delay_seconds must be between 1 and 300")
+	}
+	if err := validateAttachments(cfg.Chat.Attachments); err != nil {
+		return err
 	}
 	parent := filepath.Dir(cfg.ResolvePath(cfg.Logging.DBPath))
 	if err := os.MkdirAll(parent, 0755); err != nil {

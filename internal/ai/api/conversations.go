@@ -1,6 +1,7 @@
 package api
 
 import (
+	"browser-server/internal/ai/attachments"
 	"browser-server/internal/ai/store"
 	"context"
 	"encoding/json"
@@ -164,11 +165,15 @@ func (m *Module) UpdateConversation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Module) DeleteConversation(w http.ResponseWriter, r *http.Request) {
-	if m.service.IsActive(mux.Vars(r)["id"]) {
+	conversationID := mux.Vars(r)["id"]
+	if m.service.IsActive(conversationID) {
 		writeError(w, http.StatusConflict, "generation_conflict", "Generation is active")
 		return
 	}
-	if err := m.store.DeleteConversation(r.Context(), mux.Vars(r)["id"]); err != nil {
+	// Collect attachment storage keys first: deleting the conversation cascades
+	// the metadata rows, so the files must be reclaimed after the DB commit.
+	attachmentsToRemove, _ := m.store.ListAttachmentsForConversation(r.Context(), conversationID)
+	if err := m.store.DeleteConversation(r.Context(), conversationID); err != nil {
 		if store.IsNotFound(err) {
 			writeError(w, http.StatusNotFound, "not_found", "Conversation not found")
 			return
@@ -176,6 +181,10 @@ func (m *Module) DeleteConversation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "store_error", "Failed to delete conversation")
 		return
 	}
+	for _, att := range attachmentsToRemove {
+		_ = attachments.Remove(m.attachmentsDir, conversationID, att.StorageKey)
+	}
+	_ = attachments.RemoveConversationDir(m.attachmentsDir, conversationID)
 	w.WriteHeader(http.StatusNoContent)
 }
 

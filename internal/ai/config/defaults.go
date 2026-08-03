@@ -93,6 +93,7 @@ func applyDefaults(cfg *Config, mainRaw, modelsRaw map[string]json.RawMessage) {
 	if !nestedPresent(mainRaw, "chat", "tool_retry_delay_seconds") {
 		cfg.Chat.ToolRetryDelaySeconds = 5
 	}
+	applyAttachmentDefaults(cfg, mainRaw)
 	for name, provider := range cfg.Providers {
 		if !providerFieldPresent(modelsRaw, name, "request_timeout_seconds") {
 			provider.RequestTimeoutSeconds = 120
@@ -117,6 +118,71 @@ func applyDefaults(cfg *Config, mainRaw, modelsRaw map[string]json.RawMessage) {
 	if !nestedPresent(mainRaw, "file_tools", "max_file_size_warn_mb") {
 		cfg.FileTools.MaxFileSizeWarnMB = 100
 	}
+}
+
+// applyAttachmentDefaults fills the chat.attachments section with safe defaults
+// when the operator omitted the whole object or individual fields.
+func applyAttachmentDefaults(cfg *Config, mainRaw map[string]json.RawMessage) {
+	if !nestedFieldPresent(mainRaw, "chat", "attachments") {
+		cfg.Chat.Attachments = ChatAttachmentsConfig{
+			Enabled:          true,
+			AllowedMIMETypes: []string{"image/png", "image/jpeg", "image/webp", "image/gif"},
+			MaxImages:        5,
+			MaxImageBytes:    5 * 1024 * 1024,
+			MaxTotalBytes:    20 * 1024 * 1024,
+			RetentionHours:   24,
+		}
+		return
+	}
+	if !nestedFieldPresent(mainRaw, "chat", "attachments", "enabled") {
+		cfg.Chat.Attachments.Enabled = true
+	}
+	if len(cfg.Chat.Attachments.AllowedMIMETypes) == 0 {
+		cfg.Chat.Attachments.AllowedMIMETypes = []string{"image/png", "image/jpeg", "image/webp", "image/gif"}
+	}
+	if !nestedFieldPresent(mainRaw, "chat", "attachments", "max_images") {
+		cfg.Chat.Attachments.MaxImages = 5
+	}
+	if !nestedFieldPresent(mainRaw, "chat", "attachments", "max_image_bytes") {
+		cfg.Chat.Attachments.MaxImageBytes = 5 * 1024 * 1024
+	}
+	if !nestedFieldPresent(mainRaw, "chat", "attachments", "max_total_bytes") {
+		cfg.Chat.Attachments.MaxTotalBytes = 20 * 1024 * 1024
+	}
+	if !nestedFieldPresent(mainRaw, "chat", "attachments", "retention_hours") {
+		cfg.Chat.Attachments.RetentionHours = 24
+	}
+}
+
+// nestedFieldPresent reports whether every element of path is present as a
+// nested JSON object/field inside raw (e.g. path{"chat","attachments","max_images"}).
+// Each level is a JSON object, so the raw bytes are unmarshaled into a map
+// before descending — a json.RawMessage is bytes, not a map, and a plain type
+// assertion would always fail for paths deeper than one level.
+func nestedFieldPresent(raw map[string]json.RawMessage, path ...string) bool {
+	current := raw
+	for _, key := range path {
+		if current == nil {
+			return false
+		}
+		rawValue, ok := current[key]
+		if !ok {
+			return false
+		}
+		// Descend: decode this level's raw bytes into a map for the next key.
+		// For the final path element there is no next key, so we only need to
+		// confirm presence (already done); decoding here would be wasteful but
+		// harmless. We decode only when more keys remain.
+		var next map[string]json.RawMessage
+		if err := json.Unmarshal(rawValue, &next); err != nil {
+			// Not an object (e.g. a scalar value) — presence is still confirmed
+			// if this was the final key; otherwise the path cannot continue.
+			current = nil
+		} else {
+			current = next
+		}
+	}
+	return true
 }
 
 func nestedPresent(raw map[string]json.RawMessage, section, field string) bool {

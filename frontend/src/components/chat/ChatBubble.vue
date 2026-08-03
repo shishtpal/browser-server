@@ -2,6 +2,25 @@
   <!-- User message -->
   <article v-if="message.role === 'user'"
     class="group relative ml-auto max-w-[82%] rounded-xl rounded-br-sm bg-indigo-600 px-3.5 py-2.5 text-white shadow-sm ring-1 ring-inset ring-indigo-500/40 dark:bg-indigo-600 dark:ring-indigo-400/30">
+    <!-- Image attachments -->
+    <div v-if="hasImages" class="mb-2 flex flex-wrap gap-2">
+      <button
+        v-for="att in imageAttachments"
+        :key="att.id"
+        type="button"
+        class="relative overflow-hidden rounded-lg border border-white/20 bg-white/10 p-0.5 hover:bg-white/20"
+        @click="openPreview(att)"
+      >
+        <img
+          :src="imageUrl(att)"
+          :alt="att.filename"
+          class="h-16 w-16 object-cover sm:h-20 sm:w-20"
+          loading="lazy"
+          @error="onImageError(att.id)"
+        />
+      </button>
+    </div>
+
     <pre class="whitespace-pre-wrap break-words font-sans text-[0.92em] leading-[1.6]">{{ message.content }}</pre>
     <div class="absolute -bottom-3 right-1 hidden items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm group-hover:flex dark:border-white/10 dark:bg-slate-900">
       <button
@@ -154,13 +173,45 @@
       </section>
     </div>
   </article>
+
+  <!-- Image preview modal -->
+  <Teleport v-if="previewAttachment" to="body">
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      @click="closePreview"
+    >
+      <div class="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-slate-900">
+        <img
+          :src="imageUrl(previewAttachment)"
+          :alt="previewAttachment.filename"
+          class="max-h-[80vh] max-w-[85vw] object-contain"
+          @error="onImageError(previewAttachment.id)"
+        />
+        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
+          <p class="truncate text-sm font-medium text-white">{{ previewAttachment.filename }}</p>
+          <p class="text-xs text-white/80">{{ formatBytes(previewAttachment.size_bytes) }}</p>
+        </div>
+        <button
+          type="button"
+          class="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+          aria-label="Close preview"
+          @click.stop="closePreview"
+        >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { AIMessage } from '@browser-server/shared-types'
+import type { AIImageAttachment, AIMessage } from '@browser-server/shared-types'
 import { renderMarkdown } from './markdown'
 import ChatQuestionForm from './ChatQuestionForm.vue'
+import { getAIImageAttachmentUrl } from '../../lib/api'
 
 const props = defineProps<{
   message: AIMessage
@@ -175,6 +226,35 @@ const emit = defineEmits<{
 
 const commentDraft = ref('')
 const expanded = ref(true)
+const previewAttachment = ref<AIImageAttachment | null>(null)
+const brokenImageIds = ref<Set<string>>(new Set())
+
+const imageAttachments = computed<AIImageAttachment[]>(() =>
+  (props.message.attachments ?? []).filter((a) => !brokenImageIds.value.has(a.id))
+)
+const hasImages = computed(() => imageAttachments.value.length > 0)
+
+function imageUrl(att: AIImageAttachment): string {
+  return getAIImageAttachmentUrl(props.message.conversation_id, att.id)
+}
+
+function onImageError(id: string) {
+  brokenImageIds.value.add(id)
+}
+
+function openPreview(att: AIImageAttachment) {
+  previewAttachment.value = att
+}
+
+function closePreview() {
+  previewAttachment.value = null
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
 
 function submitComment() {
   const text = commentDraft.value.trim()

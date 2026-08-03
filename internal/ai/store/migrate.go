@@ -82,6 +82,24 @@ func (s *Store) migrate() error {
 		{4, []string{
 			`ALTER TABLE conversations ADD COLUMN archived BOOLEAN DEFAULT FALSE`,
 		}},
+		{5, []string{
+			`CREATE TABLE IF NOT EXISTS ai_message_attachments (
+				id TEXT PRIMARY KEY,
+				conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+				message_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+				filename TEXT NOT NULL,
+				content_type TEXT NOT NULL,
+				size_bytes INTEGER NOT NULL,
+				width INTEGER,
+				height INTEGER,
+				storage_key TEXT NOT NULL,
+				status TEXT NOT NULL CHECK (status IN ('staged','attached')),
+				created_at TEXT NOT NULL
+			)`,
+			`CREATE INDEX IF NOT EXISTS idx_attachments_conversation ON ai_message_attachments(conversation_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_attachments_message ON ai_message_attachments(message_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_attachments_staged_created ON ai_message_attachments(status, created_at)`,
+		}},
 	}
 	var currentVersion int
 	s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&currentVersion)

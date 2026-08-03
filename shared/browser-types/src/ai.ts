@@ -26,6 +26,7 @@ export interface AIConfig {
     max_history_messages: number
     stream: boolean
     temperature: number
+    attachments?: AIChatAttachmentsConfig
   }
   profiles: AIProfile[]
   skills: AISkill[]
@@ -41,8 +42,34 @@ export interface AIModelConfig {
   id: string
   label: string
   supports_tools: boolean
+  supports_vision: boolean
   default: boolean
   max_output_tokens: number
+}
+
+/** Server-enforced image attachment limits exposed by the config endpoint. */
+export interface AIChatAttachmentsConfig {
+  enabled: boolean
+  allowed_mime_types: string[]
+  max_images: number
+  max_image_bytes: number
+  max_total_bytes: number
+}
+
+/**
+ * A server-issued image attachment for an AI conversation. `status` is
+ * 'staged' until the attachment is claimed by a submitted user message.
+ */
+export interface AIImageAttachment {
+  id: string
+  message_id?: string
+  filename: string
+  content_type: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+  size_bytes: number
+  width?: number
+  height?: number
+  status: 'staged' | 'attached'
+  created_at: string
 }
 
 /** Secret-free voice configuration returned to browser clients. */
@@ -106,6 +133,7 @@ export interface AIMessage {
   tool_call_id?: string
   status: AIMessageStatus
   created_at: string
+  attachments?: AIImageAttachment[]
 }
 
 export interface AIConversationDetail {
@@ -147,6 +175,8 @@ export interface SendAIMessageInput {
   skills?: string[]
   /** true = force raw tool output, false = force JSON, omitted = follow server config allowlist */
   raw_tool_output?: boolean
+  /** Server-issued staged attachment IDs to attach to this message. */
+  attachment_ids?: string[]
 }
 
 export interface AppendAIMessageInput {

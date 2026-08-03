@@ -25,7 +25,7 @@
           <span :class="['block truncate text-sm font-black', todo.status === 'completed' ? 'text-slate-400 line-through dark:text-slate-500' : todo.status === 'in_progress' ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-white']">{{ todo.title }}</span>
           <span v-if="todo.pinned" class="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-black text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">Pinned</span>
           <TodoPriorityBadge :priority="(todo.priority as any)" />
-          <span v-if="todo.status === 'in_progress'" class="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">In Progress</span>
+          <!-- <span v-if="todo.status === 'in_progress'" class="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">In Progress</span> -->
           <span v-if="todo.status === 'archived'" class="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-black text-gray-500 dark:bg-slate-700 dark:text-slate-400">Archived</span>
         </div>
         <p v-if="todo.description" class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 transition-colors dark:text-slate-400" v-html="linkifyDescription(todo.description)"></p>

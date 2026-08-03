@@ -64,6 +64,103 @@ func TestPayloadEncodesAssistantToolCallsInOpenAIFormat(t *testing.T) {
 	}
 }
 
+func TestPayloadKeepsTextOnlyContentAsAString(t *testing.T) {
+	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second)
+	payload, err := json.Marshal(c.payload(ChatRequest{Model: "m", Messages: []Message{
+		{Role: "system", Content: "system prompt"},
+		{Role: "user", Content: "hello"},
+		{Role: "assistant", Content: "hi there"},
+	}}, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded struct {
+		Messages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	// Text-only messages must stay as plain strings (not content-part arrays)
+	// for provider compatibility.
+	if len(decoded.Messages) != 3 {
+		t.Fatalf("payload=%s", payload)
+	}
+	for _, m := range decoded.Messages {
+		if m.Content == "" {
+			t.Fatalf("text-only content should be a string, got empty for %s: %s", m.Role, payload)
+		}
+	}
+}
+
+func TestPayloadEncodesImageAttachmentsAsContentParts(t *testing.T) {
+	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second)
+	payload, err := json.Marshal(c.payload(ChatRequest{Model: "m", Messages: []Message{
+		{Role: "user", Content: "describe this", ImageParts: []ImagePart{
+			{DataURL: "data:image/png;base64,Qk=="},
+			{DataURL: "data:image/jpeg;base64,Ug=="},
+		}},
+	}}, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded struct {
+		Messages []struct {
+			Role    string `json:"role"`
+			Content []struct {
+				Type     string `json:"type"`
+				Text     string `json:"text,omitempty"`
+				ImageURL *struct {
+					URL string `json:"url"`
+				} `json:"image_url,omitempty"`
+			} `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Messages) != 1 {
+		t.Fatalf("payload=%s", payload)
+	}
+	parts := decoded.Messages[0].Content
+	// First the text part, then the two image_url parts, in order.
+	if len(parts) != 3 || parts[0].Type != "text" || parts[0].Text != "describe this" {
+		t.Fatalf("text part not first: %+v payload=%s", parts, payload)
+	}
+	if parts[1].Type != "image_url" || parts[1].ImageURL == nil || parts[1].ImageURL.URL != "data:image/png;base64,Qk==" {
+		t.Fatalf("first image part wrong: %+v", parts[1])
+	}
+	if parts[2].Type != "image_url" || parts[2].ImageURL == nil || parts[2].ImageURL.URL != "data:image/jpeg;base64,Ug==" {
+		t.Fatalf("second image part wrong: %+v", parts[2])
+	}
+}
+
+func TestPayloadImagePartsOmitTextWhenEmpty(t *testing.T) {
+	// An image-only user message (no text) must not emit an empty text part.
+	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second)
+	payload, err := json.Marshal(c.payload(ChatRequest{Model: "m", Messages: []Message{
+		{Role: "user", Content: "", ImageParts: []ImagePart{{DataURL: "data:image/png;base64,Qk=="}}},
+	}}, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded struct {
+		Messages []struct {
+			Content []struct {
+				Type string `json:"type"`
+			} `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Messages) != 1 || len(decoded.Messages[0].Content) != 1 || decoded.Messages[0].Content[0].Type != "image_url" {
+		t.Fatalf("expected exactly one image_url part, payload=%s", payload)
+	}
+}
+
 func TestCompleteReturnsToolCalls(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -80,6 +177,7 @@ func TestCompleteReturnsToolCalls(t *testing.T) {
 		t.Fatalf("tool calls=%+v", resp.ToolCalls)
 	}
 }
+
 
 func TestCompleteRetriesTransientFailures(t *testing.T) {
 	var attempts atomic.Int32

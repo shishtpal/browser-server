@@ -93,7 +93,14 @@ func boundedPayloads(request, response []byte, enabled bool, max int) (string, s
 
 var secretPattern = regexp.MustCompile(`(?i)(authorization|api[_-]?key)\s*[":=]+\s*(bearer\s+)?[^\s",}]+|bearer\s+[A-Za-z0-9._~+/-]+`)
 
-func redact(value []byte) []byte { return secretPattern.ReplaceAll(value, []byte("$1:[REDACTED]")) }
+// dataURLPattern matches RFC 2397 image data URLs. Image bytes must never be
+// retained in request logs, even when full-payload logging is enabled.
+var dataURLPattern = regexp.MustCompile(`data:image/[a-zA-Z0-9+.-]+;base64,[A-Za-z0-9+/=]+`)
+
+func redact(value []byte) []byte {
+	value = secretPattern.ReplaceAll(value, []byte("$1:[REDACTED]"))
+	return dataURLPattern.ReplaceAll(value, []byte("data:image/[REDACTED]"))
+}
 
 func bound(value []byte, max int) (string, bool) {
 	if len(value) <= max {

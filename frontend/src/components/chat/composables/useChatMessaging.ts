@@ -1,13 +1,24 @@
-import type { AIConversation, AIMessage, AIStreamEvent } from '@browser-server/shared-types'
+import type { AIConversation, AIMessage, AIImageAttachment, AIStreamEvent, AIChatAttachmentsConfig } from '@browser-server/shared-types'
 import { computed, ref } from 'vue'
 import {
   appendAIMessage,
   decideAIToolCall,
+  deleteAIImageAttachment,
   regenerateAIMessage,
   sendAIMessage,
   sendAIMessageStream,
   stopAIGeneration,
+  uploadAIImageAttachment,
 } from '../../../lib/api'
+
+interface UploadableImage {
+  id: string
+  file: File
+  previewUrl: string
+  attachment?: AIImageAttachment
+  uploading: boolean
+  error?: string
+}
 
 interface SendOptions {
   provider: string
@@ -31,6 +42,9 @@ export function useChatMessaging(
   const canAppend = ref(false)
   const isAppending = ref(false)
   let streamController: AbortController | null = null
+
+  // Staged image attachments queued by the composer but not yet sent.
+  const stagedAttachments = ref<UploadableImage[]>([])
 
   const canRegenerate = computed(() => {
     const conv = getActiveConversation()
@@ -58,6 +72,62 @@ export function useChatMessaging(
     return ordered
   })
 
+  /**
+   * Add files to the staged queue. Uploads each one asynchronously, replacing
+   * the local entry with the server-issued attachment on success.
+   */
+  async function addImageAttachments(conversationId: string, files: File[]) {
+    if (!conversationId) return
+    for (const file of files) {
+      const id = 'local-' + Math.random().toString(36).slice(2)
+      const entry: UploadableImage = {
+        id,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        uploading: true,
+      }
+      stagedAttachments.value.push(entry)
+      try {
+        const attachment = await uploadAIImageAttachment(conversationId, file, file.name)
+        const idx = stagedAttachments.value.findIndex((a) => a.id === id)
+        if (idx >= 0) {
+          stagedAttachments.value[idx] = { ...stagedAttachments.value[idx], attachment, uploading: false }
+        }
+      } catch (err) {
+        const idx = stagedAttachments.value.findIndex((a) => a.id === id)
+        if (idx >= 0) {
+          stagedAttachments.value[idx] = {
+            ...stagedAttachments.value[idx],
+            uploading: false,
+            error: err instanceof Error ? err.message : 'Upload failed',
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Remove a staged image. If it has already been uploaded to the server, the
+   * staged attachment is cancelled and its storage is reclaimed.
+   */
+  async function removeStagedAttachment(conversationId: string, id: string) {
+    const idx = stagedAttachments.value.findIndex((a) => a.id === id)
+    if (idx < 0) return
+    const entry = stagedAttachments.value[idx]
+    stagedAttachments.value.splice(idx, 1)
+    if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+    if (entry.attachment?.id) {
+      try { await deleteAIImageAttachment(conversationId, entry.attachment.id) } catch { /* best-effort */ }
+    }
+  }
+
+  function clearStagedAttachments() {
+    for (const entry of stagedAttachments.value) {
+      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+    }
+    stagedAttachments.value = []
+  }
+
   async function send(
     text: string,
     conversationId: string,
@@ -69,6 +139,10 @@ export function useChatMessaging(
     isBusy.value = true
     const msgs = getMessages()
 
+    const readyAttachments = stagedAttachments.value
+      .filter((a) => a.attachment && !a.uploading && !a.error)
+      .map((a) => a.attachment!.id)
+
     // Optimistic user message
     const tempUserId = 'temp-user-' + Date.now()
     const tempUserMsg: AIMessage = {
@@ -78,6 +152,9 @@ export function useChatMessaging(
       content: text,
       status: 'completed',
       created_at: new Date().toISOString(),
+      attachments: stagedAttachments.value
+        .filter((a) => a.attachment && !a.uploading && !a.error)
+        .map((a) => a.attachment!),
     }
 
     // Pending assistant message for streaming
@@ -97,6 +174,7 @@ export function useChatMessaging(
 
     const payload = {
       content: text,
+      attachment_ids: readyAttachments.length > 0 ? readyAttachments : undefined,
       provider: options.provider,
       model: options.model,
       stream: useStream,
@@ -157,6 +235,7 @@ export function useChatMessaging(
             }
             case 'done': {
               canAppend.value = false
+              clearStagedAttachments()
               void onDone(conversationId, text).finally(() => {
                 isBusy.value = false
                 streamController = null
@@ -193,6 +272,7 @@ export function useChatMessaging(
     } else {
       // Non-streaming fallback
       const result = await sendAIMessage(conversationId, payload)
+      clearStagedAttachments()
 
       const currentMessages = getMessages().filter((m) => m.id !== tempUserId && m.id !== tempAssistantId)
       const newMessages: AIMessage[] = [result.user_message]
@@ -293,6 +373,7 @@ export function useChatMessaging(
     isAppending.value = false
     streamController?.abort()
     streamController = null
+    clearStagedAttachments()
   }
 
   return {
@@ -301,6 +382,10 @@ export function useChatMessaging(
     isAppending,
     canRegenerate,
     visibleMessages,
+    stagedAttachments,
+    addImageAttachments,
+    removeStagedAttachment,
+    clearStagedAttachments,
     send,
     append,
     decideToolCall,
@@ -309,3 +394,5 @@ export function useChatMessaging(
     cleanup,
   }
 }
+
+export type { UploadableImage, SendOptions }

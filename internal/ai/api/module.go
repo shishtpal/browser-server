@@ -1,6 +1,7 @@
 package api
 
 import (
+	"browser-server/internal/ai/attachments"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/profiles"
@@ -18,14 +19,15 @@ import (
 )
 
 type Module struct {
-	cfg      *aiconfig.Config
-	store    *store.Store
-	service  *chat.Service
-	profiles *profiles.Registry
-	skills   *skills.Registry
-	voice    *voice.Config
-	stop     chan struct{}
-	wg       sync.WaitGroup
+	cfg            *aiconfig.Config
+	store          *store.Store
+	service        *chat.Service
+	profiles       *profiles.Registry
+	skills         *skills.Registry
+	voice          *voice.Config
+	attachmentsDir string
+	stop           chan struct{}
+	wg             sync.WaitGroup
 }
 
 func Init() (*Module, error) {
@@ -80,12 +82,16 @@ func Init() (*Module, error) {
 	}
 	module.store = st
 	module.voice = voiceCfg
+	module.attachmentsDir = attachments.Dir(cfg.ResolvePath(".data"))
 	module.service = chat.NewService(cfg, st, profileReg, skillReg)
 	module.stop = make(chan struct{})
+	// Reclaim abandoned staged uploads immediately at startup and then on a
+	// bounded hourly schedule (the retention window is configured in hours).
+	module.cleanupExpiredAttachments()
 	module.wg.Add(1)
 	go func() {
 		defer module.wg.Done()
-		ticker := time.NewTicker(24 * time.Hour)
+		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 		for {
 			select {
@@ -93,6 +99,7 @@ func Init() (*Module, error) {
 				if err := st.CleanupRetention(context.Background(), cfg.Logging.RetentionDays); err != nil {
 					log.Printf("AI retention cleanup failed: %v", err)
 				}
+				module.cleanupExpiredAttachments()
 			case <-module.stop:
 				return
 			}
@@ -143,6 +150,9 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}", m.requireAI(m.DeleteConversation)).Methods("DELETE")
 	r.HandleFunc("/ai/conversations/{id}/fork", m.requireAI(m.ForkConversation)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages", m.requireAI(m.SubmitMessage)).Methods("POST")
+	r.HandleFunc("/ai/conversations/{id}/attachments", m.requireAI(m.UploadAttachment)).Methods("POST")
+	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.DeleteAttachment)).Methods("DELETE")
+	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.GetAttachment)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}/messages/append", m.requireAI(m.AppendMessage)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.UpdateMessage)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.DeleteMessage)).Methods("DELETE")

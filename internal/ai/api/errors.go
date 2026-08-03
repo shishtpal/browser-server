@@ -25,6 +25,15 @@ func (m *Module) writeSubmitError(w http.ResponseWriter, err error) {
 		writeError(w, status, code, safeSubmitMessage(err))
 		return
 	}
+	var attErr *chat.AttachmentError
+	if errors.As(err, &attErr) {
+		status := http.StatusBadRequest
+		if attErr.Code == "attachment_not_staged" {
+			status = http.StatusConflict
+		}
+		writeError(w, status, attErr.Code, attErr.Message)
+		return
+	}
 	// Not a provider error — determine from other signals
 	status := http.StatusBadRequest
 	code := "invalid_request"
@@ -42,6 +51,10 @@ func submitErrorCode(err error) string {
 	if isProviderError(err) {
 		code, _, _ := provider.SafeError(err)
 		return code
+	}
+	var attErr *chat.AttachmentError
+	if errors.As(err, &attErr) {
+		return attErr.Code
 	}
 	if errors.Is(err, chat.ErrConflict) {
 		return "generation_conflict"

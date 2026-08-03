@@ -3,6 +3,7 @@ import type {
   AIVoiceConfig,
   AIConversation,
   AIConversationDetail,
+  AIImageAttachment,
   AIMessage,
   AIToolDecisionResponse,
   AppendAIMessageInput,
@@ -89,6 +90,39 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
         { ...data, stream: false },
         getToken,
       )
+    },
+
+    async uploadAIImageAttachment(id: string, file: Blob, filename?: string): Promise<AIImageAttachment> {
+      const formData = new FormData()
+      formData.append('file', file, filename || 'image')
+      const response = await fetch(`${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments`, {
+        method: 'POST',
+        headers: authHeader(getToken),
+        body: formData,
+      })
+      if (!response.ok) {
+        const text = await response.text()
+        throw apiErrorFromBody(response.status, text, `Upload failed: ${response.status}`)
+      }
+      return response.json() as Promise<AIImageAttachment>
+    },
+
+    deleteAIImageAttachment(id: string, attachmentId: string): Promise<void> {
+      return apiFetch<void>(
+        baseUrl,
+        'DELETE',
+        `/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,
+        undefined,
+        getToken,
+      )
+    },
+
+    getAIImageAttachmentUrl(id: string, attachmentId: string): string {
+      // Image loads via <img src>, which can't set an Authorization header,
+      // so the token is passed as a query param instead.
+      const token = getToken?.()
+      const suffix = token ? `?token=${encodeURIComponent(token)}` : ''
+      return `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}${suffix}`
     },
 
     appendAIMessage(id: string, data: AppendAIMessageInput): Promise<AIMessage> {

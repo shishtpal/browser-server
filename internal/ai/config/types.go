@@ -63,6 +63,7 @@ type ModelConfig struct {
 	ID              string `json:"id"`
 	Label           string `json:"label"`
 	SupportsTools   bool   `json:"supports_tools"`
+	SupportsVision  bool   `json:"supports_vision"`
 	Default         bool   `json:"default"`
 	MaxOutputTokens int    `json:"max_output_tokens"`
 }
@@ -173,12 +174,33 @@ type LoggingConfig struct {
 }
 
 type ChatConfig struct {
-	SystemPrompt          string  `json:"system_prompt"`
-	MaxHistoryMessages    int     `json:"max_history_messages"`
-	Stream                bool    `json:"stream"`
-	Temperature           float64 `json:"temperature"`
-	ToolRetryAttempts     int     `json:"tool_retry_attempts"`
-	ToolRetryDelaySeconds int     `json:"tool_retry_delay_seconds"`
+	SystemPrompt          string                `json:"system_prompt"`
+	MaxHistoryMessages    int                   `json:"max_history_messages"`
+	Stream                bool                  `json:"stream"`
+	Temperature           float64               `json:"temperature"`
+	ToolRetryAttempts     int                   `json:"tool_retry_attempts"`
+	ToolRetryDelaySeconds int                   `json:"tool_retry_delay_seconds"`
+	Attachments           ChatAttachmentsConfig `json:"attachments"`
+}
+
+// ChatAttachmentsConfig bounds image attachments on user chat messages. The
+// operator can tighten any limit in bs-ai-config.json; zero values are filled
+// with safe defaults during Load.
+type ChatAttachmentsConfig struct {
+	// Enabled gates the whole feature: upload endpoints and the vision
+	// enforcement on submit are disabled when false.
+	Enabled bool `json:"enabled"`
+	// AllowedMIMETypes is the set of image MIME types accepted for upload.
+	AllowedMIMETypes []string `json:"allowed_mime_types"`
+	// MaxImages is the maximum number of attachments per user message.
+	MaxImages int `json:"max_images"`
+	// MaxImageBytes is the maximum size of a single image file.
+	MaxImageBytes int `json:"max_image_bytes"`
+	// MaxTotalBytes is the aggregate byte limit for all images in one message.
+	MaxTotalBytes int `json:"max_total_bytes"`
+	// RetentionHours is how long staged (unattached) uploads are kept before
+	// the cleanup job removes them and reclaims disk space.
+	RetentionHours int `json:"retention_hours"`
 }
 
 // maxRequestTimeoutSeconds mirrors the upper bound enforced in validate()

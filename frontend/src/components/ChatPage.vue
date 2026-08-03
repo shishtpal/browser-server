@@ -40,8 +40,11 @@
         <ChatRegenerateButton :visible="canRegenerate" :disabled="isBusy" @regenerate="handleRegenerate" />
 
         <ChatInput ref="chatInputRef" v-model="draft" :disabled="!config?.enabled" :busy="isBusy"
-          :can-append="canAppend" :is-appending="isAppending" :user-id="currentUserId" @send="sendMessage"
-          @append="appendContext" @stop="handleStop" @voice="showVoiceModal = true" @select-prompt="useSuggestion" />
+          :can-append="canAppend" :is-appending="isAppending" :user-id="currentUserId"
+          :conversation-id="activeConversation?.id" :attachments-config="attachmentsConfig"
+          :supports-vision="selectedModelSupportsVision" :staged-images="stagedAttachments"
+          @send="sendMessage" @append="appendContext" @stop="handleStop" @voice="showVoiceModal = true"
+          @select-prompt="useSuggestion" @add-images="addImages" @remove-image="removeStagedImage" />
       </template>
     </section>
 
@@ -160,6 +163,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { deleteAIMessage, getAIConfig, getAIConversation } from '../lib/api'
+import type { AIChatAttachmentsConfig } from '@browser-server/shared-types'
 import Modal from './ui/Modal.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
 import ChatSidebar from './chat/ChatSidebar.vue'
@@ -203,6 +207,8 @@ const {
   availableTools,
   toolsByCategory,
   activeTools,
+  selectedModelSupportsVision,
+  attachmentsConfig,
   toggleTool,
   toggleSkill,
   setActiveSkills,
@@ -256,6 +262,9 @@ const {
   visibleMessages,
   send,
   append,
+  stagedAttachments,
+  addImageAttachments,
+  removeStagedAttachment,
   decideToolCall,
   regenerate,
   stop,
@@ -417,7 +426,8 @@ async function handleSelectConversation(id: string) {
 
 async function sendMessage(content?: string) {
   const text = content?.trim() || draft.value.trim()
-  if (!text || !config.value?.enabled || !selectedProvider.value || !selectedModel.value || isBusy.value) return
+  if (!config.value?.enabled || !selectedProvider.value || !selectedModel.value || isBusy.value) return
+  if (!text && stagedAttachments.value.length === 0) return
   error.value = ''
   draft.value = ''
 
@@ -451,6 +461,16 @@ async function sendMessage(content?: string) {
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to send message'
   }
+}
+
+async function addImages(files: File[]) {
+  if (!activeConversation.value) return
+  await addImageAttachments(activeConversation.value.id, files)
+}
+
+async function removeStagedImage(id: string) {
+  if (!activeConversation.value) return
+  await removeStagedAttachment(activeConversation.value.id, id)
 }
 
 async function appendContext(content: string) {

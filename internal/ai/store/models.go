@@ -16,11 +16,32 @@ type Conversation struct {
 }
 
 type Message struct {
+	ID             string       `json:"id"`
+	ConversationID string       `json:"conversation_id"`
+	Role           string       `json:"role"`
+	Content        string       `json:"content"`
+	ToolCallID     string       `json:"tool_call_id,omitempty"`
+	Status         string       `json:"status"`
+	CreatedAt      time.Time    `json:"created_at"`
+	// Attachments is populated for user messages when loading a conversation
+	// (ListMessages/GetConversation) and when a turn is created. It is not
+	// scanned from the messages table itself.
+	Attachments []Attachment `json:"attachments,omitempty"`
+}
+
+// Attachment is a server-issued image attachment for a conversation. The image
+// bytes live on disk under the AI data directory; only the server-controlled
+// StorageKey is persisted here so the client can never address arbitrary files.
+type Attachment struct {
 	ID             string    `json:"id"`
 	ConversationID string    `json:"conversation_id"`
-	Role           string    `json:"role"`
-	Content        string    `json:"content"`
-	ToolCallID     string    `json:"tool_call_id,omitempty"`
+	MessageID      string    `json:"message_id,omitempty"`
+	Filename       string    `json:"filename"`
+	ContentType    string    `json:"content_type"`
+	SizeBytes      int64     `json:"size_bytes"`
+	Width          int       `json:"width,omitempty"`
+	Height         int       `json:"height,omitempty"`
+	StorageKey     string    `json:"-"`
 	Status         string    `json:"status"`
 	CreatedAt      time.Time `json:"created_at"`
 }

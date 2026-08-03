@@ -3,6 +3,7 @@ import type {
   AIVoiceConfig,
   AIConversation,
   AIConversationDetail,
+  AIImageAttachment,
   AIMessage,
   AIStreamEvent,
   AIToolDecisionResponse,
@@ -51,6 +52,18 @@ export function deleteAIConversation(id: string): Promise<void> {
 
 export function sendAIMessage(id: string, data: SendAIMessageInput): Promise<SendAIMessageResponse> {
   return client.sendAIMessage(id, data)
+}
+
+export function uploadAIImageAttachment(id: string, file: Blob, filename?: string): Promise<AIImageAttachment> {
+  return client.uploadAIImageAttachment(id, file, filename)
+}
+
+export function deleteAIImageAttachment(id: string, attachmentId: string): Promise<void> {
+  return client.deleteAIImageAttachment(id, attachmentId)
+}
+
+export function getAIImageAttachmentUrl(id: string, attachmentId: string): string {
+  return client.getAIImageAttachmentUrl(id, attachmentId)
 }
 
 export function appendAIMessage(id: string, data: AppendAIMessageInput): Promise<AIMessage> {

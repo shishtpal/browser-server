@@ -23,7 +23,7 @@ func TestProviderMessagesExcludeToolHistory(t *testing.T) {
 		{Role: "user", Content: "latest user message", Status: "completed"},
 	}
 
-	got := s.providerMessages(messages, "system prompt")
+	got := s.providerMessages(context.Background(), messages, "system prompt")
 	if len(got) != 3 {
 		t.Fatalf("provider messages length = %d, want 3: %#v", len(got), got)
 	}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	aiconfig "browser-server/internal/ai/config"
+	"browser-server/internal/ai/attachments"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/provider"
 	"browser-server/internal/ai/skills"
@@ -30,6 +31,7 @@ var ErrToolCallNotPending = errors.New("tool call is not pending approval")
 type Service struct {
 	cfg               *aiconfig.Config
 	store             *store.Store
+	attachmentsDir    string
 	profiles          *profiles.Registry
 	skills            *skills.Registry
 	clients           map[string]provider.Client
@@ -44,8 +46,34 @@ type Service struct {
 	toolRetryAttempts int
 }
 
+// AttachmentError carries a structured code for attachment submission failures
+// so the HTTP layer can map each failure mode to a distinct status/code.
+type AttachmentError struct {
+	Code    string
+	Message string
+}
+
+func (e *AttachmentError) Error() string { return e.Message }
+
+func mapAttachmentError(err error) error {
+	switch {
+	case errors.Is(err, store.ErrAttachmentNotFound):
+		return &AttachmentError{Code: "attachment_not_found", Message: "One or more attachments do not exist in this conversation"}
+	case errors.Is(err, store.ErrAttachmentNotStaged):
+		return &AttachmentError{Code: "attachment_not_staged", Message: "An attachment was already used or has expired; upload it again"}
+	case errors.Is(err, store.ErrAttachmentTooMany):
+		return &AttachmentError{Code: "attachment_limit", Message: "Too many images for one message"}
+	case errors.Is(err, store.ErrAttachmentTooLarge):
+		return &AttachmentError{Code: "attachment_limit", Message: "Total image bytes exceed the per-message limit"}
+	}
+	return err
+}
+
 type SubmitRequest struct {
 	Content                   string   `json:"content"`
+	// AttachmentIDs are server-issued staged attachment IDs to claim for this
+	// turn. Empty means a text-only message.
+	AttachmentIDs             []string `json:"attachment_ids,omitempty"`
 	Provider                  string   `json:"provider"`
 	Model                     string   `json:"model"`
 	Stream                    *bool    `json:"stream"`
@@ -91,7 +119,7 @@ func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Regi
 		)
 	}
 	return &Service{
-		cfg: cfg, store: st, profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{}, appendWindows: map[string]*appendWindow{},
+		cfg: cfg, store: st, attachmentsDir: attachments.Dir(cfg.ResolvePath(".data")), profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{}, appendWindows: map[string]*appendWindow{},
 		tools: tools.New(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths}), pending: map[string]pendingToolCall{},
 		toolRetryDelay:    time.Duration(cfg.Chat.ToolRetryDelaySeconds) * time.Second,
 		toolRetryAttempts: cfg.Chat.ToolRetryAttempts,
@@ -137,7 +165,7 @@ func (s *Service) Regenerate(ctx context.Context, conversationID string) (Submit
 
 func (s *Service) SubmitStream(ctx context.Context, conversationID string, req SubmitRequest, emit func(Event) error) (SubmitResponse, error) {
 	content := strings.TrimSpace(req.Content)
-	if content == "" && !req.regenerate {
+	if content == "" && len(req.AttachmentIDs) == 0 && !req.regenerate {
 		return SubmitResponse{}, fmt.Errorf("message content is required")
 	}
 	if len(content) > maxMessageBytes {
@@ -161,6 +189,14 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	}
 	if req.ToolsEnabled && !modelCfg.SupportsTools {
 		return SubmitResponse{}, fmt.Errorf("selected model does not support tools")
+	}
+	if len(req.AttachmentIDs) > 0 {
+		if !s.cfg.Chat.Attachments.Enabled {
+			return SubmitResponse{}, &AttachmentError{Code: "attachments_disabled", Message: "Image attachments are disabled on this server"}
+		}
+		if !modelCfg.SupportsVision {
+			return SubmitResponse{}, &AttachmentError{Code: "vision_required", Message: "Selected model does not support image attachments"}
+		}
 	}
 	if req.ToolsEnabled && !req.YOLOMode && emit == nil {
 		return SubmitResponse{}, fmt.Errorf("manual tool approval requires streaming")
@@ -187,11 +223,22 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	if req.regenerate {
 		userMessage, assistantMessage, err = s.store.BeginRegeneration(ctx, conversationID)
 	} else {
-		userMessage, assistantMessage, err = s.store.BeginTurn(ctx, conversationID, content)
+		var claimed []store.Attachment
+		userMessage, assistantMessage, claimed, err = s.store.BeginTurnWithAttachments(ctx, conversationID, content, req.AttachmentIDs, s.cfg.Chat.Attachments.MaxImages, s.cfg.Chat.Attachments.MaxTotalBytes)
+		if err != nil {
+			cancel()
+			return SubmitResponse{}, mapAttachmentError(err)
+		}
+		userMessage.Attachments = claimed
 	}
 	if err != nil {
 		cancel()
 		return SubmitResponse{}, err
+	}
+	if req.regenerate {
+		if atts, attErr := s.store.ListAttachmentsForMessage(ctx, userMessage.ID); attErr == nil {
+			userMessage.Attachments = atts
+		}
 	}
 
 	messages, err := s.store.ListMessages(ctx, conversationID, 0)
@@ -224,7 +271,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	// Build the full system prompt with skills preamble + active skill content
 	basePrompt := systemPrompt
 	fullPrompt := s.buildFullPrompt(basePrompt, sessionSkills)
-	providerMessages := s.providerMessages(messages, fullPrompt)
+	providerMessages := s.providerMessages(generationCtx, messages, fullPrompt)
 	maxOutput := modelCfg.MaxOutputTokens
 	chatReq := provider.ChatRequest{
 		Provider:        providerName,

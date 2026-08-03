@@ -75,8 +75,12 @@ func (m *Module) submitMessageSSE(w http.ResponseWriter, r *http.Request, req ch
 		m.writeSubmitError(w, chat.ErrConflict)
 		return
 	}
-	if strings.TrimSpace(req.Content) == "" || len(strings.TrimSpace(req.Content)) > 512*1024 {
-		writeError(w, http.StatusBadRequest, "invalid_request", "Message content is required and must not exceed 524288 bytes")
+	if strings.TrimSpace(req.Content) == "" && len(req.AttachmentIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Message content is required")
+		return
+	}
+	if len(strings.TrimSpace(req.Content)) > 512*1024 {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Message content must not exceed 524288 bytes")
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")

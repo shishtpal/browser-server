@@ -44,10 +44,21 @@ type chatCompletionRequest struct {
 }
 
 type wireMessage struct {
-	Role       string         `json:"role"`
-	Content    string         `json:"content,omitempty"`
-	ToolCallID string         `json:"tool_call_id,omitempty"`
-	ToolCalls  []wireToolCall `json:"tool_calls,omitempty"`
+	Role       string           `json:"role"`
+	Content    any              `json:"content,omitempty"`
+	ToolCallID string           `json:"tool_call_id,omitempty"`
+	ToolCalls  []wireToolCall   `json:"tool_calls,omitempty"`
+}
+
+// wireContentPart is an OpenAI-compatible multimodal content part. Text-only
+// messages keep the legacy string form; user messages with images use an array
+// of these in order (text first, then image_url parts).
+type wireContentPart struct {
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	ImageURL *struct {
+		URL string `json:"url"`
+	} `json:"image_url,omitempty"`
 }
 
 type wireToolCall struct {
@@ -159,6 +170,18 @@ func (c *OpenAICompatibleClient) payload(req ChatRequest, stream bool) chatCompl
 	p := chatCompletionRequest{Model: req.Model, Temperature: req.Temperature, MaxTokens: req.MaxOutputTokens, Stream: stream}
 	for _, message := range req.Messages {
 		wire := wireMessage{Role: message.Role, Content: message.Content, ToolCallID: message.ToolCallID}
+		if len(message.ImageParts) > 0 {
+			parts := make([]wireContentPart, 0, len(message.ImageParts)+1)
+			if message.Content != "" {
+				parts = append(parts, wireContentPart{Type: "text", Text: message.Content})
+			}
+			for _, part := range message.ImageParts {
+				parts = append(parts, wireContentPart{Type: "image_url", ImageURL: &struct {
+					URL string `json:"url"`
+				}{URL: part.DataURL}})
+			}
+			wire.Content = parts
+		}
 		for _, call := range message.ToolCalls {
 			item := wireToolCall{ID: call.ID, Type: "function"}
 			item.Function.Name = call.Name

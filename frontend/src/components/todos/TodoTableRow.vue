@@ -43,7 +43,7 @@
           Pinned
         </span>
         <TodoPriorityBadge :priority="(todo.priority as any)" />
-        <span v-if="todo.status === 'in_progress'" class="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">In Progress</span>
+        <!-- <span v-if="todo.status === 'in_progress'" class="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">In Progress</span> -->
       </div>
     </td>
     <td class="max-w-xs px-3 py-3">

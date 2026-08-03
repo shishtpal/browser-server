@@ -7,7 +7,20 @@
         "stream": true,
         "temperature": 0.7,
         "tool_retry_attempts": 10,
-        "tool_retry_delay_seconds": 5
+        "tool_retry_delay_seconds": 5,
+        "attachments": {
+            "enabled": true,
+            "allowed_mime_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp",
+                "image/gif"
+            ],
+            "max_images": 5,
+            "max_image_bytes": 5242880,
+            "max_total_bytes": 20971520,
+            "retention_hours": 24
+        }
     },
     "paths": {
         "additional_dirs": [],

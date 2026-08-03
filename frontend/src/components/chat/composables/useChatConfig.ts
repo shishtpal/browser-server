@@ -7,6 +7,7 @@ export interface AIModelInfo {
   label?: string
   default?: boolean
   supports_tools?: boolean
+  supports_vision?: boolean
 }
 
 export function useChatConfig() {
@@ -47,6 +48,13 @@ export function useChatConfig() {
     const current = providerModels.value.find((m) => m.id === selectedModel.value)
     return current?.supports_tools ?? false
   })
+
+  const selectedModelSupportsVision = computed(() => {
+    const current = providerModels.value.find((m) => m.id === selectedModel.value)
+    return current?.supports_vision ?? false
+  })
+
+  const attachmentsConfig = computed(() => config.value?.chat?.attachments ?? null)
 
   const toolsEnabled = computed(() =>
     (config.value?.tools?.enabled ?? false) && selectedModelSupportsTools.value && userToolsEnabled.value
@@ -130,6 +138,8 @@ export function useChatConfig() {
     configLabel,
     providerModels,
     selectedModelSupportsTools,
+    selectedModelSupportsVision,
+    attachmentsConfig,
     toolsEnabled,
     availableTools,
     toolCategories,

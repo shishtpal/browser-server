@@ -24,6 +24,52 @@
           @select="onPromptSelect"
         />
 
+        <!-- ── Staged image previews ── -->
+        <div
+          v-if="stagedImages.length > 0"
+          class="mb-2 flex flex-wrap gap-2"
+        >
+          <div
+            v-for="item in stagedImages"
+            :key="item.id"
+            class="group relative flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 pr-8 dark:border-white/10 dark:bg-slate-900"
+          >
+            <img
+              :src="item.previewUrl"
+              alt=""
+              class="h-10 w-10 rounded-md object-cover"
+            />
+            <div class="flex min-w-0 flex-col">
+              <span class="max-w-[10rem] truncate text-[0.72rem] font-medium text-slate-700 dark:text-slate-200">{{ item.file.name }}</span>
+              <span class="text-[0.65rem] text-slate-500 dark:text-slate-400">{{ formatBytes(item.file.size) }}</span>
+            </div>
+            <span
+              v-if="item.uploading"
+              class="absolute right-1.5 top-1/2 -translate-y-1/2"
+            >
+              <span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
+            </span>
+            <button
+              v-else
+              type="button"
+              class="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+              title="Remove image"
+              aria-label="Remove image"
+              @click="removeImage(item.id)"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div
+              v-if="item.error"
+              class="absolute -bottom-1 left-0 right-0 translate-y-full rounded bg-red-100 px-1.5 py-0.5 text-[0.65rem] text-red-700 dark:bg-red-950/40 dark:text-red-200"
+            >
+              {{ item.error }}
+            </div>
+          </div>
+        </div>
+
         <!-- ── Input row ── -->
         <div
           class="flex items-end rounded-xl border transition-all duration-200"
@@ -49,10 +95,31 @@
             rows="1"
             @input="onInput"
             @keydown="onKeydown"
+            @paste="onPaste"
           />
 
           <!-- Action buttons -->
           <div class="flex items-center gap-1.5 px-2.5 pb-2">
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              class="hidden"
+              @change="onFileSelected"
+            />
+            <button
+              class="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:bg-white/10"
+              :disabled="!attachmentsEnabled || disabled"
+              type="button"
+              aria-label="Attach images"
+              :title="attachmentsEnabled ? 'Attach images' : attachmentsDisabledReason"
+              @click="fileInputRef?.click()"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 002.828 2.828l6.586-6.586A4 4 0 0010.172 3H6a4 4 0 00-4 4v10a4 4 0 004 4h10a4 4 0 004-4v-6" />
+              </svg>
+            </button>
             <button
               class="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:bg-white/10"
               :disabled="disabled"
@@ -124,6 +191,15 @@ import { computed, nextTick, ref, watch } from 'vue'
 import PromptSearchDropdown from '../prompts/PromptSearchDropdown.vue'
 import { searchPrompts } from '../../lib/api'
 import type { PromptResponse } from '../../types'
+import type { AIChatAttachmentsConfig } from '@browser-server/shared-types'
+
+export interface StagedImageInput {
+  id: string
+  file: File
+  previewUrl: string
+  uploading: boolean
+  error?: string
+}
 
 const props = defineProps<{
   modelValue: string
@@ -132,6 +208,10 @@ const props = defineProps<{
   canAppend: boolean
   isAppending: boolean
   userId?: number | null
+  conversationId?: string
+  attachmentsConfig?: AIChatAttachmentsConfig | null
+  supportsVision?: boolean
+  stagedImages?: StagedImageInput[]
 }>()
 
 const emit = defineEmits<{
@@ -141,11 +221,110 @@ const emit = defineEmits<{
   stop: []
   voice: []
   selectPrompt: [prompt: PromptResponse]
+  addImages: [files: File[]]
+  removeImage: [id: string]
 }>()
 
 /* ───── refs ───── */
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const dropdownRef = ref<InstanceType<typeof PromptSearchDropdown> | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+
+const attachmentsEnabled = computed(() => {
+  if (props.disabled) return false
+  // Disable while a message is in flight: that covers a normal send and an
+  // open append window, so attachment ordering never collides with a tool
+  // continuation (per the product spec, append stays text-only).
+  if (props.busy) return false
+  const cfg = props.attachmentsConfig
+  if (!cfg?.enabled || !props.supportsVision) return false
+  return true
+})
+
+const attachmentsDisabledReason = computed(() => {
+  if (props.disabled) return 'Chat is disabled'
+  if (!props.attachmentsConfig?.enabled) return 'Image attachments are disabled on this server'
+  if (!props.supportsVision) return 'The selected model does not support image attachments'
+  return 'Image attachments are unavailable'
+})
+
+const stagedImages = computed(() => props.stagedImages ?? [])
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function isAllowedImage(file: File): boolean {
+  return allowedMimeTypes.includes(file.type)
+}
+
+function validateFiles(files: File[]): { valid: File[]; rejected: string[] } {
+  const cfg = props.attachmentsConfig
+  const valid: File[] = []
+  const rejected: string[] = []
+  const maxBytes = cfg?.max_image_bytes ?? 5 * 1024 * 1024
+  const maxCount = cfg?.max_images ?? 5
+  for (const file of files) {
+    if (!isAllowedImage(file)) {
+      rejected.push(`${file.name || 'file'} is not a supported image`)
+      continue
+    }
+    if (file.size > maxBytes) {
+      rejected.push(`${file.name || 'file'} exceeds the ${formatBytes(maxBytes)} image limit`)
+      continue
+    }
+    if (valid.length >= maxCount) {
+      rejected.push(`Only ${maxCount} images are allowed per message`)
+      break
+    }
+    valid.push(file)
+  }
+  return { valid, rejected }
+}
+
+function onFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  input.value = ''
+  if (!files.length) return
+  if (!attachmentsEnabled.value) return
+  const { valid, rejected } = validateFiles(files)
+  if (valid.length > 0) emit('addImages', valid)
+  if (rejected.length > 0) {
+    // Surface first rejection to the user; the rest are logged only.
+    console.warn('[ChatInput] rejected attachments:', rejected)
+  }
+}
+
+function onPaste(event: ClipboardEvent) {
+  if (!attachmentsEnabled.value) return
+  const items = event.clipboardData?.items
+  if (!items) return
+  const files: File[] = []
+  for (const item of Array.from(items)) {
+    if (item.kind === 'file') {
+      const file = item.getAsFile()
+      if (file && isAllowedImage(file)) files.push(file)
+    }
+  }
+  if (files.length === 0) return
+  const { valid, rejected } = validateFiles(files)
+  if (valid.length > 0) {
+    event.preventDefault()
+    emit('addImages', valid)
+  }
+  if (rejected.length > 0) {
+    console.warn('[ChatInput] rejected pasted attachments:', rejected)
+  }
+}
+
+function removeImage(id: string) {
+  emit('removeImage', id)
+}
 
 function normalizeToString(v: any): string {
   if (typeof v === 'string') return v
@@ -173,7 +352,7 @@ watch(() => props.modelValue, (v) => {
 
 const canSubmit = computed(() =>
   !props.disabled
-  && localValue.value.trim().length > 0
+  && (localValue.value.trim().length > 0 || stagedImages.value.some((i) => !i.uploading && !i.error))
   && (!props.busy || (props.canAppend && !props.isAppending)),
 )
 

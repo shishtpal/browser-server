@@ -2,11 +2,13 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -130,6 +132,86 @@ func (m *Module) GetAttachment(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
+}
+
+// RenameAttachment updates the display filename of an image attachment. The
+// conversation is taken from the URL so a client can only rename its own
+// conversation's uploads; the on-disk file is never touched.
+func (m *Module) RenameAttachment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	conversationID := vars["id"]
+	attachmentID := vars["attachmentId"]
+
+	var req struct {
+		Filename string `json:"filename"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON")
+		return
+	}
+	filename := sanitizeFilename(req.Filename)
+	if filename == "" {
+		writeError(w, http.StatusBadRequest, "invalid_filename", "Filename cannot be empty")
+		return
+	}
+	att, err := m.store.RenameAttachment(r.Context(), conversationID, attachmentID, filename)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrAttachmentInvalidFilename):
+			writeError(w, http.StatusBadRequest, "invalid_filename", "Filename cannot be empty")
+		case store.IsNotFound(err):
+			writeError(w, http.StatusNotFound, "attachment_not_found", "Attachment not found")
+		default:
+			writeError(w, http.StatusInternalServerError, "store_error", "Failed to rename attachment")
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, att)
+}
+
+// ListAttachments returns committed image attachments across all conversations
+// (newest first) for the cross-conversation attachment gallery. Each entry
+// includes its conversation_id so clients can build the authenticated image URL.
+func (m *Module) ListAttachments(w http.ResponseWriter, r *http.Request) {
+	limit := 200
+	if q := r.URL.Query().Get("limit"); q != "" {
+		if n, err := strconv.Atoi(q); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	atts, err := m.store.ListAttachments(r.Context(), limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "store_error", "Failed to list attachments")
+		return
+	}
+	writeJSON(w, http.StatusOK, atts)
+}
+
+// sanitizeFilename normalizes a user-supplied display filename: it strips
+// whitespace and path separators (so a rename can never address another
+// directory), removes control characters (header-safety), rejects dotfiles
+// (names starting with "."), and caps the length to match the upload path.
+// Returns "" when nothing usable remains.
+func sanitizeFilename(filename string) string {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return ""
+	}
+	filename = filepath.Base(strings.ReplaceAll(filename, "\\", "/"))
+	filename = strings.Map(func(r rune) rune {
+		if r == '\r' || r == '\n' || r == '\t' {
+			return -1
+		}
+		return r
+	}, filename)
+	filename = strings.TrimSpace(filename)
+	if filename == "" || strings.HasPrefix(filename, ".") {
+		return ""
+	}
+	if len(filename) > 200 {
+		filename = filename[:200]
+	}
+	return filename
 }
 
 func sanitizeHeader(value string) string {

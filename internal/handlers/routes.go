@@ -21,6 +21,7 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "POST", Path: "/api/ai/conversations/{id}/messages", Description: "Send a message to an AI conversation (optional attachment_ids)"},
 		{Method: "POST", Path: "/api/ai/conversations/{id}/attachments", Description: "Upload one staged image attachment (multipart: file)"},
 		{Method: "DELETE", Path: "/api/ai/conversations/{id}/attachments/{attachmentId}", Description: "Cancel a staged image attachment"},
+		{Method: "GET", Path: "/api/ai/attachments", Description: "List attached image attachments across conversations (params: limit)"},
 		{Method: "GET", Path: "/api/ai/conversations/{id}/attachments/{attachmentId}", Description: "Get an attached image with content type and cache headers"},
 		{Method: "POST", Path: "/api/ai/conversations/{id}/tool-calls/{callID}", Description: "Allow or reject a pending AI tool call"},
 		{Method: "POST", Path: "/api/ai/conversations/{id}/stop", Description: "Cancel active AI generation for a conversation"},

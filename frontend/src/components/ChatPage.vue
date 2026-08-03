@@ -19,12 +19,14 @@
         :disabled="!config?.enabled || isBusy" :title="activeConversation?.title"
         :download-disabled="!activeConversation" :show-tools-panel="showToolsPanel"
         :show-memory-explorer="showMemoryExplorer" :show-prompt-manager="showPromptManager"
+        :show-attachment-gallery="showAttachmentGallery"
         @toggle-sidebar="showMobileSidebar = true" @update:selected-profile="selectedProfile = $event"
         @update:selected-provider="selectedProvider = $event" @update:selected-model="selectedModel = $event"
         @update:yolo-mode="yoloMode = $event" @toggle-skill="toggleSkill($event)" @download="downloadConversation"
         @toggle-tools-panel="showToolsPanel = !showToolsPanel"
         @toggle-memory-explorer="showMemoryExplorer = !showMemoryExplorer"
-        @toggle-prompt-manager="showPromptManager = !showPromptManager" />
+        @toggle-prompt-manager="showPromptManager = !showPromptManager"
+        @toggle-attachment-gallery="showAttachmentGallery = !showAttachmentGallery" />
 
       <!-- Error banner -->
       <ErrorBanner v-if="error" :message="error" :on-retry="() => (error = '')" class="mx-4 mt-3 shrink-0" />
@@ -151,6 +153,10 @@
     <PromptManager :open="showPromptManager" :user-id="currentUserId" @select="applyPromptFromManager"
       @close="showPromptManager = false" />
 
+    <!-- Attachment library modal -->
+    <ChatAttachmentGallery :open="showAttachmentGallery" @close="showAttachmentGallery = false"
+      @reuse="handleReuseAttachment" />
+
     <!-- New Conversation modal -->
     <ChatNewConversationModal :open="showNewConversationModal" :profiles="profiles" :provider-names="providerNames"
       :providers="config?.providers ?? {}" :skills="skills" :default-provider="selectedProvider"
@@ -162,8 +168,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { deleteAIMessage, getAIConfig, getAIConversation } from '../lib/api'
-import type { AIChatAttachmentsConfig } from '@browser-server/shared-types'
+import { deleteAIMessage, getAIConfig, getAIConversation, getAIImageAttachmentBlob } from '../lib/api'
+import type { AIAttachmentSummary, AIChatAttachmentsConfig } from '@browser-server/shared-types'
 import Modal from './ui/Modal.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
 import ChatSidebar from './chat/ChatSidebar.vue'
@@ -177,6 +183,7 @@ import ChatCopyToast from './chat/ChatCopyToast.vue'
 import ChatToolsPanel from './chat/ChatToolsPanel.vue'
 import ChatMemoryExplorer from './chat/ChatMemoryExplorer.vue'
 import ChatNewConversationModal from './chat/ChatNewConversationModal.vue'
+import ChatAttachmentGallery from './chat/ChatAttachmentGallery.vue'
 import ChatVoiceTypingModal from './chat/ChatVoiceTypingModal.vue'
 import type { NewConversationResult } from './chat/ChatNewConversationModal.vue'
 import type { ToolCallEntry } from './chat/ChatToolsPanel.vue'
@@ -288,6 +295,7 @@ const showToolsPanel = ref(true)
 const showMemoryExplorer = ref(false)
 const showNewConversationModal = ref(false)
 const showPromptManager = ref(false)
+const showAttachmentGallery = ref(false)
 const showVoiceModal = ref(false)
 
 // Archive/Restore local state
@@ -471,6 +479,23 @@ async function addImages(files: File[]) {
 async function removeStagedImage(id: string) {
   if (!activeConversation.value) return
   await removeStagedAttachment(activeConversation.value.id, id)
+}
+
+async function handleReuseAttachment(att: AIAttachmentSummary) {
+  if (!activeConversation.value) {
+    error.value = 'Select or create a conversation before reusing an attachment.'
+    return
+  }
+  error.value = ''
+  try {
+    const blob = await getAIImageAttachmentBlob(att.conversation_id, att.id)
+    const file = new File([blob], att.filename, { type: att.content_type })
+    await addImages([file])
+    showAttachmentGallery.value = false
+    nextTick(() => chatInputRef.value?.focus())
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to reuse attachment'
+  }
 }
 
 async function appendContext(content: string) {

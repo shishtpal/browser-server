@@ -4,6 +4,7 @@ import type {
   AIConversation,
   AIConversationDetail,
   AIImageAttachment,
+  AIAttachmentSummary,
   AIMessage,
   AIStreamEvent,
   AIToolDecisionResponse,
@@ -62,8 +63,20 @@ export function deleteAIImageAttachment(id: string, attachmentId: string): Promi
   return client.deleteAIImageAttachment(id, attachmentId)
 }
 
+export function renameAIImageAttachment(id: string, attachmentId: string, filename: string): Promise<AIAttachmentSummary> {
+  return client.renameAIImageAttachment(id, attachmentId, filename)
+}
+
 export function getAIImageAttachmentUrl(id: string, attachmentId: string): string {
   return client.getAIImageAttachmentUrl(id, attachmentId)
+}
+
+export function getAIImageAttachmentBlob(id: string, attachmentId: string): Promise<Blob> {
+  return client.getAIImageAttachmentBlob(id, attachmentId)
+}
+
+export function listAIAttachments(limit?: number): Promise<AIAttachmentSummary[]> {
+  return client.listAIAttachments(limit)
 }
 
 export function appendAIMessage(id: string, data: AppendAIMessageInput): Promise<AIMessage> {

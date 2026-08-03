@@ -4,6 +4,7 @@ import type {
   AIConversation,
   AIConversationDetail,
   AIImageAttachment,
+  AIAttachmentSummary,
   AIMessage,
   AIToolDecisionResponse,
   AppendAIMessageInput,
@@ -117,12 +118,50 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
       )
     },
 
+    renameAIImageAttachment(id: string, attachmentId: string, filename: string): Promise<AIAttachmentSummary> {
+      return apiFetch<AIAttachmentSummary>(
+        baseUrl,
+        'PATCH',
+        `/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,
+        { filename },
+        getToken,
+      )
+    },
+
     getAIImageAttachmentUrl(id: string, attachmentId: string): string {
       // Image loads via <img src>, which can't set an Authorization header,
       // so the token is passed as a query param instead.
       const token = getToken?.()
       const suffix = token ? `?token=${encodeURIComponent(token)}` : ''
       return `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}${suffix}`
+    },
+
+    /**
+     * Fetch the raw attachment bytes as a Blob for programmatic reuse (e.g.
+     * re-staging into another conversation). Unlike the <img> URL above, this
+     * sends the token via the Authorization header, so it never appears in the
+     * URL, and non-OK responses surface the server's error envelope as ApiError.
+     */
+    async getAIImageAttachmentBlob(id: string, attachmentId: string): Promise<Blob> {
+      const response = await fetch(
+        `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,
+        { headers: authHeader(getToken) },
+      )
+      if (!response.ok) {
+        const text = await response.text()
+        throw apiErrorFromBody(response.status, text, `Failed to fetch attachment: ${response.status}`)
+      }
+      return response.blob()
+    },
+
+    listAIAttachments(limit?: number): Promise<AIAttachmentSummary[]> {
+      return apiFetch<AIAttachmentSummary[]>(
+        baseUrl,
+        'GET',
+        `/api/ai/attachments${buildQuery({ limit })}`,
+        undefined,
+        getToken,
+      )
     },
 
     appendAIMessage(id: string, data: AppendAIMessageInput): Promise<AIMessage> {

@@ -153,6 +153,8 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}/attachments", m.requireAI(m.UploadAttachment)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.DeleteAttachment)).Methods("DELETE")
 	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.GetAttachment)).Methods("GET")
+	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.RenameAttachment)).Methods("PATCH")
+	r.HandleFunc("/ai/attachments", m.requireAI(m.ListAttachments)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}/messages/append", m.requireAI(m.AppendMessage)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.UpdateMessage)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.DeleteMessage)).Methods("DELETE")

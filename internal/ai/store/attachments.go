@@ -16,6 +16,9 @@ var (
 	ErrAttachmentNotStaged = errors.New("attachment is not staged")
 	ErrAttachmentTooMany   = errors.New("too many attachments")
 	ErrAttachmentTooLarge  = errors.New("attachment total bytes exceeded")
+	// ErrAttachmentInvalidFilename is returned when a rename would persist an
+	// empty or whitespace-only display filename.
+	ErrAttachmentInvalidFilename = errors.New("invalid attachment filename")
 )
 
 const attachmentColumns = `id, conversation_id, COALESCE(message_id, ''), filename, content_type, size_bytes, width, height, storage_key, status, created_at`
@@ -61,6 +64,27 @@ func (s *Store) GetAttachment(ctx context.Context, conversationID, attachmentID 
 	return a, nil
 }
 
+// RenameAttachment updates the display filename of an attachment after
+// verifying it belongs to the given conversation. Returns the updated row.
+// Filename is display-only; the on-disk StorageKey is never changed. An empty
+// or whitespace-only filename is rejected before the ownership lookup so the
+// store never persists a blank display name even if a caller skips the
+// API-level sanitization.
+func (s *Store) RenameAttachment(ctx context.Context, conversationID, attachmentID, filename string) (Attachment, error) {
+	if strings.TrimSpace(filename) == "" {
+		return Attachment{}, ErrAttachmentInvalidFilename
+	}
+	a, err := s.GetAttachment(ctx, conversationID, attachmentID)
+	if err != nil {
+		return Attachment{}, err
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE ai_message_attachments SET filename = ? WHERE id = ?`, filename, attachmentID); err != nil {
+		return Attachment{}, err
+	}
+	a.Filename = filename
+	return a, nil
+}
+
 // ListAttachmentsForMessage returns the attachments claimed by a message,
 // ordered by upload time. Used to rebuild multimodal history for providers.
 func (s *Store) ListAttachmentsForMessage(ctx context.Context, messageID string) ([]Attachment, error) {
@@ -89,6 +113,33 @@ func (s *Store) ListStagedAttachments(ctx context.Context, conversationID string
 	}
 	defer rows.Close()
 	var out []Attachment
+	for rows.Next() {
+		var a Attachment
+		if err := scanAttachment(rows, &a); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// ListAttachments returns committed (attached) image attachments across all
+// conversations, newest first. Staged (unattached) uploads are excluded because
+// they are ephemeral and scoped to a single conversation. limit is clamped to
+// 1–500 (200 when unset or non-positive).
+func (s *Store) ListAttachments(ctx context.Context, limit int) ([]Attachment, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT `+attachmentColumns+` FROM ai_message_attachments WHERE status = 'attached' ORDER BY created_at DESC, rowid DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]Attachment, 0)
 	for rows.Next() {
 		var a Attachment
 		if err := scanAttachment(rows, &a); err != nil {

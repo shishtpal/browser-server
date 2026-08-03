@@ -72,6 +72,15 @@ export interface AIImageAttachment {
   created_at: string
 }
 
+/**
+ * A gallery entry for the cross-conversation attachment library. Identical to
+ * AIImageAttachment but additionally carries the owning conversation_id so the
+ * client can build the authenticated image URL.
+ */
+export interface AIAttachmentSummary extends AIImageAttachment {
+  conversation_id: string
+}
+
 /** Secret-free voice configuration returned to browser clients. */
 export interface AIVoiceConfig {
   enabled: boolean

@@ -44,6 +44,16 @@ export interface AIConfig {
   profiles: AIProfile[]
   skills: AISkill[]
   mcp?: AIMCPConfig
+  tasks?: AITasksConfig
+}
+
+/** Server-side limits for the durable background task runner. */
+export interface AITasksConfig {
+  enabled: boolean
+  max_concurrent: number
+  max_steps: number
+  max_attempts: number
+  tools_enabled: boolean
 }
 
 export interface AIProviderConfig {
@@ -278,3 +288,60 @@ export type AIStreamEvent =
   | AIStreamAppendWindowEvent
   | AIStreamDoneEvent
   | AIStreamErrorEvent
+
+/**
+ * Lifecycle of a durable background task. There is deliberately no 'stale'
+ * status: a task whose worker lease expired is still 'running' until the
+ * watchdog requeues or fails it. Staleness is reported separately on
+ * `AITask.stale` so the UI can flag it without it becoming a state that can be
+ * observed but never acted upon.
+ */
+export type AITaskStatus = 'queued' | 'running' | 'completed' | 'failed'
+
+export interface AITask {
+  id: string
+  conversation_id?: string
+  prompt: string
+  status: AITaskStatus
+  /** Present on completed tasks: the agent's structured result. */
+  result?: AITaskResult
+  lease_owner?: string
+  lease_until?: string
+  last_heartbeat?: string
+  /** Last time a checkpoint was written — the signal that the agent, not just
+   * its worker, is alive. */
+  last_progress?: string
+  available_at: string
+  attempts: number
+  max_attempts: number
+  last_error?: string
+  created_at: string
+  completed_at?: string
+  /** True when the task is 'running' but its lease has already expired; the
+   * watchdog has not swept it yet. */
+  stale: boolean
+  /** Whether resumable state exists, so a retry resumes rather than restarts. */
+  has_checkpoint: boolean
+}
+
+export interface AITaskResult {
+  status: 'completed'
+  response: string
+  steps: number
+}
+
+export interface CreateAITaskInput {
+  prompt: string
+  conversation_id?: string
+  max_attempts?: number
+}
+
+export interface CreateAITaskResponse {
+  task_id: string
+}
+
+export interface AITaskStatusResponse {
+  enabled: boolean
+  workers: number
+  counts: Record<AITaskStatus, number>
+}

@@ -20,7 +20,49 @@ type Config struct {
 	Skills          SkillsConfig              `json:"skills"`
 	Logging         LoggingConfig             `json:"logging"`
 	Chat            ChatConfig                `json:"chat"`
+	Tasks           TasksConfig               `json:"tasks"`
 	Paths           PathsConfig               `json:"paths"`
+}
+
+// TasksConfig controls the durable background task runner. The runner survives
+// crashes by leasing tasks and checkpointing progress, so the timing fields
+// below are load-bearing rather than cosmetic: see the invariants enforced in
+// validateTasks.
+//
+// It is declared here rather than in internal/ai/tasks because that package
+// imports chat, which imports this one — the timing knobs have to live on the
+// config side of that edge.
+type TasksConfig struct {
+	// Enabled gates the whole subsystem. When false no workers or watchdog run.
+	Enabled bool `json:"enabled"`
+	// MaxConcurrent is the number of workers polling for tasks.
+	MaxConcurrent int `json:"max_concurrent"`
+	// LeaseSeconds is how long a claim stays valid without a heartbeat.
+	LeaseSeconds int `json:"lease_seconds"`
+	// HeartbeatSeconds is how often a worker renews its lease.
+	HeartbeatSeconds int `json:"heartbeat_seconds"`
+	// StepTimeoutSeconds bounds one agent step (one model call plus its tools).
+	StepTimeoutSeconds int `json:"step_timeout_seconds"`
+	// NoProgressSeconds is how long a task may hold a healthy lease without
+	// producing a checkpoint before it is treated as wedged.
+	NoProgressSeconds int `json:"no_progress_seconds"`
+	// WatchdogSeconds is how often expired leases are swept.
+	WatchdogSeconds int `json:"watchdog_seconds"`
+	// IdleDelaySeconds is how long a worker waits after finding no work.
+	IdleDelaySeconds int `json:"idle_delay_seconds"`
+	// MaxSteps is the hard ceiling on steps per task, independent of whatever
+	// the model claims about its own progress.
+	MaxSteps int `json:"max_steps"`
+	// MaxAttempts is the default retry budget for newly enqueued tasks.
+	MaxAttempts int `json:"max_attempts"`
+	// RetentionDays is how long terminal tasks are kept before cleanup.
+	RetentionDays int `json:"retention_days"`
+	// Provider and Model override the default selection for task work.
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	// ToolsEnabled lets task agents call tools. Task execution is unattended,
+	// so those calls always run without approval — there is no operator to ask.
+	ToolsEnabled bool `json:"tools_enabled"`
 }
 
 // PathsConfig lets the operator configure additional PATH directories and

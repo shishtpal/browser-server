@@ -8,6 +8,7 @@
 //   - conversations.go  conversation CRUD, fork, archive/restore
 //   - messages.go       turn lifecycle and message operations
 //   - request_logs.go   request-log insertion and retention cleanup
+//   - tasks.go          durable agent task queue: leases, checkpoints, recovery
 //   - helpers.go        ID generation and small scan/format helpers
 package store
 

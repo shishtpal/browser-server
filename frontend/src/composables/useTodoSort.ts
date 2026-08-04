@@ -1,7 +1,5 @@
-import type { Todo } from '../types'
+import type { Todo, TodoSortField } from '../types'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-
-export type TodoSortField = 'position' | 'priority' | 'start_date' | 'created_at' | 'title'
 
 export const SORT_OPTIONS: { value: TodoSortField; label: string }[] = [
   { value: 'position', label: 'Position' },

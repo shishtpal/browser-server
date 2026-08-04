@@ -1,0 +1,10 @@
+---
+import TasksPage from '../components/TasksPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Tasks">
+  <main>
+    <TasksPage client:only="vue" />
+  </main>
+</Layout>

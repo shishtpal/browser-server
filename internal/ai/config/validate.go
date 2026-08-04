@@ -208,6 +208,9 @@ func validate(cfg *Config) error {
 	if err := validateAttachments(cfg.Chat.Attachments); err != nil {
 		return err
 	}
+	if err := validateTasks(cfg.Tasks); err != nil {
+		return err
+	}
 	parent := filepath.Dir(cfg.ResolvePath(cfg.Logging.DBPath))
 	if err := os.MkdirAll(parent, 0755); err != nil {
 		return fmt.Errorf("logging database parent: %w", err)

@@ -100,6 +100,42 @@ func (s *Store) migrate() error {
 			`CREATE INDEX IF NOT EXISTS idx_attachments_message ON ai_message_attachments(message_id)`,
 			`CREATE INDEX IF NOT EXISTS idx_attachments_staged_created ON ai_message_attachments(status, created_at)`,
 		}},
+		{6, []string{
+			`CREATE TABLE IF NOT EXISTS ai_tasks (
+				id TEXT PRIMARY KEY,
+				conversation_id TEXT REFERENCES conversations(id) ON DELETE SET NULL,
+				prompt TEXT NOT NULL,
+				status TEXT NOT NULL CHECK (status IN ('queued','running','completed','failed')),
+
+				checkpoint BLOB,
+				result BLOB,
+
+				lease_owner TEXT,
+				lease_until TEXT,
+				last_heartbeat TEXT,
+				last_progress TEXT,
+				available_at TEXT NOT NULL,
+
+				attempts INTEGER NOT NULL DEFAULT 0,
+				max_attempts INTEGER NOT NULL DEFAULT 3,
+				last_error TEXT,
+
+				created_at TEXT NOT NULL,
+				completed_at TEXT
+			)`,
+			`CREATE INDEX IF NOT EXISTS idx_ai_tasks_claimable ON ai_tasks(status, available_at)`,
+			`CREATE INDEX IF NOT EXISTS idx_ai_tasks_lease ON ai_tasks(status, lease_until)`,
+			`CREATE INDEX IF NOT EXISTS idx_ai_tasks_created ON ai_tasks(created_at DESC)`,
+			// Idempotency ledger for at-least-once execution: a crash between a
+			// side effect and its checkpoint must not repeat the side effect.
+			`CREATE TABLE IF NOT EXISTS ai_task_tool_calls (
+				task_id TEXT NOT NULL REFERENCES ai_tasks(id) ON DELETE CASCADE,
+				idempotency_key TEXT NOT NULL,
+				result TEXT,
+				created_at TEXT NOT NULL,
+				PRIMARY KEY (task_id, idempotency_key)
+			)`,
+		}},
 	}
 	var currentVersion int
 	s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&currentVersion)

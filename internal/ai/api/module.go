@@ -8,6 +8,7 @@ import (
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
+	"browser-server/internal/ai/tasks"
 	"browser-server/internal/ai/tools"
 	"browser-server/internal/ai/voice"
 	"context"
@@ -30,6 +31,7 @@ type Module struct {
 	skills         *skills.Registry
 	mcp            *aimcp.Manager
 	voice          *voice.Config
+	tasks          *tasks.Runner
 	attachmentsDir string
 	stop           chan struct{}
 	wg             sync.WaitGroup
@@ -149,6 +151,12 @@ func Init() (*Module, error) {
 	}
 	module.service = service
 	module.stop = make(chan struct{})
+	// The durable task runner is started after the store and chat service exist,
+	// because it resumes checkpoints written by a previous process on startup.
+	if cfg.Tasks.Enabled {
+		module.tasks = tasks.NewRunner(cfg.Tasks, st, tasks.NewChatAgent(service, st, cfg.Tasks))
+		module.tasks.Start()
+	}
 	// Reclaim abandoned staged uploads immediately at startup and then on a
 	// bounded hourly schedule (the retention window is configured in hours).
 	module.cleanupExpiredAttachments()
@@ -184,6 +192,11 @@ func (m *Module) Close() error {
 	if m.stop != nil {
 		close(m.stop)
 		m.stop = nil
+	}
+	// Stop the task runner before the chat service so in-flight steps unwind
+	// through their own cancellation path and checkpoint state stays coherent.
+	if m.tasks != nil {
+		m.tasks.Stop()
 	}
 	if m.service != nil {
 		m.service.Close()
@@ -233,4 +246,10 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}/regenerate", m.requireAI(m.Regenerate)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/archive", m.requireAI(m.ArchiveConversation)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/restore", m.requireAI(m.RestoreConversation)).Methods("POST")
+	r.HandleFunc("/ai/tasks", m.requireTasks(m.CreateTask)).Methods("POST")
+	r.HandleFunc("/ai/tasks", m.requireTasks(m.ListTasks)).Methods("GET")
+	r.HandleFunc("/ai/tasks/status", m.requireAI(m.TaskStatus)).Methods("GET")
+	r.HandleFunc("/ai/tasks/{id}", m.requireTasks(m.GetTask)).Methods("GET")
+	r.HandleFunc("/ai/tasks/{id}", m.requireTasks(m.DeleteTask)).Methods("DELETE")
+	r.HandleFunc("/ai/tasks/{id}/cancel", m.requireTasks(m.CancelTask)).Methods("POST")
 }

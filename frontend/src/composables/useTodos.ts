@@ -1,4 +1,4 @@
-import type { Todo, TodoStatus } from '../types'
+import type { Todo, TodoStatus, TodoFilter } from '../types'
 import { ref, computed, watch, type Ref } from 'vue'
 import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api'
 import { useTodoPriority } from './useTodoPriority'
@@ -15,7 +15,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const error = ref<string | null>(null)
   const todos = useSessionStorage<Todo[]>(`bs.todos.todos`, [])
 
-  const activeFilter = ref<'all' | 'active' | 'in_progress' | 'completed' | 'archived'>('all')
+  const activeFilter = ref<TodoFilter>('all')
   const searchQuery = ref('')
   const filters = [
     { label: 'All', value: 'all' as const },

@@ -1,7 +1,8 @@
 <template>
-  <div class="rounded-xl px-3 py-2 text-center text-white shadow-lg transition-colors" :class="cardClass">
-    <div class="text-sm font-black leading-none">{{ value }}</div>
-    <div class="text-[10px] font-semibold leading-none mt-0.5" :class="labelClass">{{ label }}</div>
+  <div class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-white shadow-md transition-colors" :class="cardClass">
+    <div class="text-xs font-black leading-none">{{ value }}</div>
+    <div class="h-3 w-px bg-white/20"></div>
+    <div class="text-[10px] font-semibold leading-none" :class="labelClass">{{ label }}</div>
   </div>
 </template>
 

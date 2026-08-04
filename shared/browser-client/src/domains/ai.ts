@@ -6,9 +6,14 @@ import type {
   AIImageAttachment,
   AIAttachmentSummary,
   AIMessage,
+  AITask,
+  AITaskStatus,
+  AITaskStatusResponse,
   AIToolDecisionResponse,
   AppendAIMessageInput,
   CreateAIConversationInput,
+  CreateAITaskInput,
+  CreateAITaskResponse,
   ForkAIConversationInput,
   SendAIMessageInput,
   SendAIMessageResponse,
@@ -276,6 +281,39 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
         {},
         getToken,
       )
+    },
+
+    // ─── Background tasks ─────────────────────────────────────────────────
+
+    createAITask(data: CreateAITaskInput): Promise<CreateAITaskResponse> {
+      return apiFetch<CreateAITaskResponse>(baseUrl, 'POST', '/api/ai/tasks', data, getToken)
+    },
+
+    listAITasks(status?: AITaskStatus, limit?: number): Promise<AITask[]> {
+      return apiFetch<AITask[]>(baseUrl, 'GET', `/api/ai/tasks${buildQuery({ status, limit })}`, undefined, getToken)
+    },
+
+    getAITask(id: string): Promise<AITask> {
+      return apiFetch<AITask>(baseUrl, 'GET', `/api/ai/tasks/${encodeURIComponent(id)}`, undefined, getToken)
+    },
+
+    /** Cancels a queued task. Running tasks are not cancellable — their worker holds the lease. */
+    cancelAITask(id: string): Promise<void> {
+      return apiFetch<void>(baseUrl, 'POST', `/api/ai/tasks/${encodeURIComponent(id)}/cancel`, {}, getToken)
+    },
+
+    /** Deletes a terminal (completed or failed) task. */
+    deleteAITask(id: string): Promise<void> {
+      return apiFetch<void>(baseUrl, 'DELETE', `/api/ai/tasks/${encodeURIComponent(id)}`, undefined, getToken)
+    },
+
+    /**
+     * Reports runner availability and queue depth. Unlike the other task
+     * methods this stays reachable when the runner is disabled, so the UI can
+     * explain why rather than surfacing a bare 503.
+     */
+    getAITaskStatus(): Promise<AITaskStatusResponse> {
+      return apiFetch<AITaskStatusResponse>(baseUrl, 'GET', '/api/ai/tasks/status', undefined, getToken)
     },
   }
 }

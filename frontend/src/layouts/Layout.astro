@@ -20,6 +20,7 @@ const primaryNav = [
   { href: '/wallet/', label: 'Wallet', icon: 'lock' },
   { href: '/analytics/', label: 'Usage', icon: 'chart' },
   { href: '/chat/', label: 'Chat', icon: 'chat' },
+  { href: '/tasks/', label: 'Tasks', icon: 'bolt' },
 ]
 
 const secondaryNav = [
@@ -98,6 +99,7 @@ const isActive = (href: string) => {
                   {item.icon === 'lock' && <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>}
                   {item.icon === 'chart' && <path d="M18 20V10M12 20V4M6 20v-6" />}
                   {item.icon === 'chat' && <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />}
+                  {item.icon === 'bolt' && <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" />}
                 </svg>
                 {item.label}
               </a>
@@ -171,6 +173,7 @@ const isActive = (href: string) => {
                   {item.icon === 'lock' && <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>}
                   {item.icon === 'chart' && <path d="M18 20V10M12 20V4M6 20v-6" />}
                   {item.icon === 'chat' && <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />}
+                  {item.icon === 'bolt' && <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" />}
                 </svg>
                 {item.label}
               </a>

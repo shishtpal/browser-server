@@ -1,18 +1,20 @@
 <template>
-  <div class="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-    <div class="flex items-center gap-3">
-      <div>
-        <p class="mb-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors" :class="badgeClass">
-          {{ badge }}
-        </p>
-        <h1 class="text-2xl font-black tracking-tight text-slate-900 transition-colors dark:text-white sm:text-3xl">{{ title }}</h1>
+  <div class="mb-4">
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <div>
+          <p class="mb-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors" :class="badgeClass">
+            {{ badge }}
+          </p>
+          <h1 class="text-xl font-black tracking-tight text-slate-900 transition-colors dark:text-white sm:text-2xl">{{ title }}</h1>
+        </div>
+        <div v-if="$slots.stats" class="flex flex-wrap items-center gap-1.5">
+          <slot name="stats"></slot>
+        </div>
       </div>
-      <div v-if="$slots.stats" class="flex items-center gap-2">
-        <slot name="stats"></slot>
+      <div v-if="$slots.actions" class="flex flex-col gap-2">
+        <slot name="actions"></slot>
       </div>
-    </div>
-    <div v-if="$slots.actions" class="flex items-center gap-3">
-      <slot name="actions"></slot>
     </div>
   </div>
 </template>

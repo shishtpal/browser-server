@@ -10,78 +10,23 @@
         <StatCard v-if="overdueCount > 0" :value="overdueCount" label="Overdue" variant="dark" color="amber" />
       </template>
       <template #actions>
-        <UserSelector id="todo-user" v-model="selectedUserId" :users="users" color="indigo" />
-        <Button variant="gradient-indigo" size="sm" :disabled="!selectedUserId" @click="openCreateModal()">
-          <span class="flex items-center gap-1">
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Add Todo
-          </span>
-        </Button>
-        <div class="flex flex-wrap items-center gap-1.5">
-          <FilterPill
-            v-for="f in filters"
-            :key="f.value"
-            :active="activeFilter === f.value"
-            @click="activeFilter = f.value"
-          >
-            {{ f.label }}
-          </FilterPill>
-          <FilterPill
-            v-if="selectedPriority"
-            :active="true"
-            @click="clearPriority()"
-            variant="tag"
-          >
-            Priority: {{ selectedPriority }} ✕
-          </FilterPill>
-          <FilterPill
-            v-if="dueDateFilter"
-            :active="true"
-            @click="clearDueDateFilter()"
-            variant="tag"
-          >
-            {{ dueDateLabel }} ✕
-          </FilterPill>
-          <FilterPill
-            v-if="selectedTag"
-            :active="true"
-            @click="selectTag(null)"
-            variant="tag"
-          >
-            {{ selectedTag }} ✕
-          </FilterPill>
-        </div>
-        <div class="flex flex-wrap items-center gap-1.5">
-          <TodoViewToggle :view="view" @update:view="view = $event" />
-          <TodoSortBar v-if="view === 'list'" :sort-field="sortField" :sort-dir="sortDir" @update:sort-field="setSort($event)" @toggle-dir="toggleSortDir()" />
-        </div>
-        <div class="flex flex-wrap items-center gap-1.5">
-          <select
-            v-model="dueDateFilter"
-            class="rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-[11px] font-black text-slate-700 focus:border-indigo-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          >
-            <option :value="null">All due dates</option>
-            <option value="overdue">Overdue</option>
-            <option value="today">Due today</option>
-            <option value="this_week">Due this week</option>
-          </select>
-          <select
-            v-model="selectedTag"
-            class="rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-[11px] font-black text-slate-700 focus:border-indigo-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          >
-            <option :value="null">All tags</option>
-            <option v-for="t in allTags" :key="t" :value="t">{{ t }}</option>
-          </select>
-          <select
-            v-model="selectedPriority"
-            class="rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-[11px] font-black text-slate-700 focus:border-indigo-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          >
-            <option :value="null">All priorities</option>
-            <option v-for="p in allPriorityOptions" :key="p.value" :value="p.value">{{ p.label }}</option>
-          </select>
-        </div>
+        <TodoActionsBar
+          v-model:selected-user-id="selectedUserId"
+          v-model:view="view"
+          v-model:active-filter="activeFilter"
+          v-model:selected-priority="selectedPriority"
+          v-model:due-date-filter="dueDateFilter"
+          v-model:selected-tag="selectedTag"
+          :users="users"
+          :filters="filters"
+          :all-tags="allTags"
+          :sort-field="sortField"
+          :sort-dir="sortDir"
+          @update:sort-field="setSort($event)"
+          @toggle-dir="toggleSortDir()"
+          @new-todo="openCreateModal"
+          @clear-all="clearAllFilters"
+        />
       </template>
     </PageHeader>
 
@@ -252,7 +197,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo, TodoPriority, CreateTodoInput } from '../types'
+import type { Todo, TodoView, TodoPriority, CreateTodoInput } from '../types'
 import { ref, watch, computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import draggable from 'vuedraggable'
@@ -260,9 +205,6 @@ import { useUser } from '../composables/useUser'
 import { useTodos } from '../composables/useTodos'
 import PageHeader from './ui/PageHeader.vue'
 import StatCard from './ui/StatCard.vue'
-import UserSelector from './ui/UserSelector.vue'
-import Button from './ui/Button.vue'
-import FilterPill from './ui/FilterPill.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
 import EmptyState from './ui/EmptyState.vue'
@@ -271,23 +213,19 @@ import Modal from './ui/Modal.vue'
 import TodoTableRow from './todos/TodoTableRow.vue'
 import TodoCard from './todos/TodoCard.vue'
 import TodoKanbanBoard from './todos/TodoKanbanBoard.vue'
-import TodoViewToggle from './todos/TodoViewToggle.vue'
-import TodoSortBar from './todos/TodoSortBar.vue'
+import TodoActionsBar from './todos/TodoActionsBar.vue'
 import TodoGridView from './todos/TodoGridView.vue'
 import TodoSubtaskList from './todos/TodoSubtaskList.vue'
 import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
 import { useModal } from '@browser-server/shared-modal'
 import { getScreenshotUrl, reorderTodos, updateTodo } from '../lib/api'
 
-const allPriorityOptions: { value: TodoPriority; label: string }[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'urgent', label: 'Urgent' },
-]
-
 const { users, currentUserId, setUser, clearUser } = useUser()
 const selectedUserId = ref<number | null>(currentUserId.value)
+
+function clearAllFilters() {
+  
+}
 
 const {
   todos,
@@ -320,9 +258,9 @@ const {
 
 // Vue only unwraps refs exposed as top-level template bindings. Keeping these
 // nested would make v-for iterate the ComputedRef object instead of its value.
-const { selectedPriority, clearPriority } = priority
-const { dueDateFilter, clearDueDateFilter } = dueDate
-const { allTags, selectedTag, selectTag } = tags
+const { selectedPriority } = priority
+const { dueDateFilter } = dueDate
+const { allTags, selectedTag } = tags
 const { sortField, sortDir, setSort, toggleDir: toggleSortDir } = sort
 
 watch(selectedUserId, (id) => {
@@ -340,7 +278,7 @@ if (selectedUserId.value) {
   loadTodos()
 }
 
-const view = useLocalStorage<'list' | 'kanban' | 'grid'>(`bs.todos.view`, 'list')
+const view = useLocalStorage<TodoView>(`bs.todos.view`, 'list')
 
 const listTodos = ref<Todo[]>([])
 
@@ -486,12 +424,6 @@ async function confirmDelete(id: number) {
     await removeTodo(id)
   }
 }
-
-const dueDateLabel = computed(() => {
-  if (!dueDate.dueDateFilter.value) return ''
-  const labels: Record<string, string> = { overdue: 'Overdue', today: 'Today', this_week: 'This week' }
-  return labels[dueDate.dueDateFilter.value] || ''
-})
 
 const resultSummary = computed(() => {
   const count = displayedTodos.value.length

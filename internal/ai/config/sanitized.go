@@ -6,6 +6,17 @@ type SanitizedConfig struct {
 	Providers       map[string]SanitizedProvider `json:"providers"`
 	Tools           SanitizedTools               `json:"tools"`
 	Chat            SanitizedChat                `json:"chat"`
+	Tasks           SanitizedTasks               `json:"tasks"`
+}
+
+// SanitizedTasks tells the client whether background tasks are available and
+// what limits apply, without exposing the runner's internal timing.
+type SanitizedTasks struct {
+	Enabled       bool `json:"enabled"`
+	MaxConcurrent int  `json:"max_concurrent"`
+	MaxSteps      int  `json:"max_steps"`
+	MaxAttempts   int  `json:"max_attempts"`
+	ToolsEnabled  bool `json:"tools_enabled"`
 }
 
 type SanitizedProvider struct {
@@ -31,9 +42,9 @@ type SanitizedTools struct {
 }
 
 type SanitizedChat struct {
-	MaxHistoryMessages int                    `json:"max_history_messages"`
-	Stream             bool                   `json:"stream"`
-	Temperature        float64                `json:"temperature"`
+	MaxHistoryMessages int                      `json:"max_history_messages"`
+	Stream             bool                     `json:"stream"`
+	Temperature        float64                  `json:"temperature"`
 	Attachments        SanitizedChatAttachments `json:"attachments"`
 }
 
@@ -69,6 +80,13 @@ func (cfg *Config) Sanitized(categories map[string]string) SanitizedConfig {
 				MaxImageBytes:    cfg.Chat.Attachments.MaxImageBytes,
 				MaxTotalBytes:    cfg.Chat.Attachments.MaxTotalBytes,
 			},
+		},
+		Tasks: SanitizedTasks{
+			Enabled:       cfg.Tasks.Enabled,
+			MaxConcurrent: cfg.Tasks.MaxConcurrent,
+			MaxSteps:      cfg.Tasks.MaxSteps,
+			MaxAttempts:   cfg.Tasks.MaxAttempts,
+			ToolsEnabled:  cfg.Tasks.ToolsEnabled,
 		},
 	}
 	if out.Tools.Categories == nil {

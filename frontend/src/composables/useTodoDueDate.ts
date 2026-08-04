@@ -1,4 +1,4 @@
-import type { Todo } from '../types'
+import type { DueDateFilter, Todo } from '../types'
 import { computed, ref, type Ref } from 'vue'
 
 export function isOverdue(todo: Todo): boolean {
@@ -21,7 +21,7 @@ export function isDueThisWeek(todo: Todo): boolean {
 }
 
 export function useTodoDueDate() {
-  const dueDateFilter: Ref<'overdue' | 'today' | 'this_week' | null> = ref(null)
+  const dueDateFilter: Ref<DueDateFilter> = ref(null)
 
   const filteredByDueDate = (todos: Ref<Todo[]>) =>
     computed(() => {

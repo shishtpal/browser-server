@@ -1,5 +1,14 @@
+export type TodoView = 'list' | 'kanban' | 'grid'
+
 export type TodoPriority = 'low' | 'medium' | 'high' | 'urgent'
+
 export type TodoStatus = 'pending' | 'in_progress' | 'completed' | 'archived'
+
+export type TodoSortField = 'position' | 'priority' | 'start_date' | 'created_at' | 'title'
+
+export type TodoFilter = 'all' | 'active' | 'in_progress' | 'completed' | 'archived'
+
+export type DueDateFilter = 'overdue' | 'today' | 'this_week' | null
 
 export interface Todo {
   id: number
@@ -69,7 +78,7 @@ export interface GetTodosOptions {
   tag?: string
   parent_id?: number
   archived?: boolean
-  sort?: 'position' | 'priority' | 'start_date' | 'created_at' | 'title'
+  sort?: TodoSortField
   order?: 'asc' | 'desc'
 }
 

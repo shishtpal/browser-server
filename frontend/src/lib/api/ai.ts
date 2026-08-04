@@ -7,9 +7,14 @@ import type {
   AIAttachmentSummary,
   AIMessage,
   AIStreamEvent,
+  AITask,
+  AITaskStatus,
+  AITaskStatusResponse,
   AIToolDecisionResponse,
   AppendAIMessageInput,
   CreateAIConversationInput,
+  CreateAITaskInput,
+  CreateAITaskResponse,
   SendAIMessageInput,
   SendAIMessageResponse,
   StopAIGenerationResponse,
@@ -131,4 +136,30 @@ export function listArchivedAIConversations(): Promise<AIConversation[]> {
     if (!res.ok) throw new Error('Failed to load archived conversations')
     return res.json() as Promise<AIConversation[]>
   })
+}
+
+// ─── AI Background Tasks ────────────────────────────────────────────────────
+
+export function createAITask(data: CreateAITaskInput): Promise<CreateAITaskResponse> {
+  return client.createAITask(data)
+}
+
+export function listAITasks(status?: AITaskStatus, limit?: number): Promise<AITask[]> {
+  return client.listAITasks(status, limit)
+}
+
+export function getAITask(id: string): Promise<AITask> {
+  return client.getAITask(id)
+}
+
+export function cancelAITask(id: string): Promise<void> {
+  return client.cancelAITask(id)
+}
+
+export function deleteAITask(id: string): Promise<void> {
+  return client.deleteAITask(id)
+}
+
+export function getAITaskStatus(): Promise<AITaskStatusResponse> {
+  return client.getAITaskStatus()
 }

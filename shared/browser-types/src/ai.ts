@@ -238,6 +238,18 @@ export interface AIToolDecisionResponse {
   accepted: boolean
 }
 
+/** ask_questions AI Tool */
+export type ChatQuestionKind = 'text' | 'choice' | 'multi_choice' | 'multiple_choice' | 'confirm'
+
+export interface ChatQuestion {
+  id: string
+  prompt: string
+  kind?: ChatQuestionKind
+  options?: string[]
+  default?: string
+  required?: boolean
+}
+
 /** SSE event types emitted during streaming AI message generation. */
 export type AIStreamEventType = 'delta' | 'tool_call' | 'tool_result' | 'append_window' | 'done' | 'error'
 

@@ -118,8 +118,24 @@ func (s *Service) processToolCalls(
 				result, _ = json.Marshal(map[string]string{"error": validationErr.Error()})
 				providerToolContent = string(result)
 			} else {
-				decision = "answered"
 				result = questionAnswerResult(request, comment)
+				// ask_questions completes through the approval channel rather than
+				// Registry.Execute; apply the same RAW/JSON formatting policy here.
+				var answerValue any
+				if json.Unmarshal(result, &answerValue) == nil {
+					result, validationErr = s.tools.FormatResult(generationCtx, call.Name, answerValue)
+					if validationErr != nil {
+						toolErr = validationErr
+						toolStatus = "error"
+						result, _ = json.Marshal(map[string]string{"error": validationErr.Error()})
+					}
+				}
+				// Only mark the tool answered when formatting succeeded; a failed
+				// FormatResult (e.g. output exceeds the configured limit) must not
+				// surface a green "answered" badge for an errored tool call.
+				if toolErr == nil {
+					decision = "answered"
+				}
 				providerToolContent = string(result)
 			}
 		} else if comment != "" {

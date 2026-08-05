@@ -213,6 +213,17 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	if err != nil {
 		return nil, err
 	}
+	return r.FormatResult(ctx, name, v)
+}
+
+// FormatResult serializes a tool result using the registry's raw-output policy.
+// Interactive tools can use it after their result is collected outside Execute.
+func (r *Registry) FormatResult(ctx context.Context, name string, value any) ([]byte, error) {
+	t, ok := r.tools[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown tool")
+	}
+	ctx = withToolLimits(ctx, r.limits)
 
 	// Decide raw vs JSON: a per-request override (WithRawOutputOverride) wins;
 	// otherwise fall back to the config tools.raw_output allowlist. Forced raw
@@ -225,7 +236,7 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	}
 	outLimit := outputLimitFor(name, lim)
 	if useRaw && t.RawContentFunc != nil {
-		if raw, ok := t.RawContentFunc(v); ok {
+		if raw, ok := t.RawContentFunc(value); ok {
 			if len(raw) > outLimit {
 				return nil, fmt.Errorf("tool output exceeds limit")
 			}
@@ -233,7 +244,7 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 		}
 	}
 
-	b, err := json.Marshal(v)
+	b, err := json.Marshal(value)
 	if len(b) > outLimit {
 		return nil, fmt.Errorf("tool output exceeds limit")
 	}

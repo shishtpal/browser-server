@@ -18,25 +18,23 @@
         :placeholder="question.default || 'Your answer'"
       />
 
-      <select
-        v-else-if="question.kind === 'choice'"
-        v-model="answers[question.id]"
-        class="w-full rounded border border-slate-200 bg-white px-2.5 py-1.5 text-[0.85em] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
-      >
-        <option value="">Select an option</option>
-        <option v-for="option in question.options" :key="option" :value="option">{{ option }}</option>
-      </select>
+      <div v-else-if="question.kind === 'choice'" class="space-y-1">
+        <label v-for="option in question.options" :key="option" class="flex cursor-pointer items-center gap-2 text-[0.85em] text-slate-700 dark:text-slate-300">
+          <input v-model="answers[question.id]" :name="`question-${question.id}`" type="radio" :value="option" />
+          {{ option }}
+        </label>
+      </div>
 
-      <div v-else-if="question.kind === 'multi_choice'" class="space-y-1">
-        <label v-for="option in question.options" :key="option" class="flex items-center gap-2 text-[0.85em] text-slate-700 dark:text-slate-300">
+      <div v-else-if="isMultipleChoice(question.kind)" class="space-y-1">
+        <label v-for="option in question.options" :key="option" class="flex cursor-pointer items-center gap-2 text-[0.85em] text-slate-700 dark:text-slate-300">
           <input v-model="answers[question.id]" type="checkbox" :value="option" />
           {{ option }}
         </label>
       </div>
 
       <div v-else class="flex gap-4 text-[0.85em] text-slate-700 dark:text-slate-300">
-        <label class="flex items-center gap-2"><input v-model="answers[question.id]" type="radio" value="yes" /> Yes</label>
-        <label class="flex items-center gap-2"><input v-model="answers[question.id]" type="radio" value="no" /> No</label>
+        <label class="flex items-center gap-2"><input v-model="answers[question.id]" :name="`confirm-${question.id}`" type="radio" value="yes" /> Yes</label>
+        <label class="flex items-center gap-2"><input v-model="answers[question.id]" :name="`confirm-${question.id}`" type="radio" value="no" /> No</label>
       </div>
     </fieldset>
 
@@ -48,16 +46,8 @@
 </template>
 
 <script setup lang="ts">
+import type { ChatQuestion } from '@browser-server/shared-types'
 import { reactive, ref } from 'vue'
-
-interface ChatQuestion {
-  id: string
-  prompt: string
-  kind?: 'text' | 'choice' | 'multi_choice' | 'confirm'
-  options?: string[]
-  default?: string
-  required?: boolean
-}
 
 const props = defineProps<{
   context?: string
@@ -73,7 +63,11 @@ const error = ref('')
 const submitting = ref(false)
 
 for (const question of props.questions) {
-  answers[question.id] = question.kind === 'multi_choice' ? [] : question.default || ''
+  answers[question.id] = isMultipleChoice(question.kind) ? [] : question.default || ''
+}
+
+function isMultipleChoice(kind: ChatQuestion['kind']) {
+  return kind === 'multi_choice' || kind === 'multiple_choice'
 }
 
 function isEmpty(answer: string | string[]) {
@@ -90,7 +84,7 @@ function submit() {
   error.value = ''
   submitting.value = true
   emit('submit', props.questions.map((question) => {
-    const answer = answers[question.id] || (question.kind === 'multi_choice' ? [] : '')
+    const answer = answers[question.id] || (isMultipleChoice(question.kind) ? [] : '')
     return { id: question.id, prompt: question.prompt, answer, skipped: isEmpty(answer) }
   }))
 }

@@ -43,8 +43,8 @@ func ValidateQuestionArguments(raw json.RawMessage) (QuestionRequest, error) {
 	if err := json.Unmarshal(envelope["questions"], &rawQuestions); err != nil {
 		return request, fmt.Errorf("questions must be an array")
 	}
-	if len(request.Questions) == 0 || len(request.Questions) > 5 {
-		return request, fmt.Errorf("questions must contain between 1 and 5 items")
+	if len(request.Questions) == 0 || len(request.Questions) > 20 {
+		return request, fmt.Errorf("questions must contain between 1 and 20 items")
 	}
 	if len(request.Context) > 2000 {
 		return request, fmt.Errorf("context must be 2000 characters or fewer")
@@ -82,6 +82,11 @@ func ValidateQuestionArguments(raw json.RawMessage) (QuestionRequest, error) {
 		if question.Kind == "" {
 			question.Kind = "text"
 		}
+		// Accept the more readable spelling as an alias while keeping the
+		// established multi_choice value on the wire.
+		if question.Kind == "multiple_choice" {
+			question.Kind = "multi_choice"
+		}
 		switch question.Kind {
 		case "text", "choice", "multi_choice", "confirm":
 		default:
@@ -109,11 +114,12 @@ func ValidateQuestionArguments(raw json.RawMessage) (QuestionRequest, error) {
 
 func registerAskQuestions(r *Registry) {
 	r.add(Tool{
-		Name:        "ask_questions",
-		Category:    "Interactive",
-		Description: "Ask the user up to five concise clarification questions when required information is genuinely missing or a consequential choice cannot be safely inferred. Do not ask for information discoverable with other tools, trivial defaults, or questions already answered. The call pauses until the user responds; include context and use choice/multi_choice/confirm when appropriate.",
-		Schema:      json.RawMessage(askQuestionsSchema),
-		Execute:     ask_questions,
+		Name:           "ask_questions",
+		Category:       "Interactive",
+		Description:    "Ask the user up to 20 concise clarification questions when required information is genuinely missing or a consequential choice cannot be safely inferred. Do not ask for information discoverable with other tools, trivial defaults, or questions already answered. The call pauses until the user responds; include context and use choice/multi_choice/confirm when appropriate.",
+		Schema:         json.RawMessage(askQuestionsSchema),
+		Execute:        ask_questions,
+		RawContentFunc: rawAskQuestionsResult,
 	})
 }
 
@@ -130,4 +136,71 @@ func ask_questions(_ context.Context, raw json.RawMessage) (any, error) {
 		"questions": request.Questions,
 		"hint":      "No interactive answer channel is available; proceed with explicit assumptions.",
 	}, nil
+}
+
+// rawAskQuestionsResult keeps interactive answer results small in raw mode so
+// a large question set does not unnecessarily consume model context.
+func rawAskQuestionsResult(value any) ([]byte, bool) {
+	result, ok := value.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	status, ok := result["status"].(string)
+	if !ok || status == "" {
+		return nil, false
+	}
+	answers, _ := result["answers"].([]any)
+	if answers == nil {
+		if typed, ok := result["answers"].([]map[string]any); ok {
+			answers = make([]any, len(typed))
+			for i := range typed {
+				answers[i] = typed[i]
+			}
+		}
+	}
+	// A result with no answer records means every question was effectively
+	// skipped; only a concrete non-skipped answer flips this to false.
+	skipped := true
+	parts := make([]string, 0, len(answers))
+	for _, item := range answers {
+		answer, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		id, _ := answer["id"].(string)
+		isSkipped, _ := answer["skipped"].(bool)
+		if !isSkipped {
+			skipped = false
+		}
+		if id == "" || isSkipped {
+			continue
+		}
+		parts = append(parts, id+":"+compactQuestionAnswer(answer["answer"]))
+	}
+	output := fmt.Sprintf("status=%s; skipped=%t", status, skipped)
+	if len(parts) > 0 {
+		output += "; answers=" + strings.Join(parts, ",")
+	}
+	// In raw mode the direct-execution "unavailable" result would otherwise
+	// drop the hint that tells the model how to proceed, so include it here.
+	if status == "unavailable" {
+		if hint, ok := result["hint"].(string); ok && hint != "" {
+			output += "; hint=" + hint
+		}
+	}
+	return []byte(output), true
+}
+
+func compactQuestionAnswer(value any) string {
+	if values, ok := value.([]string); ok {
+		return strings.Join(values, "+")
+	}
+	if values, ok := value.([]any); ok {
+		out := make([]string, 0, len(values))
+		for _, item := range values {
+			out = append(out, fmt.Sprint(item))
+		}
+		return strings.Join(out, "+")
+	}
+	return fmt.Sprint(value)
 }

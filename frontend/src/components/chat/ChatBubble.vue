@@ -207,8 +207,8 @@
 </template>
 
 <script setup lang="ts">
+import type { AIImageAttachment, AIMessage, ChatQuestion } from '@browser-server/shared-types'
 import { computed, ref } from 'vue'
-import type { AIImageAttachment, AIMessage } from '@browser-server/shared-types'
 import { renderMarkdown } from './markdown'
 import ChatQuestionForm from './ChatQuestionForm.vue'
 import { getAIImageAttachmentUrl } from '../../lib/api'
@@ -413,18 +413,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-interface ChatQuestion {
-  id: string
-  prompt: string
-  kind?: 'text' | 'choice' | 'multi_choice' | 'confirm'
-  options?: string[]
-  default?: string
-  required?: boolean
-}
-
 function isQuestion(value: unknown): value is ChatQuestion {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.prompt !== 'string') return false
-  return value.kind === undefined || ['text', 'choice', 'multi_choice', 'confirm'].includes(value.kind as string)
+  return value.kind === undefined || ['text', 'choice', 'multi_choice', 'multiple_choice', 'confirm'].includes(value.kind as string)
 }
 
 function formatJson(value: unknown): string {

@@ -3,8 +3,10 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"browser-server/internal/ai/chat"
 	"browser-server/internal/ai/provider"
@@ -108,11 +110,14 @@ func (a *ChatAgent) RunStep(ctx context.Context, task *store.Task, checkpoint *C
 	}
 
 	resp, err := a.Service.AgentStep(ctx, chat.AgentStepRequest{
-		Provider:   providerName,
-		Model:      modelID,
-		Messages:   messages,
-		ToolNames:  toolNames,
-		OnProgress: progress.Mark,
+		Provider:       providerName,
+		Model:          modelID,
+		Messages:       messages,
+		ToolNames:      toolNames,
+		OnProgress:     progress.Mark,
+		TaskID:         task.ID,
+		ConversationID: task.ConversationID,
+		Iteration:      checkpoint.Step,
 	})
 	if err != nil {
 		return StepResult{}, err
@@ -191,6 +196,8 @@ func (a *ChatAgent) runToolCalls(ctx context.Context, task *store.Task, checkpoi
 	checkpoint.Append(provider.Message{Role: "assistant", Content: resp.Content, ToolCalls: calls})
 
 	for _, call := range calls {
+		started := time.Now()
+		var toolErr error
 		key := IdempotencyKey(task.ID, checkpoint.Step, call.ID)
 		content, replayed := checkpoint.CompletedToolCall(key)
 		if !replayed {
@@ -198,6 +205,11 @@ func (a *ChatAgent) runToolCalls(ctx context.Context, task *store.Task, checkpoi
 			// the durable record of what actually ran.
 			stored, found, lookupErr := a.lookupToolCall(ctx, task.ID, key)
 			if lookupErr != nil {
+				status := "error"
+				if errors.Is(ctx.Err(), context.Canceled) {
+					status = "cancelled"
+				}
+				a.Service.AuditTool(resp.RequestID, "", call.Name, call.Arguments, nil, lookupErr, status, "pending", time.Since(started))
 				return StepResult{}, lookupErr
 			}
 			if found {
@@ -205,7 +217,21 @@ func (a *ChatAgent) runToolCalls(ctx context.Context, task *store.Task, checkpoi
 			}
 		}
 		if !replayed {
-			content = a.executeTool(ctx, call)
+			content, toolErr = a.executeTool(ctx, call)
+		}
+		decision := "approved"
+		if replayed {
+			decision = "replayed"
+		}
+		status := "success"
+		if toolErr != nil {
+			status = "error"
+			if errors.Is(ctx.Err(), context.Canceled) {
+				status = "cancelled"
+			}
+		}
+		a.Service.AuditTool(resp.RequestID, "", call.Name, call.Arguments, []byte(content), toolErr, status, decision, time.Since(started))
+		if !replayed {
 			if _, _, err := a.recordToolCall(ctx, task.ID, key, content); err != nil {
 				return StepResult{}, err
 			}
@@ -226,7 +252,7 @@ func (a *ChatAgent) runToolCalls(ctx context.Context, task *store.Task, checkpoi
 // executeTool runs one tool, converting failures into a result the model can
 // react to. A tool error is information for the agent, not a task failure — the
 // model may well recover by calling something else.
-func (a *ChatAgent) executeTool(ctx context.Context, call provider.ToolCall) string {
+func (a *ChatAgent) executeTool(ctx context.Context, call provider.ToolCall) (string, error) {
 	args := json.RawMessage(call.Arguments)
 	if len(strings.TrimSpace(call.Arguments)) == 0 {
 		args = json.RawMessage("{}")
@@ -234,9 +260,9 @@ func (a *ChatAgent) executeTool(ctx context.Context, call provider.ToolCall) str
 	result, err := a.Service.ExecuteTool(ctx, call.Name, args)
 	if err != nil {
 		payload, _ := json.Marshal(map[string]string{"error": err.Error()})
-		return string(payload)
+		return string(payload), err
 	}
-	return string(result)
+	return string(result), nil
 }
 
 func (a *ChatAgent) lookupToolCall(ctx context.Context, taskID, key string) (string, bool, error) {

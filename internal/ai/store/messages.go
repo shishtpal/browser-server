@@ -141,6 +141,55 @@ func (s *Store) UpdateMessage(ctx context.Context, id, content, status string) e
 	return nil
 }
 
+// CompleteTurn persists terminal chat state without coupling successful work to
+// best-effort observability writes.
+func (s *Store) CompleteTurn(ctx context.Context, messageID, conversationID, content, status string) (time.Time, error) {
+	now := time.Now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return time.Time{}, err
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx, `SELECT created_at FROM messages WHERE conversation_id=? AND id!=?`, conversationID, messageID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	for rows.Next() {
+		var created string
+		if err := rows.Scan(&created); err != nil {
+			rows.Close()
+			return time.Time{}, err
+		}
+		if latest := parseTime(created); !now.After(latest) {
+			now = latest.Add(time.Nanosecond)
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return time.Time{}, err
+	}
+	if err := rows.Err(); err != nil {
+		return time.Time{}, err
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE messages SET content=?, status=?, created_at=? WHERE id=?`, content, status, formatTime(now), messageID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return time.Time{}, sql.ErrNoRows
+	}
+	res, err = tx.ExecContext(ctx, `UPDATE conversations SET updated_at=? WHERE id=?`, formatTime(now), conversationID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return time.Time{}, sql.ErrNoRows
+	}
+	if err = tx.Commit(); err != nil {
+		return time.Time{}, err
+	}
+	return now, nil
+}
+
 // UpdateMessageContent updates only the content of a message (for user editing).
 func (s *Store) UpdateMessageContent(ctx context.Context, id, content string) (Message, error) {
 	res, err := s.db.ExecContext(ctx, `UPDATE messages SET content = ? WHERE id = ?`, content, id)

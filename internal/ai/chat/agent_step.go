@@ -31,7 +31,10 @@ type AgentStepRequest struct {
 	// the request stream rather than block, so a generation that stalls midway
 	// stops signalling liveness while the HTTP connection is still open. Without
 	// it a wedged provider looks identical to a slow one until StepTimeout.
-	OnProgress func()
+	OnProgress     func()
+	TaskID         string
+	ConversationID string
+	Iteration      int
 }
 
 // AgentStepResponse is the model's reply to one step.
@@ -39,6 +42,7 @@ type AgentStepResponse struct {
 	Content   string
 	ToolCalls []provider.ToolCall
 	Usage     provider.Usage
+	RequestID string
 }
 
 // AgentStep performs a single model call, streaming when the caller wants
@@ -89,10 +93,11 @@ func (s *Service) AgentStep(ctx context.Context, req AgentStepRequest) (AgentSte
 	} else {
 		resp, err = client.Complete(ctx, chatReq)
 	}
+	requestID := s.auditRequest(ctx, "task_agent", req.ConversationID, "", req.TaskID, req.Iteration, providerName, modelID, resp, err)
 	if err != nil {
 		return AgentStepResponse{}, err
 	}
-	return AgentStepResponse{Content: resp.Content, ToolCalls: resp.ToolCalls, Usage: resp.Usage}, nil
+	return AgentStepResponse{Content: resp.Content, ToolCalls: resp.ToolCalls, Usage: resp.Usage, RequestID: requestID}, nil
 }
 
 // ExecuteTool runs one allowed tool. Task execution is unattended, so there is

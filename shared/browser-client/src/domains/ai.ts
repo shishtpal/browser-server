@@ -6,6 +6,8 @@ import type {
   AIImageAttachment,
   AIAttachmentSummary,
   AIMessage,
+  AIMonitoring,
+  AIRequestLogList,
   AITask,
   AITaskStatus,
   AITaskStatusResponse,
@@ -30,6 +32,40 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
 
     getAIVoiceConfig(): Promise<AIVoiceConfig> {
       return apiFetch<AIVoiceConfig>(baseUrl, 'GET', '/api/ai/voice/config', undefined, getToken)
+    },
+
+    getAIRequestLogs(filters: {
+      source?: 'chat' | 'task_agent'
+      status?: 'success' | 'error' | 'cancelled'
+      conversationId?: string
+      taskId?: string
+      limit?: number
+      offset?: number
+    } = {}): Promise<AIRequestLogList> {
+      return apiFetch<AIRequestLogList>(
+        baseUrl,
+        'GET',
+        `/api/ai/logs${buildQuery({
+          source: filters.source,
+          status: filters.status,
+          conversation_id: filters.conversationId,
+          task_id: filters.taskId,
+          limit: filters.limit,
+          offset: filters.offset,
+        })}`,
+        undefined,
+        getToken,
+      )
+    },
+
+    getAIMonitoring(windowHours?: number): Promise<AIMonitoring> {
+      return apiFetch<AIMonitoring>(
+        baseUrl,
+        'GET',
+        `/api/ai/monitoring${buildQuery({ window_hours: windowHours })}`,
+        undefined,
+        getToken,
+      )
     },
 
     listAIConversations(query?: string, limit?: number): Promise<AIConversation[]> {

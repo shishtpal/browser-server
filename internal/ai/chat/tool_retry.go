@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -50,6 +51,7 @@ func (s *Service) retryToolContinuation(
 	failedErr error,
 	emit func(Event) error,
 	complete toolCompletion,
+	requestIDs ...*string,
 ) (provider.ChatResponse, error) {
 	cleanMessages, ignored, ok := withoutLastToolTurn(request.Messages)
 	if !ok {
@@ -65,13 +67,22 @@ func (s *Service) retryToolContinuation(
 			return lastResponse, err
 		}
 
-		var retryCall *provider.ToolCall
+		failedRequestID := ""
+		if len(requestIDs) > 0 && requestIDs[0] != nil {
+			failedRequestID = *requestIDs[0]
+		}
+		retryCall := &provider.ToolCall{
+			ID:        store.NewID("retry"),
+			Name:      toolRetryName,
+			Arguments: string(toolRetryArgumentsJSON(attempt, ignored, lastResponse, lastErr)),
+		}
 		decision := "approved"
 		feedback := ""
 		if yolo {
 			delay := s.toolRetryWait()
 			log.Printf("[AI] tool continuation failed for conversation %s (attempt %d, HTTP %d): %v — YOLO retry in %v", conversationID, attempt, lastResponse.HTTPStatus, lastErr, delay)
 			if err := waitForToolRetry(ctx, delay); err != nil {
+				s.AuditTool(failedRequestID, assistantMessageID, retryCall.Name, retryCall.Arguments, nil, err, "cancelled", "pending", 0)
 				return lastResponse, err
 			}
 		} else {
@@ -89,9 +100,15 @@ func (s *Service) retryToolContinuation(
 				emit,
 			)
 			if err != nil {
+				status := "error"
+				if errors.Is(ctx.Err(), context.Canceled) {
+					status = "cancelled"
+				}
+				s.AuditTool(failedRequestID, assistantMessageID, retryCall.Name, retryCall.Arguments, nil, err, status, "pending", 0)
 				return lastResponse, err
 			}
 			if !approved && comment == "" {
+				s.AuditTool(failedRequestID, assistantMessageID, retryCall.Name, retryCall.Arguments, []byte(`{"status":"cancelled"}`), lastErr, "rejected", "rejected", 0)
 				if emitErr := emitToolRetryResult(emit, assistantMessageID, retryCall, "rejected", "cancelled", "", lastResponse, lastErr); emitErr != nil {
 					return lastResponse, emitErr
 				}
@@ -108,6 +125,7 @@ func (s *Service) retryToolContinuation(
 
 		response, err := complete()
 		if err == nil {
+			s.AuditTool(failedRequestID, assistantMessageID, retryCall.Name, retryCall.Arguments, []byte(`{"status":"resumed"}`), nil, "success", decision, 0)
 			if retryCall != nil {
 				if emitErr := emitToolRetryResult(emit, assistantMessageID, retryCall, decision, "resumed", feedback, response, nil); emitErr != nil {
 					return response, emitErr
@@ -116,6 +134,7 @@ func (s *Service) retryToolContinuation(
 			return response, nil
 		}
 
+		s.AuditTool(failedRequestID, assistantMessageID, retryCall.Name, retryCall.Arguments, []byte(`{"status":"failed"}`), err, "error", decision, 0)
 		if retryCall != nil {
 			if emitErr := emitToolRetryResult(emit, assistantMessageID, retryCall, decision, "failed", feedback, response, err); emitErr != nil {
 				return response, emitErr

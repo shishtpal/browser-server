@@ -136,6 +136,16 @@ func (s *Store) migrate() error {
 				PRIMARY KEY (task_id, idempotency_key)
 			)`,
 		}},
+		{7, []string{
+			`ALTER TABLE request_logs ADD COLUMN source TEXT NOT NULL DEFAULT 'chat'`,
+			`ALTER TABLE request_logs ADD COLUMN task_id TEXT`,
+			`ALTER TABLE request_logs ADD COLUMN iteration INTEGER NOT NULL DEFAULT 0`,
+			`ALTER TABLE tool_calls ADD COLUMN decision TEXT NOT NULL DEFAULT 'approved'`,
+			`ALTER TABLE tool_calls ADD COLUMN payload_truncated INTEGER NOT NULL DEFAULT 0`,
+			`CREATE INDEX IF NOT EXISTS idx_request_logs_source_created ON request_logs(source, created_at DESC)`,
+			`CREATE INDEX IF NOT EXISTS idx_request_logs_task_created ON request_logs(task_id, created_at DESC)`,
+			`CREATE INDEX IF NOT EXISTS idx_request_logs_status_created ON request_logs(status, created_at DESC)`,
+		}},
 	}
 	var currentVersion int
 	s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&currentVersion)
@@ -143,14 +153,24 @@ func (s *Store) migrate() error {
 		if currentVersion >= m.version {
 			continue
 		}
+		tx, err := s.db.Begin()
+		if err != nil {
+			return fmt.Errorf("migration v%d: %w", m.version, err)
+		}
 		for _, stmt := range m.statements {
-			if _, err := s.db.Exec(stmt); err != nil {
+			if _, err := tx.Exec(stmt); err != nil {
+				tx.Rollback()
 				return fmt.Errorf("migration v%d: %w", m.version, err)
 			}
 		}
-		if _, err := s.db.Exec(`INSERT INTO schema_version (version) VALUES (?)`, m.version); err != nil {
-			return err
+		if _, err := tx.Exec(`INSERT INTO schema_version (version) VALUES (?)`, m.version); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("migration v%d: %w", m.version, err)
 		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("migration v%d: %w", m.version, err)
+		}
+		currentVersion = m.version
 	}
 
 	return nil

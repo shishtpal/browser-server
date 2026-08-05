@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/attachments"
+	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/provider"
 	"browser-server/internal/ai/skills"
@@ -70,7 +70,7 @@ func mapAttachmentError(err error) error {
 }
 
 type SubmitRequest struct {
-	Content                   string   `json:"content"`
+	Content string `json:"content"`
 	// AttachmentIDs are server-issued staged attachment IDs to claim for this
 	// turn. Empty means a text-only message.
 	AttachmentIDs             []string `json:"attachment_ids,omitempty"`
@@ -304,17 +304,25 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			providerMessages[0].Content += webSearchPromptFragment
 		}
 	}
+	requestIteration := 0
+	requestID := ""
 	complete := func() (provider.ChatResponse, error) {
+		var response provider.ChatResponse
+		var callErr error
 		if emit != nil {
-			return client.Stream(generationCtx, chatReq, func(pe provider.Event) error {
+			response, callErr = client.Stream(generationCtx, chatReq, func(pe provider.Event) error {
 				switch pe.Type {
 				case "text_delta":
 					return emit(Event{Type: "delta", MessageID: assistantMessage.ID, Content: pe.Text})
 				}
 				return nil
 			})
+		} else {
+			response, callErr = client.Complete(generationCtx, chatReq)
 		}
-		return client.Complete(generationCtx, chatReq)
+		requestID = s.auditRequest(generationCtx, "chat", conversationID, assistantMessage.ID, "", requestIteration, providerName, modelID, response, callErr)
+		requestIteration++
+		return response, callErr
 	}
 	resp, providerErr := complete()
 	var toolMessages []store.Message
@@ -355,6 +363,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 			sessionSkills,
 			&req,
 			emit,
+			requestID,
 		)
 		toolMessages = append(toolMessages, iterationToolMessages...)
 		appendedMessages := s.closeAppendWindow(conversationID, appendWindow)
@@ -381,6 +390,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				providerErr,
 				emit,
 				complete,
+				&requestID,
 			)
 		}
 	}

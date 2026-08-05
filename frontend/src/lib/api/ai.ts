@@ -1,6 +1,8 @@
 import type {
   AIConfig,
   AIVoiceConfig,
+  AIMonitoring,
+  AIRequestLogList,
   AIConversation,
   AIConversationDetail,
   AIImageAttachment,
@@ -30,6 +32,21 @@ export function getAIConfig(): Promise<AIConfig> {
 
 export function getAIVoiceConfig(): Promise<AIVoiceConfig> {
   return client.getAIVoiceConfig()
+}
+
+export function getAIMonitoring(windowHours?: number): Promise<AIMonitoring> {
+  return client.getAIMonitoring(windowHours)
+}
+
+export function getAIRequestLogs(filters: {
+  source?: 'chat' | 'task_agent'
+  status?: 'success' | 'error' | 'cancelled'
+  conversationId?: string
+  taskId?: string
+  limit?: number
+  offset?: number
+} = {}): Promise<AIRequestLogList> {
+  return client.getAIRequestLogs(filters)
 }
 
 export function listAIConversations(query?: string, limit?: number): Promise<AIConversation[]> {

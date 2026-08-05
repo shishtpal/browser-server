@@ -345,3 +345,68 @@ export interface AITaskStatusResponse {
   workers: number
   counts: Record<AITaskStatus, number>
 }
+
+export type AIAuditSource = 'chat' | 'task_agent'
+export type AIAuditStatus = 'success' | 'error' | 'cancelled'
+
+export interface AIToolCallLog {
+  id: string
+  request_id: string
+  message_id?: string
+  tool_name: string
+  arguments?: string
+  result?: string
+  error_message?: string
+  status: 'success' | 'error' | 'cancelled' | 'rejected'
+  decision: 'approved' | 'rejected' | 'commented' | 'answered' | 'unauthorized' | 'replayed' | string
+  duration_ms: number
+  payload_truncated: boolean
+  created_at: string
+}
+
+export interface AIRequestLog {
+  id: string
+  conversation_id?: string
+  message_id?: string
+  source: AIAuditSource
+  task_id?: string
+  iteration: number
+  provider: string
+  model: string
+  endpoint: string
+  request_payload?: string
+  response_payload?: string
+  payload_truncated: boolean
+  http_status?: number
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  latency_ms: number
+  status: AIAuditStatus
+  error_code?: string
+  error_message?: string
+  created_at: string
+  tool_calls?: AIToolCallLog[]
+}
+
+export interface AIRequestLogList {
+  logs: AIRequestLog[]
+  limit: number
+  offset: number
+}
+
+export interface AIMonitoring {
+  window_hours: number
+  requests: number
+  errors: number
+  cancellations: number
+  tool_successes: number
+  tool_errors: number
+  tool_rejections: number
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  average_latency_ms: number
+  max_latency_ms: number
+  latest_activity?: string
+}

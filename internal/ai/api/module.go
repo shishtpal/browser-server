@@ -225,6 +225,8 @@ func (m *Module) Register(r *mux.Router) {
 	}
 	r.HandleFunc("/ai/skills", m.requireAI(m.ListSkills)).Methods("GET")
 	r.HandleFunc("/ai/skills/{name}", m.requireAI(m.GetSkill)).Methods("GET")
+	r.HandleFunc("/ai/logs", m.requireAI(m.Logs)).Methods("GET")
+	r.HandleFunc("/ai/monitoring", m.requireAI(m.Monitoring)).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.ListConversations)).Methods("GET")
 	r.HandleFunc("/ai/conversations", m.requireAI(m.CreateConversation)).Methods("POST")
 	r.HandleFunc("/ai/conversations/archived", m.requireAI(m.ListArchivedConversations)).Methods("GET")

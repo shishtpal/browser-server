@@ -181,6 +181,12 @@ To capture the current page, right-click the page or selected text and open the 
 
 ## AI Chat
 
+When `logging.enabled` is true, every interactive and durable-task provider call is audited in `request_logs`; correlated tool decisions and execution outcomes are stored in `tool_calls`.
+Payload capture still requires `logging.log_full_payload` and applies secret/image redaction and `max_payload_bytes` limits.
+Audit write failures are logged but do not fail otherwise successful AI work.
+Authenticated operators can inspect bounded records with `GET /api/ai/logs` (filters: `source`, `status`, `conversation_id`, `task_id`, `limit`, `offset`) and aggregates with `GET /api/ai/monitoring?window_hours=24` (maximum 90 days).
+See [AI Agent Logging and Monitoring Usage Guide](AI-LOGGING-MONITORING-GUIDE.md) for configuration, API examples, SQL analysis, and troubleshooting.
+
 The server includes an optional AI chat feature that connects to OpenAI-compatible LLM providers (OpenRouter, OpenAI, etc.) and supports streaming responses with server-side tool calling.
 
 ### Setup

@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TodoSortField } from '../../composables/useTodoSort'
+import type { TodoSortField } from '../../types'
 
 const options = [
   { value: 'position' as TodoSortField, label: 'Position' },

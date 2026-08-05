@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"browser-server/internal/ai/provider"
 	"browser-server/internal/ai/skills"
@@ -28,9 +29,11 @@ func (s *Service) processToolCalls(
 	sessionSkills []*skills.Skill,
 	req *SubmitRequest,
 	emit func(Event) error,
+	requestID string,
 ) ([]store.Message, error) {
 	var toolMessages []store.Message
 	for callIndex, call := range resp.ToolCalls {
+		started := time.Now()
 		if call.ID == "" {
 			call.ID = store.NewID("call")
 			resp.ToolCalls[callIndex].ID = call.ID
@@ -47,6 +50,7 @@ func (s *Service) processToolCalls(
 				toolContentBytes, _ := json.Marshal(map[string]any{
 					"tool": call.Name, "args": json.RawMessage(call.Arguments), "result": toolResultField(skillResult), "decision": "approved",
 				})
+				s.AuditTool(requestID, "", call.Name, call.Arguments, skillResult, nil, "success", "approved", time.Since(started))
 				toolMsg, addErr := s.store.AddMessage(generationCtx, conversationID, "tool", string(toolContentBytes), "completed", call.ID)
 				if addErr != nil {
 					return toolMessages, addErr
@@ -78,6 +82,7 @@ func (s *Service) processToolCalls(
 			}
 			if emitErr := emit(Event{Type: "tool_call", MessageID: assistantMessageID, ToolCall: &call, Status: status}); emitErr != nil {
 				s.removePendingToolCall(call.ID)
+				s.AuditTool(requestID, "", call.Name, call.Arguments, nil, emitErr, "error", "pending", time.Since(started))
 				return toolMessages, emitErr
 			}
 		}
@@ -86,6 +91,11 @@ func (s *Service) processToolCalls(
 			var dErr error
 			approved, comment, dErr = s.waitForToolDecision(generationCtx, call.ID, pending)
 			if dErr != nil {
+				status := "error"
+				if errors.Is(generationCtx.Err(), context.Canceled) {
+					status = "cancelled"
+				}
+				s.AuditTool(requestID, "", call.Name, call.Arguments, nil, dErr, status, "pending", time.Since(started))
 				return toolMessages, dErr
 			}
 		}
@@ -166,6 +176,20 @@ func (s *Service) processToolCalls(
 			return toolMessages, marshalErr
 		}
 		toolContent := string(toolContentBytes)
+		auditStatus := "success"
+		if toolStatus == "error" {
+			auditStatus = "error"
+		}
+		if errors.Is(generationCtx.Err(), context.Canceled) {
+			auditStatus = "cancelled"
+		}
+		if decision == "rejected" {
+			auditStatus = "rejected"
+		}
+		if !authorized {
+			decision = "unauthorized"
+		}
+		s.AuditTool(requestID, "", call.Name, call.Arguments, result, toolErr, auditStatus, decision, time.Since(started))
 		toolMsg, addErr := s.store.AddMessage(generationCtx, conversationID, "tool", toolContent, toolStatus, call.ID)
 		if addErr != nil {
 			return toolMessages, addErr

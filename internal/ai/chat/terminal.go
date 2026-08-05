@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
 
 	aiconfig "browser-server/internal/ai/config"
@@ -53,28 +52,9 @@ func (s *Service) buildTerminalResult(generationCtx context.Context, req finishT
 			content += notice
 		}
 	}
-	requestPayload, responsePayload, truncated := boundedPayloads(req.resp.RawRequest, req.resp.RawResponse, s.cfg.Logging.LogFullPayload, s.cfg.Logging.MaxPayloadBytes)
-	httpStatus := nullableStatus(req.resp.HTTPStatus)
 	terminalCtx, terminalCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer terminalCancel()
-	completedAt, persistErr := s.store.FinishTurn(terminalCtx, req.assistantMessage.ID, content, status, store.RequestLog{
-		ConversationID:   req.conversationID,
-		MessageID:        req.assistantMessage.ID,
-		Provider:         req.providerName,
-		Model:            req.modelID,
-		Endpoint:         strings.TrimRight(req.providerCfg.BaseURL, "/") + "/chat/completions",
-		RequestPayload:   requestPayload,
-		ResponsePayload:  responsePayload,
-		PayloadTruncated: truncated,
-		HTTPStatus:       httpStatus,
-		PromptTokens:     req.resp.Usage.PromptTokens,
-		CompletionTokens: req.resp.Usage.CompletionTokens,
-		TotalTokens:      req.resp.Usage.TotalTokens,
-		LatencyMS:        req.resp.Latency.Milliseconds(),
-		Status:           logStatus,
-		ErrorCode:        errCode,
-		ErrorMessage:     errMessage,
-	})
+	completedAt, persistErr := s.store.CompleteTurn(terminalCtx, req.assistantMessage.ID, req.conversationID, content, status)
 	if persistErr != nil {
 		return "", "", "", "", "", fmt.Errorf("persist terminal AI result: %w", persistErr)
 	}
@@ -91,7 +71,7 @@ func boundedPayloads(request, response []byte, enabled bool, max int) (string, s
 	return req, res, reqTruncated || resTruncated
 }
 
-var secretPattern = regexp.MustCompile(`(?i)(authorization|api[_-]?key)\s*[":=]+\s*(bearer\s+)?[^\s",}]+|bearer\s+[A-Za-z0-9._~+/-]+`)
+var secretPattern = regexp.MustCompile(`(?i)(authorization|api[_-]?key)\s*[\\":=]+\s*(bearer\s+)?[^\s\\",}]+|bearer\s+[A-Za-z0-9._~+/-]+`)
 
 // dataURLPattern matches RFC 2397 image data URLs. Image bytes must never be
 // retained in request logs, even when full-payload logging is enabled.

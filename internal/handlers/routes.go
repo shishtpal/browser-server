@@ -13,6 +13,8 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "GET", Path: "/api/ai/config", Description: "Get sanitized AI configuration and model catalog"},
 		{Method: "GET", Path: "/api/ai/voice/config", Description: "Get sanitized AI voice typing configuration"},
 		{Method: "GET", Path: "/api/ai/voice/transcribe", Description: "Open an authenticated voice transcription WebSocket"},
+		{Method: "GET", Path: "/api/ai/logs", Description: "List AI provider and correlated tool audit logs (filters: source, status, conversation_id, task_id, limit, offset)"},
+		{Method: "GET", Path: "/api/ai/monitoring", Description: "Get AI request, tool, token, error, and latency metrics (param: window_hours)"},
 		{Method: "GET", Path: "/api/ai/conversations", Description: "List AI conversations (params: q, limit)"},
 		{Method: "POST", Path: "/api/ai/conversations", Description: "Create an AI conversation"},
 		{Method: "GET", Path: "/api/ai/conversations/{id}", Description: "Get an AI conversation with messages"},

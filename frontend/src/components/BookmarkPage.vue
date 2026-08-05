@@ -5,7 +5,7 @@
         <StatCard :value="bookmarks.length" label="Saved" variant="dark" color="cyan" />
         <StatCard :value="allTags.length" label="Tags" variant="primary" color="cyan" />
       </template>
-      <template #actions>
+      <template #controls>
         <UserSelector id="bookmark-user" v-model="selectedUserId" :users="users" color="cyan" />
         <div v-if="allTags.length" class="flex flex-wrap gap-1">
           <FilterPill :active="activeTagFilter === null" @click="activeTagFilter = null">All</FilterPill>

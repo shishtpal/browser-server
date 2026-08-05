@@ -5,7 +5,7 @@
         <StatCard :value="walletEntries.length" label="Entries" variant="dark" color="emerald" />
         <StatCard :value="filteredEntries.length" label="Visible" variant="primary" color="emerald" />
       </template>
-      <template #actions>
+      <template #controls>
         <UserSelector id="wallet-user" v-model="selectedUserId" :users="users" color="emerald" />
       </template>
     </PageHeader>

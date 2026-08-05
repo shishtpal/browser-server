@@ -5,7 +5,7 @@
         <StatCard :value="totalDuration" label="Duration" variant="primary" color="rose" />
         <StatCard :value="domainCount" label="Domains" variant="dark" color="rose" />
       </template>
-      <template #actions>
+      <template #controls>
         <UserSelector id="analytics-user" v-model="selectedUserId" :users="users" color="rose" />
       </template>
     </PageHeader>

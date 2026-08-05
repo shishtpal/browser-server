@@ -5,7 +5,7 @@
         <StatCard :value="historyEntries.length" label="Entries" variant="dark" color="violet" />
         <StatCard :value="totalDuration" label="Duration" variant="primary" color="violet" />
       </template>
-      <template #actions>
+      <template #controls>
         <UserSelector id="history-user" v-model="selectedUserId" :users="users" color="violet" />
       </template>
     </PageHeader>

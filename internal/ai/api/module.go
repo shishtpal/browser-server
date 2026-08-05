@@ -1,7 +1,7 @@
 package api
 
 import (
-	"browser-server/internal/ai/attachments"
+	"browser-server/internal/ai/bootstrap"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
 	aimcp "browser-server/internal/ai/mcp"
@@ -9,10 +9,8 @@ import (
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tasks"
-	"browser-server/internal/ai/tools"
 	"browser-server/internal/ai/voice"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -37,124 +35,39 @@ type Module struct {
 	wg             sync.WaitGroup
 }
 
+// The Module struct keeps the same field names as the provider-agnostic runtime
+// in internal/ai/bootstrap, so handler files throughout this package can keep
+// referencing m.cfg / m.store / m.service unchanged.
+
 func Init() (*Module, error) {
-	cfg, err := aiconfig.Load()
+	rt, err := bootstrap.Init(bootstrap.Options{ReconcilePending: true})
 	if err != nil {
 		return nil, err
 	}
-	module := &Module{cfg: cfg}
-	if !cfg.Enabled {
-		log.Printf("AI disabled: no config found at %s", cfg.Path)
-		// Still load profiles even if AI is disabled so the config endpoint can report them
-		baseDir := filepath.Dir(cfg.Path)
-		module.profiles, _ = profiles.Load(baseDir)
+	module := &Module{
+		cfg:            rt.Config,
+		store:          rt.Store,
+		service:        rt.Service,
+		profiles:       rt.Profiles,
+		skills:         rt.Skills,
+		mcp:            rt.MCP,
+		attachmentsDir: rt.AttachmentsDir,
+	}
+	if !rt.Config.Enabled {
 		return module, nil
 	}
-	baseDir := filepath.Dir(cfg.Path)
+	baseDir := filepath.Dir(rt.Config.Path)
 	voiceCfg, err := voice.Load(baseDir)
 	if err != nil {
+		_ = rt.Close()
 		return nil, fmt.Errorf("load AI voice config: %w", err)
 	}
 	module.voice = voiceCfg
-	profileReg, err := profiles.Load(baseDir)
-	if err != nil {
-		return nil, fmt.Errorf("load profiles: %w", err)
-	}
-	module.profiles = profileReg
-	if len(profileReg.List()) > 0 {
-		log.Printf("AI profiles loaded: %d profile(s) from %s/.profiles/", len(profileReg.List()), baseDir)
-	}
-	// Load skills
-	var skillReg *skills.Registry
-	if cfg.Skills.Enabled {
-		skillReg, err = skills.Load(baseDir)
-		if err != nil {
-			return nil, fmt.Errorf("load skills: %w", err)
-		}
-		if len(skillReg.List()) > 0 {
-			log.Printf("AI skills loaded: %d skill(s) from %s/.skills/", len(skillReg.List()), baseDir)
-		}
-	} else {
-		skillReg = &skills.Registry{}
-	}
-	module.skills = skillReg
-	dbPath := cfg.ResolvePath(cfg.Logging.DBPath)
-	st, err := store.Open(dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("init AI store: %w", err)
-	}
-	if err := st.CleanupRetention(context.Background(), cfg.Logging.RetentionDays); err != nil {
-		st.Close()
-		return nil, fmt.Errorf("AI retention cleanup: %w", err)
-	}
-	module.store = st
-	module.voice = voiceCfg
-	module.attachmentsDir = attachments.Dir(cfg.ResolvePath(".data"))
-
-	var externalTools []tools.Tool
-	if cfg.Tools.Enabled {
-		mcpCfg, loadErr := aimcp.Load(baseDir)
-		if loadErr != nil {
-			st.Close()
-			return nil, fmt.Errorf("load AI MCP config: %w", loadErr)
-		}
-		mcpManager, managerErr := aimcp.NewManager(context.Background(), mcpCfg)
-		if managerErr != nil {
-			st.Close()
-			return nil, fmt.Errorf("initialize AI MCP servers: %w", managerErr)
-		}
-		module.mcp = mcpManager
-		discovered := mcpManager.Tools()
-		externalTools = make([]tools.Tool, 0, len(discovered))
-		allowedSet := make(map[string]bool, len(cfg.Tools.Allowed)+len(discovered))
-		for _, name := range cfg.Tools.Allowed {
-			allowedSet[name] = true
-		}
-		for _, discoveredTool := range discovered {
-			name := discoveredTool.Name
-			externalTools = append(externalTools, tools.Tool{
-				Name:        name,
-				Description: discoveredTool.Description,
-				Category:    discoveredTool.Category,
-				Schema:      discoveredTool.Schema,
-				Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
-					return mcpManager.Execute(ctx, name, raw)
-				},
-			})
-			if !allowedSet[name] {
-				cfg.Tools.Allowed = append(cfg.Tools.Allowed, name)
-				allowedSet[name] = true
-			}
-		}
-		statuses := mcpManager.Statuses()
-		connected := 0
-		unavailable := 0
-		for _, status := range statuses {
-			switch status.Status {
-			case "connected":
-				connected++
-			case "unavailable":
-				unavailable++
-			}
-		}
-		if mcpManager.Configured() {
-			log.Printf("AI MCP: %d configured, %d connected, %d unavailable, %d usable tool(s)", len(statuses), connected, unavailable, len(discovered))
-		}
-	}
-	service, err := chat.NewServiceWithTools(cfg, st, profileReg, skillReg, externalTools)
-	if err != nil {
-		if module.mcp != nil {
-			module.mcp.Close()
-		}
-		st.Close()
-		return nil, fmt.Errorf("initialize AI tools: %w", err)
-	}
-	module.service = service
 	module.stop = make(chan struct{})
 	// The durable task runner is started after the store and chat service exist,
 	// because it resumes checkpoints written by a previous process on startup.
-	if cfg.Tasks.Enabled {
-		module.tasks = tasks.NewRunner(cfg.Tasks, st, tasks.NewChatAgent(service, st, cfg.Tasks))
+	if rt.Config.Tasks.Enabled {
+		module.tasks = tasks.NewRunner(rt.Config.Tasks, rt.Store, tasks.NewChatAgent(rt.Service, rt.Store, rt.Config.Tasks))
 		module.tasks.Start()
 	}
 	// Reclaim abandoned staged uploads immediately at startup and then on a
@@ -168,7 +81,7 @@ func Init() (*Module, error) {
 		for {
 			select {
 			case <-ticker.C:
-				if err := st.CleanupRetention(context.Background(), cfg.Logging.RetentionDays); err != nil {
+				if err := rt.Store.CleanupRetention(context.Background(), rt.Config.Logging.RetentionDays); err != nil {
 					log.Printf("AI retention cleanup failed: %v", err)
 				}
 				module.cleanupExpiredAttachments()
@@ -177,7 +90,6 @@ func Init() (*Module, error) {
 			}
 		}
 	}()
-	log.Printf("AI enabled with %d provider(s) (models: %s); store: %s", len(cfg.Providers), cfg.ModelsPath, dbPath)
 	return module, nil
 }
 

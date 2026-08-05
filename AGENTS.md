@@ -193,7 +193,50 @@ Provider requests retry transient failures (network errors, timeouts, HTTP `429`
 | `ai/store` | SQLite persistence for conversations + messages |
 | `ai/tools` | Registry of server-side tools the model can invoke (e.g. `get_current_time`, `search_bookmarks`) |
 | `ai/chat` | Orchestration: builds prompts, streams completions, handles multi-turn tool-call loops |
-| `ai/api` | HTTP handlers for all `/api/ai/*` routes + the `Init()` / `Register()` / `Close()` lifecycle |
+| `ai/bootstrap` | Provider-agnostic wiring shared by the HTTP server and `bs-ai-chat`: config → profiles → skills → store → MCP → chat service |
+| `ai/api` | HTTP handlers for all `/api/ai/*` routes + the `Init()` / `Register()` / `Close()` lifecycle (server-only concerns layered on `ai/bootstrap`) |
+
+### bs-ai-chat CLI
+
+`cmd/bs-ai-chat` builds a second `bs-*` binary that drives the same
+`chat.Service.SubmitStream` pipeline as the HTTP SSE handler from a terminal.
+Runs are persisted as normal conversations in `.data/bs-ai.db` and reuse
+`bs-ai-config.json` / `bs-ai-models.json` / `bs-ai-mcp.json` unchanged, so a
+machine already configured for the server needs zero new setup.
+
+Key flags (see `--help` for the full list):
+
+- `--provider` / `--model` — override the selection; default to
+  `default_provider` and the provider's default model.
+- `--prompt`, positional args, or piped stdin — the prompt. `--file` inlines
+  file contents ahead of the prompt; `--image` attaches a validated image
+  (requires a `supports_vision` model).
+- `--yolo` — auto-approve tool calls. **Tools require `--yolo`**: interactive
+  approval is not yet supported, so without it the CLI fails fast with
+  `Error: tools require --yolo ...`. Use `--no-tools` to disable tools.
+- `--tools <a,b>` — tool allowlist; `--skills <a,b>` — skills to activate;
+  `--profile <name>` — system-prompt profile.
+- `--conversation <id>` — continue an existing conversation.
+- `--json` — one structured JSON object on stdout (includes `tool_calls` and
+  `reasoning` only under `--verbose`).
+- `--list-models` / `--list-tools` — discovery commands that make no model call.
+- `--verbose` — streams reasoning + tool-call trace to stderr. The answer
+  always goes to stdout, so `bs-ai-chat "..." > answer.txt` captures exactly
+  the answer while the trace stays on the terminal.
+
+Config path resolution (first match wins):
+
+1. `--config` flag
+2. `BS_AI_CONFIG_PATH` environment variable
+3. `bs-ai-config.json` in the current working directory
+
+`bs-ai-models.json` and `bs-ai-mcp.json` resolve as siblings automatically.
+
+Always run `bs-ai-chat` from a directory with the config files, or pass
+`--config`. The binary opens the same SQLite database as the server with
+pending-message reconciliation disabled (`store.OpenWithOptions` with
+`ReconcilePending: false`) so it never cancels a generation the server has
+in flight.
 
 ## Search / Omnibox
 

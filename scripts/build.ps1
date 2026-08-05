@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("Frontend", "Server", "AIModelsRefresh", "All")]
+    [ValidateSet("Frontend", "Server", "AIModelsRefresh", "AIChat", "All")]
     [string]$Target = "All"
 )
 
@@ -81,6 +81,21 @@ function Build-AIModelsRefresh {
     Write-Host "bs-models-refresh.exe built successfully: $GoOutput" -ForegroundColor Green
 }
 
+function Build-AIChat {
+    Write-Host "`n==> Building bs-ai-chat..." -ForegroundColor Cyan
+    Set-Location -LiteralPath $ProjectRoot
+
+    $GoOutput = Join-Path $BinDir "bs-ai-chat.exe"
+    Write-Host "Running: go build -o `"$GoOutput`" ./cmd/bs-ai-chat" -ForegroundColor Gray
+    go build -o $GoOutput ./cmd/bs-ai-chat
+
+    if (-not (Test-Path $GoOutput)) {
+        Write-Host "ERROR: bs-ai-chat.exe not found after build." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "bs-ai-chat.exe built successfully: $GoOutput" -ForegroundColor Green
+}
+
 switch ($Target) {
     "Frontend" {
         Build-Frontend
@@ -91,10 +106,14 @@ switch ($Target) {
     "AIModelsRefresh" {
         Build-AIModelsRefresh
     }
+    "AIChat" {
+        Build-AIChat
+    }
     "All" {
         Build-Frontend
         Build-Server
         Build-AIModelsRefresh
+        Build-AIChat
     }
 }
 

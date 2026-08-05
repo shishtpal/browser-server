@@ -44,10 +44,10 @@ type chatCompletionRequest struct {
 }
 
 type wireMessage struct {
-	Role       string           `json:"role"`
-	Content    any              `json:"content,omitempty"`
-	ToolCallID string           `json:"tool_call_id,omitempty"`
-	ToolCalls  []wireToolCall   `json:"tool_calls,omitempty"`
+	Role       string         `json:"role"`
+	Content    any            `json:"content,omitempty"`
+	ToolCallID string         `json:"tool_call_id,omitempty"`
+	ToolCalls  []wireToolCall `json:"tool_calls,omitempty"`
 }
 
 // wireContentPart is an OpenAI-compatible multimodal content part. Text-only
@@ -73,8 +73,13 @@ type wireToolCall struct {
 type chatCompletionResponse struct {
 	Choices []struct {
 		Message struct {
-			Content   string `json:"content"`
-			ToolCalls []struct {
+			Content string `json:"content"`
+			// Reasoning is the non-streaming reply's reasoning field. Some
+			// providers name it reasoning, others reasoning_content; both are
+			// accepted and reasoning wins when both are present.
+			Reasoning        string `json:"reasoning"`
+			ReasoningContent string `json:"reasoning_content"`
+			ToolCalls        []struct {
 				ID       string `json:"id"`
 				Function struct {
 					Name      string `json:"name"`
@@ -160,6 +165,13 @@ func (c *OpenAICompatibleClient) completeOnce(ctx context.Context, rawRequest []
 		RawRequest:  rawRequest,
 		RawResponse: rawResponse,
 	}
+	// Prefer "reasoning", falling back to "reasoning_content" for providers
+	// that use the alternative field name.
+	if parsed.Choices[0].Message.Reasoning != "" {
+		result.Reasoning = parsed.Choices[0].Message.Reasoning
+	} else {
+		result.Reasoning = parsed.Choices[0].Message.ReasoningContent
+	}
 	for _, call := range parsed.Choices[0].Message.ToolCalls {
 		result.ToolCalls = append(result.ToolCalls, ToolCall{ID: call.ID, Name: call.Function.Name, Arguments: call.Function.Arguments})
 	}
@@ -239,8 +251,10 @@ func (c *OpenAICompatibleClient) streamOnce(ctx context.Context, raw []byte, emi
 	type chunk struct {
 		Choices []struct {
 			Delta struct {
-				Content   string `json:"content"`
-				ToolCalls []struct {
+				Content          string `json:"content"`
+				Reasoning        string `json:"reasoning"`
+				ReasoningContent string `json:"reasoning_content"`
+				ToolCalls        []struct {
 					Index    int    `json:"index"`
 					ID       string `json:"id"`
 					Function struct {
@@ -254,6 +268,7 @@ func (c *OpenAICompatibleClient) streamOnce(ctx context.Context, raw []byte, emi
 		Usage Usage `json:"usage"`
 	}
 	calls := map[int]*ToolCall{}
+	var reasoning strings.Builder
 	sawTerminal := false
 	scanner := bufio.NewScanner(res.Body)
 	scanner.Buffer(make([]byte, 4096), 2<<20)
@@ -279,6 +294,18 @@ func (c *OpenAICompatibleClient) streamOnce(ctx context.Context, raw []byte, emi
 			if choice.Delta.Content != "" {
 				out.Content += choice.Delta.Content
 				if err := emit(Event{Type: "text_delta", Text: choice.Delta.Content}); err != nil {
+					return out, err
+				}
+			}
+			// Reasoning deltas are receive-only signals; nothing in the request
+			// asks for them and providers that ignore the field are unaffected.
+			reasoningChunk := choice.Delta.Reasoning
+			if reasoningChunk == "" {
+				reasoningChunk = choice.Delta.ReasoningContent
+			}
+			if reasoningChunk != "" {
+				reasoning.WriteString(reasoningChunk)
+				if err := emit(Event{Type: "reasoning_delta", Text: reasoningChunk}); err != nil {
 					return out, err
 				}
 			}
@@ -312,6 +339,7 @@ func (c *OpenAICompatibleClient) streamOnce(ctx context.Context, raw []byte, emi
 	if !sawTerminal {
 		return out, &Error{Code: "malformed_provider_stream", Status: 502, Retryable: true, Diagnostic: "stream ended without terminal event"}
 	}
+	out.Reasoning = reasoning.String()
 	for i := 0; i < len(calls); i++ {
 		if calls[i] != nil {
 			out.ToolCalls = append(out.ToolCalls, *calls[i])

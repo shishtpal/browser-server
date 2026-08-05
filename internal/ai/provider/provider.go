@@ -46,7 +46,11 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Content     string
+	Content string
+	// Reasoning is the model's reasoning content (e.g. OpenRouter's
+	// "reasoning" / "reasoning_content" fields). It is emitted as a
+	// stream-only signal and is not persisted by the chat service.
+	Reasoning   string
 	Usage       Usage
 	HTTPStatus  int
 	Latency     time.Duration
@@ -67,7 +71,8 @@ type Client interface {
 }
 
 type Event struct {
-	Type     string
+	Type string
+	// Text carries the chunk for text_delta and reasoning_delta events.
 	Text     string
 	ToolCall *ToolCall
 	Usage    Usage

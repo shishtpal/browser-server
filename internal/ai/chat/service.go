@@ -314,6 +314,11 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				switch pe.Type {
 				case "text_delta":
 					return emit(Event{Type: "delta", MessageID: assistantMessage.ID, Content: pe.Text})
+				case "reasoning_delta":
+					// Reasoning is a live-stream-only signal: it is not persisted
+					// and not included in SubmitResponse. Clients (e.g. the CLI
+					// --verbose mode) use it to show the model's thinking.
+					return emit(Event{Type: "reasoning", MessageID: assistantMessage.ID, Content: pe.Text})
 				}
 				return nil
 			})

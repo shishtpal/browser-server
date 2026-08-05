@@ -283,6 +283,54 @@ Values beginning with `env:` are resolved from the Browser Server process enviro
 
 Local stdio entries execute the configured program with Browser Server's operating-system permissions, so treat `bs-ai-mcp.json` as privileged operator configuration. Remote endpoints must use HTTPS except for loopback development servers. One unreachable server is reported as unavailable without disabling built-in tools or other connected MCP servers. Configuration and tool catalogs are loaded at startup; restart Browser Server after changing the file. Use `BS_AI_MCP_PATH` to load it from another location.
 
+### CLI: bs-ai-chat
+
+`bs-ai-chat` is a second `bs-*` binary that asks the configured models a
+question from a terminal. It reuses the same `bs-ai-config.json` /
+`bs-ai-models.json` / `bs-ai-mcp.json` files as the server, runs the full
+agentic tool loop, and persists every run as a normal conversation in
+`.data/bs-ai.db` (visible in the web UI).
+
+```powershell
+# Build alongside the server (or run ./scripts/build.ps1 -Target AIChat)
+go build -o bin/bs-ai-chat.exe ./cmd/bs-ai-chat
+
+# Discovery — no model call
+bs-ai-chat.exe --list-models
+bs-ai-chat.exe --list-tools
+
+# Simplest path
+bs-ai-chat.exe --no-tools "say hello in one word"
+
+# Provider/model override
+bs-ai-chat.exe --provider opencode.ai --model big-pickle --no-tools "hi"
+
+# Tool loop (auto-approved) + reasoning/trace
+bs-ai-chat.exe --yolo --verbose "what time is it in New Delhi?"
+
+# Inline a file into the prompt
+bs-ai-chat.exe --no-tools --file go.mod "which Go version?"
+
+# Attach an image (requires a supports_vision model)
+bs-ai-chat.exe --no-tools --provider openrouter.ai --model "qwen/qwen3-vl-30b-a3b-instruct" --image photo.png "describe this"
+
+# Pipe a prompt from stdin
+Get-Content notes.md | ./bin/bs-ai-chat.exe --no-tools
+
+# Machine-readable output for scripting
+bs-ai-chat.exe --json --yolo --verbose "what time is it?" | ConvertFrom-Json
+
+# Continue an existing conversation
+bs-ai-chat.exe --conversation conv_abc123 --no-tools "and in New York?"
+```
+
+Tools require `--yolo` (auto-approve); interactive approval is not yet
+supported in the CLI — use `--no-tools` to disable them. The answer goes to
+stdout and all trace output goes to stderr, so
+`./bin/bs-ai-chat.exe --yolo --verbose "..." > answer.txt` captures exactly the
+answer. See `bs-ai-chat --help` for the full flag list and config path
+resolution chain.
+
 ### Voice typing
 
 AI Chat voice typing is configured independently in `bs-ai-voice.json`. The supplied file defines Sarvam's streaming speech-to-text service with Auto, Hindi, and English language choices and is disabled by default. Set `"enabled": true` and provide the server-side key before startup:

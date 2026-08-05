@@ -370,11 +370,13 @@ const toolCallEntries = computed<ToolCallEntry[]>(() => {
 
 onMounted(async () => {
   window.addEventListener('api-token-changed', reload)
+  window.addEventListener('popstate', handleHistoryNavigation)
   await reload()
 })
 
 onUnmounted(() => {
   window.removeEventListener('api-token-changed', reload)
+  window.removeEventListener('popstate', handleHistoryNavigation)
   cleanup()
 })
 
@@ -387,6 +389,15 @@ async function reload() {
     initFromConfig(cfg)
     if (!cfg.enabled) return
     await loadConversations()
+    const requestedID = conversationIDFromLocation()
+    if (requestedID) {
+      try {
+        await handleSelectConversation(requestedID, false)
+        return
+      } catch {
+        // A deleted or unavailable shared link falls back to the latest conversation.
+      }
+    }
     if (conversations.value.length > 0) {
       await handleSelectConversation(conversations.value[0].id)
     }
@@ -410,14 +421,15 @@ async function handleNewConversationCreate(result: NewConversationResult) {
     selectedProfile.value = result.profile
     setActiveSkills(result.skills)
 
-    await createConversation(result.provider, result.model, result.profile || undefined)
+    const conversation = await createConversation(result.provider, result.model, result.profile || undefined)
+    updateConversationURL(conversation.id)
     nextTick(() => chatInputRef.value?.focus())
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to create conversation'
   }
 }
 
-async function handleSelectConversation(id: string) {
+async function handleSelectConversation(id: string, updateURL = true) {
   error.value = ''
   try {
     const { provider, model } = await selectConversation(id)
@@ -427,6 +439,7 @@ async function handleSelectConversation(id: string) {
     selectedProfile.value = activeConversation.value?.profile || ''
     // Restore active skills from conversation state
     setActiveSkills(activeConversation.value?.skills ?? [])
+    if (updateURL) updateConversationURL(id)
     nextTick(() => messageListRef.value?.scrollToBottom())
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load conversation'
@@ -543,6 +556,7 @@ async function handleRename() {
 async function handleDelete() {
   try {
     await doDelete()
+    if (!activeConversation.value) updateConversationURL(null)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to delete'
   }
@@ -551,6 +565,7 @@ async function handleDelete() {
 async function handleArchive() {
   try {
     await doArchive()
+    if (!activeConversation.value) updateConversationURL(null)
     await loadArchivedConversations()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to archive'
@@ -638,6 +653,7 @@ async function handleBranch(messageId: string) {
     selectedProfile.value = forked.profile || ''
     setActiveSkills(forked.skills ?? [])
     await loadConversations()
+    updateConversationURL(forked.id)
     showBranchToast.value = true
     setTimeout(() => { showBranchToast.value = false }, 2200)
     nextTick(() => {
@@ -647,6 +663,30 @@ async function handleBranch(messageId: string) {
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to branch conversation'
   }
+}
+
+function conversationIDFromLocation(): string | null {
+  const prefix = '/chat/'
+  if (!window.location.pathname.startsWith(prefix)) return null
+  const encodedID = window.location.pathname.slice(prefix.length)
+  if (!encodedID || encodedID.includes('/')) return null
+  try {
+    return decodeURIComponent(encodedID)
+  } catch {
+    return null
+  }
+}
+
+function updateConversationURL(id: string | null) {
+  const pathname = id ? `/chat/${encodeURIComponent(id)}` : '/chat/'
+  if (window.location.pathname === pathname) return
+  window.history.pushState({}, '', `${pathname}${window.location.search}${window.location.hash}`)
+}
+
+async function handleHistoryNavigation() {
+  const id = conversationIDFromLocation()
+  if (!id || id === activeConversation.value?.id) return
+  await handleSelectConversation(id, false)
 }
 
 function downloadConversation() {

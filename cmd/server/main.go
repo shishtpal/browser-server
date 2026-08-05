@@ -133,6 +133,13 @@ func main() {
 		log.Fatal("Failed to get executable path:", err)
 	}
 	staticFileDir := filepath.Join(filepath.Dir(ex), "frontend", "dist")
+
+	// Conversation URLs are client-side state. Serve the chat shell for a direct
+	// /chat/{conversation-id} visit so shared links and browser history work.
+	r.PathPrefix("/chat/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		http.ServeFile(w, req, filepath.Join(staticFileDir, "chat", "index.html"))
+	}).Methods(http.MethodGet, http.MethodHead)
+
 	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir(staticFileDir))))
 
 	fmt.Printf("Server starting on localhost:%s\n", port)

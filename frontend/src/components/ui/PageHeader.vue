@@ -1,6 +1,7 @@
 <template>
   <div class="mb-4">
     <div class="flex flex-col gap-3">
+      <!-- Row 1: Title, Stats, and right-aligned Controls -->
       <div class="flex flex-wrap items-center gap-3">
         <div>
           <p class="mb-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors" :class="badgeClass">
@@ -8,11 +9,16 @@
           </p>
           <h1 class="text-xl font-black tracking-tight text-slate-900 transition-colors dark:text-white sm:text-2xl">{{ title }}</h1>
         </div>
-        <div v-if="$slots.stats" class="flex flex-wrap items-center gap-1.5">
+        <div data-slot="stats" v-if="$slots.stats" class="flex flex-wrap items-center gap-1.5">
           <slot name="stats"></slot>
         </div>
+        <div data-slot="controls" v-if="$slots.controls" class="ml-auto flex flex-wrap items-center gap-1.5">
+          <slot name="controls"></slot>
+        </div>
       </div>
-      <div v-if="$slots.actions" class="flex flex-col gap-2">
+
+      <!-- Row 2: Actions -->
+      <div data-slot="actions" v-if="$slots.actions" class="flex w-full flex-wrap items-center gap-1.5">
         <slot name="actions"></slot>
       </div>
     </div>
@@ -22,13 +28,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-interface Props {
+const props = withDefaults(defineProps<{
   badge: string
   title: string
   color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
-}
-
-const props = withDefaults(defineProps<Props>(), {
+}>(), {
   color: 'indigo'
 })
 

@@ -13,10 +13,13 @@ import { useLocalStorage, useSessionStorage } from '@vueuse/core'
 export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<string | null>) {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  
   const todos = useSessionStorage<Todo[]>(`bs.todos.todos`, [])
 
-  const activeFilter = ref<TodoFilter>('all')
+  const activeFilter = useLocalStorage<TodoFilter>(`bs.todos.activeFilter`, 'active')
+  
   const searchQuery = ref('')
+  
   const filters = [
     { label: 'All', value: 'all' as const },
     { label: 'Active', value: 'active' as const },

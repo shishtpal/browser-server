@@ -2,9 +2,11 @@
   <div class="mx-auto flex h-full max-w-full flex-col px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Schedule" title="Calendar" color="violet">
       <template #stats>
-        <CalendarMiniStats :stats="todosStats" />
+        <StatCard :value="todosStats.todayCount" label="Today" variant="dark" color="violet" />
+        <StatCard :value="todosStats.overdueCount" label="Overdue" variant="primary" color="amber" />
+        <StatCard :value="todosStats.completedCount" label="Done" variant="secondary" color="violet" />
       </template>
-      <template #actions>
+      <template #controls>
         <UserSelector id="calendar-user" v-model="selectedUserId" :users="users" color="violet" />
         <Button variant="gradient-violet" size="sm" @click="openCreateModal()">
           <span class="flex items-center gap-1">
@@ -106,7 +108,7 @@ import CalendarMonthView from './calendar/CalendarMonthView.vue'
 import CalendarWeekView from './calendar/CalendarWeekView.vue'
 import CalendarDayView from './calendar/CalendarDayView.vue'
 import CalendarYearView from './calendar/CalendarYearView.vue'
-import CalendarMiniStats from './calendar/CalendarMiniStats.vue'
+import StatCard from './ui/StatCard.vue'
 import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
 import CalendarTodoDetail from './calendar/CalendarTodoDetail.vue'
 

@@ -9,15 +9,43 @@
         <StatCard v-if="archivedCount > 0" :value="archivedCount" label="Archived" variant="secondary" color="indigo" />
         <StatCard v-if="overdueCount > 0" :value="overdueCount" label="Overdue" variant="dark" color="amber" />
       </template>
+      <template #controls>
+        <UserSelector 
+          id="todo-user" 
+          v-model="selectedUserId" 
+          :users="users" 
+          color="indigo" 
+        />
+        <Button
+          variant="gradient-indigo"
+          size="sm"
+          :disabled="!selectedUserId"
+          class="group"
+          @click="$emit('new-todo')"
+        >
+          <span class="flex items-center gap-1.5">
+            <svg
+              class="h-4 w-4 transition-transform duration-200 group-hover:rotate-90"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            New Todo
+          </span>
+        </Button>        
+      </template>
       <template #actions>
         <TodoActionsBar
-          v-model:selected-user-id="selectedUserId"
           v-model:view="view"
           v-model:active-filter="activeFilter"
           v-model:selected-priority="selectedPriority"
           v-model:due-date-filter="dueDateFilter"
           v-model:selected-tag="selectedTag"
-          :users="users"
           :filters="filters"
           :all-tags="allTags"
           :sort-field="sortField"
@@ -203,6 +231,8 @@ import { useLocalStorage } from '@vueuse/core'
 import draggable from 'vuedraggable'
 import { useUser } from '../composables/useUser'
 import { useTodos } from '../composables/useTodos'
+import Button from './ui/Button.vue'
+import UserSelector from './ui/UserSelector.vue'
 import PageHeader from './ui/PageHeader.vue'
 import StatCard from './ui/StatCard.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'

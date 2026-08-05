@@ -34,6 +34,7 @@
         "max_iterations": 100,
         "raw_output": [
             "read_file",
+            "ask_questions",
             "git_diff",
             "directory_tree",
             "write_file",
@@ -41,6 +42,7 @@
             "copy_file",
             "move_file",
             "edit_file",
+            "list_directory",
             "web_search",
             "web_fetch",
             "search_code",

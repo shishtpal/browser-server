@@ -15,11 +15,12 @@ var listDirectorySchema []byte
 
 func registerListDirectory(r *Registry) {
 	r.add(Tool{
-		Name:        "list_directory",
-		Category:    "File Operations",
-		Description: "List the immediate contents of a directory on the server filesystem",
-		Schema:      json.RawMessage(listDirectorySchema),
-		Execute:     listDirectory,
+		Name:           "list_directory",
+		Category:       "File Operations",
+		Description:    "List the immediate contents of a directory on the server filesystem",
+		Schema:         json.RawMessage(listDirectorySchema),
+		Execute:        listDirectory,
+		RawContentFunc: rawListDirectoryResult,
 	})
 }
 
@@ -74,4 +75,53 @@ func listDirectory(ctx context.Context, raw json.RawMessage) (any, error) {
 		outputBytes += len(encoded) + 1
 	}
 	return map[string]any{"path": a.Path, "entries": result, "truncated": truncated}, nil
+}
+
+// rawListDirectoryResult removes per-entry JSON metadata in raw-output mode.
+// Names grouped by type retain the information needed to navigate while using
+// substantially fewer tokens than size and timestamp fields for every entry.
+func rawListDirectoryResult(value any) ([]byte, bool) {
+	result, ok := value.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	path, ok := result["path"].(string)
+	if !ok {
+		return nil, false
+	}
+	truncated, ok := result["truncated"].(bool)
+	if !ok {
+		return nil, false
+	}
+	entries, ok := result["entries"].([]map[string]any)
+	if !ok {
+		return nil, false
+	}
+
+	dirs := make([]string, 0, len(entries))
+	files := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		name, nameOK := entry["name"].(string)
+		isDir, dirOK := entry["is_dir"].(bool)
+		if !nameOK || !dirOK {
+			return nil, false
+		}
+		if isDir {
+			dirs = append(dirs, name)
+		} else {
+			files = append(files, name)
+		}
+	}
+
+	var output strings.Builder
+	fmt.Fprintf(&output, "path=%s\ntruncated=%t", path, truncated)
+	if len(dirs) > 0 {
+		output.WriteString("\ndirs=")
+		output.WriteString(strings.Join(dirs, ","))
+	}
+	if len(files) > 0 {
+		output.WriteString("\nfiles=")
+		output.WriteString(strings.Join(files, ","))
+	}
+	return []byte(output.String()), true
 }

@@ -121,7 +121,7 @@ Options:
 Config path resolution (first match wins):
   1. --config flag
   2. BS_AI_CONFIG_PATH environment variable
-  3. bs-ai-config.json in the current working directory
+  3. bs-ai-config.json next to the compiled binary
   bs-ai-models.json and bs-ai-mcp.json resolve as siblings automatically.
 
 Tools require --yolo: interactive approval is not yet supported in the CLI.

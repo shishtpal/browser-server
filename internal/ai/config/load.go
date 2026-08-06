@@ -16,11 +16,11 @@ type modelsFile struct {
 func Load() (*Config, error) {
 	path := os.Getenv("BS_AI_CONFIG_PATH")
 	if path == "" {
-		wd, err := os.Getwd()
+		exeDir, err := ExecutableDir()
 		if err != nil {
 			return nil, err
 		}
-		path = filepath.Join(wd, defaultConfigFile)
+		path = filepath.Join(exeDir, defaultConfigFile)
 	}
 
 	content, err := os.ReadFile(path)
@@ -43,7 +43,8 @@ func Load() (*Config, error) {
 	var mainRaw map[string]json.RawMessage
 	_ = json.Unmarshal(content, &mainRaw)
 
-	// Resolve models file path
+	// Resolve models file path. The sibling default is already anchored to
+	// the binary directory because `path` is, so no extra work is needed here.
 	modelsPath := os.Getenv("BS_AI_MODELS_PATH")
 	if modelsPath == "" {
 		modelsPath = filepath.Join(filepath.Dir(path), defaultModelsFile)

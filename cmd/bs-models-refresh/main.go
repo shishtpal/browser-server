@@ -119,11 +119,11 @@ func resolveModelsPath(modelsFlag, configFlag string) (string, error) {
 	if configPath != "" {
 		return filepath.Join(filepath.Dir(configPath), defaultModelsFile), nil
 	}
-	wd, err := os.Getwd()
+	exeDir, err := config.ExecutableDir()
 	if err != nil {
-		return "", fmt.Errorf("resolve working directory: %w", err)
+		return "", fmt.Errorf("resolve executable directory: %w", err)
 	}
-	return filepath.Join(wd, defaultModelsFile), nil
+	return filepath.Join(exeDir, defaultModelsFile), nil
 }
 
 func loadModelsFile(path string) (*modelsFileDoc, error) {
@@ -198,6 +198,6 @@ Path resolution for the models file (first match wins):
   2. BS_AI_MODELS_PATH environment variable
   3. --config flag, sibling bs-ai-models.json
   4. BS_AI_CONFIG_PATH environment variable, sibling bs-ai-models.json
-  5. bs-ai-models.json in the current working directory
+  5. bs-ai-models.json next to the compiled binary
 `, strings.Join(modelrefresh.ProviderNames(), ", "))
 }

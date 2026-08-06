@@ -17,6 +17,7 @@ import (
 	"browser-server/internal/ai/attachments"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
+	"browser-server/internal/ai/images"
 	aimcp "browser-server/internal/ai/mcp"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/skills"
@@ -45,6 +46,7 @@ type Runtime struct {
 	Skills         *skills.Registry
 	MCP            *aimcp.Manager
 	AttachmentsDir string
+	Images         *images.Service
 }
 
 // Init loads the AI config and builds the full runtime. When AI is disabled
@@ -101,22 +103,57 @@ func Init(opts Options) (*Runtime, error) {
 		return nil, fmt.Errorf("AI retention cleanup: %w", err)
 	}
 	attachmentsDir := attachments.Dir(cfg.ResolvePath(".data"))
+	imageCfg, err := images.Load(baseDir)
+	if err != nil {
+		st.Close()
+		return nil, fmt.Errorf("load AI image models: %w", err)
+	}
+	imageService, err := images.New(imageCfg, cfg.ResolvePath(".data"))
+	if err != nil {
+		st.Close()
+		return nil, fmt.Errorf("initialize AI image service: %w", err)
+	}
 
 	var externalTools []tools.Tool
+	if imageService != nil {
+		externalTools = append(externalTools, tools.Tool{Name: "generate_image", Category: "Images", Description: "Generate or edit an image from a prompt. Optionally pass existing gallery image IDs as source_image_ids.", Schema: json.RawMessage(`{"type":"object","properties":{"prompt":{"type":"string"},"provider":{"type":"string"},"model":{"type":"string"},"image_size":{"type":"string"},"source_image_ids":{"type":"array","items":{"type":"string"}}},"required":["prompt"],"additionalProperties":false}`), Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
+			var a struct {
+				Prompt, Provider, Model, ImageSize string
+				SourceImageIDs                     []string `json:"source_image_ids"`
+			}
+			if err := json.Unmarshal(raw, &a); err != nil {
+				return nil, err
+			}
+			sources := make([][]byte, 0, len(a.SourceImageIDs))
+			for _, id := range a.SourceImageIDs {
+				_, b, err := imageService.Read(ctx, id)
+				if err != nil {
+					return nil, fmt.Errorf("read source image: %w", err)
+				}
+				sources = append(sources, b)
+			}
+			x, err := imageService.Generate(ctx, images.GenerateRequest{Prompt: a.Prompt, Provider: a.Provider, Model: a.Model, ImageSize: a.ImageSize, Sources: sources})
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"image": x, "url": "/api/ai/images/" + x.ID + "/file"}, nil
+		}})
+	}
 	var mcpManager *aimcp.Manager
 	if cfg.Tools.Enabled {
 		mcpCfg, loadErr := aimcp.Load(baseDir)
 		if loadErr != nil {
+			_ = imageService.Close()
 			st.Close()
 			return nil, fmt.Errorf("load AI MCP config: %w", loadErr)
 		}
 		mcpManager, err = aimcp.NewManager(context.Background(), mcpCfg)
 		if err != nil {
+			_ = imageService.Close()
 			st.Close()
 			return nil, fmt.Errorf("initialize AI MCP servers: %w", err)
 		}
 		discovered := mcpManager.Tools()
-		externalTools = make([]tools.Tool, 0, len(discovered))
 		allowedSet := make(map[string]bool, len(cfg.Tools.Allowed)+len(discovered))
 		for _, name := range cfg.Tools.Allowed {
 			allowedSet[name] = true
@@ -157,6 +194,7 @@ func Init(opts Options) (*Runtime, error) {
 		if mcpManager != nil {
 			mcpManager.Close()
 		}
+		_ = imageService.Close()
 		st.Close()
 		return nil, fmt.Errorf("initialize AI tools: %w", err)
 	}
@@ -169,6 +207,7 @@ func Init(opts Options) (*Runtime, error) {
 		Skills:         skillReg,
 		MCP:            mcpManager,
 		AttachmentsDir: attachmentsDir,
+		Images:         imageService,
 	}, nil
 }
 
@@ -186,5 +225,9 @@ func (r *Runtime) Close() error {
 	if r.MCP != nil {
 		mcpErr = r.MCP.Close()
 	}
-	return errors.Join(mcpErr, r.Store.Close())
+	var imageErr error
+	if r.Images != nil {
+		imageErr = r.Images.Close()
+	}
+	return errors.Join(mcpErr, imageErr, r.Store.Close())
 }

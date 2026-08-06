@@ -21,30 +21,72 @@ import type {
   SendAIMessageResponse,
   StopAIGenerationResponse,
   UpdateAIConversationInput,
-} from '@browser-server/shared-types'
-import { type TokenProvider, apiFetch, apiErrorFromBody, authHeader, buildQuery } from '../internals'
+  AIImageConfig,
+  GeneratedImage,
+  GenerateImageInput,
+  GenerateImageResponse,
+} from "@browser-server/shared-types";
+import {
+  type TokenProvider,
+  apiFetch,
+  apiErrorFromBody,
+  authHeader,
+  buildQuery,
+} from "../internals";
 
 export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
   return {
     getAIConfig(): Promise<AIConfig> {
-      return apiFetch<AIConfig>(baseUrl, 'GET', '/api/ai/config', undefined, getToken)
+      return apiFetch<AIConfig>(baseUrl, "GET", "/api/ai/config", undefined, getToken);
+    },
+
+    getAIImageConfig(): Promise<AIImageConfig> {
+      return apiFetch<AIImageConfig>(baseUrl, "GET", "/api/ai/images/config", undefined, getToken);
+    },
+    listGeneratedImages(limit?: number): Promise<GeneratedImage[]> {
+      return apiFetch<GeneratedImage[]>(
+        baseUrl,
+        "GET",
+        `/api/ai/images${buildQuery({ limit })}`,
+        undefined,
+        getToken,
+      );
+    },
+    generateImage(data: GenerateImageInput): Promise<GenerateImageResponse> {
+      return apiFetch<GenerateImageResponse>(baseUrl, "POST", "/api/ai/images", data, getToken);
+    },
+    deleteGeneratedImage(id: string): Promise<void> {
+      return apiFetch<void>(
+        baseUrl,
+        "DELETE",
+        `/api/ai/images/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
+    },
+    getGeneratedImageUrl(id: string): string {
+      const token = getToken?.();
+      const q = token ? `?token=${encodeURIComponent(token)}` : "";
+      return `${baseUrl}/api/ai/images/${encodeURIComponent(id)}/file${q}`;
     },
 
     getAIVoiceConfig(): Promise<AIVoiceConfig> {
-      return apiFetch<AIVoiceConfig>(baseUrl, 'GET', '/api/ai/voice/config', undefined, getToken)
+      return apiFetch<AIVoiceConfig>(baseUrl, "GET", "/api/ai/voice/config", undefined, getToken);
     },
 
-    getAIRequestLogs(filters: {
-      source?: 'chat' | 'task_agent'
-      status?: 'success' | 'error' | 'cancelled'
-      conversationId?: string
-      taskId?: string
-      limit?: number
-      offset?: number
-    } = {}): Promise<AIRequestLogList> {
+    getAIRequestLogs(
+      filters: {
+        source?: "chat" | "task_agent";
+        status?: "success" | "error" | "cancelled";
+        conversationId?: string;
+        taskId?: string;
+        limit?: number;
+        offset?: number;
+      } = {},
+    ): Promise<AIRequestLogList> {
       return apiFetch<AIRequestLogList>(
         baseUrl,
-        'GET',
+        "GET",
         `/api/ai/logs${buildQuery({
           source: filters.source,
           status: filters.status,
@@ -55,126 +97,159 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
         })}`,
         undefined,
         getToken,
-      )
+      );
     },
 
     getAIMonitoring(windowHours?: number): Promise<AIMonitoring> {
       return apiFetch<AIMonitoring>(
         baseUrl,
-        'GET',
+        "GET",
         `/api/ai/monitoring${buildQuery({ window_hours: windowHours })}`,
         undefined,
         getToken,
-      )
+      );
     },
 
     listAIConversations(query?: string, limit?: number): Promise<AIConversation[]> {
       return apiFetch<AIConversation[]>(
         baseUrl,
-        'GET',
+        "GET",
         `/api/ai/conversations${buildQuery({ q: query, limit })}`,
         undefined,
         getToken,
-      )
+      );
     },
 
     createAIConversation(data: CreateAIConversationInput = {}): Promise<AIConversation> {
-      return apiFetch<AIConversation>(baseUrl, 'POST', '/api/ai/conversations', data, getToken)
+      return apiFetch<AIConversation>(baseUrl, "POST", "/api/ai/conversations", data, getToken);
     },
 
     forkAIConversation(id: string, data: ForkAIConversationInput): Promise<AIConversation> {
       return apiFetch<AIConversation>(
         baseUrl,
-        'POST',
+        "POST",
         `/api/ai/conversations/${encodeURIComponent(id)}/fork`,
         data,
         getToken,
-      )
+      );
     },
 
     getAIConversation(id: string): Promise<AIConversationDetail> {
-      return apiFetch<AIConversationDetail>(baseUrl, 'GET', `/api/ai/conversations/${encodeURIComponent(id)}`, undefined, getToken)
+      return apiFetch<AIConversationDetail>(
+        baseUrl,
+        "GET",
+        `/api/ai/conversations/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
     },
 
     updateAIConversation(id: string, data: UpdateAIConversationInput): Promise<AIConversation> {
-      return apiFetch<AIConversation>(baseUrl, 'PATCH', `/api/ai/conversations/${encodeURIComponent(id)}`, data, getToken)
+      return apiFetch<AIConversation>(
+        baseUrl,
+        "PATCH",
+        `/api/ai/conversations/${encodeURIComponent(id)}`,
+        data,
+        getToken,
+      );
     },
 
     deleteAIConversation(id: string): Promise<void> {
-      return apiFetch<void>(baseUrl, 'DELETE', `/api/ai/conversations/${encodeURIComponent(id)}`, undefined, getToken)
+      return apiFetch<void>(
+        baseUrl,
+        "DELETE",
+        `/api/ai/conversations/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
     },
 
-    updateAIMessage(conversationId: string, messageId: string, data: import('@browser-server/shared-types').UpdateAIMessageInput): Promise<import('@browser-server/shared-types').AIMessage> {
-      return apiFetch<import('@browser-server/shared-types').AIMessage>(
+    updateAIMessage(
+      conversationId: string,
+      messageId: string,
+      data: import("@browser-server/shared-types").UpdateAIMessageInput,
+    ): Promise<import("@browser-server/shared-types").AIMessage> {
+      return apiFetch<import("@browser-server/shared-types").AIMessage>(
         baseUrl,
-        'PATCH',
+        "PATCH",
         `/api/ai/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
         data,
         getToken,
-      )
+      );
     },
 
     deleteAIMessage(conversationId: string, messageId: string): Promise<void> {
       return apiFetch<void>(
         baseUrl,
-        'DELETE',
+        "DELETE",
         `/api/ai/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
         undefined,
         getToken,
-      )
+      );
     },
 
     sendAIMessage(id: string, data: SendAIMessageInput): Promise<SendAIMessageResponse> {
       return apiFetch<SendAIMessageResponse>(
         baseUrl,
-        'POST',
+        "POST",
         `/api/ai/conversations/${encodeURIComponent(id)}/messages`,
         { ...data, stream: false },
         getToken,
-      )
+      );
     },
 
-    async uploadAIImageAttachment(id: string, file: Blob, filename?: string): Promise<AIImageAttachment> {
-      const formData = new FormData()
-      formData.append('file', file, filename || 'image')
-      const response = await fetch(`${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments`, {
-        method: 'POST',
-        headers: authHeader(getToken),
-        body: formData,
-      })
+    async uploadAIImageAttachment(
+      id: string,
+      file: Blob,
+      filename?: string,
+    ): Promise<AIImageAttachment> {
+      const formData = new FormData();
+      formData.append("file", file, filename || "image");
+      const response = await fetch(
+        `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments`,
+        {
+          method: "POST",
+          headers: authHeader(getToken),
+          body: formData,
+        },
+      );
       if (!response.ok) {
-        const text = await response.text()
-        throw apiErrorFromBody(response.status, text, `Upload failed: ${response.status}`)
+        const text = await response.text();
+        throw apiErrorFromBody(response.status, text, `Upload failed: ${response.status}`);
       }
-      return response.json() as Promise<AIImageAttachment>
+      return response.json() as Promise<AIImageAttachment>;
     },
 
     deleteAIImageAttachment(id: string, attachmentId: string): Promise<void> {
       return apiFetch<void>(
         baseUrl,
-        'DELETE',
+        "DELETE",
         `/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,
         undefined,
         getToken,
-      )
+      );
     },
 
-    renameAIImageAttachment(id: string, attachmentId: string, filename: string): Promise<AIAttachmentSummary> {
+    renameAIImageAttachment(
+      id: string,
+      attachmentId: string,
+      filename: string,
+    ): Promise<AIAttachmentSummary> {
       return apiFetch<AIAttachmentSummary>(
         baseUrl,
-        'PATCH',
+        "PATCH",
         `/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,
         { filename },
         getToken,
-      )
+      );
     },
 
     getAIImageAttachmentUrl(id: string, attachmentId: string): string {
       // Image loads via <img src>, which can't set an Authorization header,
       // so the token is passed as a query param instead.
-      const token = getToken?.()
-      const suffix = token ? `?token=${encodeURIComponent(token)}` : ''
-      return `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}${suffix}`
+      const token = getToken?.();
+      const suffix = token ? `?token=${encodeURIComponent(token)}` : "";
+      return `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}${suffix}`;
     },
 
     /**
@@ -187,32 +262,36 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
       const response = await fetch(
         `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,
         { headers: authHeader(getToken) },
-      )
+      );
       if (!response.ok) {
-        const text = await response.text()
-        throw apiErrorFromBody(response.status, text, `Failed to fetch attachment: ${response.status}`)
+        const text = await response.text();
+        throw apiErrorFromBody(
+          response.status,
+          text,
+          `Failed to fetch attachment: ${response.status}`,
+        );
       }
-      return response.blob()
+      return response.blob();
     },
 
     listAIAttachments(limit?: number): Promise<AIAttachmentSummary[]> {
       return apiFetch<AIAttachmentSummary[]>(
         baseUrl,
-        'GET',
+        "GET",
         `/api/ai/attachments${buildQuery({ limit })}`,
         undefined,
         getToken,
-      )
+      );
     },
 
     appendAIMessage(id: string, data: AppendAIMessageInput): Promise<AIMessage> {
       return apiFetch<AIMessage>(
         baseUrl,
-        'POST',
+        "POST",
         `/api/ai/conversations/${encodeURIComponent(id)}/messages/append`,
         data,
         getToken,
-      )
+      );
     },
 
     /**
@@ -222,125 +301,157 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
     sendAIMessageStream(
       id: string,
       data: SendAIMessageInput,
-      onEvent: (event: import('@browser-server/shared-types').AIStreamEvent) => void,
+      onEvent: (event: import("@browser-server/shared-types").AIStreamEvent) => void,
       onError?: (err: Error) => void,
     ): AbortController {
-      const controller = new AbortController()
-      const url = `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/messages`
+      const controller = new AbortController();
+      const url = `${baseUrl}/api/ai/conversations/${encodeURIComponent(id)}/messages`;
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeader(getToken),
-      }
+      };
 
       fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify({ ...data, stream: true }),
         signal: controller.signal,
       })
         .then(async (response) => {
           if (!response.ok) {
-            const text = await response.text()
-            throw apiErrorFromBody(response.status, text, `Stream failed: ${response.status}`)
+            const text = await response.text();
+            throw apiErrorFromBody(response.status, text, `Stream failed: ${response.status}`);
           }
-          const reader = response.body?.getReader()
-          if (!reader) throw new Error('No response body')
-          const decoder = new TextDecoder()
-          let buffer = ''
-          let streamEnded = false
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error("No response body");
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let streamEnded = false;
 
           const processFrames = () => {
-            let boundary = buffer.indexOf('\n\n')
+            let boundary = buffer.indexOf("\n\n");
             while (boundary >= 0) {
-              const frame = buffer.slice(0, boundary)
-              buffer = buffer.slice(boundary + 2)
-              let eventType = ''
-              const dataLines: string[] = []
-              for (const line of frame.split('\n')) {
-                if (line.startsWith('event:')) eventType = line.slice(6).trim()
-                else if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart())
+              const frame = buffer.slice(0, boundary);
+              buffer = buffer.slice(boundary + 2);
+              let eventType = "";
+              const dataLines: string[] = [];
+              for (const line of frame.split("\n")) {
+                if (line.startsWith("event:")) eventType = line.slice(6).trim();
+                else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
               }
               if (eventType && dataLines.length > 0) {
-                const parsed = JSON.parse(dataLines.join('\n'))
-                onEvent({ type: eventType, ...parsed } as import('@browser-server/shared-types').AIStreamEvent)
-                if (eventType === 'done' || eventType === 'error') streamEnded = true
+                const parsed = JSON.parse(dataLines.join("\n"));
+                onEvent({
+                  type: eventType,
+                  ...parsed,
+                } as import("@browser-server/shared-types").AIStreamEvent);
+                if (eventType === "done" || eventType === "error") streamEnded = true;
               }
-              boundary = buffer.indexOf('\n\n')
+              boundary = buffer.indexOf("\n\n");
             }
-          }
+          };
 
           while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n')
-            processFrames()
-            if (streamEnded) break
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+            processFrames();
+            if (streamEnded) break;
           }
-          buffer += decoder.decode().replace(/\r\n/g, '\n')
-          processFrames()
-          if (!streamEnded) throw new Error('AI stream ended before a terminal event')
-          reader.cancel().catch(() => {})
+          buffer += decoder.decode().replace(/\r\n/g, "\n");
+          processFrames();
+          if (!streamEnded) throw new Error("AI stream ended before a terminal event");
+          reader.cancel().catch(() => {});
         })
         .catch((err) => {
-          if (err.name === 'AbortError') return
-          onError?.(err instanceof Error ? err : new Error(String(err)))
-        })
+          if (err.name === "AbortError") return;
+          onError?.(err instanceof Error ? err : new Error(String(err)));
+        });
 
-      return controller
+      return controller;
     },
 
     regenerateAIMessage(id: string): Promise<SendAIMessageResponse> {
       return apiFetch<SendAIMessageResponse>(
         baseUrl,
-        'POST',
+        "POST",
         `/api/ai/conversations/${encodeURIComponent(id)}/regenerate`,
         {},
         getToken,
-      )
+      );
     },
 
-    decideAIToolCall(id: string, callId: string, approved: boolean, comment?: string): Promise<AIToolDecisionResponse> {
+    decideAIToolCall(
+      id: string,
+      callId: string,
+      approved: boolean,
+      comment?: string,
+    ): Promise<AIToolDecisionResponse> {
       return apiFetch<AIToolDecisionResponse>(
         baseUrl,
-        'POST',
+        "POST",
         `/api/ai/conversations/${encodeURIComponent(id)}/tool-calls/${encodeURIComponent(callId)}`,
         comment ? { approved, comment } : { approved },
         getToken,
-      )
+      );
     },
 
     stopAIGeneration(id: string): Promise<StopAIGenerationResponse> {
       return apiFetch<StopAIGenerationResponse>(
         baseUrl,
-        'POST',
+        "POST",
         `/api/ai/conversations/${encodeURIComponent(id)}/stop`,
         {},
         getToken,
-      )
+      );
     },
 
     // ─── Background tasks ─────────────────────────────────────────────────
 
     createAITask(data: CreateAITaskInput): Promise<CreateAITaskResponse> {
-      return apiFetch<CreateAITaskResponse>(baseUrl, 'POST', '/api/ai/tasks', data, getToken)
+      return apiFetch<CreateAITaskResponse>(baseUrl, "POST", "/api/ai/tasks", data, getToken);
     },
 
     listAITasks(status?: AITaskStatus, limit?: number): Promise<AITask[]> {
-      return apiFetch<AITask[]>(baseUrl, 'GET', `/api/ai/tasks${buildQuery({ status, limit })}`, undefined, getToken)
+      return apiFetch<AITask[]>(
+        baseUrl,
+        "GET",
+        `/api/ai/tasks${buildQuery({ status, limit })}`,
+        undefined,
+        getToken,
+      );
     },
 
     getAITask(id: string): Promise<AITask> {
-      return apiFetch<AITask>(baseUrl, 'GET', `/api/ai/tasks/${encodeURIComponent(id)}`, undefined, getToken)
+      return apiFetch<AITask>(
+        baseUrl,
+        "GET",
+        `/api/ai/tasks/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
     },
 
     /** Cancels a queued task. Running tasks are not cancellable — their worker holds the lease. */
     cancelAITask(id: string): Promise<void> {
-      return apiFetch<void>(baseUrl, 'POST', `/api/ai/tasks/${encodeURIComponent(id)}/cancel`, {}, getToken)
+      return apiFetch<void>(
+        baseUrl,
+        "POST",
+        `/api/ai/tasks/${encodeURIComponent(id)}/cancel`,
+        {},
+        getToken,
+      );
     },
 
     /** Deletes a terminal (completed or failed) task. */
     deleteAITask(id: string): Promise<void> {
-      return apiFetch<void>(baseUrl, 'DELETE', `/api/ai/tasks/${encodeURIComponent(id)}`, undefined, getToken)
+      return apiFetch<void>(
+        baseUrl,
+        "DELETE",
+        `/api/ai/tasks/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
     },
 
     /**
@@ -349,7 +460,13 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
      * explain why rather than surfacing a bare 503.
      */
     getAITaskStatus(): Promise<AITaskStatusResponse> {
-      return apiFetch<AITaskStatusResponse>(baseUrl, 'GET', '/api/ai/tasks/status', undefined, getToken)
+      return apiFetch<AITaskStatusResponse>(
+        baseUrl,
+        "GET",
+        "/api/ai/tasks/status",
+        undefined,
+        getToken,
+      );
     },
-  }
+  };
 }

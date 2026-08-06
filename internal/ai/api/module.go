@@ -4,6 +4,7 @@ import (
 	"browser-server/internal/ai/bootstrap"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
+	"browser-server/internal/ai/images"
 	aimcp "browser-server/internal/ai/mcp"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/skills"
@@ -31,6 +32,7 @@ type Module struct {
 	voice          *voice.Config
 	tasks          *tasks.Runner
 	attachmentsDir string
+	images         *images.Service
 	stop           chan struct{}
 	wg             sync.WaitGroup
 }
@@ -52,6 +54,7 @@ func Init() (*Module, error) {
 		skills:         rt.Skills,
 		mcp:            rt.MCP,
 		attachmentsDir: rt.AttachmentsDir,
+		images:         rt.Images,
 	}
 	if !rt.Config.Enabled {
 		return module, nil
@@ -113,6 +116,9 @@ func (m *Module) Close() error {
 	if m.service != nil {
 		m.service.Close()
 	}
+	if m.images != nil {
+		_ = m.images.Close()
+	}
 	m.wg.Wait()
 	var mcpErr error
 	if m.mcp != nil {
@@ -152,6 +158,11 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.GetAttachment)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.RenameAttachment)).Methods("PATCH")
 	r.HandleFunc("/ai/attachments", m.requireAI(m.ListAttachments)).Methods("GET")
+	r.HandleFunc("/ai/images/config", m.requireImages(m.ImageConfig)).Methods("GET")
+	r.HandleFunc("/ai/images", m.requireImages(m.ListImages)).Methods("GET")
+	r.HandleFunc("/ai/images", m.requireImages(m.GenerateImage)).Methods("POST")
+	r.HandleFunc("/ai/images/{id}", m.requireImages(m.DeleteImage)).Methods("DELETE")
+	r.HandleFunc("/ai/images/{id}/file", m.requireImages(m.GetImageFile)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}/messages/append", m.requireAI(m.AppendMessage)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.UpdateMessage)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.DeleteMessage)).Methods("DELETE")

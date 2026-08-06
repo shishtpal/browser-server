@@ -65,6 +65,7 @@
             "web_fetch",
             "execute_command",
             "execute_python",
+            "generate_image",
             "read_file",
             "write_file",
             "edit_file",

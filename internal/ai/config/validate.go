@@ -34,6 +34,7 @@ var knownToolNames = map[string]bool{
 	"ai_list_memories": true, "ai_forget": true, "ai_update_memory": true,
 	"ai_resolve_references": true, "ai_lazy_memory": true, "ai_manage_cache": true,
 	"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
+	"generate_image": true,
 }
 
 // supportedAttachmentTypes is the closed set of image MIME types the feature

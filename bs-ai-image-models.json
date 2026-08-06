@@ -1,0 +1,167 @@
+{
+  "enabled": true,
+  "default_provider": "gemini",
+  "providers": {
+    "gemini": {
+      "type": "gemini_interactions",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "api_key": "env:GEMINI_API_KEY",
+      "request_timeout_seconds": 600,
+      "models": [
+        {
+          "id": "gemini-3.1-flash-image",
+          "label": "Gemini 3.1 Flash Image (Nano Banana 2)",
+          "default": true,
+          "supports_editing": true,
+          "image_sizes": [
+            "1K",
+            "2K",
+            "4K"
+          ]
+        },
+        {
+          "id": "gemini-3.1-flash-lite-image",
+          "label": "Gemini 3.1 Flash Lite Image (fastest)",
+          "default": false,
+          "supports_editing": false,
+          "image_sizes": [
+            "1K"
+          ]
+        },
+        {
+          "id": "gemini-3-pro-image",
+          "label": "Gemini 3 Pro Image (Nano Banana Pro)",
+          "default": false,
+          "supports_editing": true,
+          "image_sizes": [
+            "1K",
+            "2K",
+            "4K"
+          ]
+        }
+      ]
+    },
+    "openrouter": {
+      "type": "openrouter_images",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key": "env:OPENROUTER_API_KEY",
+      "request_timeout_seconds": 600,
+      "models": [
+        {
+          "id": "qwen/qwen-image-3",
+          "label": "Qwen Image 3",
+          "default": true,
+          "supports_editing": true,
+          "image_sizes": [
+            "1K",
+            "2K"
+          ],
+          "aspect_ratios": [
+            "1:1",
+            "1:2",
+            "1:4",
+            "2:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:1",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9"
+          ],
+          "max_images": 6,
+          "supports_seed": true
+        },
+        {
+          "id": "qwen/qwen-image-3-pro",
+          "label": "Qwen Image 3 Pro",
+          "default": false,
+          "supports_editing": true,
+          "image_sizes": [
+            "1K",
+            "2K"
+          ],
+          "aspect_ratios": [
+            "1:1",
+            "1:2",
+            "1:4",
+            "2:1",
+            "2:3",
+            "3:2",
+            "3:4",
+            "4:1",
+            "4:3",
+            "4:5",
+            "5:4",
+            "9:16",
+            "16:9"
+          ],
+          "max_images": 6,
+          "supports_seed": true
+        },
+        {
+          "id": "krea/krea-2-medium-turbo",
+          "label": "Krea 2 Medium Turbo",
+          "default": false,
+          "supports_editing": true,
+          "image_sizes": [
+            "1K"
+          ],
+          "aspect_ratios": [
+            "1:1",
+            "4:3",
+            "3:2",
+            "16:9",
+            "4:5",
+            "2:3",
+            "9:16"
+          ],
+          "max_images": 1,
+          "supports_seed": true
+        },
+        {
+          "id": "krea/krea-2-medium",
+          "label": "Krea 2 Medium",
+          "default": false,
+          "supports_editing": true,
+          "image_sizes": [
+            "1K"
+          ],
+          "aspect_ratios": [
+            "1:1",
+            "4:3",
+            "3:2",
+            "16:9",
+            "4:5",
+            "2:3",
+            "9:16"
+          ],
+          "max_images": 1,
+          "supports_seed": true
+        },
+        {
+          "id": "krea/krea-2-large",
+          "label": "Krea 2 Large",
+          "default": false,
+          "supports_editing": true,
+          "image_sizes": [
+            "1K"
+          ],
+          "aspect_ratios": [
+            "1:1",
+            "4:3",
+            "3:2",
+            "16:9",
+            "4:5",
+            "2:3",
+            "9:16"
+          ],
+          "max_images": 1,
+          "supports_seed": true
+        }
+      ]
+    }
+  }
+}

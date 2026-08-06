@@ -98,8 +98,8 @@ func (s *Store) ForkConversation(ctx context.Context, sourceID, uptoMessageID st
 		}
 		created := base.Add(time.Duration(i) * time.Millisecond)
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO messages (id, conversation_id, role, content, tool_call_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			NewID("msg"), forked.ID, src.Role, src.Content, nullString(src.ToolCallID), src.Status, formatTime(created)); err != nil {
+			`INSERT INTO messages (id, conversation_id, role, content, tool_call_id, status, created_at, reasoning) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			NewID("msg"), forked.ID, src.Role, src.Content, nullString(src.ToolCallID), src.Status, formatTime(created), src.Reasoning); err != nil {
 			return Conversation{}, err
 		}
 	}

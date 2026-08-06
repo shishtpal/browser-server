@@ -196,6 +196,14 @@ export function useChatMessaging(
             case 'append_window':
               canAppend.value = event.status === 'open'
               break
+            case 'reasoning': {
+              const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
+              if (idx >= 0) {
+                const msg = { ...currentMessages[idx], reasoning: (currentMessages[idx].reasoning ?? '') + event.content }
+                setMessages([...currentMessages.slice(0, idx), msg, ...currentMessages.slice(idx + 1)])
+              }
+              break
+            }
             case 'delta': {
               const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
               if (idx >= 0) {

@@ -73,8 +73,8 @@ func (s *Store) BeginRegeneration(ctx context.Context, conversationID string) (M
 
 	var user Message
 	var created string
-	if err := tx.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id, ''), status, created_at FROM messages WHERE conversation_id = ? AND role = 'user' AND status = 'completed' ORDER BY created_at DESC, rowid DESC LIMIT 1`, conversationID).
-		Scan(&user.ID, &user.ConversationID, &user.Role, &user.Content, &user.ToolCallID, &user.Status, &created); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id, ''), status, created_at, reasoning FROM messages WHERE conversation_id = ? AND role = 'user' AND status = 'completed' ORDER BY created_at DESC, rowid DESC LIMIT 1`, conversationID).
+		Scan(&user.ID, &user.ConversationID, &user.Role, &user.Content, &user.ToolCallID, &user.Status, &created, &user.Reasoning); err != nil {
 		return Message{}, Message{}, err
 	}
 	user.CreatedAt = parseTime(created)
@@ -142,8 +142,10 @@ func (s *Store) UpdateMessage(ctx context.Context, id, content, status string) e
 }
 
 // CompleteTurn persists terminal chat state without coupling successful work to
-// best-effort observability writes.
-func (s *Store) CompleteTurn(ctx context.Context, messageID, conversationID, content, status string) (time.Time, error) {
+// best-effort observability writes. reasoning is the model's thinking content
+// captured for the assistant message; pass an empty string when the provider
+// returned none.
+func (s *Store) CompleteTurn(ctx context.Context, messageID, conversationID, content, reasoning, status string) (time.Time, error) {
 	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -170,7 +172,7 @@ func (s *Store) CompleteTurn(ctx context.Context, messageID, conversationID, con
 	if err := rows.Err(); err != nil {
 		return time.Time{}, err
 	}
-	res, err := tx.ExecContext(ctx, `UPDATE messages SET content=?, status=?, created_at=? WHERE id=?`, content, status, formatTime(now), messageID)
+	res, err := tx.ExecContext(ctx, `UPDATE messages SET content=?, reasoning=?, status=?, created_at=? WHERE id=?`, content, reasoning, status, formatTime(now), messageID)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -202,8 +204,8 @@ func (s *Store) UpdateMessageContent(ctx context.Context, id, content string) (M
 	}
 	var m Message
 	var created string
-	err = s.db.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id,''), status, created_at FROM messages WHERE id = ?`, id).
-		Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.ToolCallID, &m.Status, &created)
+	err = s.db.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id,''), status, created_at, reasoning FROM messages WHERE id = ?`, id).
+		Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.ToolCallID, &m.Status, &created, &m.Reasoning)
 	if err != nil {
 		return Message{}, err
 	}
@@ -230,7 +232,9 @@ func (s *Store) DeleteMessage(ctx context.Context, id string) (string, error) {
 }
 
 // FinishTurn commits terminal message state and its mandatory audit row together.
-func (s *Store) FinishTurn(ctx context.Context, messageID, content, status string, log RequestLog) (time.Time, error) {
+// reasoning is the model's thinking content captured for the assistant message;
+// pass an empty string when the provider returned none.
+func (s *Store) FinishTurn(ctx context.Context, messageID, content, reasoning, status string, log RequestLog) (time.Time, error) {
 	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -257,7 +261,7 @@ func (s *Store) FinishTurn(ctx context.Context, messageID, content, status strin
 	if err := rows.Err(); err != nil {
 		return time.Time{}, err
 	}
-	res, err := tx.ExecContext(ctx, `UPDATE messages SET content = ?, status = ?, created_at = ? WHERE id = ?`, content, status, formatTime(now), messageID)
+	res, err := tx.ExecContext(ctx, `UPDATE messages SET content = ?, reasoning = ?, status = ?, created_at = ? WHERE id = ?`, content, reasoning, status, formatTime(now), messageID)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -289,7 +293,7 @@ func (s *Store) FinishTurn(ctx context.Context, messageID, content, status strin
 func (s *Store) SupersedeLatestAssistant(ctx context.Context, conversationID string) (Message, error) {
 	var m Message
 	var created string
-	err := s.db.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id,''), status, created_at FROM messages WHERE conversation_id=? AND role='assistant' AND status!='superseded' ORDER BY created_at DESC LIMIT 1`, conversationID).Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.ToolCallID, &m.Status, &created)
+	err := s.db.QueryRowContext(ctx, `SELECT id, conversation_id, role, content, COALESCE(tool_call_id,''), status, created_at, reasoning FROM messages WHERE conversation_id=? AND role='assistant' AND status!='superseded' ORDER BY created_at DESC LIMIT 1`, conversationID).Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.ToolCallID, &m.Status, &created, &m.Reasoning)
 	if err != nil {
 		return m, err
 	}
@@ -306,7 +310,7 @@ func (s *Store) SupersedeLatestAssistant(ctx context.Context, conversationID str
 }
 
 func (s *Store) ListMessages(ctx context.Context, conversationID string, limit int) ([]Message, error) {
-	query := `SELECT id, conversation_id, role, content, COALESCE(tool_call_id, ''), status, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC, rowid ASC`
+	query := `SELECT id, conversation_id, role, content, COALESCE(tool_call_id, ''), status, created_at, reasoning FROM messages WHERE conversation_id = ? ORDER BY created_at ASC, rowid ASC`
 	args := []any{conversationID}
 	if limit > 0 {
 		query += ` LIMIT ?`
@@ -321,7 +325,7 @@ func (s *Store) ListMessages(ctx context.Context, conversationID string, limit i
 	for rows.Next() {
 		var message Message
 		var created string
-		if err := rows.Scan(&message.ID, &message.ConversationID, &message.Role, &message.Content, &message.ToolCallID, &message.Status, &created); err != nil {
+		if err := rows.Scan(&message.ID, &message.ConversationID, &message.Role, &message.Content, &message.ToolCallID, &message.Status, &created, &message.Reasoning); err != nil {
 			return nil, err
 		}
 		message.CreatedAt = parseTime(created)

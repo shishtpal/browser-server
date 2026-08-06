@@ -306,6 +306,9 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 	}
 	requestIteration := 0
 	requestID := ""
+	// reasoning accumulates the model's thinking across tool-loop iterations
+	// so the whole turn's reasoning is persisted on the assistant message.
+	reasoning := ""
 	complete := func() (provider.ChatResponse, error) {
 		var response provider.ChatResponse
 		var callErr error
@@ -315,15 +318,21 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 				case "text_delta":
 					return emit(Event{Type: "delta", MessageID: assistantMessage.ID, Content: pe.Text})
 				case "reasoning_delta":
-					// Reasoning is a live-stream-only signal: it is not persisted
-					// and not included in SubmitResponse. Clients (e.g. the CLI
-					// --verbose mode) use it to show the model's thinking.
+					// Reasoning streams live for clients (CLI --verbose, the
+					// chat UI's thinking panel) and is additionally persisted
+					// at turn end via the accumulated response.Reasoning.
 					return emit(Event{Type: "reasoning", MessageID: assistantMessage.ID, Content: pe.Text})
 				}
 				return nil
 			})
 		} else {
 			response, callErr = client.Complete(generationCtx, chatReq)
+		}
+		if response.Reasoning != "" {
+			if reasoning != "" {
+				reasoning += "\n\n"
+			}
+			reasoning += response.Reasoning
 		}
 		requestID = s.auditRequest(generationCtx, "chat", conversationID, assistantMessage.ID, "", requestIteration, providerName, modelID, response, callErr)
 		requestIteration++
@@ -408,6 +417,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 		resp:                  resp,
 		providerErr:           providerErr,
 		iterationLimitReached: iterationLimitReached,
+		reasoning:             reasoning,
 	}
 	status, _, _, _, contentToSave, finishErr := s.buildTerminalResult(generationCtx, finishReq)
 	if finishErr != nil {

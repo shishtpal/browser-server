@@ -23,6 +23,7 @@
       <template v-for="message in messages" :key="message.id">
         <ChatBubble
           :message="message"
+          :show-thinking="showThinking"
           @copy="$emit('copy', $event)"
           @delete="$emit('delete', $event)"
           @branch="$emit('branch', $event)"
@@ -45,10 +46,11 @@ import { nextTick, ref, watch } from 'vue'
 import type { AIMessage } from '@browser-server/shared-types'
 import ChatBubble from './ChatBubble.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   messages: AIMessage[]
   loading: boolean
-}>()
+  showThinking?: boolean
+}>(), { showThinking: true })
 
 defineEmits<{
   suggestion: [text: string]

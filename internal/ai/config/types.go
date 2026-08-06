@@ -219,6 +219,7 @@ type ChatConfig struct {
 	SystemPrompt          string                `json:"system_prompt"`
 	MaxHistoryMessages    int                   `json:"max_history_messages"`
 	Stream                bool                  `json:"stream"`
+	ShowThinking          bool                  `json:"show_thinking"`
 	Temperature           float64               `json:"temperature"`
 	ToolRetryAttempts     int                   `json:"tool_retry_attempts"`
 	ToolRetryDelaySeconds int                   `json:"tool_retry_delay_seconds"`

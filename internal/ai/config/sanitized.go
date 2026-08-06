@@ -44,6 +44,7 @@ type SanitizedTools struct {
 type SanitizedChat struct {
 	MaxHistoryMessages int                      `json:"max_history_messages"`
 	Stream             bool                     `json:"stream"`
+	ShowThinking       bool                     `json:"show_thinking"`
 	Temperature        float64                  `json:"temperature"`
 	Attachments        SanitizedChatAttachments `json:"attachments"`
 }
@@ -72,6 +73,7 @@ func (cfg *Config) Sanitized(categories map[string]string) SanitizedConfig {
 		Chat: SanitizedChat{
 			MaxHistoryMessages: cfg.Chat.MaxHistoryMessages,
 			Stream:             cfg.Chat.Stream,
+			ShowThinking:       cfg.Chat.ShowThinking,
 			Temperature:        cfg.Chat.Temperature,
 			Attachments: SanitizedChatAttachments{
 				Enabled:          cfg.Chat.Attachments.Enabled,

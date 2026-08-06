@@ -23,6 +23,10 @@ type Message struct {
 	ToolCallID     string    `json:"tool_call_id,omitempty"`
 	Status         string    `json:"status"`
 	CreatedAt      time.Time `json:"created_at"`
+	// Reasoning is the model's thinking/chain-of-thought for assistant
+	// messages (provider `reasoning`/`reasoning_content` fields). Populated
+	// on load from the messages table; empty for roles that never reason.
+	Reasoning string `json:"reasoning,omitempty"`
 	// Attachments is populated for user messages when loading a conversation
 	// (ListMessages/GetConversation) and when a turn is created. It is not
 	// scanned from the messages table itself.

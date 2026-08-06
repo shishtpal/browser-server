@@ -22,7 +22,7 @@ func TestBeginFinishAndDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.FinishTurn(ctx, a.ID, "world", "completed", RequestLog{ConversationID: c.ID, MessageID: a.ID, Provider: "p", Model: "m", Endpoint: "x", Status: "success"}); err != nil {
+	if _, err = s.FinishTurn(ctx, a.ID, "world", "", "completed", RequestLog{ConversationID: c.ID, MessageID: a.ID, Provider: "p", Model: "m", Endpoint: "x", Status: "success"}); err != nil {
 		t.Fatal(err)
 	}
 	if err = s.DeleteConversation(ctx, c.ID); err != nil {
@@ -54,7 +54,7 @@ func TestForkConversation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.FinishTurn(ctx, a1.ID, "first answer", "completed", RequestLog{ConversationID: src.ID, MessageID: a1.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
+	if _, err = s.FinishTurn(ctx, a1.ID, "first answer", "", "completed", RequestLog{ConversationID: src.ID, MessageID: a1.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Millisecond)
@@ -63,7 +63,7 @@ func TestForkConversation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.FinishTurn(ctx, a2.ID, "second answer", "completed", RequestLog{ConversationID: src.ID, MessageID: a2.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
+	if _, err = s.FinishTurn(ctx, a2.ID, "second answer", "", "completed", RequestLog{ConversationID: src.ID, MessageID: a2.ID, Provider: "prov", Model: "model", Endpoint: "x", Status: "success"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,7 +131,7 @@ func TestBeginRegenerationDoesNotDuplicateUserMessages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.FinishTurn(ctx, assistant.ID, "first answer", "completed", RequestLog{
+	if _, err := s.FinishTurn(ctx, assistant.ID, "first answer", "", "completed", RequestLog{
 		ConversationID: conversation.ID, MessageID: assistant.ID, Provider: "provider", Model: "model", Endpoint: "x", Status: "success",
 	}); err != nil {
 		t.Fatal(err)

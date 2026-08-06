@@ -38,6 +38,7 @@ export interface AIConfig {
   chat: {
     max_history_messages: number
     stream: boolean
+    show_thinking: boolean
     temperature: number
     attachments?: AIChatAttachmentsConfig
   }
@@ -166,6 +167,9 @@ export interface AIMessage {
   tool_call_id?: string
   status: AIMessageStatus
   created_at: string
+  /** Model thinking/chain-of-thought for assistant messages, when the
+   * provider returned reasoning content. */
+  reasoning?: string
   attachments?: AIImageAttachment[]
 }
 
@@ -251,10 +255,16 @@ export interface ChatQuestion {
 }
 
 /** SSE event types emitted during streaming AI message generation. */
-export type AIStreamEventType = 'delta' | 'tool_call' | 'tool_result' | 'append_window' | 'done' | 'error'
+export type AIStreamEventType = 'delta' | 'reasoning' | 'tool_call' | 'tool_result' | 'append_window' | 'done' | 'error'
 
 export interface AIStreamDeltaEvent {
   type: 'delta'
+  message_id: string
+  content: string
+}
+
+export interface AIStreamReasoningEvent {
+  type: 'reasoning'
   message_id: string
   content: string
 }
@@ -295,6 +305,7 @@ export interface AIStreamErrorEvent {
 
 export type AIStreamEvent =
   | AIStreamDeltaEvent
+  | AIStreamReasoningEvent
   | AIStreamToolCallEvent
   | AIStreamToolResultEvent
   | AIStreamAppendWindowEvent

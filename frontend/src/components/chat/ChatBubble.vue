@@ -52,7 +52,9 @@
   <!-- Assistant message -->
   <article v-else-if="message.role === 'assistant'"
     class="group relative max-w-[92%] rounded-xl rounded-bl-sm border border-slate-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
-    <div v-if="message.status === 'pending' && !message.content"
+    <ChatThinkingBlock v-if="showThinking" :reasoning="message.reasoning"
+      :streaming="message.status === 'pending' && !message.content" />
+    <div v-if="message.status === 'pending' && !message.content && (!showThinking || !message.reasoning)"
       class="flex items-center gap-2 text-[0.82em] font-medium text-slate-400">
       <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-500"></span>
       Thinking…
@@ -211,11 +213,13 @@ import type { AIImageAttachment, AIMessage, ChatQuestion } from '@browser-server
 import { computed, ref } from 'vue'
 import { renderMarkdown } from './markdown'
 import ChatQuestionForm from './ChatQuestionForm.vue'
+import ChatThinkingBlock from './ChatThinkingBlock.vue'
 import { getAIImageAttachmentUrl } from '../../lib/api'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   message: AIMessage
-}>()
+  showThinking?: boolean
+}>(), { showThinking: true })
 
 const emit = defineEmits<{
   copy: [content: string]

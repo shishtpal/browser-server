@@ -146,6 +146,13 @@ func (s *Store) migrate() error {
 			`CREATE INDEX IF NOT EXISTS idx_request_logs_task_created ON request_logs(task_id, created_at DESC)`,
 			`CREATE INDEX IF NOT EXISTS idx_request_logs_status_created ON request_logs(status, created_at DESC)`,
 		}},
+		{8, []string{
+			// Reasoning/thinking content (OpenRouter-style `reasoning` /
+			// `reasoning_content` fields) captured at turn end so the UI can
+			// render the model's thinking for past messages. Stored per message
+			// so superseded regenerations keep their own reasoning.
+			`ALTER TABLE messages ADD COLUMN reasoning TEXT NOT NULL DEFAULT ''`,
+		}},
 	}
 	var currentVersion int
 	s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&currentVersion)

@@ -317,15 +317,31 @@
             </div>
           </div>
         </section>
+
+        <!-- Reasoning display -->
+        <section>
+          <h3 class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Thinking</h3>
+          <label class="flex cursor-pointer items-start gap-2 text-xs text-slate-600 dark:text-slate-400">
+            <input
+              v-model="showThinking"
+              type="checkbox"
+              class="mt-0.5 accent-indigo-600"
+            />
+            <span>
+              <span class="font-semibold text-slate-700 dark:text-slate-300">Show model thinking</span>
+              <span class="mt-0.5 block text-[10px] text-slate-400 dark:text-slate-500">Display reasoning when the model provides it.</span>
+            </span>
+          </label>
+        </section>
       </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
+import type { AIMCPConfig } from '@browser-server/shared-types'
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { Search, X } from '@lucide/vue'
-import type { AIMCPConfig } from '@browser-server/shared-types'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 500
@@ -375,6 +391,11 @@ const emit = defineEmits<{
   'update:rawToolOutput': [value: boolean | null]
   'toggle-tool': [name: string, enabled: boolean]
 }>()
+
+
+const showThinking = defineModel<boolean>('showThinking', {
+  default: true
+});
 
 // ─── Tab state ─────────────────────────────────────────
 

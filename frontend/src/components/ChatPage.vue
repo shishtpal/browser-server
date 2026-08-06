@@ -36,7 +36,7 @@
 
       <!-- Chat area -->
       <template v-else>
-        <ChatMessageList ref="messageListRef" :messages="visibleMessages" :loading="isBusy" @suggestion="useSuggestion"
+        <ChatMessageList ref="messageListRef" :messages="visibleMessages" :loading="isBusy" :show-thinking="showThinking" @suggestion="useSuggestion"
           @copy="copyMessage" @delete="deleteMessage" @branch="handleBranch" @tool-decision="handleToolDecision" />
 
         <ChatRegenerateButton :visible="canRegenerate" :disabled="isBusy" @regenerate="handleRegenerate" />
@@ -56,10 +56,10 @@
       :include-all-tool-definitions="includeAllToolDefinitions" :available-tools="availableTools"
       :tools-by-category="toolsByCategory" :disabled-tools="disabledTools" :tool-calls="toolCallEntries" :mcp="mcp"
       :font-family="chatFontFamily" :font-size="chatFontSize" :raw-tool-output="rawToolOutput"
-      @close="showToolsPanel = false" @update:tools-enabled="userToolsEnabled = $event"
+      :show-thinking="showThinking" @close="showToolsPanel = false" @update:tools-enabled="userToolsEnabled = $event"
       @update:yolo-mode="yoloMode = $event" @update:include-all-tool-definitions="includeAllToolDefinitions = $event"
       @update:font-family="chatFontFamily = $event" @update:font-size="chatFontSize = $event"
-      @update:raw-tool-output="rawToolOutput = $event" @toggle-tool="toggleTool" />
+      @update:raw-tool-output="rawToolOutput = $event" @update:show-thinking="showThinking = $event" @toggle-tool="toggleTool" />
 
     <!-- Mobile sidebar drawer -->
     <ChatMobileDrawer :open="showMobileSidebar" :conversations="filteredConversations"
@@ -204,6 +204,7 @@ const {
   skills,
   mcp,
   activeSkills,
+  showThinking,
   yoloMode,
   userToolsEnabled,
   includeAllToolDefinitions,

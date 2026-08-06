@@ -26,7 +26,10 @@ export function useChatConfig() {
       write: (v) => JSON.stringify([...v]),
     },
   })
+
   const activeSkills = useLocalStorage<string[]>(`bs.ai.activeSkills`, [])
+
+  const showThinking = useLocalStorage(`bs.ai.showThinking`, true)
 
   /** Available profiles from the server config */
   const profiles = computed<AIProfile[]>(() => config.value?.profiles ?? [])
@@ -135,6 +138,7 @@ export function useChatConfig() {
     skills,
     mcp,
     activeSkills,
+    showThinking,
     yoloMode,
     userToolsEnabled,
     includeAllToolDefinitions,

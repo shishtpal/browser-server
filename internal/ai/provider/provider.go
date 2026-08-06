@@ -48,8 +48,8 @@ type ChatRequest struct {
 type ChatResponse struct {
 	Content string
 	// Reasoning is the model's reasoning content (e.g. OpenRouter's
-	// "reasoning" / "reasoning_content" fields). It is emitted as a
-	// stream-only signal and is not persisted by the chat service.
+	// "reasoning" / "reasoning_content" fields). The chat service streams
+	// it live and persists the accumulated value on the assistant message.
 	Reasoning   string
 	Usage       Usage
 	HTTPStatus  int

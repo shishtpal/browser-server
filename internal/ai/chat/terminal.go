@@ -23,9 +23,19 @@ type finishTurnRequest struct {
 	resp                  provider.ChatResponse
 	providerErr           error
 	iterationLimitReached bool
+	// reasoning holds the turn's model thinking (provider reasoning content),
+	// accumulated across tool-loop iterations by the caller.
+	reasoning string
 }
 
 func (s *Service) buildTerminalResult(generationCtx context.Context, req finishTurnRequest) (status, logStatus, errCode, errMessage, content string, err error) {
+	// Cap persisted reasoning so verbose thinking traces cannot grow the
+	// database without bound.
+	const maxReasoningBytes = 64 * 1024
+	reasoning := req.reasoning
+	if len(reasoning) > maxReasoningBytes {
+		reasoning = reasoning[:maxReasoningBytes]
+	}
 	status = "completed"
 	logStatus = "success"
 	if req.providerErr != nil {
@@ -54,11 +64,12 @@ func (s *Service) buildTerminalResult(generationCtx context.Context, req finishT
 	}
 	terminalCtx, terminalCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer terminalCancel()
-	completedAt, persistErr := s.store.CompleteTurn(terminalCtx, req.assistantMessage.ID, req.conversationID, content, status)
+	completedAt, persistErr := s.store.CompleteTurn(terminalCtx, req.assistantMessage.ID, req.conversationID, content, reasoning, status)
 	if persistErr != nil {
 		return "", "", "", "", "", fmt.Errorf("persist terminal AI result: %w", persistErr)
 	}
 	req.assistantMessage.CreatedAt = completedAt
+	req.assistantMessage.Reasoning = reasoning
 	return status, logStatus, errCode, errMessage, content, nil
 }
 

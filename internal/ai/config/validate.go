@@ -23,7 +23,7 @@ var knownToolNames = map[string]bool{
 	"execute_command": true,
 	"execute_python":  true,
 	"web_search":      true, "web_fetch": true,
-	"read_file": true, "write_file": true, "edit_file": true, "multi_edit": true, "list_directory": true,
+	"read_file": true, "read_files": true, "write_file": true, "edit_file": true, "multi_edit": true, "list_directory": true,
 	"delete_file": true, "move_file": true, "copy_file": true,
 	"directory_tree": true,
 	"search_code":    true, "analyze_code": true, "get_diagnostics": true,

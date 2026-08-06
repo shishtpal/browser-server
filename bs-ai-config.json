@@ -35,6 +35,7 @@
         "max_iterations": 100,
         "raw_output": [
             "read_file",
+            "read_files",
             "ask_questions",
             "git_diff",
             "directory_tree",
@@ -68,6 +69,7 @@
             "execute_python",
             "generate_image",
             "read_file",
+            "read_files",
             "write_file",
             "edit_file",
             "multi_edit",

@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "files": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "description": "File path with an optional line-range suffix. Forms: \"path\" (full file), \"path:offset:limit\" (limit lines starting at 1-based offset), \"path:start-end\" (inclusive line range). Example: \"D:/project/README.md:10-25\""
+            },
+            "minItems": 1,
+            "description": "List of files to read. Each entry is a path, optionally followed by a line-range suffix (:offset:limit or :start-end)."
+        },
+        "line_numbers": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, prefix each line with its 1-based line number followed by ': ' (e.g. '128: content')."
+        }
+    },
+    "required": [
+        "files"
+    ],
+    "additionalProperties": false
+}

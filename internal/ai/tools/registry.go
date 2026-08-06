@@ -121,7 +121,7 @@ func newRegistry(options ...Options) (*Registry, error) {
 	if len(options) > 0 {
 		fileToolsCfg = options[0].FileTools
 	}
-	registerReadFile(r, fileToolsCfg)
+	registerReadFile(r, fileToolsCfg) // also registers read_files
 	registerWriteFile(r)
 	registerEditFile(r)
 	registerMultiEdit(r)

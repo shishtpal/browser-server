@@ -57,9 +57,12 @@ func registerReadFile(r *Registry, cfg config.FileToolsConfig) {
 		Category:    "File Operations",
 		Description: "Read a UTF-8 text file from the server filesystem (maximum " + formatBytes(int64(ft.maxReadBytes)) + " for full reads, configurable in the AI configuration). Supports reading specific line ranges and prefixing lines with their line numbers.",
 		Schema:      json.RawMessage(readFileSchema),
-		Execute:     ft.readFile,
+		Execute:        ft.readFile,
 		RawContentFunc: rawMapField("content"),
 	})
+
+	// read_files reuses the same configured limits and security checks via ft.
+	registerReadFiles(r, ft)
 }
 
 type lineRange struct {

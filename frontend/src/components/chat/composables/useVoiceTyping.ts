@@ -309,7 +309,7 @@ export function useVoiceTyping(open: Ref<boolean>) {
         return
       }
       const text = findTranscript(message)
-      if (text) transcript.value = text
+      if (text) transcript.value = mergeTranscript(transcript.value, text)
       if (message.type === 'data' && state.value === 'transcribing') {
         clearFinalizeTimer()
         state.value = 'idle'
@@ -437,4 +437,28 @@ function findTranscript(value: unknown): string {
     if (found) return found
   }
   return ''
+}
+
+// Voice providers may send either a cumulative transcript or a new phrase after
+// detecting a pause. Keep the former up to date without losing earlier phrases
+// from the latter.
+function mergeTranscript(existing: string, incoming: string): string {
+  const current = existing.trim()
+  const next = incoming.trim()
+  if (!current) return next
+  if (!next || current === next || current.endsWith(next)) return current
+  if (next.startsWith(current)) return next
+  if (current.startsWith(next)) return current
+
+  const currentWords = current.split(/\s+/)
+  const nextWords = next.split(/\s+/)
+  const maximumOverlap = Math.min(currentWords.length, nextWords.length)
+
+  for (let length = maximumOverlap; length > 0; length--) {
+    if (currentWords.slice(-length).join(' ') === nextWords.slice(0, length).join(' ')) {
+      return [...currentWords, ...nextWords.slice(length)].join(' ')
+    }
+  }
+
+  return `${current} ${next}`
 }

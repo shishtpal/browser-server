@@ -19,6 +19,8 @@ var knownToolNames = map[string]bool{
 	"update_todo_record": true,
 	"search_prompts":     true,
 	"manage_prompt":      true,
+	"search_questions":   true,
+	"manage_question":    true,
 	"search_history":     true, "search_calendar": true, "manage_calendar": true,
 	"execute_command": true,
 	"execute_python":  true,

@@ -1,0 +1,9 @@
+---
+import Layout from '../layouts/Layout.astro'
+import QuizPage from '../components/QuizPage.vue'
+---
+<Layout title="Quiz">
+  <main>
+    <QuizPage client:only="vue" />
+  </main>
+</Layout>

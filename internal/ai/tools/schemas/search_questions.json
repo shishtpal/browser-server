@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "properties": {
+        "user_id": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "query": {
+            "type": "string",
+            "maxLength": 200
+        },
+        "type": {
+            "type": "string",
+            "enum": ["single_choice", "multiple_choice", "input", "chronology"],
+            "description": "Filter by question type"
+        },
+        "difficulty": {
+            "type": "string",
+            "enum": ["easy", "medium", "hard"],
+            "description": "Filter by difficulty"
+        },
+        "tags": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 200 },
+            "maxItems": 20,
+            "description": "Filter by any matching tag — a question matches if its tags array contains ANY of these strings (e.g. [\"SSC\", \"RRB\"])"
+        },
+        "subject": { "type": "string", "maxLength": 200, "description": "Filter by subject (exact match)" },
+        "topic": { "type": "string", "maxLength": 200, "description": "Filter by topic (exact match)" },
+        "sub_topic": { "type": "string", "maxLength": 200, "description": "Filter by sub-topic (exact match)" },
+        "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "One-based page number. Defaults to 1."
+        },
+        "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Number of results per page. Defaults to 10; maximum is 100."
+        },
+        "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Deprecated. Use page_size instead. If page_size is omitted, limit is used as the page size."
+        },
+        "random": {
+            "type": "boolean",
+            "description": "Return a random sample instead of relevance-ranked results. Picks up to page_size questions at random from those matching the filters. Cannot be combined with query, and results cannot be paginated."
+        }
+    },
+    "required": ["user_id"],
+    "additionalProperties": false
+}

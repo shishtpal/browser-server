@@ -12,6 +12,7 @@ import { createAnalyticsMethods } from './domains/analytics'
 import { createBookmarkMethods } from './domains/bookmarks'
 import { createHealthMethods } from './domains/health'
 import { createHistoryMethods } from './domains/history'
+import { createQuestionMethods } from './domains/questions'
 import { createScreenshotMethods } from './domains/screenshots'
 import { createTodoMethods } from './domains/todos'
 import { createWalletMethods } from './domains/wallet'
@@ -38,6 +39,7 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
     ...createWalletMethods(normalized, getToken),
     ...createBookmarkMethods(normalized, getToken),
     ...createHistoryMethods(normalized, getToken),
+    ...createQuestionMethods(normalized, getToken),
     ...createAnalyticsMethods(normalized, getToken),
     ...createAIMethods(normalized, getToken),
   }

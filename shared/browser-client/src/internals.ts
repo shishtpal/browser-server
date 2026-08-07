@@ -54,11 +54,19 @@ export function authHeader(getToken?: TokenProvider): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export function buildQuery(params: Record<string, string | number | undefined>): string {
+export function buildQuery(params: Record<string, string | number | string[] | undefined>): string {
   const searchParams = new URLSearchParams()
 
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '') {
+    if (value === undefined) continue
+    if (Array.isArray(value)) {
+      // Repeat the key for each value (e.g. ?tag=SSC&tag=RRB). This is the
+      // standard "multiple values for the same key" wire shape that the
+      // server expands into an IN list.
+      for (const v of value) {
+        if (v !== '') searchParams.append(key, String(v))
+      }
+    } else if (value !== '') {
       searchParams.set(key, String(value))
     }
   }

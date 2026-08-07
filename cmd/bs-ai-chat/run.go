@@ -15,6 +15,8 @@ import (
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/profiles"
+	"browser-server/internal/db"
+	quizconfig "browser-server/internal/quiz/config"
 )
 
 // runCLI orchestrates one bs-ai-chat invocation and returns the process exit
@@ -66,6 +68,26 @@ func runCLI(opts options) int {
 	if toolsEnabled && !opts.yolo {
 		fmt.Fprintln(os.Stderr, "Error: tools require --yolo (interactive approval is not yet supported). Use --no-tools to disable them.")
 		return 1
+	}
+
+	// The domain tools (todos, calendar, bookmarks, history, prompts,
+	// questions) read the same SQLite files as the HTTP server through the
+	// package-level handles in internal/db. Without this the tool functions
+	// dereference a nil *sql.DB and panic.
+	if toolsEnabled {
+		dataPath := db.GetDataPath()
+		db.InitAll(dataPath)
+		defer db.CloseAll()
+
+		quizCfg, quizErr := quizconfig.Load()
+		if quizErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: load quiz config: %v\n", quizErr)
+			return 1
+		}
+		if quizCfg.Enabled {
+			db.InitQuizDB(dataPath)
+			defer db.CloseQuizDB()
+		}
 	}
 
 	// Resolve provider/model, preferring --conversation's stored selection when

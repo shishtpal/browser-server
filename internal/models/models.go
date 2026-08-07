@@ -165,6 +165,85 @@ type PromptResponse struct {
 	Tags []string `json:"tags"`
 }
 
+type QuestionOption struct {
+	Index   int    `json:"index"`
+	Text    string `json:"text"`
+	Correct bool   `json:"correct,omitempty"`
+}
+
+type ChronologyItem struct {
+	Index        int    `json:"index"`
+	Text         string `json:"text"`
+	CorrectOrder int    `json:"correct_order"`
+}
+
+type Question struct {
+	ID            int       `json:"id"`
+	UserID        int       `json:"user_id"`
+	Type          string    `json:"type"`
+	Difficulty    string    `json:"difficulty"`
+	Question      string    `json:"question"`
+	Explanation   string    `json:"explanation"`
+	Options       string    `json:"-"`
+	Answer        string    `json:"-"`
+	ImageFilename string    `json:"image_filename"`
+	Tags          string    `json:"-"`
+	Subject       string    `json:"subject"`
+	Topic         string    `json:"topic"`
+	SubTopic      string    `json:"sub_topic"`
+	Source        string    `json:"source"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// QuestionResponse is the decoded API shape: Options/CorrectAnswers/
+// ChronologyItems replace the raw JSON columns, and ImageURL points at the
+// image endpoint when an image is attached.
+type QuestionResponse struct {
+	Question
+	Options         []QuestionOption `json:"options,omitempty"`
+	CorrectAnswers  []int            `json:"correct_answers,omitempty"`
+	ExpectedText    string           `json:"expected_text,omitempty"`
+	ChronologyItems []ChronologyItem `json:"chronology_items,omitempty"`
+	Tags            []string         `json:"tags,omitempty"`
+	ImageURL        string           `json:"image_url,omitempty"`
+}
+
+type QuestionPaperSection struct {
+	Tags       []string `json:"tags,omitempty"`
+	Subject    string   `json:"subject,omitempty"`
+	Topic      string   `json:"topic,omitempty"`
+	SubTopic   string   `json:"sub_topic,omitempty"`
+	Type       string   `json:"type,omitempty"`
+	Difficulty string   `json:"difficulty,omitempty"`
+	Count      int      `json:"count"`
+}
+
+type QuestionPaper struct {
+	ID            int                    `json:"id"`
+	UserID        int                    `json:"user_id"`
+	Title         string                 `json:"title"`
+	Sections      []QuestionPaperSection `json:"sections"`
+	QuestionCount int                    `json:"question_count"`
+	Questions     []QuestionResponse     `json:"questions,omitempty"`
+	CreatedAt     time.Time              `json:"created_at"`
+}
+
+type TagVocabulary struct {
+	Tags      []string `json:"tags"`
+	Subjects  []string `json:"subjects"`
+	Topics    []string `json:"topics"`
+	SubTopics []string `json:"sub_topics"`
+}
+
+type QuizStats struct {
+	Total        int            `json:"total"`
+	PaperCount   int            `json:"paper_count"`
+	ByType       map[string]int `json:"by_type"`
+	ByDifficulty map[string]int `json:"by_difficulty"`
+	ByTags       map[string]int `json:"by_tags"`
+}
+
 type Route struct {
 	Method      string `json:"method"`
 	Path        string `json:"path"`

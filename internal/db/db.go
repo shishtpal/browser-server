@@ -20,6 +20,7 @@ var (
 	ScreenshotDB *sql.DB
 	UsageDB      *sql.DB
 	PromptDB     *sql.DB
+	QuizDB       *sql.DB
 )
 
 func GetDataPath() string {
@@ -51,6 +52,15 @@ func Exec(db *sql.DB, query string) {
 	_, err := db.Exec(query)
 	if err != nil {
 		log.Fatal("Failed to execute query:", err)
+	}
+}
+
+// tryExec runs a migration statement, logging but not aborting on error.
+// Used for best-effort column drops and other idempotent migrations that
+// may legitimately fail on older SQLite versions.
+func tryExec(db *sql.DB, query string) {
+	if _, err := db.Exec(query); err != nil {
+		log.Printf("Best-effort migration skipped: %v (query: %s)", err, query)
 	}
 }
 
@@ -278,10 +288,96 @@ func InitPromptDB(dataPath string) {
 	Exec(PromptDB, `CREATE INDEX IF NOT EXISTS idx_prompts_user ON prompts(user_id)`)
 }
 
+func InitQuizDB(dataPath string) {
+	QuizDB = Open(filepath.Join(dataPath, "quiz.db"))
+	Exec(QuizDB, `
+		CREATE TABLE IF NOT EXISTS questions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			type TEXT NOT NULL,
+			difficulty TEXT NOT NULL DEFAULT 'medium',
+			question TEXT NOT NULL,
+			explanation TEXT DEFAULT '',
+			options_json TEXT DEFAULT '[]',
+			answer_json TEXT DEFAULT '[]',
+			image_filename TEXT DEFAULT '',
+			tags TEXT DEFAULT '[]',
+			subject TEXT DEFAULT '',
+			topic TEXT DEFAULT '',
+			sub_topic TEXT DEFAULT '',
+			source TEXT DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_questions_user ON questions(user_id)`)
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_questions_user_type ON questions(user_id, type)`)
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_questions_user_difficulty ON questions(user_id, difficulty)`)
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_questions_user_subject ON questions(user_id, subject)`)
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_questions_user_topic ON questions(user_id, topic)`)
+
+	// One-shot migration: replace the single `exam` column with a JSON-array
+	// `tags` column. Idempotent — re-runs are a no-op.
+	if hasExam, err := hasColumn(QuizDB, "questions", "exam"); err != nil {
+		log.Fatal("Failed to inspect questions table:", err)
+	} else if hasExam {
+		// Migrate the existing single-value exam into a one-element tags
+		// array so no rows lose their exam info if the operator hasn't
+		// deleted the database yet.
+		Exec(QuizDB, `ALTER TABLE questions ADD COLUMN tags TEXT DEFAULT '[]'`)
+		Exec(QuizDB, `UPDATE questions SET tags = json_array(exam) WHERE exam != '' AND (tags IS NULL OR tags = '' OR tags = '[]')`)
+		Exec(QuizDB, `DROP INDEX IF EXISTS idx_questions_user_exam`)
+		// DROP COLUMN requires SQLite >= 3.35. Skip if the host's build is
+		// older; the unused column is harmless.
+		tryExec(QuizDB, `ALTER TABLE questions DROP COLUMN exam`)
+	}
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_questions_user_tags ON questions(user_id, tags)`)
+
+	Exec(QuizDB, `
+		CREATE TABLE IF NOT EXISTS question_papers (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			title TEXT NOT NULL,
+			sections_json TEXT NOT NULL,
+			question_count INTEGER NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_papers_user ON question_papers(user_id)`)
+
+	Exec(QuizDB, `
+		CREATE TABLE IF NOT EXISTS question_paper_items (
+			paper_id INTEGER NOT NULL,
+			question_id INTEGER NOT NULL,
+			position INTEGER NOT NULL,
+			PRIMARY KEY (paper_id, question_id),
+			FOREIGN KEY (paper_id) REFERENCES question_papers(id) ON DELETE CASCADE,
+			FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+		)
+	`)
+
+	Exec(QuizDB, `
+		CREATE TABLE IF NOT EXISTS question_images (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			question_id INTEGER NOT NULL,
+			filename TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_q_images_question ON question_images(question_id)`)
+}
+
+func CloseQuizDB() {
+	if QuizDB != nil {
+		QuizDB.Close()
+	}
+}
+
 func ClosePromptDB() {
 	if PromptDB != nil {
 		PromptDB.Close()
 	}
+	CloseQuizDB()
 }
 
 func CloseBookmarkDB() {

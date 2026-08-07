@@ -1,0 +1,87 @@
+{
+    "type": "object",
+    "properties": {
+        "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "User ID must be a positive integer"
+        },
+        "action": {
+            "type": "string",
+            "enum": ["add", "edit", "remove", "get", "list"],
+            "description": "Action to perform on a question"
+        },
+        "id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Question ID (required for edit, remove, and get actions)"
+        },
+        "type": {
+            "type": "string",
+            "enum": ["single_choice", "multiple_choice", "input", "chronology"],
+            "description": "Question type (required for add)"
+        },
+        "difficulty": {
+            "type": "string",
+            "enum": ["easy", "medium", "hard"],
+            "description": "Difficulty; defaults to medium"
+        },
+        "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Question text (required for add, max 2000 chars)"
+        },
+        "explanation": {
+            "type": "string",
+            "maxLength": 20000,
+            "description": "Explanation must be 20000 characters or fewer"
+        },
+        "options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": { "type": "integer", "minimum": 0 },
+                    "text": { "type": "string", "maxLength": 500 },
+                    "correct": { "type": "boolean" }
+                },
+                "required": ["index", "text"],
+                "additionalProperties": false
+            },
+            "description": "Options for single_choice/multiple_choice questions; mark the correct one(s) with correct=true"
+        },
+        "chronology_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": { "type": "integer", "minimum": 0 },
+                    "text": { "type": "string", "maxLength": 500 },
+                    "correct_order": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["index", "text", "correct_order"],
+                "additionalProperties": false
+            },
+            "description": "Items for chronology questions; correct_order is a 1-based permutation of the items"
+        },
+        "expected_text": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Expected answer text (required for input questions)"
+        },
+        "tags": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 200 },
+            "maxItems": 20,
+            "description": "Free-form tags — typically exam names. A question can carry any number of tags; e.g. [\"SSC\", \"RRB\"]"
+        },
+        "subject": { "type": "string", "maxLength": 200 },
+        "topic": { "type": "string", "maxLength": 200 },
+        "sub_topic": { "type": "string", "maxLength": 200 },
+        "source": { "type": "string", "maxLength": 500 }
+    },
+    "required": ["user_id", "action"],
+    "additionalProperties": false
+}

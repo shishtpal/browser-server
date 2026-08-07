@@ -107,6 +107,8 @@ func newRegistry(options ...Options) (*Registry, error) {
 	registerSearchPrompts(r)
 	registerManageCalendar(r)
 	registerManagePrompt(r)
+	registerSearchQuestions(r)
+	registerManageQuestion(r)
 	registerSearchCalendar(r)
 	registerSearchBookmarks(r)
 	registerSearchHistory(r)

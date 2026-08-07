@@ -9,6 +9,7 @@ It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `fr
 ## Current repo notes
 
 - AI configuration uses sibling files: `bs-ai-config.json` for behavior toggles, `bs-ai-models.json` for the provider/model catalog, and optional `bs-ai-mcp.json` for external MCP tool servers. Keep config examples and documentation aligned with `internal/ai/config` and `internal/ai/mcp`.
+- Quiz / Question Bank configuration uses `bs-quiz-config.json` next to the binary. See the "Quiz Configuration" section below and `internal/quiz/config/config.go`.
 - Prompt management and prompt folders are part of the shared domain model under `internal/prompt/`; they should remain the single source of truth for prompt validation and storage.
 - When changing shared domain code, keep HTTP concerns in handlers and tool-argument validation in AI tools rather than duplicating logic in both layers.
 
@@ -107,6 +108,60 @@ The AI chat module lives in `internal/ai/` and is self-contained — it manages 
 Place two sibling files next to the server binary: `bs-ai-config.json` for behavior toggles and `bs-ai-models.json` for the provider/model catalog. The module reads them at startup; if the main file is missing or has `"enabled": false`, the feature is reported as disabled. If `bs-ai-models.json` is missing while the main config exists, AI is also disabled.
 
 An optional `bs-ai-mcp.json` sibling configures stdio or Streamable HTTP MCP servers. `internal/ai/mcp` owns protocol transports, discovery, public-name routing, result normalization, and session lifecycle. MCP tools are appended to the validated runtime allowlist and adapted into `internal/ai/tools`; they must continue to use the normal active-tool, skill, approval, output-limit, persistence, and cancellation path. The browser remains MCP-protocol agnostic.
+
+## Quiz Configuration
+
+The Quiz / Question Bank feature is its own self-contained feature gated by a sibling file next to the server binary: `bs-quiz-config.json`. When the file is missing or `"enabled": false` the feature is a no-op — no `quiz.db` is created, no routes are registered, and the `search_questions` / `manage_question` AI tools report `"quiz feature disabled"`. See `internal/quiz/config/config.go` for the loader and `internal/handlers/questions.go` for the per-handler gate.
+
+Config path resolution (first match wins):
+
+1. `BS_QUIZ_CONFIG_PATH` environment variable
+2. `<executable dir>/bs-quiz-config.json` (same `ExecutableDir()` anchor used by the AI config)
+
+Key sections:
+
+```jsonc
+{
+  "enabled": true,
+  "db_path": ".data/quiz.db",
+  "image_dir": ".data/quiz-images",
+  "limits": {
+    "max_question_length": 2000,
+    "max_explanation_length": 20000,
+    "max_option_length": 500,
+    "max_chronology_items": 20,
+    "max_options_per_question": 10,
+    "max_image_bytes": 5242880,
+    "max_paper_size": 200,
+    "max_papers_per_user": 100
+  },
+  "allowed_question_types": ["single_choice", "multiple_choice", "input", "chronology"],
+  "allowed_difficulties": ["easy", "medium", "hard"],
+  "tag_categories": ["subject", "topic", "sub_topic"],
+  "ai_tools": {
+    "enabled": true,
+    "search_questions": true,
+    "manage_question": true
+  },
+  "paper_generation": {
+    "default_sample_strategy": "random",
+    "allow_duplicate_questions_within_paper": false
+  },
+  "retention_days": 365,
+  "cors_enabled": false
+}
+```
+
+Question types supported by `allowed_question_types`:
+
+- `single_choice` — exactly one option marked `correct: true` (2..`max_options_per_question` options).
+- `multiple_choice` — one or more options marked `correct`.
+- `input` — free-text answer stored as `{"text": "..."}` in `answer_json`.
+- `chronology` — arrange-items-in-correct-order; items stored with `correct_order` values forming a 1..N permutation.
+
+Tags `tags`, `subject`, `topic`, `sub_topic` drive both filtering (`/api/quiz/questions?tag=...&tag=...&subject=...`) and sectioned paper generation (`/api/quiz/papers` body accepts `[{tags, subject, topic, sub_topic, type, difficulty, count}]`). The `tags` field is a JSON array on each question (e.g. `["SSC","RRB"]`) — a single question can carry any number of tags, so a "polity" question can be marked valid for both SSC and UPSC at once. Filtering uses `EXISTS (SELECT 1 FROM json_each(tags) WHERE value IN (...))` so multiple `?tag=` query params match any-of.
+
+To enable the AI tools, two steps are required: the quiz feature must be enabled here (the file must exist with `"enabled": true`) **and** `search_questions` / `manage_question` must appear in `bs-ai-config.json` → `tools.allowed[]`.
 
 Key sections in `bs-ai-config.json`:
 
@@ -260,6 +315,7 @@ in `internal/handlers/` and `internal/ai/tools/`:
 | `internal/prompt` | `handlers/prompts.go` and the `manage_prompt`, `search_prompts` tools |
 | `internal/bookmark` | `handlers/bookmarks.go`, `bookmark_import.go`, and the `search_bookmarks` tool |
 | `internal/history` | `handlers/history.go`, `history_import.go`, `search.go`, and the `search_history` tool |
+| `internal/quiz` | `handlers/questions.go` and the `search_questions`, `manage_question` tools |
 
 Each package is layered the same way:
 
@@ -455,6 +511,10 @@ known := map[string]bool{
 | `search_todos` | `search_todos.go` | Search todo database (filter by status, priority, text) |
 | `search_calendar` | `search_calendar.go` | Search calendar events (todos with scheduled dates, date range filtering) |
 | `manage_calendar` | `manage_calendar.go` | Manage calendar events: add, edit, remove, get (todos with start_date/end_date/rrule) |
+| `search_questions` | `search_questions.go` | Search the question bank (filter by type, difficulty, tags (any-of array), subject/topic/sub_topic, text); `random: true` draws a random sample of `page_size` matches instead of ranking |
+| `manage_question` | `manage_question.go` | Add, edit, remove, get, or list questions in the question bank (single_choice, multiple_choice, input, chronology); accepts a `tags` array on create/edit |
+| `search_prompts` | `search_prompts.go` | Search the prompt database (filter by user, text query) |
+| `manage_prompt` | `manage_prompt.go` | Add, edit, or remove a prompt |
 | `search_bookmarks` | `search_bookmarks.go` | Search bookmark database |
 | `search_history` | `search_history.go` | Search browsing history |
 | `execute_command` | `execute_command.go` | Run a shell command (30s timeout) |

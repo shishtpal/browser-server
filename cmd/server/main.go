@@ -18,6 +18,7 @@ import (
 	"browser-server/internal/db"
 	"browser-server/internal/handlers"
 	"browser-server/internal/middleware"
+	quizconfig "browser-server/internal/quiz/config"
 )
 
 const defaultPort = "9191"
@@ -49,6 +50,14 @@ func main() {
 		log.Fatalf("Failed to initialize AI module: %v", err)
 	}
 	defer aiModule.Close()
+
+	// The quiz feature is fully gated by bs-quiz-config.json: when the file is
+	// missing or enabled is false, no quiz database is created and no routes
+	// are registered.
+	quizCfg, err := quizconfig.Load()
+	if err != nil {
+		log.Fatalf("Failed to load quiz config: %v", err)
+	}
 
 	if err := auth.Load(); err != nil {
 		if os.IsNotExist(err) {
@@ -127,6 +136,28 @@ func main() {
 	api.HandleFunc("/prompts/{id:[0-9]+}", handlers.GetPromptByID).Methods("GET")
 	api.HandleFunc("/prompts/{id:[0-9]+}", handlers.UpdatePrompt).Methods("PUT")
 	api.HandleFunc("/prompts/{id:[0-9]+}", handlers.DeletePrompt).Methods("DELETE")
+
+	if quizCfg.Enabled {
+		db.InitQuizDB(dataPath)
+		defer db.CloseQuizDB()
+		if err := os.MkdirAll(filepath.Join(dataPath, quizCfg.ImageDir), 0755); err != nil {
+			log.Fatalf("Failed to create quiz image dir: %v", err)
+		}
+		api.HandleFunc("/quiz/questions", handlers.GetQuestions).Methods("GET")
+		api.HandleFunc("/quiz/questions", handlers.CreateQuestion).Methods("POST")
+		api.HandleFunc("/quiz/questions/{id:[0-9]+}", handlers.GetQuestionByID).Methods("GET")
+		api.HandleFunc("/quiz/questions/{id:[0-9]+}", handlers.UpdateQuestion).Methods("PUT")
+		api.HandleFunc("/quiz/questions/{id:[0-9]+}", handlers.DeleteQuestion).Methods("DELETE")
+		api.HandleFunc("/quiz/questions/{id:[0-9]+}/image", handlers.UploadQuestionImage).Methods("POST")
+		api.HandleFunc("/quiz/questions/{id:[0-9]+}/image", handlers.GetQuestionImage).Methods("GET")
+		api.HandleFunc("/quiz/papers", handlers.GeneratePaper).Methods("POST")
+		api.HandleFunc("/quiz/papers", handlers.GetPapers).Methods("GET")
+		api.HandleFunc("/quiz/papers/{id:[0-9]+}", handlers.GetPaperByID).Methods("GET")
+		api.HandleFunc("/quiz/papers/{id:[0-9]+}", handlers.DeletePaper).Methods("DELETE")
+		api.HandleFunc("/quiz/tags", handlers.GetTagVocabulary).Methods("GET")
+		api.HandleFunc("/quiz/stats", handlers.GetQuizStats).Methods("GET")
+		log.Printf("Quiz feature enabled (db: %s)", quizCfg.DBPath)
+	}
 
 	ex, err := os.Executable()
 	if err != nil {

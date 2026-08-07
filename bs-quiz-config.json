@@ -1,0 +1,31 @@
+{
+  "enabled": true,
+  "db_path": ".data/quiz.db",
+  "image_dir": ".data/quiz-images",
+  "limits": {
+    "max_question_length": 2000,
+    "max_explanation_length": 20000,
+    "max_option_length": 500,
+    "max_chronology_items": 20,
+    "max_options_per_question": 10,
+    "max_image_bytes": 5242880,
+    "max_paper_size": 200,
+    "max_papers_per_user": 100
+  },
+  "allowed_question_types": [
+    "single_choice", "multiple_choice", "input", "chronology"
+  ],
+  "allowed_difficulties": ["easy", "medium", "hard"],
+  "tag_categories": ["subject", "topic", "sub_topic"],
+  "ai_tools": {
+    "enabled": true,
+    "search_questions": true,
+    "manage_question": true
+  },
+  "paper_generation": {
+    "default_sample_strategy": "random",
+    "allow_duplicate_questions_within_paper": false
+  },
+  "retention_days": 365,
+  "cors_enabled": false
+}

@@ -78,6 +78,19 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "PUT", Path: "/api/prompts/{id}", Description: "Update prompt by ID"},
 		{Method: "DELETE", Path: "/api/prompts/{id}", Description: "Delete prompt by ID"},
 		{Method: "GET", Path: "/api/prompts/search", Description: "Fuzzy search prompts (params: user_id, q, limit)"},
+		{Method: "GET", Path: "/api/quiz/questions", Description: "List questions (filters: user_id, type, difficulty, tag (repeatable), subject, topic, sub_topic, q, limit, offset)"},
+		{Method: "POST", Path: "/api/quiz/questions", Description: "Create a question"},
+		{Method: "GET", Path: "/api/quiz/questions/{id}", Description: "Get question by ID"},
+		{Method: "PUT", Path: "/api/quiz/questions/{id}", Description: "Update question by ID"},
+		{Method: "DELETE", Path: "/api/quiz/questions/{id}", Description: "Delete question by ID"},
+		{Method: "POST", Path: "/api/quiz/questions/{id}/image", Description: "Upload an image for a question (multipart: file)"},
+		{Method: "GET", Path: "/api/quiz/questions/{id}/image", Description: "Get a question's image"},
+		{Method: "POST", Path: "/api/quiz/papers", Description: "Generate and persist a sectioned question paper (body: user_id, title, sections)"},
+		{Method: "GET", Path: "/api/quiz/papers", Description: "List generated papers (filters: user_id, limit, offset)"},
+		{Method: "GET", Path: "/api/quiz/papers/{id}", Description: "Get a paper with its full question list"},
+		{Method: "DELETE", Path: "/api/quiz/papers/{id}", Description: "Delete a paper"},
+		{Method: "GET", Path: "/api/quiz/tags", Description: "Get distinct tag/subject/topic/sub_topic vocabulary (filter: user_id)"},
+		{Method: "GET", Path: "/api/quiz/stats", Description: "Get question counts grouped by type, difficulty, and tag (filter: user_id)"},
 	}
 
 	w.Header().Set("Content-Type", "application/json")

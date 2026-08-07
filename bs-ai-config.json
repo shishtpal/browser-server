@@ -54,6 +54,8 @@
             "search_tool",
             "get_current_time",
             "ask_questions",
+            "search_questions",
+            "manage_question",
             "search_todos",
             "add_todo_record",
             "update_todo_record",

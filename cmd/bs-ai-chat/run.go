@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
@@ -45,6 +46,21 @@ func runCLI(opts options) int {
 		return 1
 	}
 	defer rt.Close()
+	if opts.verbose {
+		printConfigPath("AI config", rt.Config.Path)
+		if rt.Config.Enabled {
+			printConfigPath("AI models", rt.Config.ModelsPath)
+			baseDir := filepath.Dir(rt.Config.Path)
+			printConfigPath("AI image models", filepath.Join(baseDir, "bs-ai-image-models.json"))
+			if rt.Config.Tools.Enabled {
+				mcpPath := os.Getenv("BS_AI_MCP_PATH")
+				if mcpPath == "" {
+					mcpPath = filepath.Join(baseDir, "bs-ai-mcp.json")
+				}
+				printConfigPath("AI MCP", mcpPath)
+			}
+		}
+	}
 
 	if opts.listModels {
 		return listModels(rt)
@@ -83,6 +99,9 @@ func runCLI(opts options) int {
 		if quizErr != nil {
 			fmt.Fprintf(os.Stderr, "Error: load quiz config: %v\n", quizErr)
 			return 1
+		}
+		if opts.verbose {
+			printConfigPath("Quiz config", quizCfg.Path)
 		}
 		if quizCfg.Enabled {
 			db.InitQuizDB(dataPath)
@@ -207,6 +226,13 @@ func runCLI(opts options) int {
 	}
 	render.Finish(resp, providerName, modelID)
 	return 0
+}
+
+func printConfigPath(label, path string) {
+	if absolute, err := filepath.Abs(path); err == nil {
+		path = absolute
+	}
+	fmt.Fprintf(os.Stderr, "%s: %s\n", label, path)
 }
 
 // listModels prints the configured providers and models (no model call).

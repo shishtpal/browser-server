@@ -110,7 +110,6 @@ const emit = defineEmits<{
   delete: [id: number]
   viewScreenshot: [todo: Todo]
   'toggle-expand': [id: number]
-  'toggle-subtask': [todo: Todo]
 }>()
 
 const screenshotUrl = computed(() => props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '')

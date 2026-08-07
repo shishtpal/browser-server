@@ -20,14 +20,17 @@ export function useTodoSubtasks(initialSubtasks: Todo[], parentId: Ref<number | 
   }
 
   async function toggleSubtask(subtask: Todo) {
+    error.value = null
     try {
       const newStatus = subtask.status === 'completed' ? 'pending' : 'completed'
-      await updateTodo(subtask.id, { status: newStatus })
+      const updated = await updateTodo(subtask.id, { status: newStatus })
       subtasks.value = subtasks.value.map(t =>
-        t.id === subtask.id ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t
+        t.id === subtask.id ? { ...t, ...updated, subtasks: t.subtasks || [] } : t
       )
+      return subtasks.value.find(t => t.id === subtask.id) || null
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to toggle subtask'
+      return null
     }
   }
 

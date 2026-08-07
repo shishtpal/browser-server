@@ -60,10 +60,11 @@ const columnLists = ref<Record<string, Todo[]>>({})
 watch(() => props.todos, (newTodos) => {
   const map: Record<string, Todo[]> = {}
   for (const p of PRIORITIES) {
-    map[p.value] = newTodos.filter(t => t.priority === p.value)
+    map[p.value] = []
   }
+  for (const todo of newTodos) map[todo.priority]?.push(todo)
   columnLists.value = map
-}, { immediate: true, deep: true })
+}, { immediate: true })
 
 const columnCounts = computed(() => {
   const counts: Record<string, number> = {}

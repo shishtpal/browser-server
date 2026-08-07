@@ -208,9 +208,9 @@ async function saveEdit(subtask: Todo) {
 }
 
 // ── Actions ───────────────────────────────────────────────────────────
-function onToggleSubtask(subtask: Todo) {
-  toggleSubtask(subtask)
-  emit('toggle-subtask', subtask)
+async function onToggleSubtask(subtask: Todo) {
+  const updated = await toggleSubtask(subtask)
+  if (updated) emit('toggle-subtask', updated)
 }
 
 function onRemoveSubtask(id: number) {

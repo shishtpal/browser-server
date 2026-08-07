@@ -141,7 +141,6 @@
                   @start-edit="openEditModal"
                   @delete="confirmDelete"
                   @view-screenshot="openScreenshot"
-                  @toggle-subtask="toggleTodo"
                   @mousedown="onRowMouseDown"
                   @dragstart="onRowDragStart($event, todo.id)"
                   @dragover.prevent="onRowDragOver($event, todo.id)"
@@ -248,14 +247,10 @@ import TodoGridView from './todos/TodoGridView.vue'
 import TodoSubtaskList from './todos/TodoSubtaskList.vue'
 import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
 import { useModal } from '@browser-server/shared-modal'
-import { getScreenshotUrl, reorderTodos, updateTodo } from '../lib/api'
+import { getScreenshotUrl, reorderTodos } from '../lib/api'
 
 const { users, currentUserId, setUser, clearUser } = useUser()
 const selectedUserId = ref<number | null>(currentUserId.value)
-
-function clearAllFilters() {
-  
-}
 
 const {
   todos,
@@ -273,6 +268,7 @@ const {
   displayedTodos,
   loadTodos,
   addTodo,
+  updateTodoItem,
   toggleTodo,
   togglePinned,
   archiveTodo,
@@ -282,7 +278,6 @@ const {
   dueDate,
   tags,
   sort,
-  reorder,
   expandedTodoIds,
 } = useTodos(selectedUserId)
 
@@ -292,6 +287,12 @@ const { selectedPriority } = priority
 const { dueDateFilter } = dueDate
 const { allTags, selectedTag } = tags
 const { sortField, sortDir, setSort, toggleDir: toggleSortDir } = sort
+
+function clearAllFilters() {
+  selectedPriority.value = null
+  dueDateFilter.value = null
+  selectedTag.value = null
+}
 
 watch(selectedUserId, (id) => {
   if (id) {
@@ -374,8 +375,14 @@ function toggleSubtaskRow(id: number) {
   expandedTodoIds.value = next
 }
 
-function onSubtaskToggled() {
-  loadTodos()
+function onSubtaskToggled(updated: Todo) {
+  const parentIndex = todos.value.findIndex(todo => todo.id === updated.parent_id)
+  if (parentIndex === -1) return
+  const parent = todos.value[parentIndex]
+  todos.value[parentIndex] = {
+    ...parent,
+    subtasks: (parent.subtasks || []).map(subtask => subtask.id === updated.id ? updated : subtask),
+  }
 }
 
 async function onKanbanReorder(items: { id: number; position: number }[]) {
@@ -385,8 +392,7 @@ async function onKanbanReorder(items: { id: number; position: number }[]) {
 
 async function onKanbanPriorityChange(payload: { todo: Todo; newPriority: string; items: { id: number; position: number }[] }) {
   await reorderTodos(payload.items)
-  await updateTodo(payload.todo.id, { priority: payload.newPriority as TodoPriority })
-  await loadTodos()
+  await updateTodoItem(payload.todo.id, { priority: payload.newPriority as TodoPriority })
 }
 
 const screenshotModal = ref<{ open: boolean; url: string; title: string }>({
@@ -431,8 +437,7 @@ async function handleCreate(data: CreateTodoInput) {
 }
 
 async function handleUpdate(id: number, data: Partial<Todo>) {
-  await updateTodo(id, data)
-  await loadTodos()
+  await updateTodoItem(id, data)
 }
 
 async function handleDelete() {

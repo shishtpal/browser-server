@@ -6,7 +6,6 @@ import { useTodoDueDate } from './useTodoDueDate'
 import { useTodoTags } from './useTodoTags'
 import { useTodoSort } from './useTodoSort'
 
-import { useTodoReorder } from './useTodoReorder'
 import { isOverdue, isDueToday, isDueThisWeek } from './useTodoDueDate'
 import { useLocalStorage, useSessionStorage } from '@vueuse/core'
 
@@ -28,12 +27,24 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     { label: 'Archived', value: 'archived' as const },
   ]
 
-  const totalCount = computed(() => todos.value.filter(t => t.status !== 'archived').length)
-  const activeCount = computed(() => todos.value.filter(t => t.status === 'pending').length)
-  const inProgressCount = computed(() => todos.value.filter(t => t.status === 'in_progress').length)
-  const completedCount = computed(() => todos.value.filter(t => t.status === 'completed').length)
-  const archivedCount = computed(() => todos.value.filter(t => t.status === 'archived').length)
-  const overdueCount = computed(() => todos.value.filter(t => (t.status === 'pending' || t.status === 'in_progress') && t.start_date && isOverdue(t)).length)
+  const counts = computed(() => {
+    const result = { total: 0, active: 0, inProgress: 0, completed: 0, archived: 0, overdue: 0 }
+    for (const todo of todos.value) {
+      if (todo.status === 'archived') result.archived++
+      else result.total++
+      if (todo.status === 'pending') result.active++
+      else if (todo.status === 'in_progress') result.inProgress++
+      else if (todo.status === 'completed') result.completed++
+      if ((todo.status === 'pending' || todo.status === 'in_progress') && todo.start_date && isOverdue(todo)) result.overdue++
+    }
+    return result
+  })
+  const totalCount = computed(() => counts.value.total)
+  const activeCount = computed(() => counts.value.active)
+  const inProgressCount = computed(() => counts.value.inProgress)
+  const completedCount = computed(() => counts.value.completed)
+  const archivedCount = computed(() => counts.value.archived)
+  const overdueCount = computed(() => counts.value.overdue)
 
   const priority = useTodoPriority()
   const dueDate = useTodoDueDate()
@@ -101,14 +112,25 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     }
   }
 
-  const reorder = useTodoReorder(todos, loadTodos)
+  function replaceTodo(updated: Todo) {
+    const index = todos.value.findIndex(todo => todo.id === updated.id)
+    if (index === -1) return
+    const current = todos.value[index]
+    todos.value[index] = { ...current, ...updated, subtasks: current.subtasks || [] }
+  }
+
+  async function updateTodoItem(id: number, data: Partial<Todo>) {
+    const updated = await updateTodo(id, data)
+    replaceTodo(updated)
+    return updated
+  }
 
   const addTodo = async (data: { title: string; description?: string; priority?: string; start_date?: string | null; end_date?: string | null; domain?: string; color?: string; rrule?: string | null; tags?: string[] }) => {
     if (!selectedUserId.value) return
     const title = data.title.trim()
     if (!title) return
     try {
-      await createTodo({
+      const created = await createTodo({
         user_id: selectedUserId.value,
         title,
         description: data.description || undefined,
@@ -120,7 +142,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
         rrule: data.rrule || undefined,
         tags: data.tags || [],
       })
-      await loadTodos()
+      todos.value.push({ ...created, subtasks: created.subtasks || [] })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to add todo'
     }
@@ -134,8 +156,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
         completed: 'pending',
       }
       const newStatus: TodoStatus = cycle[todo.status] || 'pending'
-      await updateTodo(todo.id, { status: newStatus })
-      await loadTodos()
+      await updateTodoItem(todo.id, { status: newStatus })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update todo'
     }
@@ -143,8 +164,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const togglePinned = async (todo: Todo) => {
     try {
-      await updateTodo(todo.id, { pinned: !todo.pinned })
-      await loadTodos()
+      await updateTodoItem(todo.id, { pinned: !todo.pinned })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update pin'
     }
@@ -152,8 +172,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const archiveTodo = async (todo: Todo) => {
     try {
-      await updateTodo(todo.id, { status: 'archived' })
-      await loadTodos()
+      await updateTodoItem(todo.id, { status: 'archived' })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to archive todo'
     }
@@ -161,8 +180,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const restoreTodo = async (todo: Todo) => {
     try {
-      await updateTodo(todo.id, { status: 'pending' })
-      await loadTodos()
+      await updateTodoItem(todo.id, { status: 'pending' })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to restore todo'
     }
@@ -171,7 +189,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const removeTodo = async (id: number) => {
     try {
       await deleteTodo(id)
-      await loadTodos()
+      todos.value = todos.value.filter(todo => todo.id !== id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete todo'
     }
@@ -197,6 +215,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     displayedTodos,
     loadTodos,
     addTodo,
+    updateTodoItem,
     toggleTodo,
     togglePinned,
     archiveTodo,
@@ -206,7 +225,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     dueDate,
     tags,
     sort,
-    reorder,
     expandedTodoIds,
   }
 }

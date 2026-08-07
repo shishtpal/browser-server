@@ -31,6 +31,22 @@ func runCLI(opts options) int {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Validate --tool-output up front: cheap to fail before touching config or
+	// the network. nil means "auto" — defer to the tools.raw_output config
+	// allowlist; non-nil forces raw (true) or JSON (false) for every tool that
+	// supports it via tools.WithRawOutputOverride.
+	var rawToolOutput *bool
+	switch opts.toolOutput {
+	case "auto":
+	case "raw":
+		rawToolOutput = boolPtr(true)
+	case "json", "":
+		rawToolOutput = boolPtr(false)
+	default:
+		fmt.Fprintf(os.Stderr, "Error: invalid --tool-output %q (want raw, auto, or json)\n", opts.toolOutput)
+		return 1
+	}
+
 	// bootstrap.Init logs the same startup lines as the server (profiles, skills,
 	// MCP summary, "AI enabled with N provider(s)"). Those are noise for a
 	// one-shot CLI run, so they are dropped unless the caller asked for a trace.
@@ -46,6 +62,29 @@ func runCLI(opts options) int {
 		return 1
 	}
 	defer rt.Close()
+
+	// --working-dir: chdir after bootstrap so config/model/MCP files still
+	// resolve relative to the binary (or an explicit --config), but before any
+	// prompt input is read so relative --file/--image paths and cwd-sensitive
+	// tools (execute_command, file tools) run in the requested context.
+	// Data files (.data/*.db) and bs-quiz-config.json resolve via
+	// os.Executable() / env vars, so they stay anchored to the binary.
+	if opts.workingDir != "" {
+		info, statErr := os.Stat(opts.workingDir)
+		if statErr != nil || !info.IsDir() {
+			fmt.Fprintf(os.Stderr, "Error: --working-dir %q is not a directory\n", opts.workingDir)
+			return 1
+		}
+		if chdirErr := os.Chdir(opts.workingDir); chdirErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: chdir %s: %v\n", opts.workingDir, chdirErr)
+			return 1
+		}
+		if opts.verbose {
+			if wd, wdErr := os.Getwd(); wdErr == nil {
+				printConfigPath("Working dir", wd)
+			}
+		}
+	}
 	if opts.verbose {
 		printConfigPath("AI config", rt.Config.Path)
 		if rt.Config.Enabled {
@@ -217,6 +256,7 @@ func runCLI(opts options) int {
 		YOLOMode:                  opts.yolo,
 		ActiveTools:               activeTools,
 		Skills:                    skillNames,
+		RawToolOutput:             rawToolOutput,
 		IncludeAllToolDefinitions: true,
 	}
 	resp, err := rt.Service.SubmitStream(ctx, convID, req, render.Emit)
@@ -227,6 +267,8 @@ func runCLI(opts options) int {
 	render.Finish(resp, providerName, modelID)
 	return 0
 }
+
+func boolPtr(b bool) *bool { return &b }
 
 func printConfigPath(label, path string) {
 	if absolute, err := filepath.Abs(path); err == nil {

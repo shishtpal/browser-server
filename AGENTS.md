@@ -275,6 +275,13 @@ Key flags (see `--help` for the full list):
 - `--json` — one structured JSON object on stdout (includes `tool_calls` and
   `reasoning` only under `--verbose`).
 - `--list-models` / `--list-tools` — discovery commands that make no model call.
+- `--tool-output raw|auto|json` — per-request tool result format, mapped onto
+  `SubmitRequest.RawToolOutput`: `raw` forces raw output, `json` (default)
+  forces JSON, `auto` defers to the `tools.raw_output` config allowlist.
+- `--working-dir <path>` — chdir into `path` after bootstrap (config and data
+  files stay anchored to the binary/`--config`) but before reading `--file` /
+  `--image` inputs and before any tool runs, so relative paths and
+  cwd-sensitive tools (`execute_command`, file tools) operate there.
 - `--verbose` — streams reasoning + tool-call trace to stderr. The answer
   always goes to stdout, so `bs-ai-chat "..." > answer.txt` captures exactly
   the answer while the trace stays on the terminal.

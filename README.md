@@ -320,6 +320,13 @@ Get-Content notes.md | ./bin/bs-ai-chat.exe --no-tools
 # Machine-readable output for scripting
 bs-ai-chat.exe --json --yolo --verbose "what time is it?" | ConvertFrom-Json
 
+# Run in the context of another directory (relative paths and cwd-sensitive
+# tools resolve there; config/data still resolve next to the binary)
+bs-ai-chat.exe --working-dir D:\Codings\lang-Go\browser-server --yolo "what does go.mod require?"
+
+# Tool result format: raw | auto (config tools.raw_output allowlist) | json (default)
+bs-ai-chat.exe --yolo --verbose --tool-output raw "search this repo for TODO"
+
 # Continue an existing conversation
 bs-ai-chat.exe --conversation conv_abc123 --no-tools "and in New York?"
 ```

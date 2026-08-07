@@ -36,6 +36,8 @@ type options struct {
 	listModels   bool
 	listTools    bool
 	timeout      time.Duration
+	toolOutput   string
+	workingDir   string
 }
 
 // stringList implements flag.Value for repeatable string flags (--file, --image).
@@ -70,6 +72,8 @@ func run() int {
 	flag.BoolVar(&opts.listModels, "list-models", false, "print configured providers/models and exit")
 	flag.BoolVar(&opts.listTools, "list-tools", false, "print allowed tools (incl. MCP) and exit")
 	flag.DurationVar(&opts.timeout, "timeout", 5*time.Minute, "overall run deadline")
+	flag.StringVar(&opts.toolOutput, "tool-output", "json", "tool result format: raw, auto (tools.raw_output allowlist), or json")
+	flag.StringVar(&opts.workingDir, "working-dir", "", "run as if started in this directory (relative --file/--image paths and cwd-sensitive tools resolve there)")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -116,6 +120,14 @@ Options:
   --list-models         Print configured providers/models and exit
   --list-tools          Print allowed tools (incl. MCP) and exit
   --timeout <duration>  Overall run deadline (default: 5m)
+  --tool-output <mode>  Tool result format: raw | auto | json (default: json).
+                        raw forces raw/plain-text output for tools that support it,
+                        auto defers to the tools.raw_output config allowlist,
+                        json forces structured JSON results.
+  --working-dir <path>  Run in the context of this directory: relative --file/--image
+                        paths and cwd-sensitive tools (execute_command, file tools)
+                        resolve against it. Config and data paths stay anchored to
+                        the binary.
   -h, --help            Show this help
 
 Config path resolution (first match wins):
@@ -126,7 +138,7 @@ Config path resolution (first match wins):
 
 Tools require --yolo: interactive approval is not yet supported in the CLI.
 Use --no-tools to disable them. The assistant's answer goes to stdout; all
-trace output goes to stderr, so `+"`bs-ai-chat \"...\" > answer.txt`"+` captures
+trace output goes to stderr, so 'bs-ai-chat "..." > answer.txt' captures
 exactly the answer.
 `)
 }

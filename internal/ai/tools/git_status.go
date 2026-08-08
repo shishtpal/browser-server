@@ -13,6 +13,22 @@ import (
 //go:embed schemas/git_status.json
 var gitStatusSchema []byte
 
+type gitStatusResult struct {
+	Branch    string       `json:"branch"`
+	IsDirty   bool         `json:"is_dirty"`
+	Staged    []fileChange `json:"staged"`
+	Unstaged  []fileChange `json:"unstaged"`
+	Untracked []string     `json:"untracked"`
+	AheadBy   int          `json:"ahead_by"`
+	BehindBy  int          `json:"behind_by"`
+	Raw       string       `json:"-"`
+}
+
+type fileChange struct {
+	Path   string `json:"path"`
+	Status string `json:"status"`
+}
+
 func registerGitStatus(r *Registry, paths config.PathsConfig) {
 	r.add(Tool{
 		Name:        "git_status",
@@ -20,6 +36,10 @@ func registerGitStatus(r *Registry, paths config.PathsConfig) {
 		Description: "Check the git repository status: current branch, staged/unstaged changes, untracked files, ahead/behind remote",
 		Schema:      json.RawMessage(gitStatusSchema),
 		Execute:     gitStatus(paths),
+		RawContentFunc: func(value any) ([]byte, bool) {
+			result, ok := value.(gitStatusResult)
+			return []byte(result.Raw), ok
+		},
 	})
 }
 
@@ -42,14 +62,9 @@ func gitStatus(paths config.PathsConfig) func(ctx context.Context, raw json.RawM
 			}
 		}
 
-		output, err := runGit(ctx, a.WorkingDir, paths, "status", "--porcelain")
+		output, err := runGit(ctx, a.WorkingDir, paths, "status", "--porcelain=v1", "--branch")
 		if err != nil {
 			return nil, err
-		}
-
-		type fileChange struct {
-			Path   string `json:"path"`
-			Status string `json:"status"`
 		}
 
 		var staged, unstaged []fileChange
@@ -57,7 +72,7 @@ func gitStatus(paths config.PathsConfig) func(ctx context.Context, raw json.RawM
 		isDirty := false
 
 		for _, line := range strings.Split(output, "\n") {
-			if len(line) < 3 {
+			if len(line) < 3 || strings.HasPrefix(line, "## ") {
 				continue
 			}
 			x, y := line[0], line[1]
@@ -88,14 +103,15 @@ func gitStatus(paths config.PathsConfig) func(ctx context.Context, raw json.RawM
 			}
 		}
 
-		return map[string]any{
-			"branch":    branch,
-			"is_dirty":  isDirty,
-			"staged":    staged,
-			"unstaged":  unstaged,
-			"untracked": untracked,
-			"ahead_by":  aheadBy,
-			"behind_by": behindBy,
+		return gitStatusResult{
+			Branch:    branch,
+			IsDirty:   isDirty,
+			Staged:    staged,
+			Unstaged:  unstaged,
+			Untracked: untracked,
+			AheadBy:   aheadBy,
+			BehindBy:  behindBy,
+			Raw:       output,
 		}, nil
 	}
 }

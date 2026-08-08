@@ -151,11 +151,11 @@
       :show-archived="showArchived"
       @close="showMobileSidebar = false"
       @new="
-        startConversation()
+        startConversation();
         showMobileSidebar = false
       "
       @select="
-        handleSelectConversation($event)
+        handleSelectConversation($event);
         showMobileSidebar = false
       "
       @rename="openRename"

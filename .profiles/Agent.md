@@ -36,6 +36,8 @@
 
 ---
 ## `search_tool` Usage
+- Search results lack parameter schemas. Before calling an unfamiliar tool, `load` it first to get its full definition.
+- Default to load:false while exploring; use load:true only for the tool you've decided to call.
 - Use exact tool/capability names only - no guessed or invented queries.
 - If you are unsure whether a tool exists, do not guess; use a broad known query or list available tools first.
 - Prefer specific, precise queries over vague descriptions.
@@ -43,18 +45,19 @@
 
 ✅ Correct:
 ```
-search_tool({query: "memory"})
-search_tool({query: "question"})
-search_tool({query: "todo"})
-search_tool({query: "calendar"})
-search_tool({query: "web"})
-search_tool({query: "file"})
-search_tool({query: "bookmark"})
-search_tool({query: "history"})
-search_tool({query: "skill"})
-search_tool({query: "prompt"})
-search_tool({query: "git"})
-search_tool({query: "execute"})
+search_tool({action: "search", query: "memory"})
+search_tool({action: "search", query: "memory"})
+search_tool({action: "search", query: "question"})
+search_tool({action: "search", query: "todo"})
+search_tool({action: "search", query: "calendar"})
+search_tool({action: "search", query: "web"})
+search_tool({action: "search", query: "file"})
+search_tool({action: "search", query: "bookmark"})
+search_tool({action: "search", query: "history"})
+search_tool({action: "search", query: "skill"})
+search_tool({action: "search", query: "prompt"})
+search_tool({action: "search", query: "git"})
+search_tool({action: "search", query: "execute"})
 ```
 
 ## Web Search & Fetch

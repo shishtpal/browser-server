@@ -33,7 +33,8 @@ func TestFilesystemToolsAreRegistered(t *testing.T) {
 
 func TestSearchToolValidatesArguments(t *testing.T) {
 	r := New(Options{Allowed: []string{SearchToolName, "read_file"}})
-	for _, raw := range []string{`{}`, `{"query":""}`, `{"query":"file","limit":6}`, `{"query":"file","unknown":true}`} {
+	// MaxSearchLimit is 20, so limit=21 exceeds the allowed range.
+	for _, raw := range []string{`{}`, `{"query":""}`, `{"query":"file","limit":21}`, `{"query":"file","unknown":true}`} {
 		if _, err := r.Search([]byte(raw)); err == nil {
 			t.Fatalf("Search(%s) succeeded, want validation error", raw)
 		}
@@ -108,7 +109,8 @@ func TestExternalToolIsSearchableAndExecutable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Matches) != 1 || result.Matches[0].Name != name || result.Matches[0].Category != "MCP: docs" {
+	// Discovery categories are normalized (lowercase, underscores).
+	if len(result.Matches) != 1 || result.Matches[0].Name != name || result.Matches[0].Category != "mcp_docs" {
 		t.Fatalf("matches = %#v", result.Matches)
 	}
 	out, err := r.Execute(context.Background(), name, json.RawMessage(`{}`))

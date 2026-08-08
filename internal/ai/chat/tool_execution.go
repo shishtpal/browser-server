@@ -146,16 +146,12 @@ func (s *Service) processToolCalls(
 			providerToolContent = comment
 		} else if approved {
 			if call.Name == tools.SearchToolName {
-				var searchResult tools.SearchToolResult
-				searchResult, toolErr = s.tools.Search(json.RawMessage(call.Arguments))
+				var discoveryResult tools.DiscoveryResult
+				discoveryResult, toolErr = s.tools.Discover(json.RawMessage(call.Arguments), activeToolSet, loadedToolSet)
 				if toolErr == nil {
-					for i := range searchResult.Matches {
-						match := &searchResult.Matches[i]
-						match.Active = activeToolSet[match.Name]
-						if match.Active {
-							match.Loaded = true
-							loadedToolSet[match.Name] = true
-							searchResult.Loaded = append(searchResult.Loaded, match.Name)
+					if discoveryResult.Load != nil {
+						for _, name := range discoveryResult.Load.Loaded {
+							loadedToolSet[name] = true
 						}
 					}
 					activeToolSet = s.configureToolDefinitions(
@@ -164,7 +160,7 @@ func (s *Service) processToolCalls(
 						loadedToolSet,
 						req.IncludeAllToolDefinitions,
 					)
-					result, toolErr = json.Marshal(searchResult)
+					result, toolErr = s.tools.FormatResult(generationCtx, tools.SearchToolName, discoveryResult)
 				}
 			} else {
 				result, toolErr = s.tools.Execute(generationCtx, call.Name, json.RawMessage(call.Arguments))

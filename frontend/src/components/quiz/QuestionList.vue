@@ -13,7 +13,7 @@
         :value="filterType"
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
-          $emit('update:filterType', ($event.target as HTMLSelectElement).value)
+          $emit('update:filterType', ($event.target as HTMLSelectElement).value);
           $emit('applyFilters')
         "
       >
@@ -27,7 +27,7 @@
         :value="filterDifficulty"
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
-          $emit('update:filterDifficulty', ($event.target as HTMLSelectElement).value)
+          $emit('update:filterDifficulty', ($event.target as HTMLSelectElement).value);
           $emit('applyFilters')
         "
       >
@@ -106,7 +106,7 @@
         :value="filterSubject"
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
-          $emit('update:filterSubject', ($event.target as HTMLSelectElement).value)
+          $emit('update:filterSubject', ($event.target as HTMLSelectElement).value);
           $emit('applyFilters')
         "
       >

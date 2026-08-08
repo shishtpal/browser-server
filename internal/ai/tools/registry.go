@@ -15,8 +15,12 @@ type Tool struct {
 	Name        string
 	Description string
 	Category    string
-	Schema      json.RawMessage
-	Execute     func(context.Context, json.RawMessage) (any, error)
+	// Keywords carry extra search terms for discovery; MCP/external tools are
+	// the intended source. search_tool matches them between category and
+	// description priority.
+	Keywords []string
+	Schema   json.RawMessage
+	Execute  func(context.Context, json.RawMessage) (any, error)
 	// RawContentFunc extracts raw output from an Execute result. When the tool
 	// is listed in tools.raw_output (or a request forces raw mode), the
 	// registry calls this function instead of JSON-marshaling. Return

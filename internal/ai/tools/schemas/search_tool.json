@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "action": {
+            "type": "string",
+            "enum": ["search", "load", "list", "categories"],
+            "description": "Discovery operation to perform"
+        },
+        "query": {
+            "type": "string",
+            "description": "Fuzzy capability query (search only)"
+        },
+        "names": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "Exact tool names to load (load only)"
+        },
+        "category": {
+            "type": "string",
+            "description": "Category to enumerate (list only)"
+        },
+        "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 5,
+            "description": "Maximum results returned (search and list)"
+        },
+        "load": {
+            "type": "boolean",
+            "default": true,
+            "description": "Load returned matches immediately (search only)"
+        }
+    },
+    "required": ["action"],
+    "additionalProperties": false
+}

@@ -4,18 +4,31 @@
       <template #stats>
         <StatCard :value="totalCount" label="Total" variant="dark" color="indigo" />
         <StatCard :value="activeCount" label="Active" variant="primary" color="indigo" />
-        <StatCard v-if="inProgressCount > 0" :value="inProgressCount" label="In Progress" variant="primary" color="cyan" />
+        <StatCard
+          v-if="inProgressCount > 0"
+          :value="inProgressCount"
+          label="In Progress"
+          variant="primary"
+          color="cyan"
+        />
         <StatCard :value="completedCount" label="Done" variant="secondary" color="indigo" />
-        <StatCard v-if="archivedCount > 0" :value="archivedCount" label="Archived" variant="secondary" color="indigo" />
-        <StatCard v-if="overdueCount > 0" :value="overdueCount" label="Overdue" variant="dark" color="amber" />
+        <StatCard
+          v-if="archivedCount > 0"
+          :value="archivedCount"
+          label="Archived"
+          variant="secondary"
+          color="indigo"
+        />
+        <StatCard
+          v-if="overdueCount > 0"
+          :value="overdueCount"
+          label="Overdue"
+          variant="dark"
+          color="amber"
+        />
       </template>
       <template #controls>
-        <UserSelector 
-          id="todo-user" 
-          v-model="selectedUserId" 
-          :users="users" 
-          color="indigo" 
-        />
+        <UserSelector id="todo-user" v-model="selectedUserId" :users="users" color="indigo" />
         <Button
           variant="gradient-indigo"
           size="sm"
@@ -37,7 +50,7 @@
             </svg>
             New Todo
           </span>
-        </Button>        
+        </Button>
       </template>
       <template #actions>
         <TodoActionsBar
@@ -58,46 +71,94 @@
       </template>
     </PageHeader>
 
-    <SelectUserPrompt title="Select a user to manage their todos" :users-count="users.length" :selected-user-id="selectedUserId" />
+    <SelectUserPrompt
+      title="Select a user to manage their todos"
+      :users-count="users.length"
+      :selected-user-id="selectedUserId"
+    />
 
     <LoadingSpinner v-if="isLoading" message="Loading todos..." color="indigo" />
 
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadTodos" />
 
     <div v-else-if="selectedUserId">
-      <div v-if="activeFilter === 'archived'" class="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-300">
-        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M7 8V5h10v3m-9 0v11h8V8m-5 4h2" />
+      <div
+        v-if="activeFilter === 'archived'"
+        class="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-300"
+      >
+        <svg
+          class="h-5 w-5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M5 8h14M7 8V5h10v3m-9 0v11h8V8m-5 4h2"
+          />
         </svg>
-        <span><strong>Archived todos</strong> are hidden from your normal workspace. Restore one to make it active again.</span>
+        <span
+          ><strong>Archived todos</strong> are hidden from your normal workspace. Restore one to
+          make it active again.</span
+        >
       </div>
 
-      <div class="mb-4 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90">
+      <div
+        class="mb-4 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+      >
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
           <label class="relative min-w-0 flex-1">
             <span class="sr-only">Search todos</span>
-            <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+            <svg
+              class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
+              />
             </svg>
             <input
               v-model="searchQuery"
               type="search"
               placeholder="Search titles, descriptions, or tags..."
-              class="w-full rounded-xl border border-gray-300 bg-gray-50 py-2.5 pl-10 pr-10 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-indigo-900/30"
+              class="w-full rounded-xl border border-gray-300 bg-gray-50 py-2.5 pr-10 pl-10 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-indigo-900/30"
             />
             <button
               v-if="searchQuery"
               type="button"
-              class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-gray-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              class="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-gray-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
               aria-label="Clear todo search"
               @click="searchQuery = ''"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12" />
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18 18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </label>
-          <p class="shrink-0 text-xs font-bold text-slate-500 dark:text-slate-400" aria-live="polite">
+          <p
+            class="shrink-0 text-xs font-bold text-slate-500 dark:text-slate-400"
+            aria-live="polite"
+          >
             {{ resultSummary }}
           </p>
         </div>
@@ -105,26 +166,71 @@
 
       <EmptyState
         v-if="displayedTodos.length === 0"
-        :title="searchQuery ? 'No matching todos' : activeFilter === 'archived' ? 'Archive is empty' : 'No todos here'"
-        :description="searchQuery ? `Nothing matches “${searchQuery}”. Try another search.` : activeFilter === 'archived' ? 'Completed todos you archive will appear here.' : 'Create your first task above or change the filters.'"
+        :title="
+          searchQuery
+            ? 'No matching todos'
+            : activeFilter === 'archived'
+              ? 'Archive is empty'
+              : 'No todos here'
+        "
+        :description="
+          searchQuery
+            ? `Nothing matches “${searchQuery}”. Try another search.`
+            : activeFilter === 'archived'
+              ? 'Completed todos you archive will appear here.'
+              : 'Create your first task above or change the filters.'
+        "
         :icon="searchQuery ? 'search' : 'default'"
         color="indigo"
       />
 
       <div v-else>
         <!-- Desktop list (md+): the table, kanban, and grid branches below form one v-if/v-else-if chain. -->
-        <div v-if="view === 'list'" class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
-          <table class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700">
+        <div
+          v-if="view === 'list'"
+          class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors md:block dark:border-slate-700/80 dark:bg-slate-800/90"
+        >
+          <table
+            class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700"
+          >
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
               <tr>
                 <th class="w-14 px-3 py-3"></th>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Title</th>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Description</th>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Due date</th>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Tags</th>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Updated</th>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Subtasks</th>
-                <th class="w-44 px-3 py-3 text-right text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Actions</th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Title
+                </th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Description
+                </th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Due date
+                </th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Tags
+                </th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Updated
+                </th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Subtasks
+                </th>
+                <th
+                  class="w-44 px-3 py-3 text-right text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
@@ -147,9 +253,16 @@
                   @drop="onRowDrop($event, todo.id)"
                   @dragend="onRowDragEnd"
                 />
-                <tr v-if="expandedTodoIds.has(todo.id)" class="bg-indigo-50/40 dark:bg-slate-800/40">
+                <tr
+                  v-if="expandedTodoIds.has(todo.id)"
+                  class="bg-indigo-50/40 dark:bg-slate-800/40"
+                >
                   <td colspan="8" class="px-4 py-3">
-                    <TodoSubtaskList :todo="todo" :default-expanded="true" @toggle-subtask="onSubtaskToggled" />
+                    <TodoSubtaskList
+                      :todo="todo"
+                      :default-expanded="true"
+                      @toggle-subtask="onSubtaskToggled"
+                    />
                   </td>
                 </tr>
               </template>
@@ -188,7 +301,15 @@
         </div>
 
         <!-- Mobile list (md-): separate element that intentionally stays v-if (NOT part of the chain above) so it renders together with the desktop table when view === 'list'. -->
-        <draggable v-if="view === 'list'" v-model="listTodos" item-key="id" handle=".drag-handle" @end="onListDragEnd" tag="ul" class="space-y-2 md:hidden">
+        <draggable
+          v-if="view === 'list'"
+          v-model="listTodos"
+          item-key="id"
+          handle=".drag-handle"
+          @end="onListDragEnd"
+          tag="ul"
+          class="space-y-2 md:hidden"
+        >
           <template #item="{ element: todo }">
             <TodoCard
               :todo="todo"
@@ -206,8 +327,16 @@
       </div>
     </div>
 
-    <Modal :open="screenshotModal.open" :title="screenshotModal.title" @close="screenshotModal.open = false" fullscreen>
-      <img :src="screenshotModal.url" class="w-full h-full rounded-lg border border-gray-200 object-contain dark:border-slate-700" />
+    <Modal
+      :open="screenshotModal.open"
+      :title="screenshotModal.title"
+      @close="screenshotModal.open = false"
+      fullscreen
+    >
+      <img
+        :src="screenshotModal.url"
+        class="h-full w-full rounded-lg border border-gray-200 object-contain dark:border-slate-700"
+      />
     </Modal>
 
     <CalendarTodoModal
@@ -313,9 +442,13 @@ const view = useLocalStorage<TodoView>(`bs.todos.view`, 'list')
 
 const listTodos = ref<Todo[]>([])
 
-watch(displayedTodos, (val) => {
-  listTodos.value = [...val]
-}, { immediate: true })
+watch(
+  displayedTodos,
+  (val) => {
+    listTodos.value = [...val]
+  },
+  { immediate: true },
+)
 
 async function onListDragEnd(event: any) {
   if (event.oldIndex === event.newIndex) return
@@ -354,8 +487,8 @@ function onRowDrop(_event: DragEvent, id: number) {
     dragId.value = null
     return
   }
-  const fromIdx = listTodos.value.findIndex(t => t.id === dragId.value)
-  const toIdx = listTodos.value.findIndex(t => t.id === id)
+  const fromIdx = listTodos.value.findIndex((t) => t.id === dragId.value)
+  const toIdx = listTodos.value.findIndex((t) => t.id === id)
   dragId.value = null
   if (fromIdx === -1 || toIdx === -1) return
   const moved = listTodos.value.splice(fromIdx, 1)[0]
@@ -376,12 +509,14 @@ function toggleSubtaskRow(id: number) {
 }
 
 function onSubtaskToggled(updated: Todo) {
-  const parentIndex = todos.value.findIndex(todo => todo.id === updated.parent_id)
+  const parentIndex = todos.value.findIndex((todo) => todo.id === updated.parent_id)
   if (parentIndex === -1) return
   const parent = todos.value[parentIndex]
   todos.value[parentIndex] = {
     ...parent,
-    subtasks: (parent.subtasks || []).map(subtask => subtask.id === updated.id ? updated : subtask),
+    subtasks: (parent.subtasks || []).map((subtask) =>
+      subtask.id === updated.id ? updated : subtask,
+    ),
   }
 }
 
@@ -390,7 +525,11 @@ async function onKanbanReorder(items: { id: number; position: number }[]) {
   await loadTodos()
 }
 
-async function onKanbanPriorityChange(payload: { todo: Todo; newPriority: string; items: { id: number; position: number }[] }) {
+async function onKanbanPriorityChange(payload: {
+  todo: Todo
+  newPriority: string
+  items: { id: number; position: number }[]
+}) {
   await reorderTodos(payload.items)
   await updateTodoItem(payload.todo.id, { priority: payload.newPriority as TodoPriority })
 }
@@ -453,7 +592,7 @@ const { confirmDelete: modalConfirmDelete } = useModal()
 async function confirmDelete(id: number) {
   const confirmed = await modalConfirmDelete(
     'Delete this todo?',
-    "This action cannot be undone. The todo and its data will be permanently removed.",
+    'This action cannot be undone. The todo and its data will be permanently removed.',
   )
   if (confirmed) {
     await removeTodo(id)

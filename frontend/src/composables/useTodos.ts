@@ -12,13 +12,13 @@ import { useLocalStorage, useSessionStorage } from '@vueuse/core'
 export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<string | null>) {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  
+
   const todos = useSessionStorage<Todo[]>(`bs.todos.todos`, [])
 
   const activeFilter = useLocalStorage<TodoFilter>(`bs.todos.activeFilter`, 'active')
-  
+
   const searchQuery = ref('')
-  
+
   const filters = [
     { label: 'All', value: 'all' as const },
     { label: 'Active', value: 'active' as const },
@@ -35,7 +35,12 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
       if (todo.status === 'pending') result.active++
       else if (todo.status === 'in_progress') result.inProgress++
       else if (todo.status === 'completed') result.completed++
-      if ((todo.status === 'pending' || todo.status === 'in_progress') && todo.start_date && isOverdue(todo)) result.overdue++
+      if (
+        (todo.status === 'pending' || todo.status === 'in_progress') &&
+        todo.start_date &&
+        isOverdue(todo)
+      )
+        result.overdue++
     }
     return result
   })
@@ -53,37 +58,42 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const baseFiltered = computed(() => {
     let list = todos.value
     if (activeFilter.value === 'archived') {
-      list = list.filter(t => t.status === 'archived')
+      list = list.filter((t) => t.status === 'archived')
     } else {
-      list = list.filter(t => t.status !== 'archived')
+      list = list.filter((t) => t.status !== 'archived')
     }
     const query = searchQuery.value.trim().toLowerCase()
     if (query) {
-      list = list.filter(t =>
-        t.title.toLowerCase().includes(query)
-        || t.description?.toLowerCase().includes(query)
-        || (t.tags || []).some(tag => tag.toLowerCase().includes(query)),
+      list = list.filter(
+        (t) =>
+          t.title.toLowerCase().includes(query) ||
+          t.description?.toLowerCase().includes(query) ||
+          (t.tags || []).some((tag) => tag.toLowerCase().includes(query)),
       )
     }
     if (priority.selectedPriority.value) {
-      list = list.filter(t => t.priority === priority.selectedPriority.value)
+      list = list.filter((t) => t.priority === priority.selectedPriority.value)
     }
     if (dueDate.dueDateFilter.value) {
-      list = list.filter(t => {
+      list = list.filter((t) => {
         switch (dueDate.dueDateFilter.value) {
-          case 'overdue': return isOverdue(t)
-          case 'today': return isDueToday(t)
-          case 'this_week': return isDueThisWeek(t)
+          case 'overdue':
+            return isOverdue(t)
+          case 'today':
+            return isDueToday(t)
+          case 'this_week':
+            return isDueThisWeek(t)
         }
         return true
       })
     }
     if (tags.selectedTag.value) {
-      list = list.filter(t => (t.tags || []).includes(tags.selectedTag.value!))
+      list = list.filter((t) => (t.tags || []).includes(tags.selectedTag.value!))
     }
-    if (activeFilter.value === 'active') list = list.filter(t => t.status === 'pending' || t.status === 'in_progress')
-    if (activeFilter.value === 'in_progress') list = list.filter(t => t.status === 'in_progress')
-    if (activeFilter.value === 'completed') list = list.filter(t => t.status === 'completed')
+    if (activeFilter.value === 'active')
+      list = list.filter((t) => t.status === 'pending' || t.status === 'in_progress')
+    if (activeFilter.value === 'in_progress') list = list.filter((t) => t.status === 'in_progress')
+    if (activeFilter.value === 'completed') list = list.filter((t) => t.status === 'completed')
     return list
   })
 
@@ -93,7 +103,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   // Set of TODOs IDs user has clicked to expand for sub-tasks
   const expandedTodoIds = useLocalStorage<Set<number>>(`bs.todos.expandedTodoIds`, new Set(), {
     serializer: {
-      read: (v) => v ? new Set(JSON.parse(v)) : new Set(),
+      read: (v) => (v ? new Set(JSON.parse(v)) : new Set()),
       write: (v) => JSON.stringify([...v]),
     },
   })
@@ -113,7 +123,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   }
 
   function replaceTodo(updated: Todo) {
-    const index = todos.value.findIndex(todo => todo.id === updated.id)
+    const index = todos.value.findIndex((todo) => todo.id === updated.id)
     if (index === -1) return
     const current = todos.value[index]
     todos.value[index] = { ...current, ...updated, subtasks: current.subtasks || [] }
@@ -125,7 +135,17 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     return updated
   }
 
-  const addTodo = async (data: { title: string; description?: string; priority?: string; start_date?: string | null; end_date?: string | null; domain?: string; color?: string; rrule?: string | null; tags?: string[] }) => {
+  const addTodo = async (data: {
+    title: string
+    description?: string
+    priority?: string
+    start_date?: string | null
+    end_date?: string | null
+    domain?: string
+    color?: string
+    rrule?: string | null
+    tags?: string[]
+  }) => {
     if (!selectedUserId.value) return
     const title = data.title.trim()
     if (!title) return
@@ -189,14 +209,16 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
   const removeTodo = async (id: number) => {
     try {
       await deleteTodo(id)
-      todos.value = todos.value.filter(todo => todo.id !== id)
+      todos.value = todos.value.filter((todo) => todo.id !== id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete todo'
     }
   }
 
   if (domainFilter) {
-    watch(domainFilter, () => { if (selectedUserId.value) loadTodos() })
+    watch(domainFilter, () => {
+      if (selectedUserId.value) loadTodos()
+    })
   }
 
   return {

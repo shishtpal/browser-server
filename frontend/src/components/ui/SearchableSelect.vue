@@ -22,9 +22,11 @@
       <svg
         class="ml-1.5 h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-200"
         :class="{ 'rotate-180': isOpen }"
-        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
       >
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
       </svg>
     </button>
 
@@ -39,23 +41,30 @@
     >
       <div
         v-if="isOpen"
-        class="absolute z-[60] mt-1 w-max min-w-[220px] max-w-[min(32rem,80vw)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg shadow-slate-900/5 dark:border-white/10 dark:bg-slate-900 dark:shadow-slate-950/30"
+        class="absolute z-[60] mt-1 w-max max-w-[min(32rem,80vw)] min-w-[220px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg shadow-slate-900/5 dark:border-white/10 dark:bg-slate-900 dark:shadow-slate-950/30"
       >
         <!-- Search input -->
         <div v-if="searchable" class="border-b border-slate-100 p-1.5 dark:border-white/5">
           <div class="relative">
             <svg
-              class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              class="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
             <input
               ref="searchInputRef"
               v-model="searchQuery"
               type="text"
               :placeholder="searchPlaceholder"
-              class="h-7 w-full rounded-md border-0 bg-slate-50 pl-8 pr-2.5 text-[0.8rem] outline-none transition-colors placeholder:text-slate-400 focus:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:bg-slate-800/80"
+              class="h-7 w-full rounded-md border-0 bg-slate-50 pr-2.5 pl-8 text-[0.8rem] transition-colors outline-none placeholder:text-slate-400 focus:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:bg-slate-800/80"
               @keydown.down.prevent="highlightNext"
               @keydown.up.prevent="highlightPrev"
               @keydown.enter.prevent="selectHighlighted"
@@ -83,14 +92,21 @@
               :is-selected="item.value === modelValue"
               :is-highlighted="highlightedIndex === index"
             >
-              <span class="min-w-0 flex-1 whitespace-normal break-words">{{ item.label }}</span>
+              <span class="min-w-0 flex-1 break-words whitespace-normal">{{ item.label }}</span>
             </slot>
             <svg
               v-if="item.value === modelValue"
               class="h-3.5 w-3.5 shrink-0 text-indigo-500 dark:text-indigo-400"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </li>
         </ul>
@@ -120,21 +136,24 @@ export interface SelectItem {
   [key: string]: any
 }
 
-const props = withDefaults(defineProps<{
-  items: SelectItem[]
-  modelValue: string
-  placeholder?: string
-  disabled?: boolean
-  searchable?: boolean
-  searchPlaceholder?: string
-  title?: string
-}>(), {
-  placeholder: 'Select...',
-  disabled: false,
-  searchable: false,
-  searchPlaceholder: 'Search...',
-  title: undefined,
-})
+const props = withDefaults(
+  defineProps<{
+    items: SelectItem[]
+    modelValue: string
+    placeholder?: string
+    disabled?: boolean
+    searchable?: boolean
+    searchPlaceholder?: string
+    title?: string
+  }>(),
+  {
+    placeholder: 'Select...',
+    disabled: false,
+    searchable: false,
+    searchPlaceholder: 'Search...',
+    title: undefined,
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -147,20 +166,17 @@ const isOpen = ref(false)
 const searchQuery = ref('')
 const highlightedIndex = ref(-1)
 
-const selectedItem = computed(() =>
-  props.items.find(item => item.value === props.modelValue) ?? null
+const selectedItem = computed(
+  () => props.items.find((item) => item.value === props.modelValue) ?? null,
 )
 
-const displayLabel = computed(() =>
-  selectedItem.value?.label ?? props.placeholder
-)
+const displayLabel = computed(() => selectedItem.value?.label ?? props.placeholder)
 
 const filteredItems = computed(() => {
   if (!props.searchable || !searchQuery.value) return props.items
   const query = searchQuery.value.toLowerCase()
-  return props.items.filter(item =>
-    item.label.toLowerCase().includes(query) ||
-    item.value.toLowerCase().includes(query)
+  return props.items.filter(
+    (item) => item.label.toLowerCase().includes(query) || item.value.toLowerCase().includes(query),
   )
 })
 
@@ -182,10 +198,8 @@ function getItemClasses(item: SelectItem, index: number): Record<string, boolean
       isSelected && !isHighlighted,
     'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200':
       isSelected && isHighlighted,
-    'bg-slate-100 text-slate-900 dark:bg-white/5 dark:text-slate-100':
-      !isSelected && isHighlighted,
-    'text-slate-700 dark:text-slate-300':
-      !isSelected && !isHighlighted,
+    'bg-slate-100 text-slate-900 dark:bg-white/5 dark:text-slate-100': !isSelected && isHighlighted,
+    'text-slate-700 dark:text-slate-300': !isSelected && !isHighlighted,
     'opacity-50 pointer-events-none': item.disabled === true,
   }
 }
@@ -229,9 +243,7 @@ function highlightNext() {
 function highlightPrev() {
   if (filteredItems.value.length === 0) return
   highlightedIndex.value =
-    highlightedIndex.value <= 0
-      ? filteredItems.value.length - 1
-      : highlightedIndex.value - 1
+    highlightedIndex.value <= 0 ? filteredItems.value.length - 1 : highlightedIndex.value - 1
   scrollToHighlighted()
 }
 

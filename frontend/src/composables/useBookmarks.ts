@@ -20,16 +20,14 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
   const editing = ref<BookmarkResponse | null>(null)
   const editForm = ref({ title: '', url: '', description: '', tagsStr: '' })
 
-  const allTags = computed(() =>
-    Array.from(new Set(bookmarks.value.flatMap(b => b.tags))).sort()
-  )
+  const allTags = computed(() => Array.from(new Set(bookmarks.value.flatMap((b) => b.tags))).sort())
 
   const matchesColumn = (b: BookmarkResponse, col: BookmarkSearchColumn, term: string): boolean => {
     if (col === 'title') return b.title.toLowerCase().includes(term)
     if (col === 'url') return b.url.toLowerCase().includes(term)
     if (col === 'description') return (b.description || '').toLowerCase().includes(term)
     if (col === 'folder') return (b.folder_path || '').toLowerCase().includes(term)
-    if (col === 'tags') return b.tags.some(t => t.toLowerCase().includes(term))
+    if (col === 'tags') return b.tags.some((t) => t.toLowerCase().includes(term))
     return [b.title, b.url, b.description, b.folder_path, ...b.tags]
       .filter(Boolean)
       .join(' ')
@@ -42,7 +40,7 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
     if (!q) return bookmarks.value
     const col = searchColumn.value
     const terms = q.split(/\s+/).filter(Boolean)
-    return bookmarks.value.filter(b => terms.every(t => matchesColumn(b, col, t)))
+    return bookmarks.value.filter((b) => terms.every((t) => matchesColumn(b, col, t)))
   })
 
   const loadBookmarks = async () => {
@@ -61,7 +59,10 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
   const addBookmark = async () => {
     if (!selectedUserId.value || !newTitle.value.trim() || !newUrl.value.trim()) return
     const tagList = newTags.value
-      ? newTags.value.split(',').map(t => t.trim()).filter(Boolean)
+      ? newTags.value
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
       : []
     try {
       await createBookmark({
@@ -98,7 +99,10 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
   const saveEdit = async () => {
     if (!editing.value) return
     const tagList = editForm.value.tagsStr
-      ? editForm.value.tagsStr.split(',').map(t => t.trim()).filter(Boolean)
+      ? editForm.value.tagsStr
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
       : []
     try {
       await updateBookmark(editing.value.id, {

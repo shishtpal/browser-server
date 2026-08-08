@@ -5,7 +5,9 @@
       @mousedown.prevent
     >
       <!-- ── Header ── -->
-      <div class="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-white/5">
+      <div
+        class="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-white/5"
+      >
         <div class="flex items-center gap-2">
           <span class="text-xs text-violet-500">🔍</span>
           <span v-if="loading" class="text-xs font-medium text-slate-400">Searching…</span>
@@ -13,7 +15,9 @@
             {{ results.length }} result{{ results.length === 1 ? '' : 's' }}
           </span>
         </div>
-        <div class="hidden items-center gap-1.5 text-[0.65rem] text-slate-400 sm:flex dark:text-slate-500">
+        <div
+          class="hidden items-center gap-1.5 text-[0.65rem] text-slate-400 sm:flex dark:text-slate-500"
+        >
           <kbd class="rounded border border-slate-200 px-1 dark:border-white/10">↑↓</kbd>
           <span>navigate</span>
           <kbd class="rounded border border-slate-200 px-1 dark:border-white/10">↵</kbd>
@@ -27,7 +31,9 @@
       <div ref="listRef" class="max-h-72 overflow-y-auto overscroll-contain p-1.5">
         <!-- Loading spinner -->
         <div v-if="loading" class="flex items-center justify-center py-8">
-          <div class="h-5 w-5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent"></div>
+          <div
+            class="h-5 w-5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent"
+          ></div>
         </div>
 
         <!-- No query yet -->
@@ -42,7 +48,9 @@
             <!-- Tag header -->
             <div v-if="group.name" class="flex items-center gap-1.5 px-2 pt-2.5 pb-1">
               <span class="text-[0.65rem]">🏷️</span>
-              <span class="text-[0.7em] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <span
+                class="text-[0.7em] font-semibold tracking-wider text-slate-400 uppercase dark:text-slate-500"
+              >
                 {{ group.name }}
               </span>
             </div>
@@ -64,7 +72,9 @@
               <!-- Left accent bar for active item -->
               <div
                 class="mt-0.5 h-8 w-0.5 shrink-0 rounded-full transition-colors"
-                :class="activeIndex === globalIndex(group, idx) ? 'bg-violet-500' : 'bg-transparent'"
+                :class="
+                  activeIndex === globalIndex(group, idx) ? 'bg-violet-500' : 'bg-transparent'
+                "
               ></div>
 
               <!-- Content -->
@@ -131,9 +141,12 @@ function setItemRef(index: number, el: any) {
 }
 
 /* Reset when results change */
-watch(() => props.results.length, () => {
-  activeIndex.value = 0
-})
+watch(
+  () => props.results.length,
+  () => {
+    activeIndex.value = 0
+  },
+)
 
 /* Scroll active item into view */
 watch(activeIndex, (idx) => {
@@ -197,10 +210,14 @@ defineExpose({ move, activate })
 }
 
 .dropdown-enter-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 .dropdown-leave-active {
-  transition: opacity 0.1s ease, transform 0.1s ease;
+  transition:
+    opacity 0.1s ease,
+    transform 0.1s ease;
 }
 .dropdown-enter-from,
 .dropdown-leave-to {

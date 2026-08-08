@@ -1,26 +1,26 @@
 <template>
   <div
     :class="cardClasses"
-    class="rounded-2xl p-3 sm:p-4 cursor-pointer transition-all duration-200 group hover:-translate-y-0.5"
+    class="group cursor-pointer rounded-2xl p-3 transition-all duration-200 hover:-translate-y-0.5 sm:p-4"
     @click="emit('monthClick', monthIndex)"
   >
     <!-- Header: Month Name & Badges -->
-    <div class="flex items-center justify-between mb-3">
+    <div class="mb-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <h3 class="text-sm font-semibold tracking-tight" :class="labelClass">
           {{ label }}
         </h3>
-        <span 
-          v-if="isCurrentMonth" 
-          class="flex h-4 items-center rounded-full bg-indigo-600 px-1.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm shadow-indigo-500/30 dark:bg-indigo-500"
+        <span
+          v-if="isCurrentMonth"
+          class="flex h-4 items-center rounded-full bg-indigo-600 px-1.5 text-[9px] font-bold tracking-wide text-white uppercase shadow-sm shadow-indigo-500/30 dark:bg-indigo-500"
         >
           Today
         </span>
       </div>
-      
-      <span 
-        v-if="totalTodos > 0" 
-        class="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full" 
+
+      <span
+        v-if="totalTodos > 0"
+        class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
         :class="countClass"
       >
         {{ totalTodos }}
@@ -28,11 +28,11 @@
     </div>
 
     <!-- Mini Calendar Grid -->
-    <div class="grid grid-cols-7 gap-y-1 gap-x-0.5">
+    <div class="grid grid-cols-7 gap-x-0.5 gap-y-1">
       <div
         v-for="d in dayHeaders"
         :key="d"
-        class="text-[9px] text-center text-slate-400 dark:text-slate-500 font-medium select-none pb-0.5"
+        class="pb-0.5 text-center text-[9px] font-medium text-slate-400 select-none dark:text-slate-500"
       >
         {{ d }}
       </div>
@@ -46,7 +46,7 @@
         <span class="leading-none">{{ day.day }}</span>
         <span
           v-if="day.count > 0"
-          class="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 flex h-3 min-w-3 items-center justify-center rounded-full bg-indigo-600 px-0.5 text-[7px] font-bold leading-none text-white shadow-sm ring-1 ring-white/80 dark:bg-indigo-500 dark:ring-slate-900/80"
+          class="absolute right-0 bottom-0 flex h-3 min-w-3 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full bg-indigo-600 px-0.5 text-[7px] leading-none font-bold text-white shadow-sm ring-1 ring-white/80 dark:bg-indigo-500 dark:ring-slate-900/80"
         >
           {{ day.count }}
         </span>
@@ -135,7 +135,10 @@ const dayData = computed(() => {
       day: current.getDate(),
       count: todoCountMap.value.get(dateStr) || 0, // Use optimized map
       isCurrentMonth: current.getMonth() === props.monthIndex,
-      isToday: current.getFullYear() === today.getFullYear() && current.getMonth() === today.getMonth() && current.getDate() === today.getDate(),
+      isToday:
+        current.getFullYear() === today.getFullYear() &&
+        current.getMonth() === today.getMonth() &&
+        current.getDate() === today.getDate(),
       isWeekend: current.getDay() === 0 || current.getDay() === 6,
     })
     current.setDate(current.getDate() + 1)
@@ -169,25 +172,31 @@ const countClass = computed(() => {
   return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
 })
 
-function dayClasses(day: { isToday: boolean; count: number; isWeekend: boolean; isCurrentMonth: boolean }) {
-  const base = 'relative aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-colors cursor-pointer'
-  
+function dayClasses(day: {
+  isToday: boolean
+  count: number
+  isWeekend: boolean
+  isCurrentMonth: boolean
+}) {
+  const base =
+    'relative aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-colors cursor-pointer'
+
   if (!day.isCurrentMonth) {
     return `${base} text-slate-300 dark:text-slate-700`
   }
-  
+
   if (day.isToday) {
     return `${base} bg-indigo-600 text-white font-bold shadow-sm shadow-indigo-500/40 dark:bg-indigo-500`
-  } 
-  
+  }
+
   if (day.count > 0) {
     return `${base} ${getHeatmapColor(day.count)}`
-  } 
-  
+  }
+
   if (day.isWeekend) {
     return `${base} text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50`
-  } 
-  
+  }
+
   return `${base} text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50`
 }
 

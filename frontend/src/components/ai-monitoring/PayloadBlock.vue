@@ -21,7 +21,7 @@
       <button
         v-if="formattedPayload"
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:cursor-not-allowed dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
         @click="copy"
       >
         {{ copied ? 'Copied!' : copyFailed ? 'Copy failed' : 'Copy JSON' }}
@@ -30,7 +30,7 @@
 
     <pre
       v-if="formattedPayload"
-      class="max-h-[28rem] overflow-auto bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100 scrollbar-thin scrollbar-track-slate-900 scrollbar-thumb-slate-700"
+      class="max-h-[28rem] scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900 overflow-auto bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100"
     >
       <code class="whitespace-pre">{{ formattedPayload.value }}</code>
     </pre>
@@ -82,7 +82,7 @@ const formatPayload = (payload: unknown): FormattedPayload | null => {
   if (typeof payload === 'string') {
     try {
       return {
-        value: "\n" + JSON.stringify(JSON.parse(payload), null, 2),
+        value: '\n' + JSON.stringify(JSON.parse(payload), null, 2),
         isJson: true,
       }
     } catch {

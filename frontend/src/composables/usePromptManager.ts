@@ -45,7 +45,10 @@ export function usePromptManager(deps: PromptManagerDeps) {
   const snapshot = ref('')
 
   const parsedTags = computed(() =>
-    tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean),
+    tagsInput.value
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean),
   )
 
   const isDirty = computed(() => {
@@ -53,8 +56,9 @@ export function usePromptManager(deps: PromptManagerDeps) {
     return JSON.stringify({ ...draft.value, tags: parsedTags.value }) !== snapshot.value
   })
 
-  const canSave = computed(() =>
-    !!draft.value && draft.value.title.trim().length > 0 && draft.value.content.trim().length > 0,
+  const canSave = computed(
+    () =>
+      !!draft.value && draft.value.title.trim().length > 0 && draft.value.content.trim().length > 0,
   )
 
   const activeTagLabel = computed(() => {
@@ -68,25 +72,29 @@ export function usePromptManager(deps: PromptManagerDeps) {
     const selectedTag = activeTag.value
 
     if (selectedTag === UNTAGGED_FILTER) {
-      list = list.filter((p) => !(p.tags?.length))
+      list = list.filter((p) => !p.tags?.length)
     } else if (typeof selectedTag === 'string') {
       list = list.filter((p) => (p.tags || []).includes(selectedTag))
     }
 
     const q = search.value.trim().toLowerCase()
     if (q) {
-      list = list.filter((p) =>
-        (p.title || '').toLowerCase().includes(q) ||
-        (p.description || '').toLowerCase().includes(q) ||
-        (p.content || '').toLowerCase().includes(q) ||
-        (p.tags || []).some((t) => t.toLowerCase().includes(q)),
+      list = list.filter(
+        (p) =>
+          (p.title || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q) ||
+          (p.content || '').toLowerCase().includes(q) ||
+          (p.tags || []).some((t) => t.toLowerCase().includes(q)),
       )
     }
 
     return list.sort((a, b) => {
       if (sortBy.value === 'title') return (a.title || '').localeCompare(b.title || '')
       const key = sortBy.value === 'created' ? 'created_at' : 'updated_at'
-      return new Date(b[key] || b.created_at || 0).getTime() - new Date(a[key] || a.created_at || 0).getTime()
+      return (
+        new Date(b[key] || b.created_at || 0).getTime() -
+        new Date(a[key] || a.created_at || 0).getTime()
+      )
     })
   })
 

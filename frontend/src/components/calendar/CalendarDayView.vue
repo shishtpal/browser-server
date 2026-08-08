@@ -1,10 +1,16 @@
 <template>
   <div class="flex flex-col gap-4">
     <!-- Day summary header -->
-    <div class="flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white p-3 dark:border-slate-700/80 dark:bg-slate-800/90">
+    <div
+      class="flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white p-3 dark:border-slate-700/80 dark:bg-slate-800/90"
+    >
       <div
         class="flex h-12 w-12 items-center justify-center rounded-xl text-xl font-black"
-        :class="day?.isToday ? 'bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'"
+        :class="
+          day?.isToday
+            ? 'bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900'
+            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+        "
       >
         {{ dayNumber }}
       </div>
@@ -18,16 +24,20 @@
 
     <!-- Timeline -->
     <div class="flex-1 overflow-auto">
-      <div class="flex flex-col gap-px rounded-xl border border-gray-200/80 bg-gray-200/80 dark:border-slate-700/80 dark:bg-slate-700/80">
+      <div
+        class="flex flex-col gap-px rounded-xl border border-gray-200/80 bg-gray-200/80 dark:border-slate-700/80 dark:bg-slate-700/80"
+      >
         <div
           v-for="hour in hours"
           :key="hour"
           class="flex border-b border-gray-200/80 bg-white last:border-b-0 dark:border-slate-700/80 dark:bg-slate-800/90"
         >
-          <div class="w-16 shrink-0 border-r border-gray-100 px-2 py-2 text-right text-[10px] font-black text-slate-400 dark:border-slate-700/60 dark:text-slate-500">
+          <div
+            class="w-16 shrink-0 border-r border-gray-100 px-2 py-2 text-right text-[10px] font-black text-slate-400 dark:border-slate-700/60 dark:text-slate-500"
+          >
             {{ formatHour(hour) }}
           </div>
-          <div class="flex-1 min-h-[60px] p-1.5">
+          <div class="min-h-[60px] flex-1 p-1.5">
             <div v-if="hour === 0" class="flex flex-col gap-1.5">
               <button
                 v-for="todo in dayTodos"
@@ -38,10 +48,19 @@
                 @click.stop="emit('todoClick', todo)"
               >
                 <div class="flex items-center gap-1.5">
-                  <span class="h-2 w-2 shrink-0 rounded-full" :class="priorityDot(todo.priority)"></span>
-                  <span class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ todo.title }}</span>
+                  <span
+                    class="h-2 w-2 shrink-0 rounded-full"
+                    :class="priorityDot(todo.priority)"
+                  ></span>
+                  <span class="text-xs font-bold text-slate-700 dark:text-slate-200">{{
+                    todo.title
+                  }}</span>
                 </div>
-                <div v-if="todo.description" class="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-400" v-html="linkifyDescription(todo.description)"></div>
+                <div
+                  v-if="todo.description"
+                  class="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-400"
+                  v-html="linkifyDescription(todo.description)"
+                ></div>
               </button>
             </div>
           </div>
@@ -82,7 +101,11 @@ const dayName = computed(() => {
 
 const fullDate = computed(() => {
   if (!props.day) return ''
-  return new Date(props.day.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  return new Date(props.day.date + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
 })
 
 function formatHour(hour: number) {

@@ -10,10 +10,14 @@ export const PRIORITIES: { value: TodoPriority; label: string; color: string; ac
 
 export function prioritySortWeight(p: TodoPriority): number {
   switch (p) {
-    case 'urgent': return 0
-    case 'high': return 1
-    case 'medium': return 2
-    case 'low': return 3
+    case 'urgent':
+      return 0
+    case 'high':
+      return 1
+    case 'medium':
+      return 2
+    case 'low':
+      return 3
   }
   return 2
 }
@@ -22,19 +26,19 @@ export function useTodoPriority() {
   const selectedPriority: Ref<TodoPriority | null> = ref(null)
 
   const priorityClass = (p: TodoPriority | string) => {
-    const found = PRIORITIES.find(pr => pr.value === p)
+    const found = PRIORITIES.find((pr) => pr.value === p)
     return found ? found.color : 'bg-gray-50 text-gray-600'
   }
 
   const accentClass = (p: TodoPriority | string) => {
-    const found = PRIORITIES.find(pr => pr.value === p)
+    const found = PRIORITIES.find((pr) => pr.value === p)
     return found ? found.accent : 'bg-gray-400'
   }
 
   const filteredByPriority = (todos: Ref<Todo[]>) =>
     computed(() => {
       if (!selectedPriority.value) return todos.value
-      return todos.value.filter(t => t.priority === selectedPriority.value)
+      return todos.value.filter((t) => t.priority === selectedPriority.value)
     })
 
   function clearPriority() {

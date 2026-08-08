@@ -2,7 +2,11 @@ import { computed, ref, type Ref } from 'vue'
 import { getQuestionCards, reviewQuestion, updateQuestion } from '../lib/api'
 import type { QuestionCardItem, QuestionDifficulty, ReviewRating, TagVocabulary } from '../types'
 
-export function useQuestionCards(userId: Ref<number | null>, vocabulary: Ref<TagVocabulary | null>, onDifficultyChanged?: () => void) {
+export function useQuestionCards(
+  userId: Ref<number | null>,
+  vocabulary: Ref<TagVocabulary | null>,
+  onDifficultyChanged?: () => void,
+) {
   const selectedTags = ref<string[]>([])
   const allQuestions = ref(false)
   const limit = ref(20)
@@ -20,7 +24,9 @@ export function useQuestionCards(userId: Ref<number | null>, vocabulary: Ref<Tag
   let session = 0
 
   const current = computed(() => items.value[0] ?? null)
-  const reviewed = computed(() => Object.values(ratingCounts.value).reduce((sum, count) => sum + count, 0))
+  const reviewed = computed(() =>
+    Object.values(ratingCounts.value).reduce((sum, count) => sum + count, 0),
+  )
   const canStart = computed(() => allQuestions.value || selectedTags.value.length > 0)
   const tagOptions = computed(() => vocabulary.value?.tags ?? [])
 
@@ -48,23 +54,44 @@ export function useQuestionCards(userId: Ref<number | null>, vocabulary: Ref<Tag
     error.value = null
     try {
       practiceMode.value = practice
-      const queue = await getQuestionCards(userId.value, { tags: allQuestions.value ? undefined : selectedTags.value, limit: limit.value, practice })
+      const queue = await getQuestionCards(userId.value, {
+        tags: allQuestions.value ? undefined : selectedTags.value,
+        limit: limit.value,
+        practice,
+      })
       if (activeSession !== session || userId.value === null) return
       items.value = queue.items
       dueCount.value = queue.due_count
       newCount.value = queue.new_count
       answerRevealed.value = false
-		nothingDue.value = queue.items.length === 0
+      nothingDue.value = queue.items.length === 0
       ratingCounts.value = { again: 0, hard: 0, good: 0, easy: 0 }
       phase.value = queue.items.length ? 'reviewing' : 'idle'
     } catch (e) {
-      if (activeSession === session) { phase.value = 'idle'; error.value = e instanceof Error ? e.message : 'Failed to load review cards' }
+      if (activeSession === session) {
+        phase.value = 'idle'
+        error.value = e instanceof Error ? e.message : 'Failed to load review cards'
+      }
     }
   }
 
-  const end = () => { session++; items.value = []; answerRevealed.value = false; nothingDue.value = false; practiceMode.value = false; error.value = null; phase.value = 'idle' }
-  const nextPractice = () => { items.value.shift(); answerRevealed.value = false; if (!items.value.length) phase.value = 'complete' }
-  const reveal = () => { answerRevealed.value = true }
+  const end = () => {
+    session++
+    items.value = []
+    answerRevealed.value = false
+    nothingDue.value = false
+    practiceMode.value = false
+    error.value = null
+    phase.value = 'idle'
+  }
+  const nextPractice = () => {
+    items.value.shift()
+    answerRevealed.value = false
+    if (!items.value.length) phase.value = 'complete'
+  }
+  const reveal = () => {
+    answerRevealed.value = true
+  }
 
   const submitRating = async (rating: ReviewRating) => {
     if (!current.value || !userId.value || isRating.value) return
@@ -78,7 +105,9 @@ export function useQuestionCards(userId: Ref<number | null>, vocabulary: Ref<Tag
       if (!items.value.length) phase.value = 'complete'
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to save review; please try again.'
-    } finally { isRating.value = false }
+    } finally {
+      isRating.value = false
+    }
   }
 
   const changeDifficulty = async (difficulty: QuestionDifficulty) => {
@@ -93,8 +122,36 @@ export function useQuestionCards(userId: Ref<number | null>, vocabulary: Ref<Tag
       onDifficultyChanged?.()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update question difficulty'
-    } finally { isSavingDifficulty.value = false }
+    } finally {
+      isSavingDifficulty.value = false
+    }
   }
 
-  return { selectedTags, allQuestions, limit, items, dueCount, newCount, phase, error, answerRevealed, nothingDue, practiceMode, isRating, isSavingDifficulty, ratingCounts, current, reviewed, canStart, tagOptions, reset, start, end, nextPractice, reveal, submitRating, changeDifficulty }
+  return {
+    selectedTags,
+    allQuestions,
+    limit,
+    items,
+    dueCount,
+    newCount,
+    phase,
+    error,
+    answerRevealed,
+    nothingDue,
+    practiceMode,
+    isRating,
+    isSavingDifficulty,
+    ratingCounts,
+    current,
+    reviewed,
+    canStart,
+    tagOptions,
+    reset,
+    start,
+    end,
+    nextPractice,
+    reveal,
+    submitRating,
+    changeDifficulty,
+  }
 }

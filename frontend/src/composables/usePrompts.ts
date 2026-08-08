@@ -40,7 +40,7 @@ export function usePrompts(userId: Ref<number | null>) {
     return items.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   })
 
-  const untaggedCount = computed(() => prompts.value.filter(p => !(p.tags?.length)).length)
+  const untaggedCount = computed(() => prompts.value.filter((p) => !p.tags?.length).length)
 
   const loadPrompts = async (query?: string | null) => {
     if (!currentUserId.value) return
@@ -85,7 +85,7 @@ export function usePrompts(userId: Ref<number | null>) {
   const editPrompt = async (id: number, data: UpdatePromptInput) => {
     try {
       const resp = await updatePrompt(id, data)
-      const idx = prompts.value.findIndex(p => p.id === id)
+      const idx = prompts.value.findIndex((p) => p.id === id)
       if (idx >= 0) prompts.value[idx] = resp
       return resp
     } catch (e) {
@@ -96,18 +96,21 @@ export function usePrompts(userId: Ref<number | null>) {
   const removePrompt = async (id: number) => {
     try {
       await deletePrompt(id)
-      prompts.value = prompts.value.filter(p => p.id !== id)
+      prompts.value = prompts.value.filter((p) => p.id !== id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete prompt'
     }
   }
 
-  watch(() => currentUserId.value, (val) => {
-    if (val && val > 0) {
-      activeTag.value = null
-      loadPrompts()
-    }
-  })
+  watch(
+    () => currentUserId.value,
+    (val) => {
+      if (val && val > 0) {
+        activeTag.value = null
+        loadPrompts()
+      }
+    },
+  )
 
   return {
     prompts,

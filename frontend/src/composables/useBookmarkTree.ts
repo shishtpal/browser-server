@@ -24,7 +24,12 @@ function buildTree(bms: BookmarkResponse[]): Map<string, TreeFolder> {
   for (const b of bms) {
     const parts = b.folder_path ? b.folder_path.split('/').filter(Boolean) : []
     if (parts.length === 0) {
-      const f = root.get('\0') || { name: 'Unfiled', children: new Map(), bookmarks: [] as BookmarkResponse[], count: 0 }
+      const f = root.get('\0') || {
+        name: 'Unfiled',
+        children: new Map(),
+        bookmarks: [] as BookmarkResponse[],
+        count: 0,
+      }
       f.bookmarks.push(b)
       f.count++
       root.set('\0', f)
@@ -33,7 +38,8 @@ function buildTree(bms: BookmarkResponse[]): Map<string, TreeFolder> {
     let cur = root
     for (let i = 0; i < parts.length; i++) {
       const p = parts[i]
-      if (!cur.has(p)) cur.set(p, { name: p, children: new Map(), bookmarks: [] as BookmarkResponse[], count: 0 })
+      if (!cur.has(p))
+        cur.set(p, { name: p, children: new Map(), bookmarks: [] as BookmarkResponse[], count: 0 })
       const f = cur.get(p)!
       f.count++
       if (i === parts.length - 1) f.bookmarks.push(b)
@@ -64,11 +70,28 @@ function flattenFolder(
   if (searching && hasBms) expanded = true
   const vis = parentVisible
   if (hasBms || node.children.size > 0) {
-    result.push({ key, name: node.name, depth, type: 'folder', expanded, visible: vis, bookmark: null, count: node.count })
+    result.push({
+      key,
+      name: node.name,
+      depth,
+      type: 'folder',
+      expanded,
+      visible: vis,
+      bookmark: null,
+      count: node.count,
+    })
   }
   const childKeys = [...node.children.keys()].sort()
   for (const k of childKeys) {
-    flattenFolder(node.children.get(k)!, depth + 1, vis && expanded, key, result, searching, expandedFolders)
+    flattenFolder(
+      node.children.get(k)!,
+      depth + 1,
+      vis && expanded,
+      key,
+      result,
+      searching,
+      expandedFolders,
+    )
   }
   if (vis && expanded) {
     for (const bm of node.bookmarks) {
@@ -78,7 +101,16 @@ function flattenFolder(
 }
 
 function makeBookmarkEntry(bm: BookmarkResponse, depth: number, visible: boolean): FlatTreeEntry {
-  return { key: 'bm-' + bm.id, name: bm.title, depth, type: 'bookmark', expanded: false, visible, bookmark: bm, count: 0 }
+  return {
+    key: 'bm-' + bm.id,
+    name: bm.title,
+    depth,
+    type: 'bookmark',
+    expanded: false,
+    visible,
+    bookmark: bm,
+    count: 0,
+  }
 }
 
 export function useBookmarkTree(
@@ -101,11 +133,11 @@ export function useBookmarkTree(
     for (const [, folder] of entries) {
       flattenFolder(folder, 0, true, '', result, searching, expandedFolders.value)
     }
-    return result.filter(n => n.visible)
+    return result.filter((n) => n.visible)
   })
 
-  const treeCount = computed(() =>
-    treeNodes.value.filter(n => n.type === 'bookmark' && n.visible).length
+  const treeCount = computed(
+    () => treeNodes.value.filter((n) => n.type === 'bookmark' && n.visible).length,
   )
 
   const toggleTreeFolder = (key: string) => {

@@ -6,14 +6,14 @@ export function useTodoTags(todos: Ref<Todo[]>) {
 
   const allTags: ComputedRef<string[]> = computed(() => {
     const tagSet = new Set<string>()
-    todos.value.forEach(t => t.tags?.forEach(tag => tagSet.add(tag)))
+    todos.value.forEach((t) => t.tags?.forEach((tag) => tagSet.add(tag)))
     return Array.from(tagSet).sort()
   })
 
   const filteredByTag: ComputedRef<Todo[]> = computed(() => {
     const tag = selectedTag.value
     if (!tag) return todos.value
-    return todos.value.filter(t => (t.tags || []).includes(tag))
+    return todos.value.filter((t) => (t.tags || []).includes(tag))
   })
 
   const hasTagFilter = computed(() => selectedTag.value !== null)

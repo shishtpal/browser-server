@@ -6,11 +6,11 @@
     <div class="mb-1 flex items-baseline justify-between">
       <label
         for="image-prompt"
-        class="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400"
+        class="text-xs font-black tracking-wider text-slate-500 uppercase dark:text-slate-400"
       >
-        {{ sourceImage ? "Edit instruction" : "Prompt" }}
+        {{ sourceImage ? 'Edit instruction' : 'Prompt' }}
       </label>
-      <span class="text-[10px] font-semibold tabular-nums text-slate-400 dark:text-slate-500">
+      <span class="text-[10px] font-semibold text-slate-400 tabular-nums dark:text-slate-500">
         {{ prompt.length }}
       </span>
     </div>
@@ -24,7 +24,7 @@
           ? 'Describe the change, e.g. make the sky stormy'
           : 'Describe the image you want to create'
       "
-      class="w-full resize-y rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-violet-900/30"
+      class="w-full resize-y rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-violet-900/30"
       @input="$emit('update:prompt', ($event.target as HTMLTextAreaElement).value)"
       @keydown.enter.meta.prevent="$emit('submit')"
       @keydown.enter.ctrl.prevent="$emit('submit')"
@@ -45,7 +45,7 @@
       />
       <div class="min-w-0 flex-1">
         <p
-          class="text-[10px] font-black uppercase tracking-wider text-violet-700 dark:text-violet-400"
+          class="text-[10px] font-black tracking-wider text-violet-700 uppercase dark:text-violet-400"
         >
           Editing this image
         </p>
@@ -143,53 +143,53 @@
       :loading-text="sourceImage ? 'Editing...' : 'Generating...'"
       :disabled="!prompt.trim()"
     >
-      {{ sourceImage ? "Edit image" : "Generate image" }}
+      {{ sourceImage ? 'Edit image' : 'Generate image' }}
     </Button>
   </form>
 </template>
 
 <script setup lang="ts">
-import type { AIImageModel, GeneratedImage } from "@browser-server/shared-types";
-import { ref } from "vue";
-import { getGeneratedImageUrl } from "../../lib/api/ai";
-import Button from "../ui/Button.vue";
-import FilterPill from "../ui/FilterPill.vue";
+import type { AIImageModel, GeneratedImage } from '@browser-server/shared-types'
+import { ref } from 'vue'
+import { getGeneratedImageUrl } from '../../lib/api/ai'
+import Button from '../ui/Button.vue'
+import FilterPill from '../ui/FilterPill.vue'
 
 defineProps<{
-  prompt: string;
-  provider: string;
-  model: string;
-  size: string;
-  aspectRatio: string;
-  count: number;
-  providerNames: string[];
-  models: AIImageModel[];
-  sizes: string[];
-  aspectRatios: string[];
-  maxImages: number;
-  canEdit: boolean;
-  busy: boolean;
-  sourceImage: GeneratedImage | null;
-}>();
+  prompt: string
+  provider: string
+  model: string
+  size: string
+  aspectRatio: string
+  count: number
+  providerNames: string[]
+  models: AIImageModel[]
+  sizes: string[]
+  aspectRatios: string[]
+  maxImages: number
+  canEdit: boolean
+  busy: boolean
+  sourceImage: GeneratedImage | null
+}>()
 
 defineEmits<{
-  "update:prompt": [value: string];
-  "update:provider": [value: string];
-  "update:model": [value: string];
-  "update:size": [value: string];
-  "update:aspectRatio": [value: string];
-  "update:count": [value: number];
-  "clear-source": [];
-  submit: [];
-}>();
+  'update:prompt': [value: string]
+  'update:provider': [value: string]
+  'update:model': [value: string]
+  'update:size': [value: string]
+  'update:aspectRatio': [value: string]
+  'update:count': [value: number]
+  'clear-source': []
+  submit: []
+}>()
 
-const imageUrl = (id: string) => getGeneratedImageUrl(id);
+const imageUrl = (id: string) => getGeneratedImageUrl(id)
 
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
-defineExpose({ focus: () => textareaRef.value?.focus() });
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+defineExpose({ focus: () => textareaRef.value?.focus() })
 
 const labelClass =
-  "mb-1 block text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400";
+  'mb-1 block text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400'
 const selectClass =
-  "w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-violet-900/30";
+  'w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-violet-900/30'
 </script>

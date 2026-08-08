@@ -43,8 +43,11 @@ export function useChatConversations() {
   const filteredConversations = computed(() => {
     const query = search.value.trim().toLowerCase()
     if (!query) return conversations.value
-    return conversations.value.filter((c) =>
-      c.title.toLowerCase().includes(query) || c.model.toLowerCase().includes(query) || c.preview?.toLowerCase().includes(query)
+    return conversations.value.filter(
+      (c) =>
+        c.title.toLowerCase().includes(query) ||
+        c.model.toLowerCase().includes(query) ||
+        c.preview?.toLowerCase().includes(query),
     )
   })
 
@@ -52,7 +55,11 @@ export function useChatConversations() {
     conversations.value = await listAIConversations(undefined, 50)
   }
 
-  async function createConversation(provider: string, model: string, profile?: string): Promise<AIConversation> {
+  async function createConversation(
+    provider: string,
+    model: string,
+    profile?: string,
+  ): Promise<AIConversation> {
     const conversation = await createAIConversation({ provider, model, profile })
     conversations.value = [conversation, ...conversations.value]
     activeConversation.value = conversation
@@ -73,7 +80,10 @@ export function useChatConversations() {
    */
   async function forkConversation(sourceId: string, messageId: string): Promise<AIConversation> {
     const conversation = await forkAIConversation(sourceId, messageId)
-    conversations.value = [conversation, ...conversations.value.filter((c) => c.id !== conversation.id)]
+    conversations.value = [
+      conversation,
+      ...conversations.value.filter((c) => c.id !== conversation.id),
+    ]
     activeConversation.value = conversation
     const detail = await getAIConversation(conversation.id)
     messages.value = detail.messages ?? []
@@ -96,7 +106,9 @@ export function useChatConversations() {
 
   async function doRename() {
     if (!renameTarget.value || !renameTitle.value.trim()) return
-    const updated = await updateAIConversation(renameTarget.value.id, { title: renameTitle.value.trim() })
+    const updated = await updateAIConversation(renameTarget.value.id, {
+      title: renameTitle.value.trim(),
+    })
     const idx = conversations.value.findIndex((c) => c.id === updated.id)
     if (idx >= 0) conversations.value[idx] = updated
     if (activeConversation.value?.id === updated.id) activeConversation.value = updated
@@ -124,7 +136,10 @@ export function useChatConversations() {
   // Auto-title after first message
   async function autoTitle(firstMessage: string) {
     if (!activeConversation.value) return
-    if (messages.value.filter((m) => m.role === 'user').length === 1 && activeConversation.value.title === 'New chat') {
+    if (
+      messages.value.filter((m) => m.role === 'user').length === 1 &&
+      activeConversation.value.title === 'New chat'
+    ) {
       const title = firstMessage.slice(0, 60)
       activeConversation.value = await updateAIConversation(activeConversation.value.id, { title })
     }

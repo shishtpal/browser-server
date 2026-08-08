@@ -1,4 +1,10 @@
-import type { AIConversation, AIMessage, AIImageAttachment, AIStreamEvent, AIChatAttachmentsConfig } from '@browser-server/shared-types'
+import type {
+  AIConversation,
+  AIMessage,
+  AIImageAttachment,
+  AIStreamEvent,
+  AIChatAttachmentsConfig,
+} from '@browser-server/shared-types'
 import { computed, ref } from 'vue'
 import {
   appendAIMessage,
@@ -91,7 +97,11 @@ export function useChatMessaging(
         const attachment = await uploadAIImageAttachment(conversationId, file, file.name)
         const idx = stagedAttachments.value.findIndex((a) => a.id === id)
         if (idx >= 0) {
-          stagedAttachments.value[idx] = { ...stagedAttachments.value[idx], attachment, uploading: false }
+          stagedAttachments.value[idx] = {
+            ...stagedAttachments.value[idx],
+            attachment,
+            uploading: false,
+          }
         }
       } catch (err) {
         const idx = stagedAttachments.value.findIndex((a) => a.id === id)
@@ -117,7 +127,11 @@ export function useChatMessaging(
     stagedAttachments.value.splice(idx, 1)
     if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
     if (entry.attachment?.id) {
-      try { await deleteAIImageAttachment(conversationId, entry.attachment.id) } catch { /* best-effort */ }
+      try {
+        await deleteAIImageAttachment(conversationId, entry.attachment.id)
+      } catch {
+        /* best-effort */
+      }
     }
   }
 
@@ -199,35 +213,66 @@ export function useChatMessaging(
             case 'reasoning': {
               const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
               if (idx >= 0) {
-                const msg = { ...currentMessages[idx], reasoning: (currentMessages[idx].reasoning ?? '') + event.content }
-                setMessages([...currentMessages.slice(0, idx), msg, ...currentMessages.slice(idx + 1)])
+                const msg = {
+                  ...currentMessages[idx],
+                  reasoning: (currentMessages[idx].reasoning ?? '') + event.content,
+                }
+                setMessages([
+                  ...currentMessages.slice(0, idx),
+                  msg,
+                  ...currentMessages.slice(idx + 1),
+                ])
               }
               break
             }
             case 'delta': {
               const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
               if (idx >= 0) {
-                const msg = { ...currentMessages[idx], content: currentMessages[idx].content + event.content }
-                setMessages([...currentMessages.slice(0, idx), msg, ...currentMessages.slice(idx + 1)])
+                const msg = {
+                  ...currentMessages[idx],
+                  content: currentMessages[idx].content + event.content,
+                }
+                setMessages([
+                  ...currentMessages.slice(0, idx),
+                  msg,
+                  ...currentMessages.slice(idx + 1),
+                ])
               }
               break
             }
             case 'tool_call': {
-              if (!event.tool_call || currentMessages.some((m) => m.tool_call_id === event.tool_call.id)) break
+              if (
+                !event.tool_call ||
+                currentMessages.some((m) => m.tool_call_id === event.tool_call.id)
+              )
+                break
               let args: unknown = event.tool_call.arguments
-              try { args = JSON.parse(event.tool_call.arguments) } catch { /* display malformed arguments verbatim */ }
+              try {
+                args = JSON.parse(event.tool_call.arguments)
+              } catch {
+                /* display malformed arguments verbatim */
+              }
               const toolMsg: AIMessage = {
                 id: 'temp-tool-' + event.tool_call.id,
                 conversation_id: conversationId,
                 role: 'tool',
-                content: JSON.stringify({ tool: event.tool_call.name, args, result: null, decision: event.status === 'approved' ? 'approved' : null }),
+                content: JSON.stringify({
+                  tool: event.tool_call.name,
+                  args,
+                  result: null,
+                  decision: event.status === 'approved' ? 'approved' : null,
+                }),
                 tool_call_id: event.tool_call.id,
                 status: 'pending',
                 created_at: new Date().toISOString(),
               }
               const assistIdx = currentMessages.findIndex((m) => m.id === tempAssistantId)
               if (assistIdx >= 0) {
-                setMessages([...currentMessages.slice(0, assistIdx), toolMsg, ...currentMessages.slice(assistIdx)])
+                setMessages([
+                  ...currentMessages.slice(0, assistIdx),
+                  toolMsg,
+                  ...currentMessages.slice(assistIdx),
+                ])
               } else {
                 setMessages([...currentMessages, toolMsg])
               }
@@ -236,8 +281,16 @@ export function useChatMessaging(
             case 'tool_result': {
               const idx = currentMessages.findIndex((m) => m.tool_call_id === event.tool_call?.id)
               if (idx >= 0) {
-                const updated = { ...currentMessages[idx], content: event.content, status: event.status }
-                setMessages([...currentMessages.slice(0, idx), updated, ...currentMessages.slice(idx + 1)])
+                const updated = {
+                  ...currentMessages[idx],
+                  content: event.content,
+                  status: event.status,
+                }
+                setMessages([
+                  ...currentMessages.slice(0, idx),
+                  updated,
+                  ...currentMessages.slice(idx + 1),
+                ])
               }
               break
             }
@@ -255,7 +308,11 @@ export function useChatMessaging(
               const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
               if (idx >= 0) {
                 const msg = { ...currentMessages[idx], status: 'error' as const }
-                setMessages([...currentMessages.slice(0, idx), msg, ...currentMessages.slice(idx + 1)])
+                setMessages([
+                  ...currentMessages.slice(0, idx),
+                  msg,
+                  ...currentMessages.slice(idx + 1),
+                ])
               }
               onError(event.message || 'AI generation failed')
               isBusy.value = false
@@ -282,7 +339,9 @@ export function useChatMessaging(
       const result = await sendAIMessage(conversationId, payload)
       clearStagedAttachments()
 
-      const currentMessages = getMessages().filter((m) => m.id !== tempUserId && m.id !== tempAssistantId)
+      const currentMessages = getMessages().filter(
+        (m) => m.id !== tempUserId && m.id !== tempAssistantId,
+      )
       const newMessages: AIMessage[] = [result.user_message]
       if (result.tool_messages && result.tool_messages.length > 0) {
         newMessages.push(...result.tool_messages)
@@ -309,7 +368,10 @@ export function useChatMessaging(
       const currentMessages = getMessages()
       if (currentMessages.some((item) => item.id === message.id)) return true
       const pendingAssistant = currentMessages.findIndex(
-        (item) => item.conversation_id === conversationId && item.role === 'assistant' && item.status === 'pending',
+        (item) =>
+          item.conversation_id === conversationId &&
+          item.role === 'assistant' &&
+          item.status === 'pending',
       )
       if (pendingAssistant >= 0) {
         setMessages([
@@ -329,7 +391,12 @@ export function useChatMessaging(
     }
   }
 
-  async function decideToolCall(callId: string, approved: boolean, comment: string, onError: (msg: string) => void) {
+  async function decideToolCall(
+    callId: string,
+    approved: boolean,
+    comment: string,
+    onError: (msg: string) => void,
+  ) {
     const conv = getActiveConversation()
     if (!conv) return
     const currentMessages = getMessages()
@@ -340,12 +407,17 @@ export function useChatMessaging(
       const content = JSON.parse(original.content)
       const decision = comment ? 'commented' : approved ? 'approved' : 'rejected'
       const updated = { ...original, content: JSON.stringify({ ...content, decision }) }
-      setMessages([...currentMessages.slice(0, index), updated, ...currentMessages.slice(index + 1)])
+      setMessages([
+        ...currentMessages.slice(0, index),
+        updated,
+        ...currentMessages.slice(index + 1),
+      ])
       await decideAIToolCall(conv.id, callId, approved, comment || undefined)
     } catch (err) {
       const msgs = getMessages()
       const current = msgs.findIndex((message) => message.tool_call_id === callId)
-      if (current >= 0) setMessages([...msgs.slice(0, current), original, ...msgs.slice(current + 1)])
+      if (current >= 0)
+        setMessages([...msgs.slice(0, current), original, ...msgs.slice(current + 1)])
       onError(err instanceof Error ? err.message : 'Failed to submit tool decision')
     }
   }
@@ -368,11 +440,19 @@ export function useChatMessaging(
       streamController.abort()
       streamController = null
     }
-    try { await stopAIGeneration(conversationId) } catch { /* best-effort */ }
+    try {
+      await stopAIGeneration(conversationId)
+    } catch {
+      /* best-effort */
+    }
     const currentMessages = getMessages()
-    setMessages(currentMessages.map((m) =>
-      m.role === 'assistant' && m.status === 'pending' ? { ...m, status: 'cancelled' as const } : m
-    ))
+    setMessages(
+      currentMessages.map((m) =>
+        m.role === 'assistant' && m.status === 'pending'
+          ? { ...m, status: 'cancelled' as const }
+          : m,
+      ),
+    )
     isBusy.value = false
   }
 

@@ -10,7 +10,12 @@
       @click="$emit('toggle-sidebar')"
     >
       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 6h16M4 12h16M4 18h16"
+        />
       </svg>
     </button>
 
@@ -20,7 +25,9 @@
       :model-value="selectedProfile"
       :items="profileItems"
       :disabled="disabled || profileLocked"
-      :title="profileLocked ? 'Profile is locked for this conversation' : 'Select a system prompt profile'"
+      :title="
+        profileLocked ? 'Profile is locked for this conversation' : 'Select a system prompt profile'
+      "
       class="w-32"
       @update:model-value="$emit('update:selectedProfile', $event)"
     >
@@ -29,9 +36,16 @@
           <svg
             v-if="profileLocked"
             class="h-3 w-3 shrink-0 text-amber-500"
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
           </svg>
           <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ label }}</span>
         </div>
@@ -59,15 +73,17 @@
       @update:model-value="$emit('update:selectedModel', $event)"
     >
       <template #item="{ item }">
-        <span class="min-w-0 flex-1 whitespace-normal break-words">{{ item.label }}</span>
-        <span v-if="item.supports_tools" class="shrink-0 text-xs opacity-60" title="Supports tools">🔧</span>
+        <span class="min-w-0 flex-1 break-words whitespace-normal">{{ item.label }}</span>
+        <span v-if="item.supports_tools" class="shrink-0 text-xs opacity-60" title="Supports tools"
+          >🔧</span
+        >
       </template>
     </SearchableSelect>
 
     <!-- Tools badge -->
     <span
       v-if="supportsTools"
-      class="hidden items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-amber-700 ring-1 ring-inset ring-amber-200 sm:inline-flex dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-800/50"
+      class="hidden items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[0.65rem] font-semibold tracking-wider text-amber-700 uppercase ring-1 ring-amber-200 ring-inset sm:inline-flex dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-800/50"
     >
       🔧 Tools
     </span>
@@ -76,9 +92,11 @@
     <label
       v-if="toolsEnabled"
       class="flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[0.72rem] font-semibold transition-colors"
-      :class="yoloMode
-        ? 'border-red-200 bg-red-50 text-red-700 ring-1 ring-inset ring-red-200 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900/50'
-        : 'border-slate-200 text-slate-500 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:text-slate-300'"
+      :class="
+        yoloMode
+          ? 'border-red-200 bg-red-50 text-red-700 ring-1 ring-red-200 ring-inset dark:border-red-900 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900/50'
+          : 'border-slate-200 text-slate-500 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:text-slate-300'
+      "
       title="When enabled, tool calls run without asking for approval"
     >
       <input
@@ -98,9 +116,11 @@
         :key="skill.name"
         type="button"
         class="rounded-full border px-2.5 py-0.5 text-[0.68rem] font-medium transition-all active:scale-95"
-        :class="activeSkills.includes(skill.name)
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50'
-          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-white/20 dark:hover:text-slate-300'"
+        :class="
+          activeSkills.includes(skill.name)
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 ring-inset dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50'
+            : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-white/20 dark:hover:text-slate-300'
+        "
         :title="skill.description || skill.label"
         :disabled="disabled"
         @click="$emit('toggle-skill', skill.name)"
@@ -128,69 +148,125 @@
         :disabled="downloadDisabled"
         @click="$emit('download')"
       >
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14a2 2 0 002-2v-3M3 16v3a2 2 0 002 2"/>
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14a2 2 0 002-2v-3M3 16v3a2 2 0 002 2"
+          />
         </svg>
       </button>
 
       <!-- Memory explorer -->
       <button
         class="inline-flex items-center justify-center rounded-lg border p-1.5 transition-all active:scale-95"
-        :class="showMemoryExplorer
-          ? 'border-violet-200 bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300 dark:ring-violet-800/50'
-          : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'"
+        :class="
+          showMemoryExplorer
+            ? 'border-violet-200 bg-violet-50 text-violet-700 ring-1 ring-violet-200 ring-inset dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300 dark:ring-violet-800/50'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'
+        "
         type="button"
         title="Memory Explorer"
         @click="$emit('toggle-memory-explorer')"
       >
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 00-2-2V5a2 2 0 002-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 002 2z"/>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 00-2-2V5a2 2 0 002-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 002 2z"
+          />
         </svg>
       </button>
 
       <!-- Attachment library -->
       <button
         class="inline-flex items-center justify-center rounded-lg border p-1.5 transition-all active:scale-95"
-        :class="showAttachmentGallery
-          ? 'border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300 dark:ring-rose-800/50'
-          : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'"
+        :class="
+          showAttachmentGallery
+            ? 'border-rose-200 bg-rose-50 text-rose-700 ring-1 ring-rose-200 ring-inset dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300 dark:ring-rose-800/50'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'
+        "
         type="button"
         title="Attachment library"
         @click="$emit('toggle-attachment-gallery')"
       >
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
         </svg>
       </button>
 
       <!-- Prompt manager -->
       <button
         class="inline-flex items-center justify-center rounded-lg border p-1.5 transition-all active:scale-95"
-        :class="showPromptManager
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50'
-          : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'"
+        :class="
+          showPromptManager
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 ring-inset dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'
+        "
         type="button"
         title="Prompt manager"
         @click="$emit('toggle-prompt-manager')"
       >
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 10h16M4 14h16M4 18h16"
+          />
         </svg>
       </button>
 
       <!-- Tools panel -->
       <button
         class="hidden items-center justify-center rounded-lg border p-1.5 transition-all active:scale-95 lg:inline-flex"
-        :class="showToolsPanel
-          ? 'border-indigo-200 bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300 dark:ring-indigo-800/50'
-          : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'"
+        :class="
+          showToolsPanel
+            ? 'border-indigo-200 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 ring-inset dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300 dark:ring-indigo-800/50'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5'
+        "
         type="button"
         title="Toggle tools panel"
         @click="$emit('toggle-tools-panel')"
       >
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+          />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
         </svg>
       </button>
     </div>
@@ -248,18 +324,18 @@ defineEmits<{
 
 const profileItems = computed<SelectItem[]>(() => [
   { value: '', label: 'Default' },
-  ...props.profiles.map(p => ({ value: p.name, label: p.label })),
+  ...props.profiles.map((p) => ({ value: p.name, label: p.label })),
 ])
 
 const providerItems = computed<SelectItem[]>(() =>
-  props.providerNames.map(name => ({ value: name, label: name }))
+  props.providerNames.map((name) => ({ value: name, label: name })),
 )
 
 const modelItems = computed<SelectItem[]>(() =>
-  props.models.map(m => ({
+  props.models.map((m) => ({
     value: m.id,
     label: m.label || m.id,
     supports_tools: m.supports_tools,
-  }))
+  })),
 )
 </script>

@@ -13,8 +13,8 @@
         :value="filterType"
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
-          $emit('update:filterType', ($event.target as HTMLSelectElement).value);
-          $emit('applyFilters');
+          $emit('update:filterType', ($event.target as HTMLSelectElement).value)
+          $emit('applyFilters')
         "
       >
         <option value="">All types</option>
@@ -27,8 +27,8 @@
         :value="filterDifficulty"
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
-          $emit('update:filterDifficulty', ($event.target as HTMLSelectElement).value);
-          $emit('applyFilters');
+          $emit('update:filterDifficulty', ($event.target as HTMLSelectElement).value)
+          $emit('applyFilters')
         "
       >
         <option value="">All difficulties</option>
@@ -42,7 +42,7 @@
           class="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
           @click="tagPickerOpen = !tagPickerOpen"
         >
-          <span>Tags {{ filterTags.length ? `(${filterTags.length})` : "" }}</span>
+          <span>Tags {{ filterTags.length ? `(${filterTags.length})` : '' }}</span>
         </button>
         <div
           v-if="tagPickerOpen"
@@ -106,8 +106,8 @@
         :value="filterSubject"
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
-          $emit('update:filterSubject', ($event.target as HTMLSelectElement).value);
-          $emit('applyFilters');
+          $emit('update:filterSubject', ($event.target as HTMLSelectElement).value)
+          $emit('applyFilters')
         "
       >
         <option value="">All subjects</option>
@@ -145,55 +145,55 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import EmptyState from "../ui/EmptyState.vue";
-import QuestionCard from "./QuestionCard.vue";
-import type { QuestionResponse, TagVocabulary } from "../../types";
+import { computed, ref } from 'vue'
+import EmptyState from '../ui/EmptyState.vue'
+import QuestionCard from './QuestionCard.vue'
+import type { QuestionResponse, TagVocabulary } from '../../types'
 
 const props = defineProps<{
-  questions: QuestionResponse[];
-  vocabulary?: TagVocabulary | null;
-  searchQuery: string;
-  filterType: string;
-  filterDifficulty: string;
-  filterTags: string[];
-  filterSubject: string;
-}>();
+  questions: QuestionResponse[]
+  vocabulary?: TagVocabulary | null
+  searchQuery: string
+  filterType: string
+  filterDifficulty: string
+  filterTags: string[]
+  filterSubject: string
+}>()
 
 const emit = defineEmits<{
-  "update:searchQuery": [value: string];
-  "update:filterType": [value: string];
-  "update:filterDifficulty": [value: string];
-  "update:filterTags": [value: string[]];
-  "update:filterSubject": [value: string];
-  applyFilters: [];
-  edit: [question: QuestionResponse];
-  delete: [id: number];
-}>();
+  'update:searchQuery': [value: string]
+  'update:filterType': [value: string]
+  'update:filterDifficulty': [value: string]
+  'update:filterTags': [value: string[]]
+  'update:filterSubject': [value: string]
+  applyFilters: []
+  edit: [question: QuestionResponse]
+  delete: [id: number]
+}>()
 
-const tagPickerOpen = ref(false);
-const newTagDraft = ref("");
+const tagPickerOpen = ref(false)
+const newTagDraft = ref('')
 
-const availableTags = computed(() => props.vocabulary?.tags ?? []);
+const availableTags = computed(() => props.vocabulary?.tags ?? [])
 
 function toggleTag(tag: string) {
   const next = props.filterTags.includes(tag)
     ? props.filterTags.filter((t) => t !== tag)
-    : [...props.filterTags, tag];
-  emit("update:filterTags", next);
+    : [...props.filterTags, tag]
+  emit('update:filterTags', next)
 }
 
 function addDraftTag() {
-  const value = newTagDraft.value.trim();
-  if (!value) return;
+  const value = newTagDraft.value.trim()
+  if (!value) return
   if (!props.filterTags.includes(value)) {
-    emit("update:filterTags", [...props.filterTags, value]);
+    emit('update:filterTags', [...props.filterTags, value])
   }
-  newTagDraft.value = "";
+  newTagDraft.value = ''
 }
 
 function applyAndClose() {
-  emit("applyFilters");
-  tagPickerOpen.value = false;
+  emit('applyFilters')
+  tagPickerOpen.value = false
 }
 </script>

@@ -39,7 +39,12 @@ export function useCalendarTodos(
     const today = new Date()
     // For month view, use the month from the middle of the range to determine "current month"
     const midDate = new Date(rangeStart.value)
-    midDate.setDate(midDate.getDate() + Math.floor((rangeEnd.value.getTime() - rangeStart.value.getTime()) / (1000 * 60 * 60 * 24) / 2))
+    midDate.setDate(
+      midDate.getDate() +
+        Math.floor(
+          (rangeEnd.value.getTime() - rangeStart.value.getTime()) / (1000 * 60 * 60 * 24) / 2,
+        ),
+    )
     const viewMonth = midDate.getMonth()
     const viewYear = midDate.getFullYear()
 
@@ -50,7 +55,9 @@ export function useCalendarTodos(
         isToday: isSameDay(current, today),
         isCurrentMonth: current.getMonth() === viewMonth && current.getFullYear() === viewYear,
         isWeekend: current.getDay() === 0 || current.getDay() === 6,
-        todos: visibleTodos.value.filter((t) => t.start_date && toDateStr(t.start_date) === dateStr),
+        todos: visibleTodos.value.filter(
+          (t) => t.start_date && toDateStr(t.start_date) === dateStr,
+        ),
       })
       current.setDate(current.getDate() + 1)
     }
@@ -130,7 +137,9 @@ export function useCalendarTodos(
 }
 
 function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() &&
+  return (
+    a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
+  )
 }

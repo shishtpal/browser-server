@@ -12,7 +12,7 @@ export interface AIModelInfo {
 
 export function useChatConfig() {
   const config = ref<AIConfig | null>(null)
-  
+
   const selectedProvider = ref('')
   const selectedModel = ref('')
   const selectedProfile = ref('')
@@ -22,7 +22,7 @@ export function useChatConfig() {
   const includeAllToolDefinitions = useLocalStorage(`bs.ai.includeAllToolDefinitions`, false)
   const disabledTools = useLocalStorage<Set<string>>(`bs.ai.disabledTools`, new Set(), {
     serializer: {
-      read: (v) => v ? new Set(JSON.parse(v)) : new Set(),
+      read: (v) => (v ? new Set(JSON.parse(v)) : new Set()),
       write: (v) => JSON.stringify([...v]),
     },
   })
@@ -42,7 +42,9 @@ export function useChatConfig() {
 
   const configLabel = computed(() => {
     if (!config.value) return 'Loading…'
-    return config.value.enabled ? `Ready · ${selectedModel.value.split('/').pop() || 'select model'}` : 'Disabled'
+    return config.value.enabled
+      ? `Ready · ${selectedModel.value.split('/').pop() || 'select model'}`
+      : 'Disabled'
   })
 
   const providerModels = computed<AIModelInfo[]>(() => {
@@ -62,15 +64,20 @@ export function useChatConfig() {
 
   const attachmentsConfig = computed(() => config.value?.chat?.attachments ?? null)
 
-  const toolsEnabled = computed(() =>
-    (config.value?.tools?.enabled ?? false) && selectedModelSupportsTools.value && userToolsEnabled.value
+  const toolsEnabled = computed(
+    () =>
+      (config.value?.tools?.enabled ?? false) &&
+      selectedModelSupportsTools.value &&
+      userToolsEnabled.value,
   )
 
   /** All tools declared in the server config */
   const availableTools = computed<string[]>(() => config.value?.tools?.allowed ?? [])
 
   /** Tool name → category mapping from the server */
-  const toolCategories = computed<Record<string, string>>(() => config.value?.tools?.categories ?? {})
+  const toolCategories = computed<Record<string, string>>(
+    () => config.value?.tools?.categories ?? {},
+  )
 
   /** Tools grouped by category for UI display */
   const toolsByCategory = computed<{ category: string; tools: string[] }[]>(() => {
@@ -86,7 +93,7 @@ export function useChatConfig() {
 
   /** Tools the user has chosen to keep active (allowed minus user-disabled) */
   const activeTools = computed<string[]>(() =>
-    availableTools.value.filter((t) => !disabledTools.value.has(t))
+    availableTools.value.filter((t) => !disabledTools.value.has(t)),
   )
 
   // Sync model when provider changes
@@ -126,7 +133,8 @@ export function useChatConfig() {
     selectedProvider.value = cfg.default_provider || Object.keys(cfg.providers ?? {})[0] || ''
     const provider = cfg.providers?.[selectedProvider.value]
     const models = provider?.models ?? []
-    selectedModel.value = provider?.default_model || models.find((m) => m.default)?.id || models[0]?.id || ''
+    selectedModel.value =
+      provider?.default_model || models.find((m) => m.default)?.id || models[0]?.id || ''
   }
 
   return {

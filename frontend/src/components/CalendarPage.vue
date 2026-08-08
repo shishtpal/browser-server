@@ -3,14 +3,32 @@
     <PageHeader badge="Schedule" title="Calendar" color="violet">
       <template #stats>
         <StatCard :value="todosStats.todayCount" label="Today" variant="dark" color="violet" />
-        <StatCard :value="todosStats.overdueCount" label="Overdue" variant="primary" color="amber" />
-        <StatCard :value="todosStats.completedCount" label="Done" variant="secondary" color="violet" />
+        <StatCard
+          :value="todosStats.overdueCount"
+          label="Overdue"
+          variant="primary"
+          color="amber"
+        />
+        <StatCard
+          :value="todosStats.completedCount"
+          label="Done"
+          variant="secondary"
+          color="violet"
+        />
       </template>
       <template #controls>
         <UserSelector id="calendar-user" v-model="selectedUserId" :users="users" color="violet" />
         <Button variant="gradient-violet" size="sm" @click="openCreateModal()">
           <span class="flex items-center gap-1">
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              class="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M12 5v14M5 12h14" />
             </svg>
             Add Todo
@@ -19,7 +37,11 @@
       </template>
     </PageHeader>
 
-    <SelectUserPrompt title="Select a user to view their calendar" :users-count="users.length" :selected-user-id="selectedUserId" />
+    <SelectUserPrompt
+      title="Select a user to view their calendar"
+      :users-count="users.length"
+      :selected-user-id="selectedUserId"
+    />
 
     <LoadingSpinner v-if="isLoading" message="Loading calendar..." color="violet" />
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadTodos" />
@@ -30,10 +52,13 @@
         :current-view="view"
         @navigate="navigate"
         @today="goToToday"
-        @change-view="v => view = v"
+        @change-view="(v) => (view = v)"
       />
 
-      <div v-if="view === 'month'" class="flex-1 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90">
+      <div
+        v-if="view === 'month'"
+        class="flex-1 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+      >
         <CalendarMonthView
           class="h-full"
           :days="days"
@@ -44,7 +69,10 @@
         />
       </div>
 
-      <div v-else-if="view === 'week'" class="rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90">
+      <div
+        v-else-if="view === 'week'"
+        class="rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+      >
         <CalendarWeekView
           :days="weekDays"
           @click="openCreateModal"
@@ -53,14 +81,17 @@
         />
       </div>
 
-      <div v-else-if="view === 'day'" class="rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90">
-        <CalendarDayView
-          :day="currentDayData"
-          @todo-click="openEditModal"
-        />
+      <div
+        v-else-if="view === 'day'"
+        class="rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+      >
+        <CalendarDayView :day="currentDayData" @todo-click="openEditModal" />
       </div>
 
-      <div v-else-if="view === 'year'" class="rounded-2xl border border-gray-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90">
+      <div
+        v-else-if="view === 'year'"
+        class="rounded-2xl border border-gray-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+      >
         <CalendarYearView
           :year="currentDate.getFullYear()"
           :todos="todos"
@@ -82,11 +113,7 @@
       @delete="handleDelete"
     />
 
-    <CalendarTodoDetail
-      :todo="detailTodo"
-      @close="closeDetail"
-      @edit="editFromDetail"
-    />
+    <CalendarTodoDetail :todo="detailTodo" @close="closeDetail" @edit="editFromDetail" />
   </div>
 </template>
 
@@ -116,7 +143,8 @@ const { users, currentUserId, setUser, clearUser } = useUser()
 const selectedUserId = ref<number | null>(currentUserId.value)
 
 const { currentDate, view, dateRange, periodLabel, navigate, goToToday } = useCalendar()
-const { todos, isLoading, error, days, stats, loadTodos, addTodo, updateTodoItem, removeTodo } = useCalendarTodos(selectedUserId, dateRange)
+const { todos, isLoading, error, days, stats, loadTodos, addTodo, updateTodoItem, removeTodo } =
+  useCalendarTodos(selectedUserId, dateRange)
 
 const todosStats = computed(() => stats.value)
 const modalOpen = ref(false)

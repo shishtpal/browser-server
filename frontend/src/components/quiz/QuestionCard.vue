@@ -4,12 +4,12 @@
   >
     <div class="flex flex-wrap items-start gap-2">
       <span
-        class="rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+        class="rounded-md px-2 py-0.5 text-[10px] font-black tracking-wide uppercase"
         :class="typeBadge"
         >{{ typeLabel }}</span
       >
       <span
-        class="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+        class="rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase"
         :class="difficultyBadge"
         >{{ question.difficulty }}</span
       >
@@ -52,7 +52,7 @@
       </div>
     </div>
 
-    <p class="mt-2 whitespace-pre-wrap text-sm font-medium text-slate-800 dark:text-slate-100">
+    <p class="mt-2 text-sm font-medium whitespace-pre-wrap text-slate-800 dark:text-slate-100">
       {{ question.question }}
     </p>
 
@@ -104,52 +104,52 @@
         class="text-[11px] font-semibold text-slate-500 underline-offset-2 hover:underline dark:text-slate-400"
         @click="showExplanation = !showExplanation"
       >
-        {{ showExplanation ? "Hide explanation" : "Show explanation" }}
+        {{ showExplanation ? 'Hide explanation' : 'Show explanation' }}
       </button>
       <pre
         v-if="showExplanation"
-        class="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-xs text-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+        class="mt-1 rounded-lg bg-slate-50 p-2 text-xs whitespace-pre-wrap text-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
         >{{ question.explanation }}</pre>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { API_BASE } from "../../lib/api";
-import type { QuestionResponse } from "../../types";
+import { computed, ref } from 'vue'
+import { API_BASE } from '../../lib/api'
+import type { QuestionResponse } from '../../types'
 
-const props = defineProps<{ question: QuestionResponse }>();
-defineEmits<{ edit: [question: QuestionResponse]; delete: [id: number] }>();
+const props = defineProps<{ question: QuestionResponse }>()
+defineEmits<{ edit: [question: QuestionResponse]; delete: [id: number] }>()
 
-const showExplanation = ref(false);
+const showExplanation = ref(false)
 
-const typeLabel = computed(() => props.question.type.replace("_", " "));
+const typeLabel = computed(() => props.question.type.replace('_', ' '))
 const typeBadge = computed(() => {
   const map: Record<string, string> = {
-    single_choice: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-    multiple_choice: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
-    input: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
-    chronology: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  };
-  return map[props.question.type] ?? map.single_choice;
-});
+    single_choice: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+    multiple_choice: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
+    input: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
+    chronology: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  }
+  return map[props.question.type] ?? map.single_choice
+})
 const difficultyBadge = computed(() => {
   const map: Record<string, string> = {
-    easy: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    hard: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-  };
-  return map[props.question.difficulty] ?? map.medium;
-});
+    easy: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+    medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    hard: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+  }
+  return map[props.question.difficulty] ?? map.medium
+})
 
 const imageSrc = computed(() =>
-  props.question.image_url?.startsWith("http")
+  props.question.image_url?.startsWith('http')
     ? props.question.image_url
     : `${API_BASE}${props.question.image_url}`,
-);
+)
 
 const orderedChronology = computed(() =>
   [...(props.question.chronology_items ?? [])].sort((a, b) => a.correct_order - b.correct_order),
-);
+)
 </script>

@@ -36,7 +36,10 @@ export function useCalendarDragDrop() {
     return dataTransfer?.types.includes(DRAG_MIME_TYPE) ?? false
   }
 
-  function isDropAllowed(payload: CalendarDragPayload | null, date: string): payload is CalendarDragPayload {
+  function isDropAllowed(
+    payload: CalendarDragPayload | null,
+    date: string,
+  ): payload is CalendarDragPayload {
     return payload !== null && payload.startDate !== date
   }
 

@@ -59,7 +59,7 @@
     <div v-if="isChoice">
       <div class="mb-1 flex items-center justify-between">
         <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-          Options (mark {{ form.type === "single_choice" ? "exactly one" : "one or more" }} correct)
+          Options (mark {{ form.type === 'single_choice' ? 'exactly one' : 'one or more' }} correct)
         </span>
         <button
           type="button"
@@ -190,7 +190,7 @@
             type="text"
             list="quiz-tags-vocab"
             placeholder="Type tag, press Enter…"
-            class="flex-1 min-w-[8ch] border-0 bg-transparent p-0 text-xs focus:outline-none dark:text-slate-200"
+            class="min-w-[8ch] flex-1 border-0 bg-transparent p-0 text-xs focus:outline-none dark:text-slate-200"
             @keydown.enter.prevent="commitTagDraft"
             @keydown.,.prevent="commitTagDraft"
             @blur="commitTagDraft"
@@ -253,152 +253,152 @@
         :disabled="isSaving"
         class="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50"
       >
-        {{ isSaving ? "Saving…" : isEdit ? "Save changes" : "Add question" }}
+        {{ isSaving ? 'Saving…' : isEdit ? 'Save changes' : 'Add question' }}
       </button>
     </div>
   </form>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from "vue";
-import type { QuestionOption, QuestionResponse, QuestionType, TagVocabulary } from "../../types";
+import { reactive, ref, computed, watch } from 'vue'
+import type { QuestionOption, QuestionResponse, QuestionType, TagVocabulary } from '../../types'
 
 const props = defineProps<{
-  question?: QuestionResponse | null;
-  vocabulary?: TagVocabulary | null;
-  isSaving?: boolean;
-}>();
+  question?: QuestionResponse | null
+  vocabulary?: TagVocabulary | null
+  isSaving?: boolean
+}>()
 
 const emit = defineEmits<{
-  save: [payload: Record<string, unknown>, image: File | null];
-  cancel: [];
-}>();
+  save: [payload: Record<string, unknown>, image: File | null]
+  cancel: []
+}>()
 
-const isEdit = computed(() => !!props.question);
-const radioGroup = `quiz-correct-${Math.random().toString(36).slice(2)}`;
+const isEdit = computed(() => !!props.question)
+const radioGroup = `quiz-correct-${Math.random().toString(36).slice(2)}`
 
 interface FormState {
-  type: QuestionType;
-  difficulty: "easy" | "medium" | "hard";
-  question: string;
-  explanation: string;
-  source: string;
-  tags: string[];
-  subject: string;
-  topic: string;
-  sub_topic: string;
-  options: QuestionOption[];
-  chronologyItems: { index: number; text: string; correct_order: number }[];
-  expectedText: string;
+  type: QuestionType
+  difficulty: 'easy' | 'medium' | 'hard'
+  question: string
+  explanation: string
+  source: string
+  tags: string[]
+  subject: string
+  topic: string
+  sub_topic: string
+  options: QuestionOption[]
+  chronologyItems: { index: number; text: string; correct_order: number }[]
+  expectedText: string
 }
 
 const blankOptions = (): QuestionOption[] => [
-  { index: 0, text: "", correct: false },
-  { index: 1, text: "", correct: false },
-];
+  { index: 0, text: '', correct: false },
+  { index: 1, text: '', correct: false },
+]
 const blankChronology = () => [
-  { index: 0, text: "", correct_order: 1 },
-  { index: 1, text: "", correct_order: 2 },
-];
+  { index: 0, text: '', correct_order: 1 },
+  { index: 1, text: '', correct_order: 2 },
+]
 
 const form = reactive<FormState>({
-  type: "single_choice",
-  difficulty: "medium",
-  question: "",
-  explanation: "",
-  source: "",
+  type: 'single_choice',
+  difficulty: 'medium',
+  question: '',
+  explanation: '',
+  source: '',
   tags: [],
-  subject: "",
-  topic: "",
-  sub_topic: "",
+  subject: '',
+  topic: '',
+  sub_topic: '',
   options: blankOptions(),
   chronologyItems: blankChronology(),
-  expectedText: "",
-});
+  expectedText: '',
+})
 
-const imageFile = ref<File | null>(null);
-const formError = ref<string | null>(null);
-const tagDraft = ref("");
+const imageFile = ref<File | null>(null)
+const formError = ref<string | null>(null)
+const tagDraft = ref('')
 
-const isChoice = computed(() => form.type === "single_choice" || form.type === "multiple_choice");
+const isChoice = computed(() => form.type === 'single_choice' || form.type === 'multiple_choice')
 
 const tagFields = [
-  { key: "subject", label: "Subject", placeholder: "Math", vocabKey: "subjects" },
-  { key: "topic", label: "Topic", placeholder: "Algebra", vocabKey: "topics" },
-  { key: "sub_topic", label: "Sub-topic", placeholder: "Equations", vocabKey: "sub_topics" },
-] as const;
+  { key: 'subject', label: 'Subject', placeholder: 'Math', vocabKey: 'subjects' },
+  { key: 'topic', label: 'Topic', placeholder: 'Algebra', vocabKey: 'topics' },
+  { key: 'sub_topic', label: 'Sub-topic', placeholder: 'Equations', vocabKey: 'sub_topics' },
+] as const
 
 function commitTagDraft() {
-  const value = tagDraft.value.trim();
-  if (!value) return;
-  if (!form.tags.includes(value)) form.tags.push(value);
-  tagDraft.value = "";
+  const value = tagDraft.value.trim()
+  if (!value) return
+  if (!form.tags.includes(value)) form.tags.push(value)
+  tagDraft.value = ''
 }
 
 function removeTag(tag: string) {
-  form.tags = form.tags.filter((t) => t !== tag);
+  form.tags = form.tags.filter((t) => t !== tag)
 }
 
 watch(
   () => props.question,
   (q) => {
-    if (!q) return;
-    form.type = q.type;
-    form.difficulty = q.difficulty;
-    form.question = q.question;
-    form.explanation = q.explanation;
-    form.source = q.source;
-    form.tags = Array.isArray(q.tags) ? [...q.tags] : [];
-    form.subject = q.subject;
-    form.topic = q.topic;
-    form.sub_topic = q.sub_topic;
-    form.options = q.options?.length ? q.options.map((o) => ({ ...o })) : blankOptions();
+    if (!q) return
+    form.type = q.type
+    form.difficulty = q.difficulty
+    form.question = q.question
+    form.explanation = q.explanation
+    form.source = q.source
+    form.tags = Array.isArray(q.tags) ? [...q.tags] : []
+    form.subject = q.subject
+    form.topic = q.topic
+    form.sub_topic = q.sub_topic
+    form.options = q.options?.length ? q.options.map((o) => ({ ...o })) : blankOptions()
     form.chronologyItems = q.chronology_items?.length
       ? q.chronology_items.map((c) => ({ ...c }))
-      : blankChronology();
-    form.expectedText = q.expected_text ?? "";
+      : blankChronology()
+    form.expectedText = q.expected_text ?? ''
   },
   { immediate: true },
-);
+)
 
 const addOption = () => {
-  if (form.options.length >= 10) return;
-  form.options.push({ index: form.options.length, text: "", correct: false });
-};
+  if (form.options.length >= 10) return
+  form.options.push({ index: form.options.length, text: '', correct: false })
+}
 const removeOption = (i: number) => {
-  form.options.splice(i, 1);
-  form.options.forEach((o, idx) => (o.index = idx));
-};
+  form.options.splice(i, 1)
+  form.options.forEach((o, idx) => (o.index = idx))
+}
 const toggleCorrect = (i: number) => {
-  if (form.type === "single_choice") {
-    form.options.forEach((o, idx) => (o.correct = idx === i));
+  if (form.type === 'single_choice') {
+    form.options.forEach((o, idx) => (o.correct = idx === i))
   } else {
-    form.options[i].correct = !form.options[i].correct;
+    form.options[i].correct = !form.options[i].correct
   }
-};
+}
 
 const addChronologyItem = () => {
-  if (form.chronologyItems.length >= 20) return;
+  if (form.chronologyItems.length >= 20) return
   form.chronologyItems.push({
     index: form.chronologyItems.length,
-    text: "",
+    text: '',
     correct_order: form.chronologyItems.length + 1,
-  });
-};
+  })
+}
 const removeChronologyItem = (i: number) => {
-  form.chronologyItems.splice(i, 1);
-  form.chronologyItems.forEach((c, idx) => (c.index = idx));
-};
+  form.chronologyItems.splice(i, 1)
+  form.chronologyItems.forEach((c, idx) => (c.index = idx))
+}
 
 const onFile = (e: Event) => {
-  const target = e.target as HTMLInputElement;
-  imageFile.value = target.files?.[0] ?? null;
-};
+  const target = e.target as HTMLInputElement
+  imageFile.value = target.files?.[0] ?? null
+}
 
 const submit = () => {
-  formError.value = null;
+  formError.value = null
   // Pick up any tag the user typed but didn't commit with Enter.
-  if (tagDraft.value.trim()) commitTagDraft();
+  if (tagDraft.value.trim()) commitTagDraft()
   const payload: Record<string, unknown> = {
     type: form.type,
     difficulty: form.difficulty,
@@ -409,36 +409,36 @@ const submit = () => {
     subject: form.subject.trim(),
     topic: form.topic.trim(),
     sub_topic: form.sub_topic.trim(),
-  };
+  }
   if (!payload.question) {
-    formError.value = "Question text is required.";
-    return;
+    formError.value = 'Question text is required.'
+    return
   }
   if (isChoice.value) {
-    const options = form.options.filter((o) => o.text.trim());
+    const options = form.options.filter((o) => o.text.trim())
     if (options.length < 2) {
-      formError.value = "At least two options are required.";
-      return;
+      formError.value = 'At least two options are required.'
+      return
     }
     if (!options.some((o) => o.correct)) {
-      formError.value = "Mark at least one option as correct.";
-      return;
+      formError.value = 'Mark at least one option as correct.'
+      return
     }
-    payload.options = options;
-  } else if (form.type === "input") {
+    payload.options = options
+  } else if (form.type === 'input') {
     if (!form.expectedText.trim()) {
-      formError.value = "Expected answer is required for input questions.";
-      return;
+      formError.value = 'Expected answer is required for input questions.'
+      return
     }
-    payload.expected_text = form.expectedText.trim();
-  } else if (form.type === "chronology") {
-    const items = form.chronologyItems.filter((c) => c.text.trim());
+    payload.expected_text = form.expectedText.trim()
+  } else if (form.type === 'chronology') {
+    const items = form.chronologyItems.filter((c) => c.text.trim())
     if (items.length < 2) {
-      formError.value = "At least two chronology items are required.";
-      return;
+      formError.value = 'At least two chronology items are required.'
+      return
     }
-    payload.chronology_items = items;
+    payload.chronology_items = items
   }
-  emit("save", payload, imageFile.value);
-};
+  emit('save', payload, imageFile.value)
+}
 </script>

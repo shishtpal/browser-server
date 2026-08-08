@@ -63,25 +63,25 @@
 </template>
 
 <script setup lang="ts">
-import type { GeneratedImage } from "@browser-server/shared-types";
-import { computed } from "vue";
-import { getGeneratedImageUrl } from "../../lib/api/ai";
-import { formatBytes, formatImageDate } from "./format";
+import type { GeneratedImage } from '@browser-server/shared-types'
+import { computed } from 'vue'
+import { getGeneratedImageUrl } from '../../lib/api/ai'
+import { formatBytes, formatImageDate } from './format'
 
 const props = defineProps<{
-  image: GeneratedImage;
-  canEdit: boolean;
-}>();
+  image: GeneratedImage
+  canEdit: boolean
+}>()
 
 defineEmits<{
-  open: [image: GeneratedImage];
-  edit: [image: GeneratedImage];
-  reuse: [image: GeneratedImage];
-  delete: [image: GeneratedImage];
-}>();
+  open: [image: GeneratedImage]
+  edit: [image: GeneratedImage]
+  reuse: [image: GeneratedImage]
+  delete: [image: GeneratedImage]
+}>()
 
-const url = computed(() => getGeneratedImageUrl(props.image.id));
+const url = computed(() => getGeneratedImageUrl(props.image.id))
 
 const overlayButton =
-  "rounded-md bg-white/95 px-2 py-1 text-[10px] font-black text-slate-800 shadow transition hover:bg-white";
+  'rounded-md bg-white/95 px-2 py-1 text-[10px] font-black text-slate-800 shadow transition hover:bg-white'
 </script>

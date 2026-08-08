@@ -123,24 +123,24 @@
 </template>
 
 <script setup lang="ts">
-import type { GeneratedImage } from "@browser-server/shared-types";
-import type { PromptResponse } from "../types";
-import { computed, nextTick, onMounted, ref } from "vue";
-import { useImageGeneration } from "../composables/useImageGeneration";
-import { useUser } from "../composables/useUser";
-import ImageCard from "./image/ImageCard.vue";
-import ImageComposer from "./image/ImageComposer.vue";
-import ImageViewer from "./image/ImageViewer.vue";
-import PromptManager from "./prompts/PromptManager.vue";
-import Button from "./ui/Button.vue";
-import EmptyState from "./ui/EmptyState.vue";
-import ErrorBanner from "./ui/ErrorBanner.vue";
-import LoadingSpinner from "./ui/LoadingSpinner.vue";
-import Modal from "./ui/Modal.vue";
-import PageHeader from "./ui/PageHeader.vue";
-import StatCard from "./ui/StatCard.vue";
+import type { GeneratedImage } from '@browser-server/shared-types'
+import type { PromptResponse } from '../types'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useImageGeneration } from '../composables/useImageGeneration'
+import { useUser } from '../composables/useUser'
+import ImageCard from './image/ImageCard.vue'
+import ImageComposer from './image/ImageComposer.vue'
+import ImageViewer from './image/ImageViewer.vue'
+import PromptManager from './prompts/PromptManager.vue'
+import Button from './ui/Button.vue'
+import EmptyState from './ui/EmptyState.vue'
+import ErrorBanner from './ui/ErrorBanner.vue'
+import LoadingSpinner from './ui/LoadingSpinner.vue'
+import Modal from './ui/Modal.vue'
+import PageHeader from './ui/PageHeader.vue'
+import StatCard from './ui/StatCard.vue'
 
-const { currentUserId } = useUser();
+const { currentUserId } = useUser()
 const {
   config,
   images,
@@ -165,60 +165,60 @@ const {
   load,
   submit,
   remove,
-} = useImageGeneration();
+} = useImageGeneration()
 
-const composerRef = ref<InstanceType<typeof ImageComposer> | null>(null);
-const preview = ref<GeneratedImage | null>(null);
-const confirming = ref<GeneratedImage | null>(null);
-const showPromptLibrary = ref(false);
+const composerRef = ref<InstanceType<typeof ImageComposer> | null>(null)
+const preview = ref<GeneratedImage | null>(null)
+const confirming = ref<GeneratedImage | null>(null)
+const showPromptLibrary = ref(false)
 
 const previewIndex = computed(() =>
   preview.value ? images.value.findIndex((i) => i.id === preview.value?.id) : -1,
-);
+)
 
 function focusPrompt() {
-  nextTick(() => composerRef.value?.focus());
+  nextTick(() => composerRef.value?.focus())
 }
 
 function useAsSource(image: GeneratedImage) {
-  source.value = image.id;
-  focusPrompt();
+  source.value = image.id
+  focusPrompt()
 }
 
 function reusePrompt(image: GeneratedImage) {
-  prompt.value = image.prompt;
-  focusPrompt();
+  prompt.value = image.prompt
+  focusPrompt()
 }
 
 function applyPrompt(p: PromptResponse) {
-  if (!p.content) return;
-  prompt.value = p.content;
-  showPromptLibrary.value = false;
-  focusPrompt();
+  if (!p.content) return
+  prompt.value = p.content
+  showPromptLibrary.value = false
+  focusPrompt()
 }
 
 function step(delta: number) {
-  const next = images.value[previewIndex.value + delta];
-  if (next) preview.value = next;
+  const next = images.value[previewIndex.value + delta]
+  if (next) preview.value = next
 }
 
 function reuseFromPreview(image: GeneratedImage) {
-  preview.value = null;
-  reusePrompt(image);
+  preview.value = null
+  reusePrompt(image)
 }
 
 function editFromPreview(image: GeneratedImage) {
-  preview.value = null;
-  useAsSource(image);
+  preview.value = null
+  useAsSource(image)
 }
 
 async function confirmRemove() {
-  const target = confirming.value;
-  if (!target) return;
-  confirming.value = null;
-  await remove(target.id);
-  if (preview.value?.id === target.id) preview.value = null;
+  const target = confirming.value
+  if (!target) return
+  confirming.value = null
+  await remove(target.id)
+  if (preview.value?.id === target.id) preview.value = null
 }
 
-onMounted(load);
+onMounted(load)
 </script>

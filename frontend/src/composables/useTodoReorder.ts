@@ -6,7 +6,7 @@ export function useTodoReorder(todos: Ref<Todo[]>, loadTodos: () => Promise<void
   const isDragging: Ref<boolean> = ref(false)
   const isReordering: Ref<boolean> = ref(false)
 
-  const droppableList = computed(() => todos.value.map(t => ({ id: t.id })))
+  const droppableList = computed(() => todos.value.map((t) => ({ id: t.id })))
 
   async function onDragEnd(event: { oldIndex: number; newIndex: number }) {
     if (event.oldIndex === event.newIndex) return

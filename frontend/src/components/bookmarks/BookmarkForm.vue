@@ -1,10 +1,26 @@
 <template>
-  <form @submit.prevent="onSubmit" class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors dark:border-white/10 dark:bg-slate-800/90">
+  <form
+    @submit.prevent="onSubmit"
+    class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors dark:border-white/10 dark:bg-slate-800/90"
+  >
     <div class="flex items-center gap-2">
       <InputField v-model="newTitle" type="text" placeholder="Title" required flex color="cyan" />
       <InputField v-model="newUrl" type="url" placeholder="URL" required flex color="cyan" />
-      <InputField v-model="newDescription" type="text" placeholder="Description" class="hidden lg:block" flex color="cyan" />
-      <InputField v-model="newTags" type="text" placeholder="Tags: comma, separated" flex color="cyan" />
+      <InputField
+        v-model="newDescription"
+        type="text"
+        placeholder="Description"
+        class="hidden lg:block"
+        flex
+        color="cyan"
+      />
+      <InputField
+        v-model="newTags"
+        type="text"
+        placeholder="Tags: comma, separated"
+        flex
+        color="cyan"
+      />
       <Button type="submit" variant="gradient-cyan" size="sm">Add</Button>
     </div>
   </form>

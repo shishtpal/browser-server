@@ -26,7 +26,7 @@
         ><input v-model="allQuestions" type="checkbox" /> All questions</label
       >
       <div class="mt-3">
-        <p class="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <p class="text-xs font-black tracking-wide text-slate-500 uppercase dark:text-slate-400">
           Tags
         </p>
         <p v-if="!tagOptions.length" class="mt-2 text-sm text-slate-500">No question tags found</p>
@@ -120,7 +120,7 @@
       class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center dark:border-emerald-900/50 dark:bg-emerald-900/20"
     >
       <h2 class="text-lg font-black text-emerald-900 dark:text-emerald-100">
-        {{ practiceMode ? "Practice complete" : "Session complete" }}
+        {{ practiceMode ? 'Practice complete' : 'Session complete' }}
       </h2>
       <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
         <template v-if="practiceMode">
@@ -134,8 +134,7 @@
       </p>
       <div class="mt-4 flex justify-center gap-2">
         <Button variant="gradient-violet" @click="() => start(practiceMode)">
-          {{ practiceMode ? "Practice more" : "Review more" }}
-        </Button
+          {{ practiceMode ? 'Practice more' : 'Review more' }} </Button
         ><Button variant="secondary" @click="end">Change tags</Button>
       </div>
     </div>
@@ -151,26 +150,26 @@
 </template>
 
 <script setup lang="ts">
-import type { QuestionDifficulty, TagVocabulary } from "../../types";
-import { toRef } from "vue";
-import { useQuestionCards } from "../../composables/useQuestionCards";
-import Button from "../ui/Button.vue";
-import ErrorBanner from "../ui/ErrorBanner.vue";
-import EmptyState from "../ui/EmptyState.vue";
-import LoadingSpinner from "../ui/LoadingSpinner.vue";
-import ReviewCard from "./ReviewCard.vue";
+import type { QuestionDifficulty, TagVocabulary } from '../../types'
+import { toRef } from 'vue'
+import { useQuestionCards } from '../../composables/useQuestionCards'
+import Button from '../ui/Button.vue'
+import ErrorBanner from '../ui/ErrorBanner.vue'
+import EmptyState from '../ui/EmptyState.vue'
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import ReviewCard from './ReviewCard.vue'
 
 const props = defineProps<{
-  userId: number | null;
-  vocabulary: TagVocabulary | null;
-  onDifficultyChanged: () => void;
-}>();
+  userId: number | null
+  vocabulary: TagVocabulary | null
+  onDifficultyChanged: () => void
+}>()
 
 const cards = useQuestionCards(
-  toRef(props, "userId"),
-  toRef(props, "vocabulary"),
+  toRef(props, 'userId'),
+  toRef(props, 'vocabulary'),
   props.onDifficultyChanged,
-);
+)
 
 const {
   phase,
@@ -197,7 +196,7 @@ const {
   submitRating,
   changeDifficulty,
   ratingCounts,
-} = cards;
+} = cards
 
-defineExpose({ reset: cards.reset });
+defineExpose({ reset: cards.reset })
 </script>

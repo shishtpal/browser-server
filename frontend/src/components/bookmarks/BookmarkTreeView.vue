@@ -1,5 +1,7 @@
 <template>
-  <div class="overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90">
+  <div
+    class="overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90"
+  >
     <BookmarkTreeNode
       v-for="n in nodes"
       :key="n.key"

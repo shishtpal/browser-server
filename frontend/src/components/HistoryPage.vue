@@ -10,19 +10,51 @@
       </template>
     </PageHeader>
 
-    <SelectUserPrompt title="Select a user to view their browsing history" :users-count="users.length" :selected-user-id="selectedUserId" />
+    <SelectUserPrompt
+      title="Select a user to view their browsing history"
+      :users-count="users.length"
+      :selected-user-id="selectedUserId"
+    />
 
     <LoadingSpinner v-if="isLoading" message="Loading history..." color="violet" />
 
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadHistory" />
 
     <div v-else-if="selectedUserId">
-      <HistoryImport v-if="selectedUserId" :selected-user-id="selectedUserId" class="mb-4" @imported="loadHistory" />
+      <HistoryImport
+        v-if="selectedUserId"
+        :selected-user-id="selectedUserId"
+        class="mb-4"
+        @imported="loadHistory"
+      />
 
-      <form @submit.prevent="addEntry" class="mb-4 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors sm:flex-row sm:items-center sm:gap-3 dark:border-white/10 dark:bg-slate-800/90">
-        <InputField v-model="newUrl" type="url" placeholder="https://example.com" required flex color="violet" />
-        <InputField v-model="newTitle" type="text" placeholder="Page title" required flex color="violet" />
-        <InputField v-model="newDuration" type="number" placeholder="Duration (s)" class="w-28 shrink-0 sm:w-24" color="violet" />
+      <form
+        @submit.prevent="addEntry"
+        class="mb-4 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors sm:flex-row sm:items-center sm:gap-3 dark:border-white/10 dark:bg-slate-800/90"
+      >
+        <InputField
+          v-model="newUrl"
+          type="url"
+          placeholder="https://example.com"
+          required
+          flex
+          color="violet"
+        />
+        <InputField
+          v-model="newTitle"
+          type="text"
+          placeholder="Page title"
+          required
+          flex
+          color="violet"
+        />
+        <InputField
+          v-model="newDuration"
+          type="number"
+          placeholder="Duration (s)"
+          class="w-28 shrink-0 sm:w-24"
+          color="violet"
+        />
         <Button type="submit" variant="gradient-violet" size="sm">Add</Button>
       </form>
 
@@ -33,14 +65,20 @@
       <EmptyState
         v-if="filteredHistory.length === 0"
         :title="historyEntries.length === 0 ? 'No history yet' : 'No matching entries'"
-        :description="historyEntries.length === 0 ? 'Add a browsing entry above.' : 'Try a different search.'"
+        :description="
+          historyEntries.length === 0 ? 'Add a browsing entry above.' : 'Try a different search.'
+        "
         icon="clock"
         color="violet"
       />
 
       <div v-else>
-        <div class="hidden overflow-x-auto rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 md:block">
-          <table class="w-full table-fixed divide-y divide-gray-200 transition-colors dark:divide-slate-700">
+        <div
+          class="hidden overflow-x-auto rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors md:block dark:border-slate-700/80 dark:bg-slate-800/90"
+        >
+          <table
+            class="w-full table-fixed divide-y divide-gray-200 transition-colors dark:divide-slate-700"
+          >
             <colgroup>
               <col class="w-[25%]" />
               <col class="w-[35%]" />
@@ -50,11 +88,31 @@
             </colgroup>
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
               <tr>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Title</th>
-                <th class="px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">URL</th>
-                <th class="w-28 px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Visited</th>
-                <th class="w-20 px-3 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Duration</th>
-                <th class="w-20 px-3 py-3 text-right text-[10px] font-black uppercase tracking-wide text-slate-500 transition-colors dark:text-slate-400">Actions</th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Title
+                </th>
+                <th
+                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  URL
+                </th>
+                <th
+                  class="w-28 px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Visited
+                </th>
+                <th
+                  class="w-20 px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Duration
+                </th>
+                <th
+                  class="w-20 px-3 py-3 text-right text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
@@ -68,24 +126,33 @@
           </table>
         </div>
 
-        <div class="relative space-y-2 before:absolute before:left-5 before:top-3 before:h-[calc(100%-1.5rem)] before:w-px before:bg-gray-200 dark:before:bg-slate-700 md:hidden">
-          <HistoryCard
-            v-for="h in filteredHistory"
-            :key="h.id"
-            :entry="h"
-            @delete="removeEntry"
-          />
+        <div
+          class="relative space-y-2 before:absolute before:top-3 before:left-5 before:h-[calc(100%-1.5rem)] before:w-px before:bg-gray-200 md:hidden dark:before:bg-slate-700"
+        >
+          <HistoryCard v-for="h in filteredHistory" :key="h.id" :entry="h" @delete="removeEntry" />
         </div>
 
         <!-- Scroll sentinel + loading more indicator -->
         <div ref="scrollSentinel" class="flex items-center justify-center py-6">
-          <div v-if="isLoadingMore" class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div
+            v-if="isLoadingMore"
+            class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400"
+          >
+            <svg
+              class="h-4 w-4 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
             Loading more…
           </div>
-          <span v-else-if="!hasMore && filteredHistory.length > 0" class="text-xs text-slate-400 dark:text-slate-500">
+          <span
+            v-else-if="!hasMore && filteredHistory.length > 0"
+            class="text-xs text-slate-400 dark:text-slate-500"
+          >
             All {{ historyEntries.length }} entries loaded
           </span>
         </div>

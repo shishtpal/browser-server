@@ -1,7 +1,12 @@
 import type { CreateHistoryInput, History, HistoryImportResult } from '@browser-server/shared-types'
 import { API_BASE, authHeaders, client } from './client'
 
-export function getHistory(userId?: number, url?: string, limit?: number, offset?: number): Promise<History[]> {
+export function getHistory(
+  userId?: number,
+  url?: string,
+  limit?: number,
+  offset?: number,
+): Promise<History[]> {
   return client.getHistory(userId, url, limit, offset)
 }
 

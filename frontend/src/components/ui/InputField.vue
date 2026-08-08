@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
   required: false,
   disabled: false,
   color: 'indigo',
-  flex: false
+  flex: false,
 })
 
 const emit = defineEmits<{
@@ -42,18 +42,19 @@ const onInput = (e: Event) => {
 }
 
 const inputClass = computed(() => {
-  const base = 'rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:ring-4 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500'
-  
+  const base =
+    'rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:ring-4 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500'
+
   const colors = {
     indigo: 'focus:border-indigo-400 focus:ring-indigo-100 dark:focus:ring-indigo-900/30',
     cyan: 'focus:border-cyan-400 focus:ring-cyan-100 dark:focus:ring-cyan-900/30',
     violet: 'focus:border-violet-400 focus:ring-violet-100 dark:focus:ring-violet-900/30',
     emerald: 'focus:border-emerald-400 focus:ring-emerald-100 dark:focus:ring-emerald-900/30',
-    amber: 'focus:border-amber-400 focus:ring-amber-100 dark:focus:ring-amber-900/30'
+    amber: 'focus:border-amber-400 focus:ring-amber-100 dark:focus:ring-amber-900/30',
   }
-  
+
   const flexClass = props.flex ? 'min-w-0 flex-1' : 'w-full'
-  
+
   return `${base} ${colors[props.color]} ${flexClass}`
 })
 </script>

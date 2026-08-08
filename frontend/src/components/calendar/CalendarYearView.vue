@@ -8,7 +8,15 @@
         aria-label="Previous year"
         @click="emit('yearChange', year - 1)"
       >
-        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          class="h-3.5 w-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
@@ -16,7 +24,7 @@
       <div class="relative">
         <h2
           v-if="!editing"
-          class="cursor-text select-none rounded-md px-2 py-0.5 text-lg font-black tabular-nums text-slate-900 transition hover:bg-gray-100 dark:text-white dark:hover:bg-slate-700"
+          class="cursor-text rounded-md px-2 py-0.5 text-lg font-black text-slate-900 tabular-nums transition select-none hover:bg-gray-100 dark:text-white dark:hover:bg-slate-700"
           title="Click to jump to a year"
           @click="startEdit"
         >
@@ -29,7 +37,7 @@
           type="number"
           min="1900"
           max="9999"
-          class="w-24 rounded-md border border-indigo-400 bg-white px-2 py-0.5 text-center text-lg font-black tabular-nums text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:border-indigo-500 dark:bg-slate-800 dark:text-white"
+          class="w-24 rounded-md border border-indigo-400 bg-white px-2 py-0.5 text-center text-lg font-black text-slate-900 tabular-nums shadow-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none dark:border-indigo-500 dark:bg-slate-800 dark:text-white"
           @keydown.enter="commit"
           @keydown.esc="cancel"
           @blur="commit"
@@ -42,7 +50,15 @@
         aria-label="Next year"
         @click="emit('yearChange', year + 1)"
       >
-        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          class="h-3.5 w-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d="M9 18l6-6-6-6" />
         </svg>
       </button>

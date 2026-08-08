@@ -144,9 +144,10 @@ const {
   selectTag,
 } = usePromptManager({ prompts, activeTag, addPrompt, editPrompt, removePrompt, loadPrompts })
 
-const { containerRef, sidebarWidth, isResizing, startResize, onResize, stopResize } = useResizableSidebar({
-  storageKey: 'pm.sidebarWidth',
-})
+const { containerRef, sidebarWidth, isResizing, startResize, onResize, stopResize } =
+  useResizableSidebar({
+    storageKey: 'pm.sidebarWidth',
+  })
 
 /* Always fetch the full list; filtering happens client-side so tag counts stay
    accurate and switching tags is instant. */

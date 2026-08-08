@@ -8,17 +8,32 @@
       <template #controls>
         <UserSelector id="quiz-user" v-model="selectedUserId" :users="users" color="violet" />
         <div class="flex gap-1">
-          <FilterPill v-for="tab in tabs" :key="tab.key" :active="activeTab === tab.key" @click="activeTab = tab.key">
+          <FilterPill
+            v-for="tab in tabs"
+            :key="tab.key"
+            :active="activeTab === tab.key"
+            @click="activeTab = tab.key"
+          >
             {{ tab.label }}
           </FilterPill>
         </div>
       </template>
     </PageHeader>
 
-    <SelectUserPrompt title="Select a user to manage their question bank" :users-count="users.length" :selected-user-id="selectedUserId" />
+    <SelectUserPrompt
+      title="Select a user to manage their question bank"
+      :users-count="users.length"
+      :selected-user-id="selectedUserId"
+    />
 
     <template v-if="selectedUserId">
-      <LoadingSpinner v-if="isLoading && questions.length === 0 && activeTab !== 'papers' && activeTab !== 'cards'" message="Loading..." color="violet" />
+      <LoadingSpinner
+        v-if="
+          isLoading && questions.length === 0 && activeTab !== 'papers' && activeTab !== 'cards'
+        "
+        message="Loading..."
+        color="violet"
+      />
       <ErrorBanner v-else-if="error" :message="error" :on-retry="refreshAll" />
 
       <template v-else>
@@ -30,7 +45,9 @@
         />
 
         <div v-else-if="activeTab === 'questions'" class="space-y-4">
-          <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
+          <div
+            class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60"
+          >
             <h2 class="mb-3 text-sm font-black text-slate-800 dark:text-slate-100">Add question</h2>
             <QuestionForm :vocabulary="vocabulary" :is-saving="isSaving" @save="handleCreate" />
           </div>
@@ -48,7 +65,13 @@
           />
         </div>
 
-        <QuestionCards v-else-if="activeTab === 'cards'" ref="questionCards" :user-id="selectedUserId" :vocabulary="vocabulary" :on-difficulty-changed="loadStats" />
+        <QuestionCards
+          v-else-if="activeTab === 'cards'"
+          ref="questionCards"
+          :user-id="selectedUserId"
+          :vocabulary="vocabulary"
+          :on-difficulty-changed="loadStats"
+        />
 
         <PaperGenerator
           v-else-if="activeTab === 'generate'"
@@ -57,12 +80,7 @@
           @generate="handleGenerate"
         />
 
-        <PaperList
-          v-else
-          :papers="papers"
-          @open="openPaper"
-          @delete="removePaper"
-        />
+        <PaperList v-else :papers="papers" @open="openPaper" @delete="removePaper" />
       </template>
     </template>
 
@@ -149,7 +167,7 @@ const isSaving = ref(false)
 const questionCards = ref<{ reset: () => void } | null>(null)
 
 watch(selectedUserId, (id) => {
-	questionCards.value?.reset()
+  questionCards.value?.reset()
   if (id) {
     setUser(id)
   } else {

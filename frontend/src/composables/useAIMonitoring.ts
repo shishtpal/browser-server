@@ -95,7 +95,24 @@ export function useAIMonitoring() {
     return refresh()
   }
 
-  return { metrics, logs, windowHours, source, status, conversationInput, taskInput,
-    conversationId, taskId, isLoading, isLoadingMore, error, hasMore, successRate,
-    refresh, loadMore, applyIdFilters, clearFilters }
+  return {
+    metrics,
+    logs,
+    windowHours,
+    source,
+    status,
+    conversationInput,
+    taskInput,
+    conversationId,
+    taskId,
+    isLoading,
+    isLoadingMore,
+    error,
+    hasMore,
+    successRate,
+    refresh,
+    loadMore,
+    applyIdFilters,
+    clearFilters,
+  }
 }

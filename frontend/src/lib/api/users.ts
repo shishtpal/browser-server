@@ -27,8 +27,10 @@ export function createUser(data: { username: string; email?: string }): Promise<
 }
 
 export function deleteUser(id: number): Promise<void> {
-  return fetch(`${API_BASE}/api/users/${id}`, { method: 'DELETE', headers: authHeaders() }).then((res) => {
-    if (res.status === 204) return
-    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-  })
+  return fetch(`${API_BASE}/api/users/${id}`, { method: 'DELETE', headers: authHeaders() }).then(
+    (res) => {
+      if (res.status === 204) return
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+    },
+  )
 }

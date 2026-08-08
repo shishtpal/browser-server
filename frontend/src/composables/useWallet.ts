@@ -1,5 +1,11 @@
 import { ref, computed, watch, type Ref } from 'vue'
-import { getWallet, createWalletEntry, updateWalletEntry, deleteWalletEntry, revealWalletPassword } from '../lib/api'
+import {
+  getWallet,
+  createWalletEntry,
+  updateWalletEntry,
+  deleteWalletEntry,
+  revealWalletPassword,
+} from '../lib/api'
 import type { WalletEntry } from '../types'
 
 export function useWallet(selectedUserId: Ref<number | null>) {
@@ -7,7 +13,9 @@ export function useWallet(selectedUserId: Ref<number | null>) {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const websiteFilter = ref('')
-  const searchColumn = ref<'website' | 'login_provider' | 'username' | 'description' | 'all'>('website')
+  const searchColumn = ref<'website' | 'login_provider' | 'username' | 'description' | 'all'>(
+    'website',
+  )
 
   const newWebsite = ref('')
   const newLoginProvider = ref('Password')
@@ -16,18 +24,26 @@ export function useWallet(selectedUserId: Ref<number | null>) {
   const newDescription = ref('')
 
   const editing = ref<WalletEntry | null>(null)
-  const editForm = ref({ website: '', login_provider: 'Password', username: '', password: '', description: '' })
+  const editForm = ref({
+    website: '',
+    login_provider: 'Password',
+    username: '',
+    password: '',
+    description: '',
+  })
 
   const filteredEntries = computed(() => {
     if (!websiteFilter.value.trim()) return walletEntries.value
     const q = websiteFilter.value.toLowerCase()
     const col = searchColumn.value
-    return walletEntries.value.filter(e => {
+    return walletEntries.value.filter((e) => {
       if (col === 'all') {
-        return e.website.toLowerCase().includes(q) ||
-               e.login_provider.toLowerCase().includes(q) ||
-               e.username.toLowerCase().includes(q) ||
-               e.description.toLowerCase().includes(q)
+        return (
+          e.website.toLowerCase().includes(q) ||
+          e.login_provider.toLowerCase().includes(q) ||
+          e.username.toLowerCase().includes(q) ||
+          e.description.toLowerCase().includes(q)
+        )
       }
       if (col === 'website') return e.website.toLowerCase().includes(q)
       if (col === 'login_provider') return e.login_provider.toLowerCase().includes(q)

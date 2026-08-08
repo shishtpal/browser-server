@@ -4,7 +4,14 @@ import { getAIVoiceConfig } from '../../../lib/api'
 import { API_BASE } from '../../../lib/api/client'
 import { getToken } from '../../../lib/auth'
 
-export type VoiceState = 'idle' | 'requesting' | 'listening' | 'transcribing' | 'denied' | 'unsupported' | 'error'
+export type VoiceState =
+  | 'idle'
+  | 'requesting'
+  | 'listening'
+  | 'transcribing'
+  | 'denied'
+  | 'unsupported'
+  | 'error'
 
 const PROVIDER_KEY = 'bs.ai.voice.provider'
 const MODEL_KEY = 'bs.ai.voice.model'
@@ -42,31 +49,44 @@ export function useVoiceTyping(open: Ref<boolean>) {
   let speechDetected = false
   let session = 0
 
-  const providers = computed(() => Object.entries(config.value?.providers ?? {}).filter(([, item]) => item.enabled !== false))
+  const providers = computed(() =>
+    Object.entries(config.value?.providers ?? {}).filter(([, item]) => item.enabled !== false),
+  )
   const models = computed(() => config.value?.providers[provider.value]?.models ?? [])
   const selectedModel = computed(() => models.value.find((item) => item.id === model.value))
-  const isActive = computed(() => state.value === 'requesting' || state.value === 'listening' || state.value === 'transcribing')
+  const isActive = computed(
+    () =>
+      state.value === 'requesting' || state.value === 'listening' || state.value === 'transcribing',
+  )
 
   function restoreSelections() {
     const cfg = config.value
     if (!cfg) return
     const savedProvider = localStorage.getItem(PROVIDER_KEY) ?? ''
-    provider.value = cfg.providers[savedProvider]?.enabled !== false && cfg.providers[savedProvider]
-      ? savedProvider
-      : (cfg.providers[cfg.default_provider ?? ''] ? cfg.default_provider! : providers.value[0]?.[0] ?? '')
+    provider.value =
+      cfg.providers[savedProvider]?.enabled !== false && cfg.providers[savedProvider]
+        ? savedProvider
+        : cfg.providers[cfg.default_provider ?? '']
+          ? cfg.default_provider!
+          : (providers.value[0]?.[0] ?? '')
     const providerConfig = cfg.providers[provider.value]
     const savedModel = localStorage.getItem(MODEL_KEY) ?? ''
     model.value = providerConfig?.models.some((item) => item.id === savedModel)
       ? savedModel
-      : providerConfig?.models.find((item) => item.default)?.id ?? providerConfig?.models[0]?.id ?? ''
+      : (providerConfig?.models.find((item) => item.default)?.id ??
+        providerConfig?.models[0]?.id ??
+        '')
     const savedLanguage = localStorage.getItem(LANGUAGE_KEY) ?? ''
-    language.value = cfg.languages.some((item) => item.code === savedLanguage) ? savedLanguage : cfg.languages[0]?.code ?? ''
+    language.value = cfg.languages.some((item) => item.code === savedLanguage)
+      ? savedLanguage
+      : (cfg.languages[0]?.code ?? '')
   }
 
   async function loadConfig(expectedSession?: number): Promise<boolean> {
     try {
       const loaded = await getAIVoiceConfig()
-      if (expectedSession !== undefined && (expectedSession !== session || !open.value)) return false
+      if (expectedSession !== undefined && (expectedSession !== session || !open.value))
+        return false
       config.value = loaded
       restoreSelections()
       if (!config.value.enabled) error.value = 'Voice typing is not configured on this server.'
@@ -74,7 +94,8 @@ export function useVoiceTyping(open: Ref<boolean>) {
     } catch (err) {
       if (expectedSession !== undefined && expectedSession !== session) return false
       state.value = 'error'
-      error.value = err instanceof Error ? err.message : 'Failed to load voice typing configuration.'
+      error.value =
+        err instanceof Error ? err.message : 'Failed to load voice typing configuration.'
       return false
     }
   }
@@ -100,7 +121,12 @@ export function useVoiceTyping(open: Ref<boolean>) {
     error.value = ''
     transcript.value = ''
 
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !window.AudioContext || !window.WebSocket) {
+    if (
+      !window.isSecureContext ||
+      !navigator.mediaDevices?.getUserMedia ||
+      !window.AudioContext ||
+      !window.WebSocket
+    ) {
       state.value = 'unsupported'
       error.value = 'Voice typing requires a supported browser and a secure HTTPS connection.'
       return
@@ -133,7 +159,9 @@ export function useVoiceTyping(open: Ref<boolean>) {
 
     if (navigator.permissions?.query) {
       try {
-        const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+        const permission = await navigator.permissions.query({
+          name: 'microphone' as PermissionName,
+        })
 
         if (abortStart) {
           if (currentSession === session) state.value = 'idle'
@@ -147,7 +175,8 @@ export function useVoiceTyping(open: Ref<boolean>) {
 
         if (permission.state === 'denied') {
           state.value = 'denied'
-          error.value = 'Microphone access is blocked. Enable it in your browser site settings, then retry.'
+          error.value =
+            'Microphone access is blocked. Enable it in your browser site settings, then retry.'
           return
         }
       } catch {
@@ -170,7 +199,7 @@ export function useVoiceTyping(open: Ref<boolean>) {
     try {
       acquiredStream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
-        video: false
+        video: false,
       })
 
       if (abortStart) {
@@ -204,7 +233,8 @@ export function useVoiceTyping(open: Ref<boolean>) {
       const domError = err as DOMException
       if (domError?.name === 'NotAllowedError' || domError?.name === 'SecurityError') {
         state.value = 'denied'
-        error.value = 'Microphone access was denied. Enable it in your browser site settings, then retry.'
+        error.value =
+          'Microphone access was denied. Enable it in your browser site settings, then retry.'
       } else {
         state.value = 'error'
         error.value = domError?.message || 'The microphone is unavailable or already in use.'
@@ -244,7 +274,9 @@ export function useVoiceTyping(open: Ref<boolean>) {
         if (state.value === 'transcribing' && transcript.value.trim()) state.value = 'idle'
         else if (state.value === 'listening' || state.value === 'transcribing') {
           state.value = 'error'
-          error.value = event.reason || (transcript.value ? '' : 'The transcription connection ended before text was received.')
+          error.value =
+            event.reason ||
+            (transcript.value ? '' : 'The transcription connection ended before text was received.')
         }
       }
       currentSocket.onmessage = (event) => {
@@ -274,12 +306,20 @@ export function useVoiceTyping(open: Ref<boolean>) {
     speechDetected = false
     silenceSince = 0
     const started = Date.now()
-    elapsedTimer = setInterval(() => { elapsedSeconds.value = Math.floor((Date.now() - started) / 1000) }, 250)
+    elapsedTimer = setInterval(() => {
+      elapsedSeconds.value = Math.floor((Date.now() - started) / 1000)
+    }, 250)
     maxTimer = setTimeout(stop, config.value!.recording.max_duration_seconds * 1000)
   }
 
   function processAudio(input: Float32Array) {
-    if (state.value !== 'listening' || socket?.readyState !== WebSocket.OPEN || !context || !selectedModel.value) return
+    if (
+      state.value !== 'listening' ||
+      socket?.readyState !== WebSocket.OPEN ||
+      !context ||
+      !selectedModel.value
+    )
+      return
     let sum = 0
     for (const sample of input) sum += sample * sample
     const rms = Math.sqrt(sum / input.length)
@@ -303,7 +343,10 @@ export function useVoiceTyping(open: Ref<boolean>) {
     try {
       const message = JSON.parse(raw) as Record<string, any>
       if (message.type === 'error') {
-        error.value = typeof message.message === 'string' ? message.message : 'The transcription provider reported an error.'
+        error.value =
+          typeof message.message === 'string'
+            ? message.message
+            : 'The transcription provider reported an error.'
         state.value = 'error'
         cleanup()
         return
@@ -362,10 +405,13 @@ export function useVoiceTyping(open: Ref<boolean>) {
     if (elapsedTimer) clearInterval(elapsedTimer)
     if (maxTimer) clearTimeout(maxTimer)
     elapsedTimer = maxTimer = null
-    if (processor) { processor.onaudioprocess = null; processor.disconnect() }
+    if (processor) {
+      processor.onaudioprocess = null
+      processor.disconnect()
+    }
     source?.disconnect()
     stream?.getTracks().forEach((track) => track.stop())
-    void context?.close().catch(() => { })
+    void context?.close().catch(() => {})
     processor = source = null
     stream = null
     context = null
@@ -381,12 +427,25 @@ export function useVoiceTyping(open: Ref<boolean>) {
     stopCapture()
     clearFinalizeTimer()
     clearConnectionWait()
-    if (socket) { socket.onclose = socket.onerror = socket.onmessage = null; socket.close() }
+    if (socket) {
+      socket.onclose = socket.onerror = socket.onmessage = null
+      socket.close()
+    }
     socket = null
-    if (state.value === 'requesting' || state.value === 'listening' || state.value === 'transcribing') state.value = 'idle'
+    if (
+      state.value === 'requesting' ||
+      state.value === 'listening' ||
+      state.value === 'transcribing'
+    )
+      state.value = 'idle'
   }
 
-  function recordAgain() { cleanup(); transcript.value = ''; error.value = ''; void start() }
+  function recordAgain() {
+    cleanup()
+    transcript.value = ''
+    error.value = ''
+    void start()
+  }
 
   watch(provider, () => {
     if (!config.value) return
@@ -398,10 +457,29 @@ export function useVoiceTyping(open: Ref<boolean>) {
   })
   watch(model, (value) => value && localStorage.setItem(MODEL_KEY, value))
   watch(language, (value) => value && localStorage.setItem(LANGUAGE_KEY, value))
-  watch(open, (value) => { if (!value) cleanup() })
+  watch(open, (value) => {
+    if (!value) cleanup()
+  })
   onUnmounted(cleanup)
 
-  return { config, state, error, transcript, provider, model, language, elapsedSeconds, providers, models, isActive, openSession, start, stop, cleanup, recordAgain }
+  return {
+    config,
+    state,
+    error,
+    transcript,
+    provider,
+    model,
+    language,
+    elapsedSeconds,
+    providers,
+    models,
+    isActive,
+    openSession,
+    start,
+    stop,
+    cleanup,
+    recordAgain,
+  }
 }
 
 function downsample(input: Float32Array, sourceRate: number, targetRate: number): Float32Array {
@@ -431,7 +509,8 @@ function toPCM16(input: Float32Array): ArrayBuffer {
 function findTranscript(value: unknown): string {
   if (!value || typeof value !== 'object') return ''
   const item = value as Record<string, unknown>
-  for (const key of ['transcript', 'text']) if (typeof item[key] === 'string' && item[key]) return item[key]
+  for (const key of ['transcript', 'text'])
+    if (typeof item[key] === 'string' && item[key]) return item[key]
   for (const key of ['data', 'result', 'output']) {
     const found = findTranscript(item[key])
     if (found) return found

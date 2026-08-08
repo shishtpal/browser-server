@@ -10,7 +10,11 @@
       </template>
     </PageHeader>
 
-    <SelectUserPrompt title="Select a user to view usage analytics" :users-count="users.length" :selected-user-id="selectedUserId" />
+    <SelectUserPrompt
+      title="Select a user to view usage analytics"
+      :users-count="users.length"
+      :selected-user-id="selectedUserId"
+    />
 
     <LoadingSpinner v-if="isLoading" message="Loading usage data..." color="rose" />
 
@@ -24,9 +28,11 @@
           :key="preset.value"
           type="button"
           class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-          :class="datePreset === preset.value
-            ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-700'
-            : 'bg-gray-100 text-slate-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'"
+          :class="
+            datePreset === preset.value
+              ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-700'
+              : 'bg-gray-100 text-slate-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+          "
           @click="datePreset = preset.value"
         >
           {{ preset.label }}
@@ -53,9 +59,11 @@
             :key="opt.value"
             type="button"
             class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-            :class="groupBy === opt.value
-              ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-700'
-              : 'bg-gray-100 text-slate-500 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'"
+            :class="
+              groupBy === opt.value
+                ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-700'
+                : 'bg-gray-100 text-slate-500 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+            "
             @click="groupBy = opt.value"
           >
             {{ opt.label }}
@@ -73,8 +81,12 @@
 
       <template v-else>
         <!-- Domain breakdown -->
-        <div class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-800/90">
-          <h3 class="mb-3 text-xs font-black uppercase tracking-wider text-slate-500">Top Domains</h3>
+        <div
+          class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-800/90"
+        >
+          <h3 class="mb-3 text-xs font-black tracking-wider text-slate-500 uppercase">
+            Top Domains
+          </h3>
           <ul class="space-y-2">
             <li
               v-for="(domain, index) in summary.domains"
@@ -87,7 +99,10 @@
                 class="h-4 w-4 shrink-0 rounded-sm"
                 @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
               />
-              <span class="w-28 shrink-0 truncate text-sm font-medium text-slate-700 dark:text-slate-300" :title="domain.domain">
+              <span
+                class="w-28 shrink-0 truncate text-sm font-medium text-slate-700 dark:text-slate-300"
+                :title="domain.domain"
+              >
                 {{ domain.domain }}
               </span>
               <div class="flex h-5 flex-1 overflow-hidden rounded-sm bg-gray-100 dark:bg-slate-700">
@@ -97,10 +112,12 @@
                   :style="{ width: `${Math.max(domain.percentage, 2)}%` }"
                 />
               </div>
-              <span class="w-16 text-right text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-400">
+              <span
+                class="w-16 text-right text-xs font-semibold text-slate-600 tabular-nums dark:text-slate-400"
+              >
                 {{ formatDuration(domain.total_seconds) }}
               </span>
-              <span class="w-12 text-right text-[11px] tabular-nums text-slate-400">
+              <span class="w-12 text-right text-[11px] text-slate-400 tabular-nums">
                 {{ domain.percentage }}%
               </span>
             </li>
@@ -108,23 +125,34 @@
         </div>
 
         <!-- Trend chart -->
-        <div v-if="summary.timeline.length > 0" class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-800/90">
-          <h3 class="mb-3 text-xs font-black uppercase tracking-wider text-slate-500">
+        <div
+          v-if="summary.timeline.length > 0"
+          class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-800/90"
+        >
+          <h3 class="mb-3 text-xs font-black tracking-wider text-slate-500 uppercase">
             Trend · {{ groupBy }}
           </h3>
-          <div class="flex items-end justify-between gap-1" :style="{ height: `${chartMaxHeight + 28}px` }">
+          <div
+            class="flex items-end justify-between gap-1"
+            :style="{ height: `${chartMaxHeight + 28}px` }"
+          >
             <div
               v-for="(point, index) in summary.timeline"
               :key="point.period"
               class="flex flex-1 flex-col items-center justify-end"
               :title="formatDuration(point.total_seconds)"
             >
-              <span class="mb-1 text-[10px] font-medium tabular-nums text-slate-500">
+              <span class="mb-1 text-[10px] font-medium text-slate-500 tabular-nums">
                 {{ formatDuration(point.total_seconds) }}
               </span>
               <div
                 class="w-full rounded-t-sm bg-rose-500/60 transition hover:bg-rose-400/80"
-                :style="{ height: maxTimelineValue > 0 ? `${(point.total_seconds / maxTimelineValue) * chartMaxHeight}px` : '0px' }"
+                :style="{
+                  height:
+                    maxTimelineValue > 0
+                      ? `${(point.total_seconds / maxTimelineValue) * chartMaxHeight}px`
+                      : '0px',
+                }"
               />
               <span
                 class="mt-1 text-[9px] leading-tight text-slate-400"

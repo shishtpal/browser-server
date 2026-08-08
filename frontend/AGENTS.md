@@ -107,6 +107,7 @@ All Vue components use the composition API with `<script setup>`. Keep page-leve
 ### Composables own data + state
 
 A composable (e.g. [`composables/useTodos.ts`](src/composables/useTodos.ts)) returns `ref`s plus async actions. The standard pattern:
+
 - `items`, `isLoading`, `error` refs
 - a `load*()` that sets `isLoading`, calls the API, and traps errors into `error`
 - mutating actions (`add*`, `update*`, `remove*`) that call the API then re-`load`

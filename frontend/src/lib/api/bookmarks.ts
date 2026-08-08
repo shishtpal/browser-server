@@ -6,10 +6,12 @@ export function getBookmarks(userId?: number, tags?: string): Promise<BookmarkRe
   if (userId) params.set('user_id', String(userId))
   if (tags) params.set('tags', tags)
   const qs = params.toString()
-  return fetch(`${API_BASE}/api/bookmarks${qs ? `?${qs}` : ''}`, { headers: authHeaders() }).then((res) => {
-    if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-    return res.json() as Promise<BookmarkResponse[]>
-  })
+  return fetch(`${API_BASE}/api/bookmarks${qs ? `?${qs}` : ''}`, { headers: authHeaders() }).then(
+    (res) => {
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+      return res.json() as Promise<BookmarkResponse[]>
+    },
+  )
 }
 
 export function getBookmark(id: number): Promise<BookmarkResponse> {
@@ -19,7 +21,13 @@ export function getBookmark(id: number): Promise<BookmarkResponse> {
   })
 }
 
-export function createBookmark(data: { user_id: number; title: string; url: string; description?: string; tags?: string[] }): Promise<BookmarkResponse> {
+export function createBookmark(data: {
+  user_id: number
+  title: string
+  url: string
+  description?: string
+  tags?: string[]
+}): Promise<BookmarkResponse> {
   return fetch(`${API_BASE}/api/bookmarks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -46,7 +54,10 @@ export function updateBookmark(id: number, data: Partial<Bookmark>): Promise<Boo
 }
 
 export function deleteBookmark(id: number): Promise<void> {
-  return fetch(`${API_BASE}/api/bookmarks/${id}`, { method: 'DELETE', headers: authHeaders() }).then((res) => {
+  return fetch(`${API_BASE}/api/bookmarks/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  }).then((res) => {
     if (res.status === 204) return
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   })

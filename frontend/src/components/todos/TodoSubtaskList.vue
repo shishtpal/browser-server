@@ -1,9 +1,22 @@
 <template>
-  <div class="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-800/60">
+  <div
+    class="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-800/60"
+  >
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <button type="button" @click="expanded = !expanded" class="inline-flex items-center gap-1 text-[10px] font-black text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-          <svg class="h-3 w-3 shrink-0 transition-transform" :class="expanded ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+        <button
+          type="button"
+          @click="expanded = !expanded"
+          class="inline-flex items-center gap-1 text-[10px] font-black text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          <svg
+            class="h-3 w-3 shrink-0 transition-transform"
+            :class="expanded ? 'rotate-90' : ''"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
           Subtasks ({{ subtasks.length }})
         </button>
         <TodoSubtaskProgress :done="progress.done" :total="progress.total" />
@@ -19,8 +32,13 @@
         tag="div"
       >
         <template #item="{ element }">
-          <div class="group flex items-center gap-2 rounded-md bg-white p-2 transition dark:bg-slate-800">
-            <button class="drag-handle cursor-grab active:cursor-grabbing text-slate-400 transition hover:text-slate-600" title="Drag to reorder">
+          <div
+            class="group flex items-center gap-2 rounded-md bg-white p-2 transition dark:bg-slate-800"
+          >
+            <button
+              class="drag-handle cursor-grab text-slate-400 transition hover:text-slate-600 active:cursor-grabbing"
+              title="Drag to reorder"
+            >
               <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
                 <circle cx="9" cy="6" r="1.5" />
                 <circle cx="15" cy="6" r="1.5" />
@@ -34,10 +52,19 @@
               type="button"
               @click="onToggleSubtask(element)"
               class="grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 transition"
-              :class="element.status === 'completed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400 dark:border-slate-600 dark:hover:border-indigo-400'"
+              :class="
+                element.status === 'completed'
+                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                  : 'border-gray-300 text-transparent hover:border-indigo-400 dark:border-slate-600 dark:hover:border-indigo-400'
+              "
             >
               <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="3"
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </button>
 
@@ -85,37 +112,51 @@
             <template v-else>
               <span
                 class="flex-1 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-200"
-                :class="{ 'line-through text-slate-400 dark:text-slate-500': element.status === 'completed' }"
+                :class="{
+                  'text-slate-400 line-through dark:text-slate-500': element.status === 'completed',
+                }"
                 :title="'Double-click to edit'"
                 @dblclick="startEdit(element)"
               >
                 {{ element.title }}
               </span>
-              <TodoPriorityBadge :priority="(element.priority as any)" />
-              <TodoDueDateBadge v-if="element.start_date" :due-date="element.start_date" :status="element.status" />
+              <TodoPriorityBadge :priority="element.priority as any" />
+              <TodoDueDateBadge
+                v-if="element.start_date"
+                :due-date="element.start_date"
+                :status="element.status"
+              />
               <button
                 type="button"
                 @click="startEdit(element)"
-                class="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-400 opacity-0 transition hover:bg-gray-100 hover:text-indigo-500 group-hover:opacity-100 dark:hover:bg-slate-700 dark:hover:text-indigo-400"
+                class="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-400 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-indigo-500 dark:hover:bg-slate-700 dark:hover:text-indigo-400"
                 title="Edit subtask"
               >
                 <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
                 </svg>
               </button>
               <button
                 type="button"
                 @click="onRemoveSubtask(element.id)"
-                class="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                class="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-400 opacity-0 transition group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                 title="Delete subtask"
               >
                 <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
               </button>
             </template>
-
-
           </div>
         </template>
       </draggable>
@@ -160,12 +201,20 @@ const emit = defineEmits<{
 const expanded = ref(props.defaultExpanded)
 
 const userId = computed(() => props.todo.user_id)
-const { subtasks, progress, addSubtask, toggleSubtask, removeSubtask } = useTodoSubtasks(props.todo.subtasks || [], computed(() => props.todo.id), userId)
+const { subtasks, progress, addSubtask, toggleSubtask, removeSubtask } = useTodoSubtasks(
+  props.todo.subtasks || [],
+  computed(() => props.todo.id),
+  userId,
+)
 
 // Sync when parent re-fetches
-watch(() => props.todo.subtasks, (val) => {
-  subtasks.value = [...(val || [])]
-}, { deep: true })
+watch(
+  () => props.todo.subtasks,
+  (val) => {
+    subtasks.value = [...(val || [])]
+  },
+  { deep: true },
+)
 
 const newTitle = ref('')
 

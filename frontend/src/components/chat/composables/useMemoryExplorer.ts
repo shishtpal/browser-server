@@ -20,7 +20,9 @@ export function useMemoryExplorer(
   const confirmBulkDelete = ref(false)
 
   const selectedCount = computed(() => selectedIds.value.size)
-  const allSelected = computed(() => messages.value.length > 0 && selectedIds.value.size === messages.value.length)
+  const allSelected = computed(
+    () => messages.value.length > 0 && selectedIds.value.size === messages.value.length,
+  )
 
   function toggleSelect(id: string) {
     const next = new Set(selectedIds.value)
@@ -83,7 +85,9 @@ export function useMemoryExplorer(
         if (detail.messages) {
           onUpdated(detail.messages)
         }
-      } catch { /* fall through with existing props */ }
+      } catch {
+        /* fall through with existing props */
+      }
     }
   })
 
@@ -106,8 +110,10 @@ export function useMemoryExplorer(
     saving.value = true
     errorMsg.value = ''
     try {
-      const updated = await updateAIMessage(conversationId.value, msg.id, { content: editContent.value })
-      const newMessages = messages.value.map((m) => m.id === updated.id ? updated : m)
+      const updated = await updateAIMessage(conversationId.value, msg.id, {
+        content: editContent.value,
+      })
+      const newMessages = messages.value.map((m) => (m.id === updated.id ? updated : m))
       onUpdated(newMessages)
       editingId.value = null
     } catch (err) {

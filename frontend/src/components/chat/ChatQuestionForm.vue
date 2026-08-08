@@ -1,8 +1,18 @@
 <template>
-  <form class="space-y-4 rounded border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-900/60 dark:bg-indigo-950/20" @submit.prevent="submit">
+  <form
+    class="space-y-4 rounded border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-900/60 dark:bg-indigo-950/20"
+    @submit.prevent="submit"
+  >
     <div>
-      <p class="text-[0.85em] font-semibold text-indigo-900 dark:text-indigo-200">A clarification is needed</p>
-      <p v-if="context" class="mt-1 whitespace-pre-wrap text-[0.8em] text-indigo-800 dark:text-indigo-300">{{ context }}</p>
+      <p class="text-[0.85em] font-semibold text-indigo-900 dark:text-indigo-200">
+        A clarification is needed
+      </p>
+      <p
+        v-if="context"
+        class="mt-1 text-[0.8em] whitespace-pre-wrap text-indigo-800 dark:text-indigo-300"
+      >
+        {{ context }}
+      </p>
     </div>
 
     <fieldset v-for="question in questions" :key="question.id" class="space-y-1.5">
@@ -19,27 +29,60 @@
       />
 
       <div v-else-if="question.kind === 'choice'" class="space-y-1">
-        <label v-for="option in question.options" :key="option" class="flex cursor-pointer items-center gap-2 text-[0.85em] text-slate-700 dark:text-slate-300">
-          <input v-model="answers[question.id]" :name="`question-${question.id}`" type="radio" :value="option" />
+        <label
+          v-for="option in question.options"
+          :key="option"
+          class="flex cursor-pointer items-center gap-2 text-[0.85em] text-slate-700 dark:text-slate-300"
+        >
+          <input
+            v-model="answers[question.id]"
+            :name="`question-${question.id}`"
+            type="radio"
+            :value="option"
+          />
           {{ option }}
         </label>
       </div>
 
       <div v-else-if="isMultipleChoice(question.kind)" class="space-y-1">
-        <label v-for="option in question.options" :key="option" class="flex cursor-pointer items-center gap-2 text-[0.85em] text-slate-700 dark:text-slate-300">
+        <label
+          v-for="option in question.options"
+          :key="option"
+          class="flex cursor-pointer items-center gap-2 text-[0.85em] text-slate-700 dark:text-slate-300"
+        >
           <input v-model="answers[question.id]" type="checkbox" :value="option" />
           {{ option }}
         </label>
       </div>
 
       <div v-else class="flex gap-4 text-[0.85em] text-slate-700 dark:text-slate-300">
-        <label class="flex items-center gap-2"><input v-model="answers[question.id]" :name="`confirm-${question.id}`" type="radio" value="yes" /> Yes</label>
-        <label class="flex items-center gap-2"><input v-model="answers[question.id]" :name="`confirm-${question.id}`" type="radio" value="no" /> No</label>
+        <label class="flex items-center gap-2"
+          ><input
+            v-model="answers[question.id]"
+            :name="`confirm-${question.id}`"
+            type="radio"
+            value="yes"
+          />
+          Yes</label
+        >
+        <label class="flex items-center gap-2"
+          ><input
+            v-model="answers[question.id]"
+            :name="`confirm-${question.id}`"
+            type="radio"
+            value="no"
+          />
+          No</label
+        >
       </div>
     </fieldset>
 
     <p v-if="error" class="text-[0.8em] text-red-600 dark:text-red-400">{{ error }}</p>
-    <button class="rounded bg-indigo-600 px-3 py-1.5 text-[0.85em] font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-40" type="submit" :disabled="submitting">
+    <button
+      class="rounded bg-indigo-600 px-3 py-1.5 text-[0.85em] font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-40"
+      type="submit"
+      :disabled="submitting"
+    >
       {{ submitting ? 'Sending…' : 'Submit answers' }}
     </button>
   </form>
@@ -83,9 +126,12 @@ function submit() {
   }
   error.value = ''
   submitting.value = true
-  emit('submit', props.questions.map((question) => {
-    const answer = answers[question.id] || (isMultipleChoice(question.kind) ? [] : '')
-    return { id: question.id, prompt: question.prompt, answer, skipped: isEmpty(answer) }
-  }))
+  emit(
+    'submit',
+    props.questions.map((question) => {
+      const answer = answers[question.id] || (isMultipleChoice(question.kind) ? [] : '')
+      return { id: question.id, prompt: question.prompt, answer, skipped: isEmpty(answer) }
+    }),
+  )
 }
 </script>

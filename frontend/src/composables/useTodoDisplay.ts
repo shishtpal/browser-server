@@ -16,10 +16,14 @@ export type TodoDeleteHandler = (id: number) => void
 export function useTodoDisplay(getTodo: () => Todo, onDelete?: TodoDeleteHandler) {
   const todo = computed(getTodo)
 
-  const screenshotUrl = computed(() => (todo.value.screenshot_path ? getScreenshotUrl(todo.value.id) : ''))
+  const screenshotUrl = computed(() =>
+    todo.value.screenshot_path ? getScreenshotUrl(todo.value.id) : '',
+  )
 
   const subtaskCount = computed(() => (todo.value.subtasks || []).length)
-  const subtaskDoneCount = computed(() => (todo.value.subtasks || []).filter((s) => s.status === 'completed').length)
+  const subtaskDoneCount = computed(
+    () => (todo.value.subtasks || []).filter((s) => s.status === 'completed').length,
+  )
 
   const showSubtasks = ref(false)
 

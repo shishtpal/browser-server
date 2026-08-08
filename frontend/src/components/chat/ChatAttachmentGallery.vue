@@ -1,20 +1,38 @@
 <template>
-  <Modal :open="open" title="Attachment Library" description="Browse every uploaded image and reuse one in this conversation." fullscreen @close="$emit('close')">
+  <Modal
+    :open="open"
+    title="Attachment Library"
+    description="Browse every uploaded image and reuse one in this conversation."
+    fullscreen
+    @close="$emit('close')"
+  >
     <div class="flex h-full flex-col overflow-hidden">
       <!-- Toolbar -->
       <div class="mb-4 flex shrink-0 flex-wrap items-center gap-2.5">
         <div class="relative min-w-0 flex-1 sm:min-w-56">
-          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+          <svg
+            class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white/35"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
+            />
           </svg>
           <input
             v-model="query"
             type="search"
             placeholder="Filter by filename…"
-            class="w-full rounded-xl border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-white/35 hover:border-white/20 focus:border-indigo-400/50 focus:bg-white/[0.06] focus:ring-4 focus:ring-indigo-500/10"
+            class="w-full rounded-xl border border-white/10 bg-white/[0.04] py-2 pr-3 pl-9 text-sm text-white transition outline-none placeholder:text-white/35 hover:border-white/20 focus:border-indigo-400/50 focus:bg-white/[0.06] focus:ring-4 focus:ring-indigo-500/10"
           />
         </div>
-        <span class="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.7rem] font-medium tabular-nums text-white/50">
+        <span
+          class="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.7rem] font-medium text-white/50 tabular-nums"
+        >
           {{ filtered.length }}<span v-if="query.trim()"> of {{ attachments.length }}</span>
           {{ attachments.length === 1 ? 'image' : 'images' }}
         </span>
@@ -26,8 +44,19 @@
           aria-label="Refresh attachments"
           @click="load"
         >
-          <svg class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.582m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          <svg
+            class="h-3.5 w-3.5"
+            :class="{ 'animate-spin': loading }"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.582m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
           </svg>
           Refresh
         </button>
@@ -36,8 +65,15 @@
       <!-- Body -->
       <div class="library-scroll min-h-0 flex-1 overflow-y-auto pr-2">
         <!-- Loading skeleton -->
-        <div v-if="loading && attachments.length === 0" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          <div v-for="i in 12" :key="i" class="overflow-hidden rounded-xl border border-white/[0.06]">
+        <div
+          v-if="loading && attachments.length === 0"
+          class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+        >
+          <div
+            v-for="i in 12"
+            :key="i"
+            class="overflow-hidden rounded-xl border border-white/[0.06]"
+          >
             <div class="aspect-square animate-pulse bg-white/[0.05]"></div>
             <div class="space-y-2 p-2.5">
               <div class="h-2.5 w-3/4 animate-pulse rounded-full bg-white/[0.08]"></div>
@@ -47,10 +83,25 @@
         </div>
 
         <!-- Error -->
-        <div v-else-if="error" class="flex h-full flex-col items-center justify-center gap-4 py-20 text-center">
-          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 ring-1 ring-red-500/25">
-            <svg class="h-7 w-7 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+        <div
+          v-else-if="error"
+          class="flex h-full flex-col items-center justify-center gap-4 py-20 text-center"
+        >
+          <div
+            class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 ring-1 ring-red-500/25"
+          >
+            <svg
+              class="h-7 w-7 text-red-400"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"
+              />
             </svg>
           </div>
           <div class="space-y-1">
@@ -67,37 +118,81 @@
         </div>
 
         <!-- Empty -->
-        <div v-else-if="attachments.length === 0" class="flex h-full flex-col items-center justify-center gap-3 py-20 text-center">
-          <div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03]">
-            <svg class="h-8 w-8 text-white/25" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <div
+          v-else-if="attachments.length === 0"
+          class="flex h-full flex-col items-center justify-center gap-3 py-20 text-center"
+        >
+          <div
+            class="flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03]"
+          >
+            <svg
+              class="h-8 w-8 text-white/25"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
             </svg>
           </div>
           <p class="text-sm font-semibold text-white/80">No attachments yet</p>
-          <p class="max-w-xs text-xs leading-relaxed text-white/40">Images you upload to conversations will appear here for reuse.</p>
+          <p class="max-w-xs text-xs leading-relaxed text-white/40">
+            Images you upload to conversations will appear here for reuse.
+          </p>
         </div>
 
         <!-- No matches -->
-        <div v-else-if="filtered.length === 0" class="flex h-full flex-col items-center justify-center gap-3 py-20 text-center">
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10">
-            <svg class="h-6 w-6 text-white/30" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+        <div
+          v-else-if="filtered.length === 0"
+          class="flex h-full flex-col items-center justify-center gap-3 py-20 text-center"
+        >
+          <div
+            class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10"
+          >
+            <svg
+              class="h-6 w-6 text-white/30"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
+              />
             </svg>
           </div>
           <p class="text-sm font-medium text-white/70">No matches for “{{ query }}”</p>
-          <button type="button" class="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300" @click="query = ''">
+          <button
+            type="button"
+            class="text-xs font-semibold text-indigo-400 transition hover:text-indigo-300"
+            @click="query = ''"
+          >
             Clear search
           </button>
         </div>
 
         <!-- Grid -->
-        <div v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div
+          v-else
+          class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+        >
           <figure
             v-for="att in filtered"
             :key="att.id"
             class="group relative flex flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03] transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-400/30 hover:shadow-xl hover:shadow-black/40"
           >
-            <button type="button" class="relative block aspect-square w-full overflow-hidden bg-black/30" :title="att.filename" @click="openPreview(att)">
+            <button
+              type="button"
+              class="relative block aspect-square w-full overflow-hidden bg-black/30"
+              :title="att.filename"
+              @click="openPreview(att)"
+            >
               <img
                 v-if="!broken.has(att.id)"
                 :src="imageUrl(att)"
@@ -106,30 +201,63 @@
                 loading="lazy"
                 @error="markBroken(att.id)"
               />
-              <div v-else class="flex h-full w-full flex-col items-center justify-center gap-1.5 text-white/25">
-                <svg class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <div
+                v-else
+                class="flex h-full w-full flex-col items-center justify-center gap-1.5 text-white/25"
+              >
+                <svg
+                  class="h-8 w-8"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
                 </svg>
                 <span class="text-[0.6rem] font-medium">Preview unavailable</span>
               </div>
             </button>
 
             <!-- Hover overlay (clicks pass through except on the Reuse button) -->
-            <div class="pointer-events-none absolute inset-x-0 top-0 flex aspect-square flex-col justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <div
+              class="pointer-events-none absolute inset-x-0 top-0 flex aspect-square flex-col justify-between bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+            >
               <div class="flex justify-end p-2">
-                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-black/50 text-white/80 ring-1 ring-white/15 backdrop-blur-sm">
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V6a2 2 0 012-2h2m8 0h2a2 2 0 012 2v2m0 8v2a2 2 0 01-2 2h-2m-8 0H6a2 2 0 01-2-2v-2" />
+                <span
+                  class="flex h-7 w-7 items-center justify-center rounded-lg bg-black/50 text-white/80 ring-1 ring-white/15 backdrop-blur-sm"
+                >
+                  <svg
+                    class="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M4 8V6a2 2 0 012-2h2m8 0h2a2 2 0 012 2v2m0 8v2a2 2 0 01-2 2h-2m-8 0H6a2 2 0 01-2-2v-2"
+                    />
                   </svg>
                 </span>
               </div>
               <div class="flex justify-center p-2.5">
                 <button
                   type="button"
-                  class="pointer-events-auto inline-flex translate-y-1 items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-black/40 transition-all duration-200 hover:bg-indigo-400 active:scale-95 group-hover:translate-y-0"
+                  class="pointer-events-auto inline-flex translate-y-1 items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-black/40 transition-all duration-200 group-hover:translate-y-0 hover:bg-indigo-400 active:scale-95"
                   @click="$emit('reuse', att)"
                 >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <svg
+                    class="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    viewBox="0 0 24 24"
+                  >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                   </svg>
                   Reuse
@@ -144,7 +272,7 @@
                   v-model="editingValue"
                   type="text"
                   maxlength="200"
-                  class="min-w-0 flex-1 rounded-lg border border-indigo-400/40 bg-black/50 px-2 py-1 text-xs text-white outline-none ring-2 ring-indigo-500/15 placeholder:text-white/40"
+                  class="min-w-0 flex-1 rounded-lg border border-indigo-400/40 bg-black/50 px-2 py-1 text-xs text-white ring-2 ring-indigo-500/15 outline-none placeholder:text-white/40"
                   placeholder="New filename"
                   @keydown.enter.prevent="saveRename(att)"
                   @keydown.esc="cancelRename"
@@ -156,7 +284,13 @@
                   :disabled="savingId === att.id"
                   @click="saveRename(att)"
                 >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <svg
+                    class="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </button>
@@ -167,26 +301,51 @@
                   :disabled="savingId === att.id"
                   @click="cancelRename"
                 >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <svg
+                    class="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               <div v-else class="flex min-w-0 items-center gap-1">
-                <span class="truncate text-xs font-medium text-white/85" :title="att.filename">{{ att.filename }}</span>
+                <span class="truncate text-xs font-medium text-white/85" :title="att.filename">{{
+                  att.filename
+                }}</span>
                 <button
                   type="button"
                   class="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-white/35 transition hover:bg-white/10 hover:text-white sm:opacity-0 sm:group-hover:opacity-100"
                   title="Rename"
                   @click="startRename(att)"
                 >
-                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <svg
+                    class="h-3 w-3"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                 </button>
               </div>
-              <span class="text-[0.65rem] font-medium tabular-nums text-white/35">{{ formatBytes(att.size_bytes) }} · {{ formatDate(att.created_at) }}</span>
-              <span v-if="editingId === att.id && renameError" class="truncate text-[0.65rem] font-medium text-red-400">{{ renameError }}</span>
+              <span class="text-[0.65rem] font-medium text-white/35 tabular-nums">
+                {{ formatBytes(att.size_bytes) }} · {{ formatDate(att.created_at) }}
+              </span>
+              <span
+                v-if="editingId === att.id && renameError"
+                class="truncate text-[0.65rem] font-medium text-red-400"
+              >
+                {{ renameError }}
+              </span>
             </figcaption>
           </figure>
         </div>
@@ -196,13 +355,27 @@
     <!-- Lightbox preview -->
     <Teleport to="body">
       <Transition name="lightbox">
-        <div v-if="preview" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm sm:p-8" @click.self="preview = null">
-          <figure class="relative max-h-full max-w-5xl overflow-hidden rounded-2xl bg-neutral-950 shadow-2xl ring-1 ring-white/10">
-            <img :src="imageUrl(preview)" :alt="preview.filename" class="max-h-[80vh] max-w-full object-contain" />
-            <figcaption class="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-5 pb-5 pt-12">
+        <div
+          v-if="preview"
+          class="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm sm:p-8"
+          @click.self="preview = null"
+        >
+          <figure
+            class="relative max-h-full max-w-5xl overflow-hidden rounded-2xl bg-neutral-950 shadow-2xl ring-1 ring-white/10"
+          >
+            <img
+              :src="imageUrl(preview)"
+              :alt="preview.filename"
+              class="max-h-[80vh] max-w-full object-contain"
+            />
+            <figcaption
+              class="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-5 pt-12 pb-5"
+            >
               <div class="min-w-0">
                 <p class="truncate text-sm font-semibold text-white">{{ preview.filename }}</p>
-                <p class="mt-0.5 text-xs tabular-nums text-white/55">{{ formatBytes(preview.size_bytes) }} · {{ formatDate(preview.created_at) }}</p>
+                <p class="mt-0.5 text-xs text-white/55 tabular-nums">
+                  {{ formatBytes(preview.size_bytes) }} · {{ formatDate(preview.created_at) }}
+                </p>
               </div>
               <div class="flex shrink-0 items-center gap-2">
                 <button
@@ -223,11 +396,17 @@
             </figcaption>
             <button
               type="button"
-              class="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white/75 ring-1 ring-white/10 backdrop-blur-sm transition hover:bg-black/70 hover:text-white active:scale-95"
+              class="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white/75 ring-1 ring-white/10 backdrop-blur-sm transition hover:bg-black/70 hover:text-white active:scale-95"
               aria-label="Close preview"
               @click="preview = null"
             >
-              <svg class="h-4.5 w-4.5 h-[1.125rem] w-[1.125rem]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <svg
+                class="h-4.5 h-[1.125rem] w-4.5 w-[1.125rem]"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

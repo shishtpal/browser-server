@@ -1,6 +1,8 @@
 <template>
   <div class="flex-1 overflow-auto">
-    <div class="grid grid-cols-7 gap-px rounded-xl border border-gray-200/80 bg-gray-200/80 dark:border-slate-700/80 dark:bg-slate-700/80">
+    <div
+      class="grid grid-cols-7 gap-px rounded-xl border border-gray-200/80 bg-gray-200/80 dark:border-slate-700/80 dark:bg-slate-700/80"
+    >
       <div
         v-for="day in days"
         :key="day.date"
@@ -10,14 +12,26 @@
         @dragleave.prevent="onDragLeave(day, $event)"
         @drop.prevent="onDrop(day, $event)"
       >
-        <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-gray-50 px-2 py-1.5 dark:border-slate-700/60 dark:bg-slate-800/80">
-          <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ dayLabel(day.date) }}</span>
+        <div
+          class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-gray-50 px-2 py-1.5 dark:border-slate-700/60 dark:bg-slate-800/80"
+        >
+          <span
+            class="text-[10px] font-black tracking-wider text-slate-500 uppercase dark:text-slate-400"
+          >
+            {{ dayLabel(day.date) }}
+          </span>
           <span
             class="text-[11px] font-bold"
-            :class="day.isToday ? 'flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900' : 'text-slate-400 dark:text-slate-500'"
-          >{{ dayNumber(day.date) }}</span>
+            :class="
+              day.isToday
+                ? 'flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900'
+                : 'text-slate-400 dark:text-slate-500'
+            "
+          >
+            {{ dayNumber(day.date) }}
+          </span>
         </div>
-        <div class="flex flex-1 flex-col gap-1 p-1.5 min-h-[180px]">
+        <div class="flex min-h-[180px] flex-1 flex-col gap-1 p-1.5">
           <CalendarTodoChip
             v-for="todo in day.todos"
             :key="todo.id"
@@ -29,7 +43,7 @@
           <button
             v-if="day.todos.length === 0"
             type="button"
-            class="mt-auto flex-1 min-h-[40px] rounded-lg border border-dashed border-gray-300 text-slate-300 transition hover:border-indigo-400 hover:text-indigo-400 dark:border-slate-600 dark:text-slate-500 dark:hover:border-indigo-400 dark:hover:text-indigo-300 flex items-center justify-center"
+            class="mt-auto flex min-h-[40px] flex-1 items-center justify-center rounded-lg border border-dashed border-gray-300 text-slate-300 transition hover:border-indigo-400 hover:text-indigo-400 dark:border-slate-600 dark:text-slate-500 dark:hover:border-indigo-400 dark:hover:text-indigo-300"
             @click.stop="emit('click', day.date)"
           >
             <span class="text-[10px] font-bold">+ Add</span>
@@ -94,7 +108,10 @@ function onDrop(day: CalendarDay, event: DragEvent) {
   const payload = getDragPayload(event.dataTransfer)
   dragOverDate.value = null
   if (!isDropAllowed(payload, day.date)) return
-  const todo = todoFromPayload(payload, props.days.flatMap((d) => d.todos))
+  const todo = todoFromPayload(
+    payload,
+    props.days.flatMap((d) => d.todos),
+  )
   if (!todo) return
   emit('todoMove', { todo, date: day.date })
 }

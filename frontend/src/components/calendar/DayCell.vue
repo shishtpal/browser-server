@@ -1,12 +1,14 @@
 <template>
   <div
-    class="flex min-h-[72px] flex-col rounded-xl border border-gray-200/80 bg-white p-1.5 transition-colors dark:border-slate-700/80 dark:bg-slate-800/90 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/70"
+    class="flex min-h-[72px] cursor-pointer flex-col rounded-xl border border-gray-200/80 bg-white p-1.5 transition-colors hover:bg-slate-50/50 dark:border-slate-700/80 dark:bg-slate-800/90 dark:hover:bg-slate-800/70"
     :class="cellClass"
     @click="onCellClick"
   >
     <div class="flex items-center justify-between">
       <span class="text-[11px] font-black" :class="dateClass">{{ dayNumber }}</span>
-      <span v-if="todoCount > 0" class="text-[9px] font-bold text-slate-400 dark:text-slate-500">{{ todoCount }}</span>
+      <span v-if="todoCount > 0" class="text-[9px] font-bold text-slate-400 dark:text-slate-500">{{
+        todoCount
+      }}</span>
     </div>
     <div class="mt-1 flex flex-col gap-0.5 overflow-hidden">
       <CalendarTodoChip
@@ -65,7 +67,8 @@ const cellClass = computed(() => {
 })
 
 const dateClass = computed(() => {
-  if (props.day.isToday) return 'flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900'
+  if (props.day.isToday)
+    return 'flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900'
   if (props.day.isWeekend) return 'text-slate-500 dark:text-slate-400'
   return 'text-slate-700 dark:text-slate-200'
 })

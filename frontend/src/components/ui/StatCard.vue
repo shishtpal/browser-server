@@ -1,8 +1,11 @@
 <template>
-  <div class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-white shadow-md transition-colors" :class="cardClass">
-    <div class="text-xs font-black leading-none">{{ value }}</div>
+  <div
+    class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-white shadow-md transition-colors"
+    :class="cardClass"
+  >
+    <div class="text-xs leading-none font-black">{{ value }}</div>
     <div class="h-3 w-px bg-white/20"></div>
-    <div class="text-[10px] font-semibold leading-none" :class="labelClass">{{ label }}</div>
+    <div class="text-[10px] leading-none font-semibold" :class="labelClass">{{ label }}</div>
   </div>
 </template>
 
@@ -18,7 +21,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   variant: 'dark',
-  color: 'indigo'
+  color: 'indigo',
 })
 
 const cardClass = computed(() => {
@@ -49,7 +52,7 @@ const cardClass = computed(() => {
   const variants = {
     dark: `bg-slate-900 ${darkShadows[props.color]} dark:bg-slate-950`,
     primary: `${primaryBg[props.color]} ${primaryShadows[props.color]}`,
-    secondary: 'bg-emerald-500 shadow-emerald-500/20'
+    secondary: 'bg-emerald-500 shadow-emerald-500/20',
   }
   return variants[props.variant]
 })
@@ -66,7 +69,7 @@ const labelClass = computed(() => {
   const variants = {
     dark: 'text-slate-300',
     primary: primaryLabels[props.color],
-    secondary: 'text-emerald-50'
+    secondary: 'text-emerald-50',
   }
   return variants[props.variant]
 })

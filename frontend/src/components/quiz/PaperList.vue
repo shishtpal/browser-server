@@ -33,11 +33,11 @@
 </template>
 
 <script setup lang="ts">
-import EmptyState from "../ui/EmptyState.vue";
-import type { QuestionPaper } from "../../types";
+import EmptyState from '../ui/EmptyState.vue'
+import type { QuestionPaper } from '../../types'
 
-defineProps<{ papers: QuestionPaper[] }>();
-defineEmits<{ open: [id: number]; delete: [id: number] }>();
+defineProps<{ papers: QuestionPaper[] }>()
+defineEmits<{ open: [id: number]; delete: [id: number] }>()
 
-const formatDate = (iso: string) => new Date(iso).toLocaleString();
+const formatDate = (iso: string) => new Date(iso).toLocaleString()
 </script>

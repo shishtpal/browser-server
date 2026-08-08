@@ -1,5 +1,7 @@
 <template>
-  <div class="border-t border-slate-200 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/80">
+  <div
+    class="border-t border-slate-200 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/80"
+  >
     <form class="mx-auto w-full max-w-4xl" @submit.prevent="submit">
       <!-- ── Prompt-applied indicator ── -->
       <Transition name="toast">
@@ -7,9 +9,15 @@
           v-if="appliedVisible"
           class="mb-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-500/10"
         >
-          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[0.65rem] font-bold text-white">✓</span>
-          <span class="text-[0.8rem] font-medium text-emerald-700 dark:text-emerald-300">Prompt applied</span>
-          <span class="text-[0.8rem] text-emerald-500 dark:text-emerald-400">— press Enter to send</span>
+          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[0.65rem] font-bold text-white">
+            ✓
+          </span>
+          <span class="text-[0.8rem] font-medium text-emerald-700 dark:text-emerald-300">
+            Prompt applied
+          </span>
+          <span class="text-[0.8rem] text-emerald-500 dark:text-emerald-400">
+          — press Enter to send
+          </span>
         </div>
       </Transition>
 
@@ -25,45 +33,48 @@
         />
 
         <!-- ── Staged image previews ── -->
-        <div
-          v-if="stagedImages.length > 0"
-          class="mb-2 flex flex-wrap gap-2"
-        >
+        <div v-if="stagedImages.length > 0" class="mb-2 flex flex-wrap gap-2">
           <div
             v-for="item in stagedImages"
             :key="item.id"
             class="group relative flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 pr-8 dark:border-white/10 dark:bg-slate-900"
           >
-            <img
-              :src="item.previewUrl"
-              alt=""
-              class="h-10 w-10 rounded-md object-cover"
-            />
+            <img :src="item.previewUrl" alt="" class="h-10 w-10 rounded-md object-cover" />
             <div class="flex min-w-0 flex-col">
-              <span class="max-w-[10rem] truncate text-[0.72rem] font-medium text-slate-700 dark:text-slate-200">{{ item.file.name }}</span>
-              <span class="text-[0.65rem] text-slate-500 dark:text-slate-400">{{ formatBytes(item.file.size) }}</span>
+              <span
+                class="max-w-[10rem] truncate text-[0.72rem] font-medium text-slate-700 dark:text-slate-200"
+                >{{ item.file.name }}</span
+              >
+              <span class="text-[0.65rem] text-slate-500 dark:text-slate-400">{{
+                formatBytes(item.file.size)
+              }}</span>
             </div>
-            <span
-              v-if="item.uploading"
-              class="absolute right-1.5 top-1/2 -translate-y-1/2"
-            >
-              <span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
+            <span v-if="item.uploading" class="absolute top-1/2 right-1.5 -translate-y-1/2">
+              <span
+                class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600"
+              />
             </span>
             <button
               v-else
               type="button"
-              class="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+              class="absolute top-1/2 right-1 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
               title="Remove image"
               aria-label="Remove image"
               @click="removeImage(item.id)"
             >
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <svg
+                class="h-3.5 w-3.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
             <div
               v-if="item.error"
-              class="absolute -bottom-1 left-0 right-0 translate-y-full rounded bg-red-100 px-1.5 py-0.5 text-[0.65rem] text-red-700 dark:bg-red-950/40 dark:text-red-200"
+              class="absolute right-0 -bottom-1 left-0 translate-y-full rounded bg-red-100 px-1.5 py-0.5 text-[0.65rem] text-red-700 dark:bg-red-950/40 dark:text-red-200"
             >
               {{ item.error }}
             </div>
@@ -81,14 +92,17 @@
           ]"
         >
           <!-- Prompt-mode badge -->
-          <div v-if="promptMode" class="flex items-center gap-1.5 pl-3 pt-2.5">
-            <span class="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 text-xs dark:bg-violet-500/20">🔍</span>
+          <div v-if="promptMode" class="flex items-center gap-1.5 pt-2.5 pl-3">
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 text-xs dark:bg-violet-500/20"
+              >🔍</span
+            >
           </div>
 
           <textarea
             ref="textareaRef"
             v-model="localValue"
-            class="max-h-48 min-h-[46px] w-full flex-1 resize-none bg-transparent py-3 pl-3.5 pr-2 text-[0.92em] leading-relaxed outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            class="max-h-48 min-h-[46px] w-full flex-1 resize-none bg-transparent py-3 pr-2 pl-3.5 text-[0.92em] leading-relaxed outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
             :class="promptMode ? 'pl-2' : ''"
             :disabled="disabled"
             :placeholder="promptMode ? 'Search prompts…' : 'Message the assistant…'"
@@ -116,8 +130,19 @@
               :title="attachmentsEnabled ? 'Attach images' : attachmentsDisabledReason"
               @click="fileInputRef?.click()"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 002.828 2.828l6.586-6.586A4 4 0 0010.172 3H6a4 4 0 00-4 4v10a4 4 0 004 4h10a4 4 0 004-4v-6" />
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15.172 7l-6.586 6.586a2 2 0 002.828 2.828l6.586-6.586A4 4 0 0010.172 3H6a4 4 0 00-4 4v10a4 4 0 004 4h10a4 4 0 004-4v-6"
+                />
               </svg>
             </button>
             <button
@@ -125,11 +150,24 @@
               :disabled="disabled"
               type="button"
               aria-label="Voice typing"
-              :title="disabled ? 'Voice typing is unavailable while AI chat is disabled' : 'Voice typing'"
+              :title="
+                disabled ? 'Voice typing is unavailable while AI chat is disabled' : 'Voice typing'
+              "
               @click="$emit('voice')"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3zM5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8" />
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3zM5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8"
+                />
               </svg>
             </button>
             <button
@@ -160,8 +198,18 @@
               type="submit"
               title="Send message"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                />
               </svg>
             </button>
           </div>
@@ -169,17 +217,31 @@
       </div>
 
       <!-- ── Keyboard hints ── -->
-      <div class="mt-2 flex items-center justify-center gap-3 text-[0.7rem] text-slate-400 dark:text-slate-500">
+      <div
+        class="mt-2 flex items-center justify-center gap-3 text-[0.7rem] text-slate-400 dark:text-slate-500"
+      >
         <span>
-          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10">↵</kbd> send
+          <kbd
+            class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10"
+            >↵</kbd
+          >
+          send
         </span>
         <span class="text-slate-300 dark:text-slate-600">·</span>
         <span>
-          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10">⇧↵</kbd> new line
+          <kbd
+            class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10"
+            >⇧↵</kbd
+          >
+          new line
         </span>
         <span class="text-slate-300 dark:text-slate-600">·</span>
         <span>
-          <kbd class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10">/</kbd> prompts
+          <kbd
+            class="rounded border border-slate-200 px-1.5 py-0.5 font-mono text-[0.66rem] dark:border-white/10"
+            >/</kbd
+          >
+          prompts
         </span>
       </div>
     </form>
@@ -329,7 +391,11 @@ function removeImage(id: string) {
 function normalizeToString(v: any): string {
   if (typeof v === 'string') return v
   if (v == null) return ''
-  const candidate = (v as any).content ?? (v as any).Content ?? (v as any).Prompt?.content ?? (v as any).prompt?.content
+  const candidate =
+    (v as any).content ??
+    (v as any).Content ??
+    (v as any).Prompt?.content ??
+    (v as any).prompt?.content
   if (typeof candidate === 'string') return candidate
   try {
     return JSON.stringify(v)
@@ -340,20 +406,25 @@ function normalizeToString(v: any): string {
 
 const localValue = ref<string>(normalizeToString(props.modelValue))
 
-watch(() => props.modelValue, (v) => {
-  const newVal = normalizeToString(v)
-  if (newVal !== localValue.value) {
-    localValue.value = newVal
-    // modelValue can be set programmatically (e.g. inserting a prompt from the
-    // manager); the @input handler never fires in that case, so resize manually.
-    nextTick(() => autoResize())
-  }
-})
+watch(
+  () => props.modelValue,
+  (v) => {
+    const newVal = normalizeToString(v)
+    if (newVal !== localValue.value) {
+      localValue.value = newVal
+      // modelValue can be set programmatically (e.g. inserting a prompt from the
+      // manager); the @input handler never fires in that case, so resize manually.
+      nextTick(() => autoResize())
+    }
+  },
+)
 
-const canSubmit = computed(() =>
-  !props.disabled
-  && (localValue.value.trim().length > 0 || stagedImages.value.some((i) => !i.uploading && !i.error))
-  && (!props.busy || (props.canAppend && !props.isAppending)),
+const canSubmit = computed(
+  () =>
+    !props.disabled &&
+    (localValue.value.trim().length > 0 ||
+      stagedImages.value.some((i) => !i.uploading && !i.error)) &&
+    (!props.busy || (props.canAppend && !props.isAppending)),
 )
 
 /* ───── prompt-mode state ───── */
@@ -370,7 +441,9 @@ let appliedTimer: ReturnType<typeof setTimeout> | null = null
 function showAppliedIndicator() {
   appliedVisible.value = true
   if (appliedTimer) clearTimeout(appliedTimer)
-  appliedTimer = setTimeout(() => { appliedVisible.value = false }, 2500)
+  appliedTimer = setTimeout(() => {
+    appliedVisible.value = false
+  }, 2500)
 }
 
 /* ───── auto-resize ───── */
@@ -459,13 +532,23 @@ function debouncedSearch(query: string) {
 function runPromptSearch(query: string) {
   if (!props.userId || props.userId <= 0) return
   const q = query.trim()
-  if (!q) { promptResults.value = []; promptLoading.value = false; return }
+  if (!q) {
+    promptResults.value = []
+    promptLoading.value = false
+    return
+  }
 
   promptLoading.value = true
   searchPrompts(props.userId, q, 20)
-    .then((r) => { promptResults.value = r })
-    .catch(() => { promptResults.value = [] })
-    .finally(() => { promptLoading.value = false })
+    .then((r) => {
+      promptResults.value = r
+    })
+    .catch(() => {
+      promptResults.value = []
+    })
+    .finally(() => {
+      promptLoading.value = false
+    })
 }
 
 /* ───── prompt selection ───── */
@@ -511,10 +594,26 @@ function onPromptSelect(prompt: PromptResponse) {
 function onKeydown(event: KeyboardEvent) {
   /* ── Prompt-mode shortcuts ── */
   if (promptMode.value) {
-    if (event.key === 'ArrowDown') { event.preventDefault(); dropdownRef.value?.move(1); return }
-    if (event.key === 'ArrowUp')   { event.preventDefault(); dropdownRef.value?.move(-1); return }
-    if (event.key === 'Enter')     { event.preventDefault(); dropdownRef.value?.activate(); return }
-    if (event.key === 'Escape')    { event.preventDefault(); clearPromptMode(); return }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      dropdownRef.value?.move(1)
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      dropdownRef.value?.move(-1)
+      return
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      dropdownRef.value?.activate()
+      return
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      clearPromptMode()
+      return
+    }
     return
   }
 

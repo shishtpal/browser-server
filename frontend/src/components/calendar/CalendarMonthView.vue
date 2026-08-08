@@ -5,7 +5,7 @@
       <div
         v-for="name in dayNames"
         :key="name"
-        class="py-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+        class="py-2 text-center text-xs font-semibold tracking-wider text-slate-400 uppercase dark:text-slate-500"
       >
         {{ name }}
       </div>
@@ -13,13 +13,13 @@
 
     <!-- Seamless 1px Grid Container -->
     <div
-      class="grid flex-1 grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 shadow-sm"
+      class="grid flex-1 grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm dark:border-slate-800 dark:bg-slate-800"
       :style="{ gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }"
     >
       <div
         v-for="day in weekDays"
         :key="day.date"
-        class="group relative flex min-h-[70px] sm:min-h-[110px] flex-col bg-white p-1.5 sm:p-2 transition-all duration-150 hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-850 cursor-pointer"
+        class="group dark:hover:bg-slate-850 relative flex min-h-[70px] cursor-pointer flex-col bg-white p-1.5 transition-all duration-150 hover:bg-slate-50/80 sm:min-h-[110px] sm:p-2 dark:bg-slate-900"
         :class="cellClass(day)"
         @click="onCellClick(day)"
         @dragover.prevent="onDragOver(day, $event)"
@@ -27,7 +27,7 @@
         @drop.prevent="onDrop(day, $event)"
       >
         <!-- Top Row: Date & Count Badge -->
-        <div class="flex items-center justify-between mb-1">
+        <div class="mb-1 flex items-center justify-between">
           <span
             class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-transform group-hover:scale-105"
             :class="dateClass(day)"
@@ -45,7 +45,7 @@
         </div>
 
         <!-- MOBILE VIEW (< 640px): Compact Priority Dots -->
-        <div class="flex sm:hidden flex-wrap gap-1 mt-auto pt-1">
+        <div class="mt-auto flex flex-wrap gap-1 pt-1 sm:hidden">
           <span
             v-for="todo in day.todos.slice(0, 6)"
             :key="todo.id"
@@ -54,14 +54,14 @@
           />
           <span
             v-if="day.todos.length > 6"
-            class="text-[9px] font-bold leading-none text-slate-400"
+            class="text-[9px] leading-none font-bold text-slate-400"
           >
             +{{ day.todos.length - 6 }}
           </span>
         </div>
 
         <!-- DESKTOP VIEW (>= 640px): Full Interactive Chips -->
-        <div class="hidden sm:flex flex-1 flex-col gap-1 overflow-hidden">
+        <div class="hidden flex-1 flex-col gap-1 overflow-hidden sm:flex">
           <CalendarTodoChip
             v-for="todo in day.todos.slice(0, 3)"
             :key="todo.id"
@@ -152,7 +152,10 @@ function onDrop(day: CalendarDay & { dayNumber: number }, event: DragEvent) {
   const payload = getDragPayload(event.dataTransfer)
   dragOverDate.value = null
   if (!isDropAllowed(payload, day.date)) return
-  const todo = todoFromPayload(payload, props.days.flatMap((d) => d.todos))
+  const todo = todoFromPayload(
+    payload,
+    props.days.flatMap((d) => d.todos),
+  )
   if (!todo) return
   emit('todoMove', { todo, date: day.date })
 }

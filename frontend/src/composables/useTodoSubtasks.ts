@@ -2,20 +2,27 @@ import type { Todo } from '../types'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { createSubtask, updateTodo, deleteTodo } from '../lib/api'
 
-export function useTodoSubtasks(initialSubtasks: Todo[], parentId: Ref<number | null>, userId: Ref<number | null>) {
+export function useTodoSubtasks(
+  initialSubtasks: Todo[],
+  parentId: Ref<number | null>,
+  userId: Ref<number | null>,
+) {
   const subtasks: Ref<Todo[]> = ref([...initialSubtasks])
 
   const error: Ref<string | null> = ref(null)
 
   const progress: ComputedRef<{ done: number; total: number }> = computed(() => {
     const total = subtasks.value.length
-    const done = subtasks.value.filter(t => t.status === 'completed').length
+    const done = subtasks.value.filter((t) => t.status === 'completed').length
     return { done, total }
   })
 
   async function addSubtask(title: string) {
     if (!parentId.value || !title.trim() || !userId.value) return
-    const todo = await createSubtask(parentId.value, { user_id: userId.value, title: title.trim() })
+    const todo = await createSubtask(parentId.value, {
+      user_id: userId.value,
+      title: title.trim(),
+    })
     subtasks.value.push(todo)
   }
 
@@ -24,10 +31,10 @@ export function useTodoSubtasks(initialSubtasks: Todo[], parentId: Ref<number | 
     try {
       const newStatus = subtask.status === 'completed' ? 'pending' : 'completed'
       const updated = await updateTodo(subtask.id, { status: newStatus })
-      subtasks.value = subtasks.value.map(t =>
-        t.id === subtask.id ? { ...t, ...updated, subtasks: t.subtasks || [] } : t
+      subtasks.value = subtasks.value.map((t) =>
+        t.id === subtask.id ? { ...t, ...updated, subtasks: t.subtasks || [] } : t,
       )
-      return subtasks.value.find(t => t.id === subtask.id) || null
+      return subtasks.value.find((t) => t.id === subtask.id) || null
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to toggle subtask'
       return null
@@ -37,7 +44,7 @@ export function useTodoSubtasks(initialSubtasks: Todo[], parentId: Ref<number | 
   async function removeSubtask(id: number) {
     try {
       await deleteTodo(id)
-      subtasks.value = subtasks.value.filter(t => t.id !== id)
+      subtasks.value = subtasks.value.filter((t) => t.id !== id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete subtask'
     }

@@ -1,7 +1,7 @@
 {
   "name": "@browser-server/frontend",
-  "type": "module",
   "version": "0.0.1",
+  "type": "module",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -9,8 +9,8 @@
     "astro": "astro",
     "type-check": "vue-tsc --noEmit --skipLibCheck",
     "astro-check": "pnpm astro check",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "dependencies": {
     "@astrojs/vue": "^7.0.1",

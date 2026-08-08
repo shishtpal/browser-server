@@ -1,6 +1,10 @@
 <template>
   <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-    <div v-for="p in PRIORITIES" :key="p.value" class="flex flex-col rounded-xl border border-gray-200 bg-gray-50/80 dark:border-slate-700/80 dark:bg-slate-800/60">
+    <div
+      v-for="p in PRIORITIES"
+      :key="p.value"
+      class="flex flex-col rounded-xl border border-gray-200 bg-gray-50/80 dark:border-slate-700/80 dark:bg-slate-800/60"
+    >
       <div :class="['mx-2 mt-2 rounded-lg px-2 py-1 text-center text-[10px] font-black', p.color]">
         {{ p.label }} ({{ columnCounts[p.value] }})
       </div>
@@ -11,7 +15,7 @@
         handle=".drag-handle"
         @change="onKanbanChange(p.value, $event)"
         tag="div"
-        class="m-2 space-y-2 min-h-[200px]"
+        class="m-2 min-h-[200px] space-y-2"
       >
         <template #item="{ element: todo }">
           <TodoKanbanCard
@@ -24,7 +28,10 @@
           />
         </template>
       </draggable>
-      <div v-if="columnCounts[p.value] === 0" class="m-2 rounded-lg border border-dashed border-gray-300 p-3 text-center text-[10px] font-black text-slate-400 dark:border-slate-600 dark:text-slate-500">
+      <div
+        v-if="columnCounts[p.value] === 0"
+        class="m-2 rounded-lg border border-dashed border-gray-300 p-3 text-center text-[10px] font-black text-slate-400 dark:border-slate-600 dark:text-slate-500"
+      >
         No {{ p.label.toLowerCase() }} tasks
       </div>
     </div>
@@ -57,19 +64,25 @@ const props = defineProps<Props>()
 
 const columnLists = ref<Record<string, Todo[]>>({})
 
-watch(() => props.todos, (newTodos) => {
-  const map: Record<string, Todo[]> = {}
-  for (const p of PRIORITIES) {
-    map[p.value] = []
-  }
-  for (const todo of newTodos) map[todo.priority]?.push(todo)
-  columnLists.value = map
-}, { immediate: true })
+watch(
+  () => props.todos,
+  (newTodos) => {
+    const map: Record<string, Todo[]> = {}
+    for (const p of PRIORITIES) {
+      map[p.value] = []
+    }
+    for (const todo of newTodos) map[todo.priority]?.push(todo)
+    columnLists.value = map
+  },
+  { immediate: true },
+)
 
 const columnCounts = computed(() => {
   const counts: Record<string, number> = {}
   for (const p of PRIORITIES) counts[p.value] = 0
-  props.todos.forEach(t => { if (counts[t.priority] !== undefined) counts[t.priority]++ })
+  props.todos.forEach((t) => {
+    if (counts[t.priority] !== undefined) counts[t.priority]++
+  })
   return counts
 })
 

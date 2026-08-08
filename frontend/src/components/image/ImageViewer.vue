@@ -13,7 +13,7 @@
         :style="{ width: `${sidebarWidth}px` }"
       >
         <div class="flex items-center justify-between gap-2">
-          <p class="text-[10px] font-black uppercase tracking-wider text-white/50">Prompt</p>
+          <p class="text-[10px] font-black tracking-wider text-white/50 uppercase">Prompt</p>
           <button
             type="button"
             :class="chipButton"
@@ -23,7 +23,7 @@
             Hide
           </button>
         </div>
-        <p class="whitespace-pre-wrap break-words text-xs font-semibold text-white/90">
+        <p class="text-xs font-semibold break-words whitespace-pre-wrap text-white/90">
           {{ image.prompt }}
         </p>
         <div class="flex flex-wrap gap-1 text-[10px] font-bold text-white/60">
@@ -61,7 +61,7 @@
       <button
         v-else
         type="button"
-        class="shrink-0 rounded-l-xl bg-white/5 px-2 text-[10px] font-black uppercase tracking-wider text-white/60 transition hover:bg-white/15"
+        class="shrink-0 rounded-l-xl bg-white/5 px-2 text-[10px] font-black tracking-wider text-white/60 uppercase transition hover:bg-white/15"
         aria-label="Expand prompt panel"
         @click="panelOpen = true"
       >
@@ -82,7 +82,7 @@
             :src="url"
             :alt="image.prompt"
             draggable="false"
-            class="absolute inset-0 h-full w-full select-none object-contain"
+            class="absolute inset-0 h-full w-full object-contain select-none"
             :class="{ 'cursor-grab': canPan && !panning, 'cursor-grabbing': panning }"
             :style="transform"
           />
@@ -136,54 +136,54 @@
 </template>
 
 <script setup lang="ts">
-import type { GeneratedImage } from "@browser-server/shared-types";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { getGeneratedImageUrl } from "../../lib/api/ai";
-import { useImageZoom } from "../../composables/useImageZoom";
-import { useResizableSidebar } from "../../composables/useResizableSidebar";
-import Button from "../ui/Button.vue";
-import Modal from "../ui/Modal.vue";
-import { formatBytes, formatImageDate } from "./format";
+import type { GeneratedImage } from '@browser-server/shared-types'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { getGeneratedImageUrl } from '../../lib/api/ai'
+import { useImageZoom } from '../../composables/useImageZoom'
+import { useResizableSidebar } from '../../composables/useResizableSidebar'
+import Button from '../ui/Button.vue'
+import Modal from '../ui/Modal.vue'
+import { formatBytes, formatImageDate } from './format'
 
 const props = defineProps<{
-  image: GeneratedImage | null;
-  index: number;
-  total: number;
-  canEdit: boolean;
-}>();
+  image: GeneratedImage | null
+  index: number
+  total: number
+  canEdit: boolean
+}>()
 
 const emit = defineEmits<{
-  close: [];
-  step: [delta: number];
-  reuse: [image: GeneratedImage];
-  edit: [image: GeneratedImage];
-}>();
+  close: []
+  step: [delta: number]
+  reuse: [image: GeneratedImage]
+  edit: [image: GeneratedImage]
+}>()
 
-const panelOpen = ref(true);
+const panelOpen = ref(true)
 
 const { containerRef, sidebarWidth, isResizing, startResize, onResize, stopResize } =
-  useResizableSidebar({ storageKey: "image.viewerPanelWidth", initial: 288, reserve: 320 });
+  useResizableSidebar({ storageKey: 'image.viewerPanelWidth', initial: 288, reserve: 320 })
 
 const { zoom, panning, canPan, transform, reset, setZoom, onWheel, startPan, onPan, endPan } =
-  useImageZoom();
+  useImageZoom()
 
-const url = computed(() => (props.image ? getGeneratedImageUrl(props.image.id) : ""));
+const url = computed(() => (props.image ? getGeneratedImageUrl(props.image.id) : ''))
 
-watch(() => props.image?.id, reset);
+watch(() => props.image?.id, reset)
 
 function onKeydown(e: KeyboardEvent) {
-  if (!props.image) return;
-  if (e.key === "ArrowLeft") emit("step", -1);
-  else if (e.key === "ArrowRight") emit("step", 1);
+  if (!props.image) return
+  if (e.key === 'ArrowLeft') emit('step', -1)
+  else if (e.key === 'ArrowRight') emit('step', 1)
 }
 
-onMounted(() => window.addEventListener("keydown", onKeydown));
-onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 const chipButton =
-  "rounded bg-white/10 px-2 py-1 text-[10px] font-black text-white transition hover:bg-white/20";
+  'rounded bg-white/10 px-2 py-1 text-[10px] font-black text-white transition hover:bg-white/20'
 const navButton =
-  "absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-xl font-black text-white transition hover:bg-white/25 disabled:opacity-25";
+  'absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-xl font-black text-white transition hover:bg-white/25 disabled:opacity-25'
 const zoomButton =
-  "grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-lg font-black transition hover:bg-white/20";
+  'grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-lg font-black transition hover:bg-white/20'
 </script>

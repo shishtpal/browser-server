@@ -35,14 +35,21 @@ export function useUsers() {
       newUsername.value = ''
       newEmail.value = ''
       await loadUsers()
-      setTimeout(() => { successMsg.value = '' }, 3000)
+      setTimeout(() => {
+        successMsg.value = ''
+      }, 3000)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to create user'
     }
   }
 
   const removeUser = async (id: number) => {
-    if (!confirm('Delete this user? This will remove all their data (todos, bookmarks, history, wallet entries).')) return
+    if (
+      !confirm(
+        'Delete this user? This will remove all their data (todos, bookmarks, history, wallet entries).',
+      )
+    )
+      return
     try {
       await deleteUser(id)
       await loadUsers()

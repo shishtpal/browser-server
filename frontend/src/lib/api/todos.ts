@@ -1,7 +1,17 @@
-import type { CreateTodoInput, GetTodosOptions, ReorderItem, Screenshot, Todo } from '@browser-server/shared-types'
+import type {
+  CreateTodoInput,
+  GetTodosOptions,
+  ReorderItem,
+  Screenshot,
+  Todo,
+} from '@browser-server/shared-types'
 import { API_BASE, authHeaders, client } from './client'
 
-export function getTodos(userId?: number, domain?: string, options?: GetTodosOptions): Promise<Todo[]> {
+export function getTodos(
+  userId?: number,
+  domain?: string,
+  options?: GetTodosOptions,
+): Promise<Todo[]> {
   return client.getTodos(userId, domain, options)
 }
 

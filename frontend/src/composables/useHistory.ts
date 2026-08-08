@@ -18,14 +18,14 @@ export function useHistory(selectedUserId: Ref<number | null>) {
   const newDuration = ref('')
 
   const totalDuration = computed(() =>
-    formatDuration(historyEntries.value.reduce((sum, h) => sum + h.duration, 0))
+    formatDuration(historyEntries.value.reduce((sum, h) => sum + h.duration, 0)),
   )
 
   const filteredHistory = computed(() => {
     if (!urlFilter.value.trim()) return historyEntries.value
     const q = urlFilter.value.toLowerCase()
     return historyEntries.value.filter(
-      h => h.url.toLowerCase().includes(q) || h.title.toLowerCase().includes(q)
+      (h) => h.url.toLowerCase().includes(q) || h.title.toLowerCase().includes(q),
     )
   })
 
@@ -81,7 +81,7 @@ export function useHistory(selectedUserId: Ref<number | null>) {
     if (!confirm('Delete this history entry?')) return
     try {
       await deleteHistory(id)
-      historyEntries.value = historyEntries.value.filter(h => h.id !== id)
+      historyEntries.value = historyEntries.value.filter((h) => h.id !== id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete entry'
     }

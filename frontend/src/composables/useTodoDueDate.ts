@@ -16,7 +16,7 @@ export function isDueThisWeek(todo: Todo): boolean {
   const due = new Date(todo.start_date)
   const now = new Date()
   const weekEnd = new Date(now)
-  weekEnd.setDate(now.getDate() + (7 - now.getDay()) % 7)
+  weekEnd.setDate(now.getDate() + ((7 - now.getDay()) % 7))
   return due >= now && due <= weekEnd
 }
 
@@ -26,21 +26,27 @@ export function useTodoDueDate() {
   const filteredByDueDate = (todos: Ref<Todo[]>) =>
     computed(() => {
       if (!dueDateFilter.value) return todos.value
-      return todos.value.filter(t => {
+      return todos.value.filter((t) => {
         switch (dueDateFilter.value) {
-          case 'overdue': return isOverdue(t)
-          case 'today': return isDueToday(t)
-          case 'this_week': return isDueThisWeek(t)
+          case 'overdue':
+            return isOverdue(t)
+          case 'today':
+            return isDueToday(t)
+          case 'this_week':
+            return isDueThisWeek(t)
         }
         return true
       })
     })
 
   const dueDateBadgeClass = (todo: Todo) => {
-    if (todo.status === 'completed' || todo.status === 'archived') return 'bg-gray-100 text-gray-500'
+    if (todo.status === 'completed' || todo.status === 'archived')
+      return 'bg-gray-100 text-gray-500'
     if (isOverdue(todo)) return 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-    if (isDueToday(todo)) return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
-    if (isDueThisWeek(todo)) return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400'
+    if (isDueToday(todo))
+      return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+    if (isDueThisWeek(todo))
+      return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400'
     return 'bg-gray-100 text-gray-600'
   }
 

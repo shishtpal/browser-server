@@ -18,7 +18,7 @@
           class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60"
         >
           <h3
-            class="mb-2 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            class="mb-2 text-xs font-black tracking-wide text-slate-500 uppercase dark:text-slate-400"
           >
             By type
           </h3>
@@ -28,7 +28,7 @@
             class="flex items-center justify-between py-0.5 text-xs"
           >
             <span class="font-semibold text-slate-600 dark:text-slate-300">{{
-              String(type).replace("_", " ")
+              String(type).replace('_', ' ')
             }}</span>
             <span class="font-black text-slate-900 dark:text-white">{{ count }}</span>
           </div>
@@ -40,7 +40,7 @@
           class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60"
         >
           <h3
-            class="mb-2 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            class="mb-2 text-xs font-black tracking-wide text-slate-500 uppercase dark:text-slate-400"
           >
             By difficulty
           </h3>
@@ -49,7 +49,7 @@
             :key="level"
             class="flex items-center justify-between py-0.5 text-xs"
           >
-            <span class="font-semibold capitalize text-slate-600 dark:text-slate-300">{{
+            <span class="font-semibold text-slate-600 capitalize dark:text-slate-300">{{
               level
             }}</span>
             <span class="font-black text-slate-900 dark:text-white">{{
@@ -61,7 +61,7 @@
           class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60"
         >
           <h3
-            class="mb-2 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            class="mb-2 text-xs font-black tracking-wide text-slate-500 uppercase dark:text-slate-400"
           >
             By tag
           </h3>
@@ -83,7 +83,7 @@
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60"
       >
         <h3
-          class="mb-2 text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          class="mb-2 text-xs font-black tracking-wide text-slate-500 uppercase dark:text-slate-400"
         >
           Recent papers
         </h3>
@@ -116,20 +116,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import LoadingSpinner from "../ui/LoadingSpinner.vue";
-import StatCard from "../ui/StatCard.vue";
-import EmptyState from "../ui/EmptyState.vue";
-import type { QuestionPaper, QuizStats } from "../../types";
+import { computed } from 'vue'
+import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import StatCard from '../ui/StatCard.vue'
+import EmptyState from '../ui/EmptyState.vue'
+import type { QuestionPaper, QuizStats } from '../../types'
 
 const props = defineProps<{
-  stats: QuizStats | null;
-  papers: QuestionPaper[];
-}>();
+  stats: QuizStats | null
+  papers: QuestionPaper[]
+}>()
 
-defineEmits<{ openPaper: [id: number] }>();
+defineEmits<{ openPaper: [id: number] }>()
 
-const recentPapers = computed(() => props.papers.slice(0, 5));
+const recentPapers = computed(() => props.papers.slice(0, 5))
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString();
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString()
 </script>

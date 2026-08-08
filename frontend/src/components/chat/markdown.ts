@@ -21,14 +21,44 @@
 /* ------------------------------------------------------------------ types */
 
 export type StyleKey =
-  | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
-  | 'p' | 'a' | 'strong' | 'em' | 'del' | 'mark'
-  | 'ul' | 'ol' | 'li' | 'taskList' | 'taskItem' | 'checkbox'
-  | 'blockquote' | 'alert' | 'alertTitle'
-  | 'hr' | 'img'
-  | 'tableWrap' | 'table' | 'thead' | 'tbody' | 'tr' | 'th' | 'td'
-  | 'code' | 'pre' | 'codeWrap' | 'codeLang' | 'copyButton'
-  | 'footnotes' | 'footnoteRef' | 'footnoteBackref'
+  | 'h1'
+  | 'h2'
+  | 'h3'
+  | 'h4'
+  | 'h5'
+  | 'h6'
+  | 'p'
+  | 'a'
+  | 'strong'
+  | 'em'
+  | 'del'
+  | 'mark'
+  | 'ul'
+  | 'ol'
+  | 'li'
+  | 'taskList'
+  | 'taskItem'
+  | 'checkbox'
+  | 'blockquote'
+  | 'alert'
+  | 'alertTitle'
+  | 'hr'
+  | 'img'
+  | 'tableWrap'
+  | 'table'
+  | 'thead'
+  | 'tbody'
+  | 'tr'
+  | 'th'
+  | 'td'
+  | 'code'
+  | 'pre'
+  | 'codeWrap'
+  | 'codeLang'
+  | 'copyButton'
+  | 'footnotes'
+  | 'footnoteRef'
+  | 'footnoteBackref'
 
 export interface MarkdownOptions {
   /** Render single newlines as `<br/>` (chat-style). Default: `true`. */
@@ -68,7 +98,8 @@ const DEFAULT_CLASSES: Record<StyleKey, string> = {
   alertTitle: 'mb-1 flex items-center gap-1.5 font-semibold',
   hr: 'my-4 border-t border-slate-200 dark:border-slate-700',
   img: 'my-3 max-w-full rounded-lg',
-  tableWrap: 'not-prose my-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700',
+  tableWrap:
+    'not-prose my-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700',
   table: 'w-full border-collapse text-left text-[0.9em]',
   thead: 'bg-slate-50 dark:bg-slate-800',
   tbody: 'divide-y divide-slate-200 dark:divide-slate-700',
@@ -88,11 +119,31 @@ const DEFAULT_CLASSES: Record<StyleKey, string> = {
 }
 
 const ALERTS: Record<string, { label: string; icon: string; cls: string }> = {
-  note: { label: 'Note', icon: 'ℹ️', cls: 'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-500/10 dark:text-sky-200' },
-  tip: { label: 'Tip', icon: '💡', cls: 'border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-200' },
-  important: { label: 'Important', icon: '❗', cls: 'border-violet-500 bg-violet-50 text-violet-900 dark:bg-violet-500/10 dark:text-violet-200' },
-  warning: { label: 'Warning', icon: '⚠️', cls: 'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200' },
-  caution: { label: 'Caution', icon: '🛑', cls: 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-200' },
+  note: {
+    label: 'Note',
+    icon: 'ℹ️',
+    cls: 'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-500/10 dark:text-sky-200',
+  },
+  tip: {
+    label: 'Tip',
+    icon: '💡',
+    cls: 'border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-200',
+  },
+  important: {
+    label: 'Important',
+    icon: '❗',
+    cls: 'border-violet-500 bg-violet-50 text-violet-900 dark:bg-violet-500/10 dark:text-violet-200',
+  },
+  warning: {
+    label: 'Warning',
+    icon: '⚠️',
+    cls: 'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200',
+  },
+  caution: {
+    label: 'Caution',
+    icon: '🛑',
+    cls: 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-200',
+  },
 }
 
 /* ------------------------------------------------------------------ utils */
@@ -100,7 +151,11 @@ const ALERTS: Record<string, { label: string; icon: string; cls: string }> = {
 const NUL = '\u0000'
 
 const HTML_ESCAPES: Record<string, string> = {
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
 }
 
 export function escapeHtml(str: string): string {
@@ -176,7 +231,7 @@ function isBlockStart(lines: string[], i: number): boolean {
 
 const LINK_TAIL =
   /\(\s*(?:&lt;([^&\s]*)&gt;|([^\s()]*(?:\([^\s()]*\)[^\s()]*)*))(?:\s+(?:&quot;([\s\S]*?)&quot;|&#39;([\s\S]*?)&#39;))?\s*\)/
-  .source
+    .source
 
 const INLINE_LINK_RE = new RegExp(`\\[((?:[^\\[\\]]|\\[[^\\[\\]]*\\])*)\\]${LINK_TAIL}`, 'g')
 const IMAGE_RE = new RegExp(`!\\[([^\\[\\]]*)\\]${LINK_TAIL}`, 'g')
@@ -198,9 +253,8 @@ export function renderInline(src: string, ctx: Ctx): string {
   let s = src
 
   /* 1 — backslash escapes (also covers already-escaped entities) */
-  s = s.replace(
-    /\\(&(?:amp|lt|gt|quot|#39);|[\\`*_{}[\]()#+\-.!>~|=^$])/g,
-    (_m, ch: string) => hold(ch),
+  s = s.replace(/\\(&(?:amp|lt|gt|quot|#39);|[\\`*_{}[\]()#+\-.!>~|=^$])/g, (_m, ch: string) =>
+    hold(ch),
   )
 
   /* 2 — code spans (supports backtick runs: ``a ` b``) */
@@ -223,32 +277,43 @@ export function renderInline(src: string, ctx: Ctx): string {
   })
 
   /* 4 — images */
-  s = s.replace(IMAGE_RE, (_m, alt: string, angle: string, bare: string, t1: string, t2: string) => {
-    const src2 = sanitizeUrl(angle || bare || '')
-    const title = t1 || t2
-    return hold(
-      `<img src="${src2}" alt="${alt}"${title ? ` title="${title}"` : ''} loading="lazy" class="${ctx.cls.img}"/>`,
-    )
-  })
+  s = s.replace(
+    IMAGE_RE,
+    (_m, alt: string, angle: string, bare: string, t1: string, t2: string) => {
+      const src2 = sanitizeUrl(angle || bare || '')
+      const title = t1 || t2
+      return hold(
+        `<img src="${src2}" alt="${alt}"${title ? ` title="${title}"` : ''} loading="lazy" class="${ctx.cls.img}"/>`,
+      )
+    },
+  )
 
   /* 5 — inline links */
-  s = s.replace(INLINE_LINK_RE, (_m, text: string, angle: string, bare: string, t1: string, t2: string) =>
-    hold(anchor(renderInline(text, ctx), angle || bare || '', t1 || t2, ctx)),
+  s = s.replace(
+    INLINE_LINK_RE,
+    (_m, text: string, angle: string, bare: string, t1: string, t2: string) =>
+      hold(anchor(renderInline(text, ctx), angle || bare || '', t1 || t2, ctx)),
   )
 
   /* 6 — reference links: [text][id], [text][], [id] */
-  s = s.replace(/\[((?:[^\[\]]|\[[^\[\]]*\])*)\](?:\[([^\]]*)\])?/g, (m, text: string, ref?: string) => {
-    const key = (ref && ref.trim() ? ref : text).trim().toLowerCase()
-    const def = ctx.links.get(key)
-    if (!def) return m
-    return hold(anchor(renderInline(text, ctx), def.href, def.title, ctx))
-  })
+  s = s.replace(
+    /\[((?:[^\[\]]|\[[^\[\]]*\])*)\](?:\[([^\]]*)\])?/g,
+    (m, text: string, ref?: string) => {
+      const key = (ref && ref.trim() ? ref : text).trim().toLowerCase()
+      const def = ctx.links.get(key)
+      if (!def) return m
+      return hold(anchor(renderInline(text, ctx), def.href, def.title, ctx))
+    },
+  )
 
   /* 7 — autolinks <https://…> / <mail@example.com> */
-  s = s.replace(/&lt;((?:https?|ftp|mailto):[^\s&]+|[^\s@&]+@[^\s@&]+\.[^\s@&]+)&gt;/g, (_m, url: string) => {
-    const href = url.includes('@') && !url.startsWith('mailto:') ? `mailto:${url}` : url
-    return hold(anchor(url, href, undefined, ctx))
-  })
+  s = s.replace(
+    /&lt;((?:https?|ftp|mailto):[^\s&]+|[^\s@&]+@[^\s@&]+\.[^\s@&]+)&gt;/g,
+    (_m, url: string) => {
+      const href = url.includes('@') && !url.startsWith('mailto:') ? `mailto:${url}` : url
+      return hold(anchor(url, href, undefined, ctx))
+    },
+  )
 
   /* 8 — bare URLs & emails */
   s = s.replace(
@@ -256,17 +321,27 @@ export function renderInline(src: string, ctx: Ctx): string {
     (_m, pre: string, url: string) =>
       pre + hold(anchor(url, url.startsWith('www.') ? `http://${url}` : url, undefined, ctx)),
   )
-  s = s.replace(/(^|[\s([])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g, (_m, pre: string, mail: string) =>
-    pre + hold(anchor(mail, `mailto:${mail}`, undefined, ctx)),
+  s = s.replace(
+    /(^|[\s([])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g,
+    (_m, pre: string, mail: string) => pre + hold(anchor(mail, `mailto:${mail}`, undefined, ctx)),
   )
 
   /* 9 — emphasis (strongest first) */
   const { strong, em, del, mark } = ctx.cls
   s = s
-    .replace(/\*\*\*([^\s*](?:[\s\S]*?[^\s*])?)\*\*\*/g, `<strong class="${strong}"><em class="${em}">$1</em></strong>`)
-    .replace(/(^|[^\w\\])___([^\s_](?:[\s\S]*?[^\s_])?)___(?!\w)/g, `$1<strong class="${strong}"><em class="${em}">$2</em></strong>`)
+    .replace(
+      /\*\*\*([^\s*](?:[\s\S]*?[^\s*])?)\*\*\*/g,
+      `<strong class="${strong}"><em class="${em}">$1</em></strong>`,
+    )
+    .replace(
+      /(^|[^\w\\])___([^\s_](?:[\s\S]*?[^\s_])?)___(?!\w)/g,
+      `$1<strong class="${strong}"><em class="${em}">$2</em></strong>`,
+    )
     .replace(/\*\*([^\s*](?:[\s\S]*?[^\s*])?)\*\*/g, `<strong class="${strong}">$1</strong>`)
-    .replace(/(^|[^\w\\])__([^\s_](?:[\s\S]*?[^\s_])?)__(?!\w)/g, `$1<strong class="${strong}">$2</strong>`)
+    .replace(
+      /(^|[^\w\\])__([^\s_](?:[\s\S]*?[^\s_])?)__(?!\w)/g,
+      `$1<strong class="${strong}">$2</strong>`,
+    )
     .replace(/\*([^\s*](?:[\s\S]*?[^\s*])?)\*/g, `<em class="${em}">$1</em>`)
     .replace(/(^|[^\w\\])_([^\s_](?:[\s\S]*?[^\s_])?)_(?!\w)/g, `$1<em class="${em}">$2</em>`)
     .replace(/~~([^\s~](?:[\s\S]*?[^\s~])?)~~/g, `<del class="${del}">$1</del>`)
@@ -287,7 +362,13 @@ export function renderInline(src: string, ctx: Ctx): string {
 /* -------------------------------------------------------- block renderers */
 
 function codeBlockHtml(code: string, info: string, ctx: Ctx): string {
-  const lang = info.trim().split(/\s+/)[0]?.replace(/[^\w+#.-]/g, '').slice(0, 24).toLowerCase() ?? ''
+  const lang =
+    info
+      .trim()
+      .split(/\s+/)[0]
+      ?.replace(/[^\w+#.-]/g, '')
+      .slice(0, 24)
+      .toLowerCase() ?? ''
   const label = lang ? `<span class="${ctx.cls.codeLang}">${lang}</span>` : ''
   return (
     `<div class="${ctx.cls.codeWrap}" data-lang="${lang}">${label}` +
@@ -308,8 +389,16 @@ function splitTableRow(row: string): string[] {
   let cur = ''
   for (let i = 0; i < row.length; i++) {
     const ch = row[i]
-    if (ch === '\\' && row[i + 1] === '|') { cur += '|'; i++; continue }
-    if (ch === '|') { cells.push(cur); cur = ''; continue }
+    if (ch === '\\' && row[i + 1] === '|') {
+      cur += '|'
+      i++
+      continue
+    }
+    if (ch === '|') {
+      cells.push(cur)
+      cur = ''
+      continue
+    }
     cur += ch
   }
   cells.push(cur)
@@ -332,7 +421,10 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
   while (i < lines.length) {
     const line = lines[i]
 
-    if (isBlank(line)) { i++; continue }
+    if (isBlank(line)) {
+      i++
+      continue
+    }
 
     /* ── fenced code ─────────────────────────────────────────────── */
     const fence = FENCE_RE.exec(line)
@@ -354,9 +446,15 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
     if (INDENT_CODE_RE.test(line)) {
       const body: string[] = []
       while (i < lines.length) {
-        if (INDENT_CODE_RE.test(lines[i])) { body.push(lines[i].slice(4)); i++; continue }
+        if (INDENT_CODE_RE.test(lines[i])) {
+          body.push(lines[i].slice(4))
+          i++
+          continue
+        }
         if (isBlank(lines[i]) && i + 1 < lines.length && INDENT_CODE_RE.test(lines[i + 1])) {
-          body.push(''); i++; continue
+          body.push('')
+          i++
+          continue
         }
         break
       }
@@ -365,18 +463,34 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
     }
 
     /* ── thematic break ──────────────────────────────────────────── */
-    if (HR_RE.test(line)) { out.push(`<hr class="${ctx.cls.hr}"/>`); i++; continue }
+    if (HR_RE.test(line)) {
+      out.push(`<hr class="${ctx.cls.hr}"/>`)
+      i++
+      continue
+    }
 
     /* ── ATX heading ─────────────────────────────────────────────── */
     const atx = ATX_RE.exec(line)
-    if (atx) { out.push(headingHtml(atx[1].length, atx[2] ?? '', ctx)); i++; continue }
+    if (atx) {
+      out.push(headingHtml(atx[1].length, atx[2] ?? '', ctx))
+      i++
+      continue
+    }
 
     /* ── blockquote (with GitHub alerts) ─────────────────────────── */
     if (/^ {0,3}>/.test(line)) {
       const body: string[] = []
       while (i < lines.length) {
-        if (/^ {0,3}>/.test(lines[i])) { body.push(lines[i].replace(/^ {0,3}>[ \t]?/, '')); i++; continue }
-        if (!isBlank(lines[i]) && !isBlockStart(lines, i)) { body.push(lines[i]); i++; continue } // lazy
+        if (/^ {0,3}>/.test(lines[i])) {
+          body.push(lines[i].replace(/^ {0,3}>[ \t]?/, ''))
+          i++
+          continue
+        }
+        if (!isBlank(lines[i]) && !isBlockStart(lines, i)) {
+          body.push(lines[i])
+          i++
+          continue
+        } // lazy
         break
       }
       const alert = /^\[!(note|tip|important|warning|caution)\][ \t]*$/i.exec(body[0]?.trim() ?? '')
@@ -385,7 +499,7 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
         const inner = parseBlocks(body.slice(1), ctx)
         out.push(
           `<div class="${ctx.cls.alert} ${meta.cls}">` +
-          `<p class="${ctx.cls.alertTitle}"><span aria-hidden="true">${meta.icon}</span>${meta.label}</p>${inner}</div>`,
+            `<p class="${ctx.cls.alertTitle}"><span aria-hidden="true">${meta.icon}</span>${meta.label}</p>${inner}</div>`,
         )
       } else {
         out.push(`<blockquote class="${ctx.cls.blockquote}">${parseBlocks(body, ctx)}</blockquote>`)
@@ -405,26 +519,37 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
         i += 2
         const rows: string[][] = []
         while (i < lines.length && !isBlank(lines[i]) && lines[i].includes('|')) {
-          rows.push(splitTableRow(lines[i])); i++
+          rows.push(splitTableRow(lines[i]))
+          i++
         }
         const head =
           `<tr class="${ctx.cls.tr}">` +
-          header.map((c, k) => `<th class="${ctx.cls.th}"${alignStyle(aligns[k])} scope="col">${renderInline(c, ctx)}</th>`).join('') +
+          header
+            .map(
+              (c, k) =>
+                `<th class="${ctx.cls.th}"${alignStyle(aligns[k])} scope="col">${renderInline(c, ctx)}</th>`,
+            )
+            .join('') +
           '</tr>'
         const bodyHtml = rows
           .map((cells) => {
             const padded = Array.from({ length: header.length }, (_, k) => cells[k] ?? '')
             return (
               `<tr class="${ctx.cls.tr}">` +
-              padded.map((c, k) => `<td class="${ctx.cls.td}"${alignStyle(aligns[k])}>${renderInline(c, ctx)}</td>`).join('') +
+              padded
+                .map(
+                  (c, k) =>
+                    `<td class="${ctx.cls.td}"${alignStyle(aligns[k])}>${renderInline(c, ctx)}</td>`,
+                )
+                .join('') +
               '</tr>'
             )
           })
           .join('')
         out.push(
           `<div class="${ctx.cls.tableWrap}"><table class="${ctx.cls.table}">` +
-          `<thead class="${ctx.cls.thead}">${head}</thead>` +
-          `<tbody class="${ctx.cls.tbody}">${bodyHtml}</tbody></table></div>`,
+            `<thead class="${ctx.cls.thead}">${head}</thead>` +
+            `<tbody class="${ctx.cls.tbody}">${bodyHtml}</tbody></table></div>`,
         )
         continue
       }
@@ -446,14 +571,24 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
       if (isBlank(cur)) break
       if (buf.length) {
         const s = /^ {0,3}(=+|-+)[ \t]*$/.exec(cur)
-        if (s) { setext = s[1][0] === '=' ? 1 : 2; i++; break }
+        if (s) {
+          setext = s[1][0] === '=' ? 1 : 2
+          i++
+          break
+        }
         if (isBlockStart(lines, i)) break
       }
       buf.push(cur.replace(/^ {0,3}/, ''))
       i++
     }
-    if (!buf.length) { i++; continue }
-    if (setext) { out.push(headingHtml(setext, buf.join(' '), ctx)); continue }
+    if (!buf.length) {
+      i++
+      continue
+    }
+    if (setext) {
+      out.push(headingHtml(setext, buf.join(' '), ctx))
+      continue
+    }
 
     const inner = renderInline(buf.join('\n'), ctx)
     out.push(tight ? inner : `<p class="${ctx.cls.p}">${inner}</p>`)
@@ -479,7 +614,11 @@ function parseList(lines: string[], start: number, ctx: Ctx): { html: string; ne
   while (i < lines.length) {
     const line = lines[i]
 
-    if (isBlank(line)) { pendingBlank = true; i++; continue }
+    if (isBlank(line)) {
+      pendingBlank = true
+      i++
+      continue
+    }
 
     const indent = line.length - line.replace(/^ +/, '').length
     const item = LIST_RE.exec(line)
@@ -499,7 +638,11 @@ function parseList(lines: string[], start: number, ctx: Ctx): { html: string; ne
 
     // Continuation belonging to the current item.
     if (indent >= contentIndent) {
-      if (pendingBlank) { items[items.length - 1].push(''); loose = true; pendingBlank = false }
+      if (pendingBlank) {
+        items[items.length - 1].push('')
+        loose = true
+        pendingBlank = false
+      }
       items[items.length - 1].push(line.slice(contentIndent))
       i++
       continue
@@ -554,20 +697,32 @@ function extractDefinitions(lines: string[], ctx: Ctx): string[] {
 
     const f = FENCE_RE.exec(line)
     if (f) {
-      if (fence && new RegExp(`^ {0,3}\\${fence[0]}{${fence.length},}[ \t]*$`).test(line)) fence = null
+      if (fence && new RegExp(`^ {0,3}\\${fence[0]}{${fence.length},}[ \t]*$`).test(line))
+        fence = null
       else if (!fence) fence = f[2]
       out.push(line)
       continue
     }
-    if (fence) { out.push(line); continue }
+    if (fence) {
+      out.push(line)
+      continue
+    }
 
     const fn = FOOTNOTE_DEF_RE.exec(line)
     if (fn) {
       const body = [fn[2]]
       while (i + 1 < lines.length) {
         const next = lines[i + 1]
-        if (INDENT_CODE_RE.test(next) || /^ {4}/.test(next)) { body.push(next.slice(4)); i++; continue }
-        if (isBlank(next) && /^ {4}\S/.test(lines[i + 2] ?? '')) { body.push(''); i++; continue }
+        if (INDENT_CODE_RE.test(next) || /^ {4}/.test(next)) {
+          body.push(next.slice(4))
+          i++
+          continue
+        }
+        if (isBlank(next) && /^ {4}\S/.test(lines[i + 2] ?? '')) {
+          body.push('')
+          i++
+          continue
+        }
         break
       }
       ctx.footnoteDefs.set(fn[1].toLowerCase(), body)
@@ -625,7 +780,10 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
   }
 
   const normalized = escapeHtml(
-    String(text).replace(/\r\n?/g, '\n').replace(/\t/g, '    ').replace(/\u0000/g, ''),
+    String(text)
+      .replace(/\r\n?/g, '\n')
+      .replace(/\t/g, '    ')
+      .replace(/\u0000/g, ''),
   )
 
   const lines = extractDefinitions(normalized.split('\n'), ctx)

@@ -1,7 +1,11 @@
 <template>
-  <select :id="id" :value="modelValue"
-    class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition focus:outline-none focus:ring-4 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-    :class="focusClass" @change="onChange">
+  <select
+    :id="id"
+    :value="modelValue"
+    class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition focus:ring-4 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+    :class="focusClass"
+    @change="onChange"
+  >
     <option :value="null">All users</option>
     <option v-for="u in users" :key="u.id" :value="u.id">{{ u.username }}</option>
   </select>
@@ -10,14 +14,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = withDefaults(defineProps<{
-  id: string
-  modelValue: number | null
-  users: Array<{ id: number; username: string }>
-  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
-}>(), {
-  color: 'indigo'
-})
+const props = withDefaults(
+  defineProps<{
+    id: string
+    modelValue: number | null
+    users: Array<{ id: number; username: string }>
+    color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
+  }>(),
+  {
+    color: 'indigo',
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: number | null]
@@ -35,7 +42,7 @@ const focusClass = computed(() => {
     violet: 'focus:border-violet-400 focus:ring-violet-100 dark:focus:ring-violet-900/30',
     emerald: 'focus:border-emerald-400 focus:ring-emerald-100 dark:focus:ring-emerald-900/30',
     amber: 'focus:border-amber-400 focus:ring-amber-100 dark:focus:ring-amber-900/30',
-    rose: 'focus:border-rose-400 focus:ring-rose-100 dark:focus:ring-rose-900/30'
+    rose: 'focus:border-rose-400 focus:ring-rose-100 dark:focus:ring-rose-900/30',
   }
   return colors[props.color]
 })

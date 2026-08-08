@@ -13,7 +13,7 @@
           class="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20"
           @click="showAnswers = !showAnswers"
         >
-          {{ showAnswers ? "Hide answers" : "Show answers" }}
+          {{ showAnswers ? 'Hide answers' : 'Show answers' }}
         </button>
       </div>
       <div
@@ -61,7 +61,7 @@
           </p>
           <pre
             v-if="showAnswers && q.explanation"
-            class="mt-2 whitespace-pre-wrap rounded bg-slate-50 p-2 text-[11px] text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+            class="mt-2 rounded bg-slate-50 p-2 text-[11px] whitespace-pre-wrap text-slate-500 dark:bg-slate-800 dark:text-slate-400"
             >{{ q.explanation }}</pre>
         </div>
       </div>
@@ -70,25 +70,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import Modal from "../ui/Modal.vue";
-import type { ChronologyItem, QuestionPaper } from "../../types";
+import { computed, ref, watch } from 'vue'
+import Modal from '../ui/Modal.vue'
+import type { ChronologyItem, QuestionPaper } from '../../types'
 
-const props = defineProps<{ paper: QuestionPaper | null }>();
-defineEmits<{ close: [] }>();
+const props = defineProps<{ paper: QuestionPaper | null }>()
+defineEmits<{ close: [] }>()
 
-const showAnswers = ref(false);
+const showAnswers = ref(false)
 watch(
   () => props.paper?.id,
   () => (showAnswers.value = false),
-);
+)
 
 const description = computed(() =>
   props.paper
     ? `${props.paper.question_count} questions · generated ${new Date(props.paper.created_at).toLocaleString()}`
     : undefined,
-);
+)
 
 const ordered = (items: ChronologyItem[]) =>
-  [...items].sort((a, b) => a.correct_order - b.correct_order);
+  [...items].sort((a, b) => a.correct_order - b.correct_order)
 </script>

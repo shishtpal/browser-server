@@ -6,7 +6,10 @@
     fullscreen
     @close="$emit('close')"
   >
-    <div v-if="request" class="h-full overflow-y-auto bg-white p-4 text-sm text-slate-700 sm:p-6 dark:bg-slate-950 dark:text-slate-300">
+    <div
+      v-if="request"
+      class="h-full overflow-y-auto bg-white p-4 text-sm text-slate-700 sm:p-6 dark:bg-slate-950 dark:text-slate-300"
+    >
       <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
           <button
@@ -26,7 +29,9 @@
             Next →
           </button>
         </div>
-        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+        <span
+          class="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase dark:text-slate-400"
+        >
           {{ request.source }} request
         </span>
       </div>
@@ -34,7 +39,9 @@
       <section>
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Request overview</p>
+            <p class="text-xs font-bold tracking-widest text-slate-500 uppercase">
+              Request overview
+            </p>
             <h2 class="mt-1 text-lg font-black text-slate-900 dark:text-white">
               {{ request.provider }} / {{ request.model }}
             </h2>
@@ -69,12 +76,12 @@
           <div
             v-for="item in details"
             :key="item.label"
-            class="min-w-0 border-b border-slate-200 p-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 lg:[&:nth-last-child(-n+3)]:border-b-0 dark:border-white/10"
+            class="min-w-0 border-b border-slate-200 p-4 last:border-b-0 dark:border-white/10 sm:[&:nth-last-child(-n+2)]:border-b-0 lg:[&:nth-last-child(-n+3)]:border-b-0"
           >
-            <dt class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <dt class="text-[10px] font-black tracking-wider text-slate-500 uppercase">
               {{ item.label }}
             </dt>
-            <dd class="mt-1 break-all font-medium text-slate-800 dark:text-slate-200">
+            <dd class="mt-1 font-medium break-all text-slate-800 dark:text-slate-200">
               {{ item.value }}
             </dd>
           </div>
@@ -96,7 +103,7 @@
             <h3 class="font-black text-rose-800 dark:text-rose-200">
               {{ request.error_code || 'Request error' }}
             </h3>
-            <p class="mt-1 whitespace-pre-wrap break-words text-rose-700 dark:text-rose-300">
+            <p class="mt-1 break-words whitespace-pre-wrap text-rose-700 dark:text-rose-300">
               {{ request.error_message }}
             </p>
           </div>
@@ -121,10 +128,10 @@
       <section class="mt-8">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Execution trace</p>
-            <h3 class="mt-1 text-lg font-black text-slate-900 dark:text-white">
-              Tool decisions
-            </h3>
+            <p class="text-xs font-bold tracking-widest text-slate-500 uppercase">
+              Execution trace
+            </p>
+            <h3 class="mt-1 text-lg font-black text-slate-900 dark:text-white">Tool decisions</h3>
           </div>
 
           <span
@@ -150,17 +157,14 @@
             class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]"
           >
             <div class="min-w-0">
-              <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Tool</p>
-              <h4 class="mt-1 break-all font-black text-slate-900 dark:text-white">
+              <p class="text-[10px] font-black tracking-wider text-slate-500 uppercase">Tool</p>
+              <h4 class="mt-1 font-black break-all text-slate-900 dark:text-white">
                 {{ tool.tool_name }}
               </h4>
             </div>
 
             <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
-              <span
-                class="rounded-full border px-2 py-1"
-                :class="statusClass(tool.status)"
-              >
+              <span class="rounded-full border px-2 py-1" :class="statusClass(tool.status)">
                 {{ tool.status }}
               </span>
               <span
@@ -207,7 +211,11 @@ import { computed, onBeforeUnmount, onMounted } from 'vue'
 import PayloadBlock from './PayloadBlock.vue'
 import Modal from '../ui/Modal.vue'
 
-const props = defineProps<{ request: AIRequestLog | null; canGoPrev?: boolean; canGoNext?: boolean }>()
+const props = defineProps<{
+  request: AIRequestLog | null
+  canGoPrev?: boolean
+  canGoNext?: boolean
+}>()
 
 const emit = defineEmits<{ close: []; prev: []; next: [] }>()
 
@@ -270,5 +278,4 @@ const details = computed(() => {
     },
   ]
 })
-
 </script>

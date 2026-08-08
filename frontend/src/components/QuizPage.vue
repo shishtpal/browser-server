@@ -45,11 +45,15 @@
         />
 
         <div v-else-if="activeTab === 'questions'" class="space-y-4">
-          <div
-            class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60"
-          >
-            <h2 class="mb-3 text-sm font-black text-slate-800 dark:text-slate-100">Add question</h2>
-            <QuestionForm :vocabulary="vocabulary" :is-saving="isSaving" @save="handleCreate" />
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-black text-slate-800 dark:text-slate-100">Question Bank</h2>
+            <button
+              type="button"
+              class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700"
+              @click="openAddModal"
+            >
+              + Add question
+            </button>
           </div>
           <QuestionList
             :questions="questions"
@@ -60,7 +64,7 @@
             v-model:filter-tags="filterTags"
             v-model:filter-subject="filterSubject"
             @apply-filters="loadQuestions"
-            @edit="editing = $event"
+            @edit="openEditModal"
             @delete="removeQuestion"
           />
         </div>
@@ -84,12 +88,13 @@
       </template>
     </template>
 
-    <QuestionEditModal
+    <QuestionModal
+      :open="isQuestionModalOpen"
       :question="editing"
       :vocabulary="vocabulary"
       :is-saving="isSaving"
-      @close="editing = null"
-      @save="handleEditSave"
+      @close="closeModal"
+      @save="handleModalSave"
     />
 
     <PaperDetail :paper="activePaper" @close="closePaper" />
@@ -109,9 +114,8 @@ import LoadingSpinner from './ui/LoadingSpinner.vue'
 import ErrorBanner from './ui/ErrorBanner.vue'
 import SelectUserPrompt from './ui/SelectUserPrompt.vue'
 import QuestionDashboard from './quiz/QuestionDashboard.vue'
-import QuestionForm from './quiz/QuestionForm.vue'
 import QuestionList from './quiz/QuestionList.vue'
-import QuestionEditModal from './quiz/QuestionEditModal.vue'
+import QuestionModal from './quiz/QuestionModal.vue'
 import PaperGenerator from './quiz/PaperGenerator.vue'
 import PaperList from './quiz/PaperList.vue'
 import PaperDetail from './quiz/PaperDetail.vue'
@@ -162,9 +166,25 @@ const {
   removePaper,
 } = useQuizPapers(selectedUserId)
 
+const isQuestionModalOpen = ref(false)
 const editing = ref<QuestionResponse | null>(null)
 const isSaving = ref(false)
 const questionCards = ref<{ reset: () => void } | null>(null)
+
+const openAddModal = () => {
+  editing.value = null
+  isQuestionModalOpen.value = true
+}
+
+const openEditModal = (q: QuestionResponse) => {
+  editing.value = q
+  isQuestionModalOpen.value = true
+}
+
+const closeModal = () => {
+  isQuestionModalOpen.value = false
+  editing.value = null
+}
 
 watch(selectedUserId, (id) => {
   questionCards.value?.reset()
@@ -175,20 +195,16 @@ watch(selectedUserId, (id) => {
   }
 })
 
-const handleCreate = async (payload: Record<string, unknown>, image: File | null) => {
+const handleModalSave = async (id: number | null, payload: Record<string, unknown>, image: File | null) => {
   isSaving.value = true
   try {
-    await addQuestion(payload as never, image)
-  } finally {
-    isSaving.value = false
-  }
-}
-
-const handleEditSave = async (id: number, payload: Record<string, unknown>, image: File | null) => {
-  isSaving.value = true
-  try {
-    const resp = await editQuestion(id, payload as never, image)
-    if (resp) editing.value = null
+    if (id) {
+      const resp = await editQuestion(id, payload as never, image)
+      if (resp) closeModal()
+    } else {
+      const resp = await addQuestion(payload as never, image)
+      if (resp) closeModal()
+    }
   } finally {
     isSaving.value = false
   }

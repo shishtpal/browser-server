@@ -5,6 +5,7 @@
     :placeholder="placeholder"
     :required="required"
     :disabled="disabled"
+    :list="list"
     :class="inputClass"
     @input="onInput"
   />
@@ -14,13 +15,14 @@
 import { computed } from 'vue'
 
 interface Props {
-  modelValue: string
+  modelValue: string | number
   type?: 'text' | 'url' | 'email' | 'password' | 'number'
   placeholder?: string
   required?: boolean
   disabled?: boolean
   color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber'
   flex?: boolean
+  list?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -33,7 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
+  'update:modelValue': [value: string | number]
 }>()
 
 const onInput = (e: Event) => {

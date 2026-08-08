@@ -1,185 +1,149 @@
 <template>
-  <form class="space-y-3" @submit.prevent="submit">
-    <div class="grid gap-3 sm:grid-cols-3">
-      <label class="block">
-        <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-          >Type</span
-        >
-        <select
-          v-model="form.type"
-          :disabled="isEdit"
-          class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-        >
+  <form class="space-y-5 sm:space-y-6" @submit.prevent="submit">
+    <!-- Basics -->
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <FormField label="Type">
+        <SelectField v-model="form.type" :disabled="isEdit">
           <option value="single_choice">Single choice</option>
           <option value="multiple_choice">Multiple choice</option>
           <option value="input">Input (text answer)</option>
           <option value="chronology">Chronology (ordering)</option>
-        </select>
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-          >Difficulty</span
-        >
-        <select
-          v-model="form.difficulty"
-          class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-        >
+        </SelectField>
+      </FormField>
+
+      <FormField label="Difficulty">
+        <SelectField v-model="form.difficulty">
           <option value="easy">Easy</option>
           <option value="medium">Medium</option>
           <option value="hard">Hard</option>
-        </select>
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-          >Source</span
-        >
-        <input
-          v-model="form.source"
-          type="text"
-          placeholder="e.g. SSC CGL 2023"
-          class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-        />
-      </label>
+        </SelectField>
+      </FormField>
+
+      <FormField label="Source" class="sm:col-span-2 lg:col-span-1">
+        <InputField v-model="form.source" placeholder="e.g. SSC CGL 2023" />
+      </FormField>
     </div>
 
-    <label class="block">
-      <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-        >Question</span
-      >
-      <textarea
-        v-model="form.question"
-        rows="3"
-        required
-        placeholder="Enter the question text"
-        class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-      ></textarea>
-    </label>
+    <FormField label="Question" required>
+      <TextAreaField v-model="form.question" placeholder="Enter the question text" required :rows="4" />
+    </FormField>
 
     <!-- Options editor for choice types -->
-    <div v-if="isChoice">
-      <div class="mb-1 flex items-center justify-between">
-        <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-          Options (mark {{ form.type === 'single_choice' ? 'exactly one' : 'one or more' }} correct)
-        </span>
-        <button
-          type="button"
-          class="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700 transition hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300"
-          @click="addOption"
-        >
+    <div
+      v-if="isChoice"
+      class="space-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:rounded-2xl sm:p-5 dark:border-slate-700 dark:bg-slate-800/30"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+          <span class="block text-sm font-bold text-slate-700 dark:text-slate-300">Options</span>
+          <span class="block text-xs text-slate-500 dark:text-slate-400">
+            Tap the letter to mark {{ form.type === 'single_choice' ? 'exactly one' : 'one or more' }} correct
+          </span>
+        </div>
+        <Button variant="secondary" size="sm" class="shrink-0" @click="addOption" :disabled="form.options.length >= 10">
           + Add option
-        </button>
+        </Button>
       </div>
-      <div class="space-y-1.5">
-        <div v-for="(opt, i) in form.options" :key="i" class="flex items-center gap-2">
-          <input
-            :type="form.type === 'single_choice' ? 'radio' : 'checkbox'"
-            :name="radioGroup"
-            :checked="opt.correct"
-            class="h-3.5 w-3.5 accent-indigo-600"
-            @change="toggleCorrect(i)"
-          />
-          <input
-            v-model="opt.text"
-            type="text"
-            :placeholder="`Option ${String.fromCharCode(65 + i)}`"
-            class="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          />
+
+      <TransitionGroup tag="div" name="row" class="space-y-2">
+        <div v-for="(opt, i) in form.options" :key="i" class="flex items-center gap-2 sm:gap-3">
+          <!-- Letter / correct toggle -->
           <button
             type="button"
-            class="text-slate-400 transition hover:text-rose-500"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold transition sm:h-10 sm:w-10"
+            :class="opt.correct
+              ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+              : 'border-gray-300 bg-white text-slate-500 hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-emerald-500'"
+            :title="opt.correct ? 'Correct answer' : 'Mark as correct'"
+            :aria-pressed="opt.correct"
+            @click="toggleCorrect(i)"
+          >
+            <svg v-if="opt.correct" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+            </svg>
+            <span v-else>{{ String.fromCharCode(65 + i) }}</span>
+          </button>
+
+          <div class="min-w-0 flex-1">
+            <InputField v-model="opt.text" :placeholder="`Option ${String.fromCharCode(65 + i)}`" flex />
+          </div>
+
+          <button
+            type="button"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:hover:bg-rose-900/20"
             :disabled="form.options.length <= 2"
+            aria-label="Remove option"
             @click="removeOption(i)"
           >
-            ✕
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+            </svg>
           </button>
         </div>
-      </div>
+      </TransitionGroup>
     </div>
 
     <!-- Expected text for input type -->
-    <label v-else-if="form.type === 'input'" class="block">
-      <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-        >Expected answer</span
-      >
-      <input
-        v-model="form.expectedText"
-        type="text"
-        required
-        placeholder="The correct answer"
-        class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-      />
-    </label>
+    <FormField v-else-if="form.type === 'input'" label="Expected answer" required>
+      <InputField v-model="form.expectedText" placeholder="The correct answer" required />
+    </FormField>
 
     <!-- Chronology editor -->
-    <div v-else-if="form.type === 'chronology'">
-      <div class="mb-1 flex items-center justify-between">
-        <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400"
-          >Items (set the correct order)</span
-        >
-        <button
-          type="button"
-          class="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700 transition hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300"
-          @click="addChronologyItem"
-        >
+    <div
+      v-else-if="form.type === 'chronology'"
+      class="space-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:rounded-2xl sm:p-5 dark:border-slate-700 dark:bg-slate-800/30"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+          <span class="block text-sm font-bold text-slate-700 dark:text-slate-300">Items</span>
+          <span class="block text-xs text-slate-500 dark:text-slate-400">Set the correct order number for each item</span>
+        </div>
+        <Button variant="secondary" size="sm" class="shrink-0" @click="addChronologyItem" :disabled="form.chronologyItems.length >= 20">
           + Add item
-        </button>
+        </Button>
       </div>
-      <div class="space-y-1.5">
-        <div v-for="(item, i) in form.chronologyItems" :key="i" class="flex items-center gap-2">
-          <input
-            v-model.number="item.correct_order"
-            type="number"
-            min="1"
-            :max="form.chronologyItems.length"
-            class="w-14 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-center text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          />
-          <input
-            v-model="item.text"
-            type="text"
-            :placeholder="`Item ${i + 1}`"
-            class="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          />
+
+      <TransitionGroup tag="div" name="row" class="space-y-2">
+        <div v-for="(item, i) in form.chronologyItems" :key="i" class="flex items-center gap-2 sm:gap-3">
+          <div class="w-14 shrink-0 sm:w-20">
+            <InputField v-model.number="item.correct_order" type="number" aria-label="Correct order" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <InputField v-model="item.text" :placeholder="`Item ${i + 1}`" flex />
+          </div>
           <button
             type="button"
-            class="text-slate-400 transition hover:text-rose-500"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:hover:bg-rose-900/20"
             :disabled="form.chronologyItems.length <= 2"
+            aria-label="Remove item"
             @click="removeChronologyItem(i)"
           >
-            ✕
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+          </svg>
           </button>
         </div>
-      </div>
+      </TransitionGroup>
     </div>
 
-    <label class="block">
-      <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-        >Explanation (markdown)</span
-      >
-      <textarea
-        v-model="form.explanation"
-        rows="3"
-        placeholder="Optional explanation shown after answering"
-        class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-      ></textarea>
-    </label>
+    <FormField label="Explanation (markdown)">
+      <TextAreaField v-model="form.explanation" placeholder="Optional explanation shown after answering" :rows="3" />
+    </FormField>
 
-    <div class="grid gap-3 sm:grid-cols-4">
-      <label class="block">
-        <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-          >Tags</span
-        >
-        <div
-          class="flex flex-wrap items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-        >
+    <!-- Tags & taxonomy -->
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <FormField label="Tags" help-text="e.g. SSC, RRB. Press enter to add." class="sm:col-span-2 lg:col-span-1">
+        <div class="flex flex-wrap items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 shadow-sm focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:focus-within:ring-indigo-900/30">
           <span
             v-for="tag in form.tags"
             :key="tag"
-            class="flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-200"
+            class="flex items-center gap-1 rounded bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-200"
           >
             {{ tag }}
             <button
               type="button"
-              class="text-violet-600 hover:text-violet-800 dark:text-violet-300"
+              class="-mr-0.5 flex h-4 w-4 items-center justify-center rounded-full text-violet-600 transition hover:bg-violet-200 hover:text-violet-900 dark:text-violet-300 dark:hover:bg-violet-800"
+              :aria-label="`Remove tag ${tag}`"
               @click="removeTag(tag)"
             >
               ×
@@ -189,8 +153,8 @@
             v-model="tagDraft"
             type="text"
             list="quiz-tags-vocab"
-            placeholder="Type tag, press Enter…"
-            class="min-w-[8ch] flex-1 border-0 bg-transparent p-0 text-xs focus:outline-none dark:text-slate-200"
+            placeholder="Type tag…"
+            class="min-w-[8ch] flex-1 border-0 bg-transparent p-0 text-sm font-semibold text-slate-700 placeholder:font-normal focus:outline-none dark:text-slate-200"
             @keydown.enter.prevent="commitTagDraft"
             @keydown.,.prevent="commitTagDraft"
             @blur="commitTagDraft"
@@ -199,69 +163,93 @@
             <option v-for="v in vocabulary?.tags ?? []" :key="v" :value="v" />
           </datalist>
         </div>
-        <p class="mt-1 text-[10px] text-slate-400">
-          e.g. SSC, RRB, Banking. A question can carry any number of tags.
-        </p>
-      </label>
-      <label v-for="field in tagFields" :key="field.key" class="block">
-        <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400">{{
-          field.label
-        }}</span>
-        <input
+      </FormField>
+
+      <FormField v-for="field in tagFields" :key="field.key" :label="field.label">
+        <InputField
           v-model="form[field.key]"
-          type="text"
-          :list="`quiz-${field.key}`"
           :placeholder="field.placeholder"
-          class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          :list="`quiz-${field.key}`"
         />
         <datalist :id="`quiz-${field.key}`">
           <option v-for="v in vocabulary?.[field.vocabKey] ?? []" :key="v" :value="v" />
         </datalist>
-      </label>
+      </FormField>
     </div>
 
-    <label class="block">
-      <span class="mb-1 block text-[11px] font-bold text-slate-600 dark:text-slate-400"
-        >Image (optional)</span
-      >
-      <input
-        type="file"
-        accept="image/*"
-        class="w-full text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300"
-        @change="onFile"
-      />
-    </label>
+    <!-- Image -->
+    <FormField label="Image (optional)">
+      <div class="space-y-3">
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/*"
+          class="w-full text-sm font-semibold text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-4 file:py-2 file:text-sm file:font-bold file:text-indigo-700 transition hover:file:bg-indigo-200 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 dark:hover:file:bg-indigo-900/50"
+          @change="onFile"
+        />
+        <div v-if="imagePreview" class="relative inline-block">
+          <img
+            :src="imagePreview"
+            alt="Selected image preview"
+            class="max-h-40 rounded-xl border border-gray-200 object-contain shadow-sm dark:border-slate-700"
+          />
+          <button
+            type="button"
+            class="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-rose-500 text-white shadow transition hover:bg-rose-600"
+            aria-label="Remove image"
+            @click="clearImage"
+          >
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </FormField>
 
-    <p
+    <div
       v-if="formError"
-      class="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 dark:bg-rose-900/20 dark:text-rose-300"
+      class="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-300"
+      role="alert"
     >
+      <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-4a1 1 0 112 0 1 1 0 01-2 0zm1-9a.75.75 0 00-.75.75v4.5a.75.75 0 001.5 0v-4.5A.75.75 0 0010 5z" clip-rule="evenodd" />
+      </svg>
       {{ formError }}
-    </p>
+    </div>
 
-    <div class="flex justify-end gap-2">
-      <button
+    <!-- Sticky action bar -->
+    <div
+      class="sticky bottom-0 z-10 -mx-3 flex flex-col-reverse gap-2 border-t border-gray-200 bg-white/95 px-3 py-3 backdrop-blur sm:-mx-6 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 lg:-mx-8 lg:px-8 dark:border-slate-700 dark:bg-slate-900/95"
+    >
+      <Button
         v-if="isEdit"
-        type="button"
-        class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+        variant="ghost"
+        class="w-full sm:w-auto"
         @click="$emit('cancel')"
       >
         Cancel
-      </button>
-      <button
+      </Button>
+      <Button
         type="submit"
-        :disabled="isSaving"
-        class="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+        class="w-full sm:w-auto"
+        :loading="isSaving"
+        :loading-text="isEdit ? 'Saving...' : 'Adding...'"
       >
-        {{ isSaving ? 'Saving…' : isEdit ? 'Save changes' : 'Add question' }}
-      </button>
+        {{ isEdit ? 'Save changes' : 'Add question' }}
+      </Button>
     </div>
   </form>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from 'vue'
 import type { QuestionOption, QuestionResponse, QuestionType, TagVocabulary } from '../../types'
+import { reactive, ref, computed, watch, onBeforeUnmount } from 'vue'
+import FormField from '../ui/FormField.vue'
+import InputField from '../ui/InputField.vue'
+import SelectField from '../ui/SelectField.vue'
+import TextAreaField from '../ui/TextAreaField.vue'
+import Button from '../ui/Button.vue'
 
 const props = defineProps<{
   question?: QuestionResponse | null
@@ -275,7 +263,6 @@ const emit = defineEmits<{
 }>()
 
 const isEdit = computed(() => !!props.question)
-const radioGroup = `quiz-correct-${Math.random().toString(36).slice(2)}`
 
 interface FormState {
   type: QuestionType
@@ -317,6 +304,8 @@ const form = reactive<FormState>({
 })
 
 const imageFile = ref<File | null>(null)
+const imagePreview = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 const formError = ref<string | null>(null)
 const tagDraft = ref('')
 
@@ -390,10 +379,29 @@ const removeChronologyItem = (i: number) => {
   form.chronologyItems.forEach((c, idx) => (c.index = idx))
 }
 
+const revokePreview = () => {
+  if (imagePreview.value) {
+    URL.revokeObjectURL(imagePreview.value)
+    imagePreview.value = null
+  }
+}
+
 const onFile = (e: Event) => {
   const target = e.target as HTMLInputElement
+  revokePreview()
   imageFile.value = target.files?.[0] ?? null
+  if (imageFile.value) {
+    imagePreview.value = URL.createObjectURL(imageFile.value)
+  }
 }
+
+const clearImage = () => {
+  revokePreview()
+  imageFile.value = null
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+onBeforeUnmount(revokePreview)
 
 const submit = () => {
   formError.value = null
@@ -442,3 +450,15 @@ const submit = () => {
   emit('save', payload, imageFile.value)
 }
 </script>
+
+<style scoped>
+.row-enter-active,
+.row-leave-active {
+  transition: all 0.2s ease;
+}
+.row-enter-from,
+.row-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+</style>

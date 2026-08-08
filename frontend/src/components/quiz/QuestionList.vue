@@ -134,18 +134,48 @@
 
     <div v-else class="space-y-3">
       <QuestionCard
-        v-for="q in questions"
+        v-for="q in paginatedQuestions"
         :key="q.id"
         :question="q"
         @edit="$emit('edit', $event)"
         @delete="$emit('delete', $event)"
       />
+
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-slate-700">
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          Showing <span class="font-bold">{{ startIndex + 1 }}</span> to
+          <span class="font-bold">{{ Math.min(startIndex + itemsPerPage, questions.length) }}</span>
+          of <span class="font-bold">{{ questions.length }}</span> results
+        </p>
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            :disabled="currentPage === 1"
+            class="rounded bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700"
+            @click="currentPage--"
+          >
+            Previous
+          </button>
+          <div class="px-2 py-1 text-xs text-slate-700 dark:text-slate-200">
+            Page {{ currentPage }} of {{ totalPages }}
+          </div>
+          <button
+            type="button"
+            :disabled="currentPage === totalPages"
+            class="rounded bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700"
+            @click="currentPage++"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import EmptyState from '../ui/EmptyState.vue'
 import QuestionCard from './QuestionCard.vue'
 import type { QuestionResponse, TagVocabulary } from '../../types'
@@ -196,4 +226,22 @@ function applyAndClose() {
   emit('applyFilters')
   tagPickerOpen.value = false
 }
+
+// Pagination logic
+const itemsPerPage = 20
+const currentPage = ref(1)
+
+watch(
+  () => [props.searchQuery, props.filterType, props.filterDifficulty, props.filterTags, props.filterSubject],
+  () => {
+    currentPage.value = 1
+  },
+  { deep: true }
+)
+
+const totalPages = computed(() => Math.ceil(props.questions.length / itemsPerPage))
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
+const paginatedQuestions = computed(() => {
+  return props.questions.slice(startIndex.value, startIndex.value + itemsPerPage)
+})
 </script>

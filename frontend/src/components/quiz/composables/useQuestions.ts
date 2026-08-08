@@ -1,13 +1,13 @@
-import { ref, computed, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import {
-  getQuestions,
   createQuestion,
-  updateQuestion,
   deleteQuestion,
-  uploadQuestionImage,
+  getQuestions,
   getQuizStats,
   getTagVocabulary,
-} from '../lib/api';
+  updateQuestion,
+  uploadQuestionImage,
+} from '../../../lib/api';
 import type {
   CreateQuestionInput,
   ListQuestionsOptions,
@@ -15,8 +15,14 @@ import type {
   QuizStats,
   TagVocabulary,
   UpdateQuestionInput,
-} from '../types';
+} from '../../../types';
 
+/**
+ * Question bank state for the selected user: list, stats, tag vocabulary and
+ * filter state, plus CRUD actions that keep the local list in sync.
+ *
+ * Loading starts automatically (immediate watcher) whenever the user changes.
+ */
 export function useQuestions(userId: Ref<number | null>) {
   const questions = ref<QuestionResponse[]>([]);
   const isLoading = ref(false);
@@ -25,11 +31,11 @@ export function useQuestions(userId: Ref<number | null>) {
   const vocabulary = ref<TagVocabulary | null>(null);
 
   // Filters
-  const filterType = ref<string>('');
-  const filterDifficulty = ref<string>('');
+  const filterType = ref('');
+  const filterDifficulty = ref('');
   const filterTags = ref<string[]>([]);
-  const filterSubject = ref<string>('');
-  const searchQuery = ref<string>('');
+  const filterSubject = ref('');
+  const searchQuery = ref('');
 
   const filters = computed<ListQuestionsOptions>(() => ({
     type: (filterType.value || undefined) as ListQuestionsOptions['type'],
@@ -39,6 +45,23 @@ export function useQuestions(userId: Ref<number | null>) {
     q: searchQuery.value.trim() || undefined,
     limit: 500,
   }));
+
+  const hasActiveFilters = computed(
+    () =>
+      Boolean(filterType.value) ||
+      Boolean(filterDifficulty.value) ||
+      filterTags.value.length > 0 ||
+      Boolean(filterSubject.value) ||
+      Boolean(searchQuery.value.trim()),
+  );
+
+  const clearFilters = () => {
+    filterType.value = '';
+    filterDifficulty.value = '';
+    filterTags.value = [];
+    filterSubject.value = '';
+    searchQuery.value = '';
+  };
 
   const loadQuestions = async () => {
     if (!userId.value) return;
@@ -122,15 +145,20 @@ export function useQuestions(userId: Ref<number | null>) {
     }
   };
 
-  watch(userId, (val) => {
-    if (val && val > 0) {
-      refreshAll();
-    } else {
-      questions.value = [];
-      stats.value = null;
-      vocabulary.value = null;
-    }
-  });
+  watch(
+    userId,
+    (val) => {
+      if (val && val > 0) {
+        refreshAll();
+      } else {
+        questions.value = [];
+        stats.value = null;
+        vocabulary.value = null;
+        clearFilters();
+      }
+    },
+    { immediate: true },
+  );
 
   return {
     questions,
@@ -143,6 +171,8 @@ export function useQuestions(userId: Ref<number | null>) {
     filterTags,
     filterSubject,
     searchQuery,
+    hasActiveFilters,
+    clearFilters,
     loadQuestions,
     loadStats,
     refreshAll,

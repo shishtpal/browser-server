@@ -1,22 +1,12 @@
 <template>
-  <div class="mx-auto max-w-full px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
+  <div class="mx-auto max-w-full px-3 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Exam prep" title="Quiz" color="violet">
       <template #stats>
         <StatCard :value="stats?.total ?? 0" label="Questions" variant="dark" color="violet" />
-        <StatCard :value="papers.length" label="Papers" variant="primary" color="violet" />
+        <StatCard :value="papersList.length" label="Papers" variant="primary" color="violet" />
       </template>
       <template #controls>
         <UserSelector id="quiz-user" v-model="selectedUserId" :users="users" color="violet" />
-        <div class="flex gap-1">
-          <FilterPill
-            v-for="tab in tabs"
-            :key="tab.key"
-            :active="activeTab === tab.key"
-            @click="activeTab = tab.key"
-          >
-            {{ tab.label }}
-          </FilterPill>
-        </div>
       </template>
     </PageHeader>
 
@@ -27,47 +17,44 @@
     />
 
     <template v-if="selectedUserId">
-      <LoadingSpinner
-        v-if="
-          isLoading && questions.length === 0 && activeTab !== 'papers' && activeTab !== 'cards'
-        "
-        message="Loading..."
-        color="violet"
+      <QuizTabs
+        v-model="activeTab"
+        class="mb-4"
+        :question-count="stats?.total ?? questionList.length"
+        :paper-count="papersList.length"
       />
-      <ErrorBanner v-else-if="error" :message="error" :on-retry="refreshAll" />
+
+      <LoadingSpinner v-if="showInitialLoader" message="Loading..." color="violet" />
+      <ErrorBanner v-else-if="primaryError" :message="primaryError" :on-retry="handleRetry" />
 
       <template v-else>
         <QuestionDashboard
           v-if="activeTab === 'dashboard'"
           :stats="stats"
-          :papers="papers"
-          @open-paper="openPaperAndSwitch"
+          :papers="papersList"
+          @open-paper="openPaperFromDashboard"
+          @navigate="activeTab = $event"
         />
 
-        <div v-else-if="activeTab === 'questions'" class="space-y-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-black text-slate-800 dark:text-slate-100">Question Bank</h2>
-            <button
-              type="button"
-              class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700"
-              @click="openAddModal"
-            >
-              + Add question
-            </button>
-          </div>
-          <QuestionList
-            :questions="questions"
-            :vocabulary="vocabulary"
-            v-model:search-query="searchQuery"
-            v-model:filter-type="filterType"
-            v-model:filter-difficulty="filterDifficulty"
-            v-model:filter-tags="filterTags"
-            v-model:filter-subject="filterSubject"
-            @apply-filters="loadQuestions"
-            @edit="openEditModal"
-            @delete="removeQuestion"
-          />
-        </div>
+        <QuestionList
+          v-else-if="activeTab === 'questions'"
+          :questions="questionList"
+          :vocabulary="vocabulary"
+          :has-active-filters="hasActiveFilters"
+          v-model:search-query="searchQuery"
+          v-model:filter-type="filterType"
+          v-model:filter-difficulty="filterDifficulty"
+          v-model:filter-tags="filterTags"
+          v-model:filter-subject="filterSubject"
+          @apply-filters="loadQuestions"
+          @clear-filters="
+            clearFilters();
+            loadQuestions();
+          "
+          @add="openAddQuestion"
+          @edit="openEditQuestion"
+          @delete="removeQuestion"
+        />
 
         <QuestionCards
           v-else-if="activeTab === 'cards'"
@@ -81,155 +68,126 @@
           v-else-if="activeTab === 'generate'"
           :vocabulary="vocabulary"
           :is-generating="isGenerating"
-          @generate="handleGenerate"
+          @generate="generatePaperFlow"
         />
 
-        <PaperList v-else :papers="papers" @open="openPaper" @delete="removePaper" />
+        <template v-else>
+          <ErrorBanner v-if="papersError" :message="papersError" :on-retry="loadPapers" />
+          <PaperList
+            :papers="papersList"
+            @open="openPaper"
+            @attempt="attemptPaper"
+            @delete="removePaper"
+          />
+        </template>
       </template>
     </template>
 
     <QuestionModal
       :open="isQuestionModalOpen"
-      :question="editing"
+      :question="editingQuestion"
       :vocabulary="vocabulary"
-      :is-saving="isSaving"
-      @close="closeModal"
-      @save="handleModalSave"
+      :is-saving="isSavingQuestion"
+      @close="closeQuestionModal"
+      @save="saveQuestion"
     />
 
     <PaperDetail :paper="activePaper" @close="closePaper" />
+
+    <PaperRunnerModal :open="isRunnerOpen" :paper="runnerPaper" @close="closeRunner" />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { QuestionResponse, QuestionPaperSection } from '../types';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useUser } from '../composables/useUser';
-import { useQuestions } from '../composables/useQuestions';
-import { useQuizPapers } from '../composables/useQuizPapers';
+import { useQuizPage } from './quiz/composables/useQuizPage';
 import PageHeader from './ui/PageHeader.vue';
 import StatCard from './ui/StatCard.vue';
 import UserSelector from './ui/UserSelector.vue';
-import FilterPill from './ui/FilterPill.vue';
 import LoadingSpinner from './ui/LoadingSpinner.vue';
 import ErrorBanner from './ui/ErrorBanner.vue';
 import SelectUserPrompt from './ui/SelectUserPrompt.vue';
-import QuestionDashboard from './quiz/QuestionDashboard.vue';
-import QuestionList from './quiz/QuestionList.vue';
-import QuestionModal from './quiz/QuestionModal.vue';
-import PaperGenerator from './quiz/PaperGenerator.vue';
-import PaperList from './quiz/PaperList.vue';
-import PaperDetail from './quiz/PaperDetail.vue';
-import QuestionCards from './quiz/QuestionCards.vue';
-
-const tabs = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'questions', label: 'Questions' },
-  { key: 'cards', label: 'Cards' },
-  { key: 'generate', label: 'Generate Paper' },
-  { key: 'papers', label: 'Papers' },
-] as const;
-
-type TabKey = (typeof tabs)[number]['key'];
-const activeTab = ref<TabKey>('dashboard');
+import QuizTabs from './quiz/QuizTabs.vue';
+import QuestionDashboard from './quiz/dashboard/QuestionDashboard.vue';
+import QuestionList from './quiz/questions/QuestionList.vue';
+import QuestionModal from './quiz/questions/QuestionModal.vue';
+import QuestionCards from './quiz/cards/QuestionCards.vue';
+import PaperGenerator from './quiz/papers/generator/PaperGenerator.vue';
+import PaperList from './quiz/papers/PaperList.vue';
+import PaperDetail from './quiz/papers/PaperDetail.vue';
+import PaperRunnerModal from './quiz/papers/PaperRunnerModal.vue';
 
 const { users, currentUserId, setUser, clearUser } = useUser();
 const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
-  questions,
-  isLoading,
-  error,
-  stats,
-  vocabulary,
-  filterType,
-  filterDifficulty,
-  filterTags,
-  filterSubject,
-  searchQuery,
-  loadQuestions,
-  loadStats,
-  refreshAll,
-  addQuestion,
-  editQuestion,
-  removeQuestion,
-} = useQuestions(selectedUserId);
+  questions: {
+    questions: questionList,
+    isLoading: isLoadingQuestions,
+    error: questionsError,
+    stats,
+    vocabulary,
+    filterType,
+    filterDifficulty,
+    filterTags,
+    filterSubject,
+    searchQuery,
+    hasActiveFilters,
+    clearFilters,
+    loadQuestions,
+    loadStats,
+    refreshAll,
+    removeQuestion,
+  },
+  papers: {
+    papers: papersList,
+    isGenerating,
+    error: papersError,
+    activePaper,
+    loadPapers,
+    openPaper,
+    closePaper,
+    removePaper,
+  },
+  activeTab,
+  isQuestionModalOpen,
+  editingQuestion,
+  isSavingQuestion,
+  openAddQuestion,
+  openEditQuestion,
+  closeQuestionModal,
+  saveQuestion,
+  runnerPaper,
+  isRunnerOpen,
+  attemptPaper,
+  closeRunner,
+  generatePaperFlow,
+  openPaperFromDashboard,
+} = useQuizPage(selectedUserId);
 
-const {
-  papers,
-  isGenerating,
-  activePaper,
-  loadPapers,
-  generate,
-  openPaper,
-  closePaper,
-  removePaper,
-} = useQuizPapers(selectedUserId);
-
-const isQuestionModalOpen = ref(false);
-const editing = ref<QuestionResponse | null>(null);
-const isSaving = ref(false);
+/** Flashcard session reset handle (exposed by QuestionCards). */
 const questionCards = ref<{ reset: () => void } | null>(null);
-
-const openAddModal = () => {
-  editing.value = null;
-  isQuestionModalOpen.value = true;
-};
-
-const openEditModal = (q: QuestionResponse) => {
-  editing.value = q;
-  isQuestionModalOpen.value = true;
-};
-
-const closeModal = () => {
-  isQuestionModalOpen.value = false;
-  editing.value = null;
-};
 
 watch(selectedUserId, (id) => {
   questionCards.value?.reset();
-  if (id) {
-    setUser(id);
-  } else {
-    clearUser();
-  }
+  if (id) setUser(id);
+  else clearUser();
 });
 
-const handleModalSave = async (
-  id: number | null,
-  payload: Record<string, unknown>,
-  image: File | null,
-) => {
-  isSaving.value = true;
-  try {
-    if (id) {
-      const resp = await editQuestion(id, payload as never, image);
-      if (resp) closeModal();
-    } else {
-      const resp = await addQuestion(payload as never, image);
-      if (resp) closeModal();
-    }
-  } finally {
-    isSaving.value = false;
-  }
-};
+/** Only show the full-page loader for data-backed tabs before first paint. */
+const showInitialLoader = computed(
+  () =>
+    isLoadingQuestions.value &&
+    questionList.value.length === 0 &&
+    activeTab.value !== 'papers' &&
+    activeTab.value !== 'cards',
+);
 
-const handleGenerate = async (input: { title: string; sections: QuestionPaperSection[] }) => {
-  const paper = await generate(input);
-  if (paper) {
-    activeTab.value = 'papers';
-    await openPaper(paper.id);
-  }
-};
+const primaryError = computed(() => questionsError.value);
 
-const openPaperAndSwitch = async (id: number) => {
-  activeTab.value = 'papers';
-  await openPaper(id);
-};
-
-if (selectedUserId.value) {
-  setUser(selectedUserId.value);
+const handleRetry = () => {
   refreshAll();
   loadPapers();
-}
+};
 </script>

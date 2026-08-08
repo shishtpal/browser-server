@@ -13,6 +13,7 @@
     <div class="h-full overflow-y-auto overscroll-contain">
       <div class="mx-auto w-full max-w-5xl px-3 pt-1 pb-6 sm:px-6 lg:px-8">
         <QuestionForm
+          :key="question?.id ?? 'new'"
           :question="question"
           :vocabulary="vocabulary"
           :is-saving="isSaving"
@@ -25,9 +26,9 @@
 </template>
 
 <script setup lang="ts">
-import type { QuestionResponse, TagVocabulary } from '../../types';
-import Modal from '../ui/Modal.vue';
-import QuestionForm from './QuestionForm.vue';
+import type { QuestionResponse, TagVocabulary } from '../../../types';
+import Modal from '../../ui/Modal.vue';
+import QuestionForm from './form/QuestionForm.vue';
 
 const props = defineProps<{
   open: boolean;

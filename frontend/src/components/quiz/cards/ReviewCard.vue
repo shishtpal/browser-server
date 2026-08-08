@@ -5,26 +5,14 @@
     <div class="p-4 sm:p-5">
       <!-- Meta -->
       <header class="flex flex-wrap items-center gap-1.5">
-        <span
-          class="rounded-md bg-violet-100 px-2 py-1 text-[10px] font-extrabold tracking-wider text-violet-700 uppercase dark:bg-violet-500/15 dark:text-violet-300"
-        >
-          {{ question.type.replaceAll('_', ' ') }}
-        </span>
+        <TypeBadge :type="question.type" />
 
         <span
-          v-for="tag in question.tags ?? []"
-          :key="tag"
+          v-for="chip in metaChips"
+          :key="chip"
           class="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700/70 dark:text-slate-300"
         >
-          {{ tag }}
-        </span>
-
-        <span
-          v-for="value in taxonomy"
-          :key="value"
-          class="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700/70 dark:text-slate-300"
-        >
-          {{ value }}
+          {{ chip }}
         </span>
 
         <label
@@ -34,7 +22,7 @@
           <select
             :value="question.difficulty"
             :disabled="isSavingDifficulty"
-            class="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-700 transition outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-violet-500/20"
+            class="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700 transition outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-violet-500/20"
             @change="$emit('difficulty-change', ($event.target as HTMLSelectElement).value)"
           >
             <option value="easy">Easy</option>
@@ -52,13 +40,13 @@
       </p>
 
       <img
-        v-if="question.image_url"
+        v-if="imageSrc"
         :src="imageSrc"
         alt="Question image"
         class="mt-4 max-h-72 w-full rounded-xl border border-slate-200 bg-slate-50 object-contain dark:border-slate-700 dark:bg-slate-900"
       />
 
-      <!-- Multiple choice options -->
+      <!-- Choice options (answering reveals immediately) -->
       <ul v-if="question.options?.length" class="mt-5 grid gap-2" aria-label="Answer options">
         <li v-for="option in question.options" :key="option.index">
           <button
@@ -73,22 +61,24 @@
               class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black transition-colors"
               :class="optionBadgeClass(option)"
             >
-              {{ String.fromCharCode(65 + option.index) }}
+              {{ optionLetter(option.index) }}
             </span>
 
             <span class="flex-1 leading-snug">{{ option.text }}</span>
 
             <span
               v-if="revealed && option.correct"
-              class="shrink-0 text-xs font-bold text-emerald-700 dark:text-emerald-300"
+              class="flex shrink-0 items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300"
             >
+              <CircleCheck class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
               Correct
             </span>
 
             <span
               v-else-if="revealed && selectedOptionIndex === option.index"
-              class="shrink-0 text-xs font-bold text-rose-700 dark:text-rose-300"
+              class="flex shrink-0 items-center gap-1 text-xs font-bold text-rose-700 dark:text-rose-300"
             >
+              <CircleX class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
               Incorrect
             </span>
           </button>
@@ -96,7 +86,7 @@
       </ul>
 
       <!-- Chronology -->
-      <ol v-else-if="question.chronology_items?.length" class="mt-5 space-y-2">
+      <ol v-else-if="chronology.length" class="mt-5 space-y-2">
         <li
           v-for="(item, index) in chronology"
           :key="item.index"
@@ -111,27 +101,36 @@
         </li>
       </ol>
 
-      <!-- Reveal button for non-multiple-choice questions -->
+      <!-- Reveal for non-choice questions -->
       <Button
         v-if="!revealed && !question.options?.length"
         class="mt-5 w-full sm:w-auto"
         variant="gradient-violet"
         @click="$emit('reveal')"
       >
-        Show answer
+        <span class="inline-flex items-center gap-1.5">
+          <Eye class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
+          Show answer
+        </span>
       </Button>
 
       <!-- Answer details -->
       <div v-if="revealed" class="mt-5 space-y-3">
         <div
           v-if="selectedOptionIndex !== null && question.options?.length"
-          class="rounded-xl border px-3 py-2.5 text-sm font-semibold"
+          class="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold"
           :class="
             selectedOptionCorrect
               ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/70 dark:bg-emerald-950/30 dark:text-emerald-200'
               : 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800/70 dark:bg-rose-950/30 dark:text-rose-200'
           "
         >
+          <component
+            :is="selectedOptionCorrect ? CircleCheck : CircleX"
+            class="h-4 w-4 shrink-0"
+            :stroke-width="2.5"
+            aria-hidden="true"
+          />
           {{
             selectedOptionCorrect
               ? "Nice work — that's correct."
@@ -157,7 +156,7 @@
           </span>
         </p>
 
-        <!-- Rating -->
+        <!-- Recall rating -->
         <section
           v-if="!practiceMode"
           aria-labelledby="recall-rating"
@@ -170,8 +169,10 @@
             >
               How well did you remember?
             </h3>
-
-            <span class="hidden text-[10px] font-medium text-slate-400 sm:block">
+            <span
+              class="hidden items-center gap-1 text-[10px] font-medium text-slate-400 sm:inline-flex"
+            >
+              <Keyboard class="h-3.5 w-3.5" aria-hidden="true" />
               Use numpad 0–3
             </span>
           </div>
@@ -194,8 +195,17 @@
             </Button>
           </div>
         </section>
-        <Button v-if="practiceMode" class="w-full" variant="gradient-violet" @click="$emit('next')">
-          Next card
+
+        <Button
+          v-if="practiceMode"
+          class="w-full sm:w-auto"
+          variant="gradient-violet"
+          @click="$emit('next')"
+        >
+          <span class="inline-flex items-center gap-1.5">
+            Next card
+            <ArrowRight class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
+          </span>
         </Button>
       </div>
     </div>
@@ -203,10 +213,14 @@
 </template>
 
 <script setup lang="ts">
-import type { QuestionResponse, ReviewRating } from '../../types';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { API_BASE } from '../../lib/api';
-import Button from '../ui/Button.vue';
+import { computed, ref, watch } from 'vue';
+import { useEventListener } from '@vueuse/core';
+import { ArrowRight, CircleCheck, CircleX, Eye, Keyboard } from '@lucide/vue';
+import type { QuestionResponse, ReviewRating } from '../../../types';
+import { API_BASE } from '../../../lib/api';
+import Button from '../../ui/Button.vue';
+import TypeBadge from '../ui/TypeBadge.vue';
+import { optionLetter, orderedChronology, questionImageSrc } from '../quizFormat';
 
 const props = defineProps<{
   question: QuestionResponse;
@@ -225,44 +239,39 @@ const emit = defineEmits<{
 
 const selectedOptionIndex = ref<number | null>(null);
 
-const ratings: Array<{
-  name: ReviewRating;
-  label: string;
-  shortcut: string;
-  code: string;
-}> = [
+const ratings: Array<{ name: ReviewRating; label: string; shortcut: string; code: string }> = [
   { name: 'again', label: 'Again', shortcut: '0', code: 'Numpad0' },
   { name: 'hard', label: 'Hard', shortcut: '1', code: 'Numpad1' },
   { name: 'good', label: 'Good', shortcut: '2', code: 'Numpad2' },
   { name: 'easy', label: 'Easy', shortcut: '3', code: 'Numpad3' },
 ];
 
-const taxonomy = computed(() =>
-  [props.question.subject, props.question.topic, props.question.sub_topic].filter(Boolean),
+const metaChips = computed(() =>
+  [
+    ...(props.question.tags ?? []),
+    props.question.subject,
+    props.question.topic,
+    props.question.sub_topic,
+  ].filter((v): v is string => Boolean(v)),
 );
 
 const chronology = computed(() =>
   props.revealed
-    ? [...(props.question.chronology_items ?? [])].sort((a, b) => a.correct_order - b.correct_order)
+    ? orderedChronology(props.question.chronology_items)
     : (props.question.chronology_items ?? []),
 );
 
-const imageSrc = computed(() =>
-  props.question.image_url?.startsWith('http')
-    ? props.question.image_url
-    : `${API_BASE}${props.question.image_url}`,
-);
+const imageSrc = computed(() => questionImageSrc(props.question.image_url, API_BASE));
 
 const selectedOptionCorrect = computed(() => {
   if (selectedOptionIndex.value === null) return false;
-
-  return props.question.options?.find((option) => option.index === selectedOptionIndex.value)
-    ?.correct;
+  return Boolean(
+    props.question.options?.find((o) => o.index === selectedOptionIndex.value)?.correct,
+  );
 });
 
 function chooseOption(index: number) {
   if (props.revealed) return;
-
   selectedOptionIndex.value = index;
   emit('reveal');
 }
@@ -278,15 +287,12 @@ function optionClass(option: { index: number; correct?: boolean }) {
   if (props.revealed && option.correct) {
     return 'cursor-default border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/35 dark:text-emerald-100';
   }
-
-  if (props.revealed && selected && !option.correct) {
+  if (props.revealed && selected) {
     return 'cursor-default border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-700 dark:bg-rose-950/35 dark:text-rose-100';
   }
-
   if (props.revealed) {
     return 'cursor-default border-slate-100 bg-slate-50/60 text-slate-400 dark:border-slate-700/60 dark:bg-slate-900/20 dark:text-slate-500';
   }
-
   return 'border-slate-200 bg-white text-slate-700 hover:-translate-y-px hover:border-violet-300 hover:bg-violet-50/50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-violet-500 dark:hover:bg-violet-500/10 dark:focus:ring-offset-slate-800';
 }
 
@@ -296,32 +302,26 @@ function optionBadgeClass(option: { index: number; correct?: boolean }) {
   if (props.revealed && option.correct) {
     return 'border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300';
   }
-
-  if (props.revealed && selected && !option.correct) {
+  if (props.revealed && selected) {
     return 'border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-700 dark:bg-rose-900/50 dark:text-rose-300';
   }
-
   return 'border-slate-200 bg-slate-50 text-slate-500 group-hover:border-violet-300 group-hover:bg-violet-100 group-hover:text-violet-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:group-hover:border-violet-500 dark:group-hover:bg-violet-500/20 dark:group-hover:text-violet-300';
 }
 
+/* --------------------------- keyboard shortcuts --------------------------- */
+
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
-
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
-function handleRatingShortcut(event: KeyboardEvent) {
-  if (!props.revealed || props.isRating || isTypingTarget(event.target) || event.repeat) {
-    return;
-  }
-
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+  if (!props.revealed || props.isRating || isTypingTarget(event.target) || event.repeat) return;
   const rating = ratings.find((item) => item.code === event.code);
-
   if (!rating) return;
-
   event.preventDefault();
   submitRating(rating.name);
-}
+});
 
 watch(
   () => props.question,
@@ -333,17 +333,7 @@ watch(
 watch(
   () => props.revealed,
   (revealed) => {
-    if (!revealed) {
-      selectedOptionIndex.value = null;
-    }
+    if (!revealed) selectedOptionIndex.value = null;
   },
 );
-
-onMounted(() => {
-  window.addEventListener('keydown', handleRatingShortcut);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleRatingShortcut);
-});
 </script>

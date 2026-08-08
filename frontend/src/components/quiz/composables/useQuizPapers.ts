@@ -1,7 +1,13 @@
 import { ref, watch, type Ref } from 'vue';
-import { generatePaper, getPapers, getPaper, deletePaper } from '../lib/api';
-import type { GeneratePaperInput, QuestionPaper } from '../types';
+import { deletePaper, generatePaper, getPaper, getPapers } from '../../../lib/api';
+import type { GeneratePaperInput, QuestionPaper } from '../../../types';
 
+/**
+ * Generated question paper state for the selected user: list, the paper open
+ * in the detail viewer, and generation/removal actions.
+ *
+ * Loading starts automatically (immediate watcher) whenever the user changes.
+ */
 export function useQuizPapers(userId: Ref<number | null>) {
   const papers = ref<QuestionPaper[]>([]);
   const isLoading = ref(false);
@@ -38,6 +44,9 @@ export function useQuizPapers(userId: Ref<number | null>) {
     }
   };
 
+  /** Fetch a full paper (with questions) without opening the detail viewer. */
+  const fetchPaper = (id: number) => getPaper(id);
+
   const openPaper = async (id: number) => {
     error.value = null;
     try {
@@ -61,14 +70,18 @@ export function useQuizPapers(userId: Ref<number | null>) {
     }
   };
 
-  watch(userId, (val) => {
-    if (val && val > 0) {
-      loadPapers();
-    } else {
-      papers.value = [];
-      activePaper.value = null;
-    }
-  });
+  watch(
+    userId,
+    (val) => {
+      if (val && val > 0) {
+        loadPapers();
+      } else {
+        papers.value = [];
+        activePaper.value = null;
+      }
+    },
+    { immediate: true },
+  );
 
   return {
     papers,
@@ -78,6 +91,7 @@ export function useQuizPapers(userId: Ref<number | null>) {
     activePaper,
     loadPapers,
     generate,
+    fetchPaper,
     openPaper,
     closePaper,
     removePaper,

@@ -1,6 +1,11 @@
 import { computed, ref, type Ref } from 'vue';
-import { getQuestionCards, reviewQuestion, updateQuestion } from '../lib/api';
-import type { QuestionCardItem, QuestionDifficulty, ReviewRating, TagVocabulary } from '../types';
+import { getQuestionCards, reviewQuestion, updateQuestion } from '../../../lib/api';
+import type {
+  QuestionCardItem,
+  QuestionDifficulty,
+  ReviewRating,
+  TagVocabulary,
+} from '../../../types';
 
 export function useQuestionCards(
   userId: Ref<number | null>,

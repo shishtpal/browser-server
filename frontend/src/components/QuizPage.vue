@@ -18,7 +18,7 @@
     <SelectUserPrompt title="Select a user to manage their question bank" :users-count="users.length" :selected-user-id="selectedUserId" />
 
     <template v-if="selectedUserId">
-      <LoadingSpinner v-if="isLoading && questions.length === 0 && activeTab !== 'papers'" message="Loading..." color="violet" />
+      <LoadingSpinner v-if="isLoading && questions.length === 0 && activeTab !== 'papers' && activeTab !== 'cards'" message="Loading..." color="violet" />
       <ErrorBanner v-else-if="error" :message="error" :on-retry="refreshAll" />
 
       <template v-else>
@@ -47,6 +47,8 @@
             @delete="removeQuestion"
           />
         </div>
+
+        <QuestionCards v-else-if="activeTab === 'cards'" ref="questionCards" :user-id="selectedUserId" :vocabulary="vocabulary" :on-difficulty-changed="loadStats" />
 
         <PaperGenerator
           v-else-if="activeTab === 'generate'"
@@ -95,11 +97,13 @@ import QuestionEditModal from './quiz/QuestionEditModal.vue'
 import PaperGenerator from './quiz/PaperGenerator.vue'
 import PaperList from './quiz/PaperList.vue'
 import PaperDetail from './quiz/PaperDetail.vue'
+import QuestionCards from './quiz/QuestionCards.vue'
 import type { QuestionResponse, QuestionPaperSection } from '../types'
 
 const tabs = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'questions', label: 'Questions' },
+  { key: 'cards', label: 'Cards' },
   { key: 'generate', label: 'Generate Paper' },
   { key: 'papers', label: 'Papers' },
 ] as const
@@ -122,6 +126,7 @@ const {
   filterSubject,
   searchQuery,
   loadQuestions,
+  loadStats,
   refreshAll,
   addQuestion,
   editQuestion,
@@ -141,8 +146,10 @@ const {
 
 const editing = ref<QuestionResponse | null>(null)
 const isSaving = ref(false)
+const questionCards = ref<{ reset: () => void } | null>(null)
 
 watch(selectedUserId, (id) => {
+	questionCards.value?.reset()
   if (id) {
     setUser(id)
   } else {

@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"browser-server/internal/db"
 	"browser-server/internal/helpers"
@@ -254,6 +256,74 @@ func DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ─── Spaced-repetition cards ────────────────────────────
+
+func GetQuestionCards(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if !quizEnabled(w) {
+		return
+	}
+	userID := helpers.GetUserIDFromQuery(r)
+	if userID <= 0 {
+		helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
+		return
+	}
+	limit := 20
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 100 {
+			helpers.WriteError(w, http.StatusBadRequest, "limit must be between 1 and 100")
+			return
+		}
+		limit = parsed
+	}
+	practice := r.URL.Query().Get("practice") == "true"
+	queue, err := quiz.ListCards(r.Context(), userID, r.URL.Query()["tag"], limit, time.Now(), practice)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	json.NewEncoder(w).Encode(queue)
+}
+
+func ReviewQuestionCard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if !quizEnabled(w) {
+		return
+	}
+	questionID := helpers.GetIDFromPath(r)
+	if questionID <= 0 {
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid question id")
+		return
+	}
+	var input struct {
+		UserID int    `json:"user_id"`
+		Rating string `json:"rating"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	if input.UserID <= 0 {
+		helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
+		return
+	}
+	if err := quiz.ValidateRating(input.Rating); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	state, err := quiz.ReviewQuestion(r.Context(), questionID, input.UserID, input.Rating, time.Now())
+	if errors.Is(err, quiz.ErrQuestionNotFound) || errors.Is(err, quiz.ErrQuestionNotOwned) {
+		helpers.WriteError(w, http.StatusNotFound, "Question not found")
+		return
+	}
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	json.NewEncoder(w).Encode(state)
 }
 
 // ─── Images ─────────────────────────────────────────────

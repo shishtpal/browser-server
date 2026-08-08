@@ -85,6 +85,8 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "DELETE", Path: "/api/quiz/questions/{id}", Description: "Delete question by ID"},
 		{Method: "POST", Path: "/api/quiz/questions/{id}/image", Description: "Upload an image for a question (multipart: file)"},
 		{Method: "GET", Path: "/api/quiz/questions/{id}/image", Description: "Get a question's image"},
+		{Method: "GET", Path: "/api/quiz/cards", Description: "List review cards (filters: user_id, tag (repeatable), limit, practice=true to include scheduled cards)"},
+		{Method: "POST", Path: "/api/quiz/cards/{id}/review", Description: "Record a card review (body: user_id, rating)"},
 		{Method: "POST", Path: "/api/quiz/papers", Description: "Generate and persist a sectioned question paper (body: user_id, title, sections)"},
 		{Method: "GET", Path: "/api/quiz/papers", Description: "List generated papers (filters: user_id, limit, offset)"},
 		{Method: "GET", Path: "/api/quiz/papers/{id}", Description: "Get a paper with its full question list"},

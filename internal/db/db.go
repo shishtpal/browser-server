@@ -365,6 +365,24 @@ func InitQuizDB(dataPath string) {
 		)
 	`)
 	Exec(QuizDB, `CREATE INDEX IF NOT EXISTS idx_q_images_question ON question_images(question_id)`)
+
+	// The ON DELETE CASCADE is declarative only: this connection is opened
+	// without foreign_keys=ON, so quiz.Delete removes these rows explicitly.
+	Exec(QuizDB, `
+		CREATE TABLE IF NOT EXISTS question_review_state (
+			question_id INTEGER PRIMARY KEY,
+			user_id INTEGER NOT NULL,
+			repetitions INTEGER NOT NULL DEFAULT 0,
+			interval_seconds INTEGER NOT NULL DEFAULT 0,
+			ease_factor REAL NOT NULL DEFAULT 2.5,
+			due_at DATETIME NOT NULL,
+			last_rating TEXT NOT NULL,
+			last_reviewed_at DATETIME NOT NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+		)
+	`)
 }
 
 func CloseQuizDB() {

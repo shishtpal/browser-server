@@ -144,6 +144,7 @@ export function useQuestions(userId: Ref<number | null>) {
     filterSubject,
     searchQuery,
     loadQuestions,
+    loadStats,
     refreshAll,
     addQuestion,
     editQuestion,

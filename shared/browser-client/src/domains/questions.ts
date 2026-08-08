@@ -7,6 +7,10 @@ import type {
   UpdateQuestionInput,
   QuizStats,
   TagVocabulary,
+  ListQuestionCardsOptions,
+  QuestionCardQueue,
+  QuestionReviewState,
+  ReviewQuestionInput,
 } from '@browser-server/shared-types'
 import { type TokenProvider, apiFetch, buildQuery } from '../internals'
 
@@ -89,6 +93,15 @@ export function createQuestionMethods(baseUrl: string, getToken?: TokenProvider)
     getQuizStats(userId: number): Promise<QuizStats> {
       const qs = buildQuery({ user_id: userId })
       return apiFetch<QuizStats>(baseUrl, 'GET', `/api/quiz/stats${qs}`, undefined, getToken)
+    },
+
+    listQuestionCards(userId: number, options: ListQuestionCardsOptions = {}): Promise<QuestionCardQueue> {
+      const qs = buildQuery({ user_id: userId, tag: options.tags, limit: options.limit, practice: options.practice ? 'true' : undefined })
+      return apiFetch<QuestionCardQueue>(baseUrl, 'GET', `/api/quiz/cards${qs}`, undefined, getToken)
+    },
+
+    reviewQuestion(questionId: number, input: ReviewQuestionInput): Promise<QuestionReviewState> {
+      return apiFetch<QuestionReviewState>(baseUrl, 'POST', `/api/quiz/cards/${questionId}/review`, input, getToken)
     },
   }
 }

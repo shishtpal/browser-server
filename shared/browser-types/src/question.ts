@@ -123,3 +123,41 @@ export interface ListQuestionsOptions {
   limit?: number
   offset?: number
 }
+
+export type ReviewRating = 'again' | 'hard' | 'good' | 'easy'
+export type QuestionCardStatus = 'due' | 'new' | 'scheduled'
+
+export interface QuestionReviewState {
+  question_id: number
+  repetitions: number
+  interval_seconds: number
+  ease_factor: number
+  due_at: string
+  last_rating: ReviewRating
+  last_reviewed_at: string
+}
+
+export interface QuestionCardItem {
+  question: QuestionResponse
+  review: QuestionReviewState | null
+  status: QuestionCardStatus
+}
+
+export interface QuestionCardQueue {
+  items: QuestionCardItem[]
+  due_count: number
+  new_count: number
+  available_count: number
+}
+
+export interface ListQuestionCardsOptions {
+  /** Tags use ANY-match semantics. Omit to explicitly include all questions. */
+  tags?: string[]
+  limit?: number
+  practice?: boolean
+}
+
+export interface ReviewQuestionInput {
+  user_id: number
+  rating: ReviewRating
+}

@@ -244,6 +244,29 @@ type QuizStats struct {
 	ByTags       map[string]int `json:"by_tags"`
 }
 
+type QuestionReviewState struct {
+	QuestionID      int       `json:"question_id"`
+	Repetitions     int       `json:"repetitions"`
+	IntervalSeconds int64     `json:"interval_seconds"`
+	EaseFactor      float64   `json:"ease_factor"`
+	DueAt           time.Time `json:"due_at"`
+	LastRating      string    `json:"last_rating"`
+	LastReviewedAt  time.Time `json:"last_reviewed_at"`
+}
+
+type QuestionCardItem struct {
+	Question QuestionResponse     `json:"question"`
+	Review   *QuestionReviewState `json:"review"`
+	Status   string               `json:"status"`
+}
+
+type QuestionCardQueue struct {
+	Items          []QuestionCardItem `json:"items"`
+	DueCount       int                `json:"due_count"`
+	NewCount       int                `json:"new_count"`
+	AvailableCount int                `json:"available_count"`
+}
+
 type Route struct {
 	Method      string `json:"method"`
 	Path        string `json:"path"`

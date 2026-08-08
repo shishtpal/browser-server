@@ -343,8 +343,19 @@ func (b *UpdateBuilder) Exec(ctx context.Context, id int) error {
 
 // Delete removes a question and reports whether a row matched.
 func Delete(ctx context.Context, id int) (bool, error) {
-	result, err := db.QuizDB.ExecContext(ctx, "DELETE FROM questions WHERE id = ?", id)
+	tx, err := db.QuizDB.BeginTx(ctx, nil)
 	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, "DELETE FROM question_review_state WHERE question_id = ?", id); err != nil {
+		return false, err
+	}
+	result, err := tx.ExecContext(ctx, "DELETE FROM questions WHERE id = ?", id)
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
 		return false, err
 	}
 	rows, _ := result.RowsAffected()

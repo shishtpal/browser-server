@@ -150,6 +150,8 @@ func main() {
 		api.HandleFunc("/quiz/questions/{id:[0-9]+}", handlers.DeleteQuestion).Methods("DELETE")
 		api.HandleFunc("/quiz/questions/{id:[0-9]+}/image", handlers.UploadQuestionImage).Methods("POST")
 		api.HandleFunc("/quiz/questions/{id:[0-9]+}/image", handlers.GetQuestionImage).Methods("GET")
+		api.HandleFunc("/quiz/cards", handlers.GetQuestionCards).Methods("GET")
+		api.HandleFunc("/quiz/cards/{id:[0-9]+}/review", handlers.ReviewQuestionCard).Methods("POST")
 		api.HandleFunc("/quiz/papers", handlers.GeneratePaper).Methods("POST")
 		api.HandleFunc("/quiz/papers", handlers.GetPapers).Methods("GET")
 		api.HandleFunc("/quiz/papers/{id:[0-9]+}", handlers.GetPaperByID).Methods("GET")

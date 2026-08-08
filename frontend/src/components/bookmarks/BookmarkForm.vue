@@ -27,17 +27,17 @@
 </template>
 
 <script setup lang="ts">
-import InputField from '../ui/InputField.vue'
-import Button from '../ui/Button.vue'
+import InputField from '../ui/InputField.vue';
+import Button from '../ui/Button.vue';
 
-const newTitle = defineModel<string>('newTitle', { required: true })
-const newUrl = defineModel<string>('newUrl', { required: true })
-const newDescription = defineModel<string>('newDescription', { required: true })
-const newTags = defineModel<string>('newTags', { required: true })
+const newTitle = defineModel<string>('newTitle', { required: true });
+const newUrl = defineModel<string>('newUrl', { required: true });
+const newDescription = defineModel<string>('newDescription', { required: true });
+const newTags = defineModel<string>('newTags', { required: true });
 
 const emit = defineEmits<{
-  submit: []
-}>()
+  submit: [];
+}>();
 
-const onSubmit = () => emit('submit')
+const onSubmit = () => emit('submit');
 </script>

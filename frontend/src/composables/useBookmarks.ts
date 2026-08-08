@@ -1,69 +1,74 @@
-import { ref, computed, watch, type Ref } from 'vue'
-import { getBookmarks, createBookmark, updateBookmark, deleteBookmark } from '../lib/api'
-import type { BookmarkResponse } from '../types'
+import { ref, computed, watch, type Ref } from 'vue';
+import { getBookmarks, createBookmark, updateBookmark, deleteBookmark } from '../lib/api';
+import type { BookmarkResponse } from '../types';
 
-export type BookmarkSearchColumn = 'title' | 'url' | 'description' | 'folder' | 'tags' | 'all'
+export type BookmarkSearchColumn = 'title' | 'url' | 'description' | 'folder' | 'tags' | 'all';
 
 export function useBookmarks(selectedUserId: Ref<number | null>) {
-  const bookmarks = ref<BookmarkResponse[]>([])
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  const activeTagFilter = ref<string | null>(null)
-  const searchQuery = ref('')
-  const searchColumn = ref<BookmarkSearchColumn>('all')
+  const bookmarks = ref<BookmarkResponse[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+  const activeTagFilter = ref<string | null>(null);
+  const searchQuery = ref('');
+  const searchColumn = ref<BookmarkSearchColumn>('all');
 
-  const newTitle = ref('')
-  const newUrl = ref('')
-  const newDescription = ref('')
-  const newTags = ref('')
+  const newTitle = ref('');
+  const newUrl = ref('');
+  const newDescription = ref('');
+  const newTags = ref('');
 
-  const editing = ref<BookmarkResponse | null>(null)
-  const editForm = ref({ title: '', url: '', description: '', tagsStr: '' })
+  const editing = ref<BookmarkResponse | null>(null);
+  const editForm = ref({ title: '', url: '', description: '', tagsStr: '' });
 
-  const allTags = computed(() => Array.from(new Set(bookmarks.value.flatMap((b) => b.tags))).sort())
+  const allTags = computed(() =>
+    Array.from(new Set(bookmarks.value.flatMap((b) => b.tags))).sort(),
+  );
 
   const matchesColumn = (b: BookmarkResponse, col: BookmarkSearchColumn, term: string): boolean => {
-    if (col === 'title') return b.title.toLowerCase().includes(term)
-    if (col === 'url') return b.url.toLowerCase().includes(term)
-    if (col === 'description') return (b.description || '').toLowerCase().includes(term)
-    if (col === 'folder') return (b.folder_path || '').toLowerCase().includes(term)
-    if (col === 'tags') return b.tags.some((t) => t.toLowerCase().includes(term))
+    if (col === 'title') return b.title.toLowerCase().includes(term);
+    if (col === 'url') return b.url.toLowerCase().includes(term);
+    if (col === 'description') return (b.description || '').toLowerCase().includes(term);
+    if (col === 'folder') return (b.folder_path || '').toLowerCase().includes(term);
+    if (col === 'tags') return b.tags.some((t) => t.toLowerCase().includes(term));
     return [b.title, b.url, b.description, b.folder_path, ...b.tags]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
-      .includes(term)
-  }
+      .includes(term);
+  };
 
   const filteredBookmarks = computed(() => {
-    const q = searchQuery.value.toLowerCase().trim()
-    if (!q) return bookmarks.value
-    const col = searchColumn.value
-    const terms = q.split(/\s+/).filter(Boolean)
-    return bookmarks.value.filter((b) => terms.every((t) => matchesColumn(b, col, t)))
-  })
+    const q = searchQuery.value.toLowerCase().trim();
+    if (!q) return bookmarks.value;
+    const col = searchColumn.value;
+    const terms = q.split(/\s+/).filter(Boolean);
+    return bookmarks.value.filter((b) => terms.every((t) => matchesColumn(b, col, t)));
+  });
 
   const loadBookmarks = async () => {
-    if (!selectedUserId.value) return
-    isLoading.value = true
-    error.value = null
+    if (!selectedUserId.value) return;
+    isLoading.value = true;
+    error.value = null;
     try {
-      bookmarks.value = await getBookmarks(selectedUserId.value, activeTagFilter.value || undefined)
+      bookmarks.value = await getBookmarks(
+        selectedUserId.value,
+        activeTagFilter.value || undefined,
+      );
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load bookmarks'
+      error.value = e instanceof Error ? e.message : 'Failed to load bookmarks';
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
-  }
+  };
 
   const addBookmark = async () => {
-    if (!selectedUserId.value || !newTitle.value.trim() || !newUrl.value.trim()) return
+    if (!selectedUserId.value || !newTitle.value.trim() || !newUrl.value.trim()) return;
     const tagList = newTags.value
       ? newTags.value
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean)
-      : []
+      : [];
     try {
       await createBookmark({
         user_id: selectedUserId.value,
@@ -71,39 +76,39 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
         url: newUrl.value.trim(),
         description: newDescription.value.trim() || undefined,
         tags: tagList.length ? tagList : undefined,
-      })
-      newTitle.value = ''
-      newUrl.value = ''
-      newDescription.value = ''
-      newTags.value = ''
-      await loadBookmarks()
+      });
+      newTitle.value = '';
+      newUrl.value = '';
+      newDescription.value = '';
+      newTags.value = '';
+      await loadBookmarks();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to add bookmark'
+      error.value = e instanceof Error ? e.message : 'Failed to add bookmark';
     }
-  }
+  };
 
   const filterByTag = (tag: string) => {
-    activeTagFilter.value = tag
-  }
+    activeTagFilter.value = tag;
+  };
 
   const openEdit = (b: BookmarkResponse) => {
-    editing.value = b
+    editing.value = b;
     editForm.value = {
       title: b.title,
       url: b.url,
       description: b.description,
       tagsStr: b.tags.join(', '),
-    }
-  }
+    };
+  };
 
   const saveEdit = async () => {
-    if (!editing.value) return
+    if (!editing.value) return;
     const tagList = editForm.value.tagsStr
       ? editForm.value.tagsStr
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean)
-      : []
+      : [];
     try {
       await updateBookmark(editing.value.id, {
         user_id: editing.value.user_id,
@@ -111,27 +116,27 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
         url: editForm.value.url,
         description: editForm.value.description,
         tags: tagList,
-      })
-      editing.value = null
-      await loadBookmarks()
+      });
+      editing.value = null;
+      await loadBookmarks();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update bookmark'
+      error.value = e instanceof Error ? e.message : 'Failed to update bookmark';
     }
-  }
+  };
 
   const removeBookmark = async (id: number) => {
-    if (!confirm('Delete this bookmark?')) return
+    if (!confirm('Delete this bookmark?')) return;
     try {
-      await deleteBookmark(id)
-      await loadBookmarks()
+      await deleteBookmark(id);
+      await loadBookmarks();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete bookmark'
+      error.value = e instanceof Error ? e.message : 'Failed to delete bookmark';
     }
-  }
+  };
 
   watch(activeTagFilter, () => {
-    if (selectedUserId.value) loadBookmarks()
-  })
+    if (selectedUserId.value) loadBookmarks();
+  });
 
   return {
     bookmarks,
@@ -154,17 +159,17 @@ export function useBookmarks(selectedUserId: Ref<number | null>) {
     openEdit,
     saveEdit,
     removeBookmark,
-  }
+  };
 }
 
 export function getInitial(value: string): string {
-  return value.trim().charAt(0).toUpperCase() || 'B'
+  return value.trim().charAt(0).toUpperCase() || 'B';
 }
 
 export function formatHost(url: string): string {
   try {
-    return new URL(url).host
+    return new URL(url).host;
   } catch {
-    return url
+    return url;
   }
 }

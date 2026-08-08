@@ -89,49 +89,49 @@
 </template>
 
 <script setup lang="ts">
-import type { ChatQuestion } from '@browser-server/shared-types'
-import { reactive, ref } from 'vue'
+import type { ChatQuestion } from '@browser-server/shared-types';
+import { reactive, ref } from 'vue';
 
 const props = defineProps<{
-  context?: string
-  questions: ChatQuestion[]
-}>()
+  context?: string;
+  questions: ChatQuestion[];
+}>();
 
 const emit = defineEmits<{
-  submit: [answers: Array<{ id: string; prompt: string; answer: unknown; skipped: boolean }>]
-}>()
+  submit: [answers: Array<{ id: string; prompt: string; answer: unknown; skipped: boolean }>];
+}>();
 
-const answers = reactive<Record<string, string | string[]>>({})
-const error = ref('')
-const submitting = ref(false)
+const answers = reactive<Record<string, string | string[]>>({});
+const error = ref('');
+const submitting = ref(false);
 
 for (const question of props.questions) {
-  answers[question.id] = isMultipleChoice(question.kind) ? [] : question.default || ''
+  answers[question.id] = isMultipleChoice(question.kind) ? [] : question.default || '';
 }
 
 function isMultipleChoice(kind: ChatQuestion['kind']) {
-  return kind === 'multi_choice' || kind === 'multiple_choice'
+  return kind === 'multi_choice' || kind === 'multiple_choice';
 }
 
 function isEmpty(answer: string | string[]) {
-  return Array.isArray(answer) ? answer.length === 0 : !answer.trim()
+  return Array.isArray(answer) ? answer.length === 0 : !answer.trim();
 }
 
 function submit() {
   for (const question of props.questions) {
     if (question.required && isEmpty(answers[question.id] || '')) {
-      error.value = `Please answer: ${question.prompt}`
-      return
+      error.value = `Please answer: ${question.prompt}`;
+      return;
     }
   }
-  error.value = ''
-  submitting.value = true
+  error.value = '';
+  submitting.value = true;
   emit(
     'submit',
     props.questions.map((question) => {
-      const answer = answers[question.id] || (isMultipleChoice(question.kind) ? [] : '')
-      return { id: question.id, prompt: question.prompt, answer, skipped: isEmpty(answer) }
+      const answer = answers[question.id] || (isMultipleChoice(question.kind) ? [] : '');
+      return { id: question.id, prompt: question.prompt, answer, skipped: isEmpty(answer) };
     }),
-  )
+  );
 }
 </script>

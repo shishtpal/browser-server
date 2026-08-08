@@ -10,14 +10,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-interface Props {
-  done: number
-  total: number
-}
+const props = defineProps<{
+  done: number;
+  total: number;
+}>();
 
-const props = defineProps<Props>()
-
-const pct = computed(() => (props.total > 0 ? Math.round((props.done / props.total) * 100) : 0))
+const pct = computed(() => (props.total > 0 ? Math.round((props.done / props.total) * 100) : 0));
 </script>

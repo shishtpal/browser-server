@@ -55,72 +55,72 @@
 </template>
 
 <script setup lang="ts">
-import type { CalendarDay } from './types'
-import type { Todo } from '../../types'
-import CalendarTodoChip from './CalendarTodoChip.vue'
-import { useCalendarDragDrop, todoFromPayload } from '../../composables/useCalendarDragDrop'
+import type { CalendarDay } from './types';
+import type { Todo } from '../../types';
+import CalendarTodoChip from './CalendarTodoChip.vue';
+import { useCalendarDragDrop, todoFromPayload } from '../../composables/useCalendarDragDrop';
 
 const props = defineProps<{
-  days: CalendarDay[]
-}>()
+  days: CalendarDay[];
+}>();
 
 const emit = defineEmits<{
-  (e: 'click', date: string): void
-  (e: 'todoClick', todo: Todo): void
-  (e: 'todoMove', payload: { todo: Todo; date: string }): void
-}>()
+  (e: 'click', date: string): void;
+  (e: 'todoClick', todo: Todo): void;
+  (e: 'todoMove', payload: { todo: Todo; date: string }): void;
+}>();
 
 function dayLabel(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
 }
 
 function dayNumber(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').getDate()
+  return new Date(dateStr + 'T00:00:00').getDate();
 }
 
-const { dragOverDate, getDragPayload, hasCalendarPayload, isDropAllowed } = useCalendarDragDrop()
+const { dragOverDate, getDragPayload, hasCalendarPayload, isDropAllowed } = useCalendarDragDrop();
 
 function dayCellClass(day: CalendarDay) {
-  const classes: string[] = []
+  const classes: string[] = [];
   if (dragOverDate.value === day.date) {
-    classes.push('ring-2 ring-inset ring-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/30')
+    classes.push('ring-2 ring-inset ring-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/30');
   }
-  return classes.join(' ')
+  return classes.join(' ');
 }
 
 function onDragOver(day: CalendarDay, event: DragEvent) {
-  if (!hasCalendarPayload(event.dataTransfer)) return
-  const payload = getDragPayload(event.dataTransfer)
-  if (!isDropAllowed(payload, day.date)) return
-  event.dataTransfer!.dropEffect = 'move'
-  dragOverDate.value = day.date
+  if (!hasCalendarPayload(event.dataTransfer)) return;
+  const payload = getDragPayload(event.dataTransfer);
+  if (!isDropAllowed(payload, day.date)) return;
+  event.dataTransfer!.dropEffect = 'move';
+  dragOverDate.value = day.date;
 }
 
 function onDragLeave(day: CalendarDay, event: DragEvent) {
-  if (dragOverDate.value !== day.date) return
-  const target = event.currentTarget as HTMLElement | null
-  const related = event.relatedTarget as Node | null
-  if (target && related && target.contains(related)) return
-  dragOverDate.value = null
+  if (dragOverDate.value !== day.date) return;
+  const target = event.currentTarget as HTMLElement | null;
+  const related = event.relatedTarget as Node | null;
+  if (target && related && target.contains(related)) return;
+  dragOverDate.value = null;
 }
 
 function onDrop(day: CalendarDay, event: DragEvent) {
-  const payload = getDragPayload(event.dataTransfer)
-  dragOverDate.value = null
-  if (!isDropAllowed(payload, day.date)) return
+  const payload = getDragPayload(event.dataTransfer);
+  dragOverDate.value = null;
+  if (!isDropAllowed(payload, day.date)) return;
   const todo = todoFromPayload(
     payload,
     props.days.flatMap((d) => d.todos),
-  )
-  if (!todo) return
-  emit('todoMove', { todo, date: day.date })
+  );
+  if (!todo) return;
+  emit('todoMove', { todo, date: day.date });
 }
 
 function onDragStart() {
-  dragOverDate.value = null
+  dragOverDate.value = null;
 }
 
 function onDragEnd() {
-  dragOverDate.value = null
+  dragOverDate.value = null;
 }
 </script>

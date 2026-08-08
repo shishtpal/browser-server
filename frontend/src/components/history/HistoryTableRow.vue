@@ -62,16 +62,16 @@
 </template>
 
 <script setup lang="ts">
-import { formatDate, formatDuration } from '../../lib/utils'
-import type { History } from '../../types'
+import type { History } from '../../types';
+import { formatDate, formatDuration } from '../../lib/utils';
 
 interface Props {
-  entry: History
+  entry: History;
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 const emit = defineEmits<{
-  delete: [id: number]
-}>()
+  delete: [id: number];
+}>();
 </script>

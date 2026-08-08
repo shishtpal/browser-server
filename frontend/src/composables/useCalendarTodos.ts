@@ -1,55 +1,55 @@
-import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
-import { format, startOfDay } from 'date-fns'
-import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api'
-import type { Todo, CreateTodoInput } from '../types'
-import type { CalendarDay, CalendarStats, DateRange } from '../components/calendar/types'
+import { ref, computed, watch, type Ref, type ComputedRef } from 'vue';
+import { format, startOfDay } from 'date-fns';
+import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api';
+import type { Todo, CreateTodoInput } from '../types';
+import type { CalendarDay, CalendarStats, DateRange } from '../components/calendar/types';
 
 /** Parse a date string that may be ISO 8601 (with T) or plain yyyy-MM-dd. */
 function parseToDate(raw: string): Date {
-  return new Date(raw.includes('T') ? raw : raw + 'T00:00:00')
+  return new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
 }
 
 /** Normalize a date string (ISO or plain) to yyyy-MM-dd for comparison. */
 function toDateStr(raw: string): string {
-  return format(parseToDate(raw), 'yyyy-MM-dd')
+  return format(parseToDate(raw), 'yyyy-MM-dd');
 }
 
 export function useCalendarTodos(
   selectedUserId: Ref<number | null>,
   dateRange: ComputedRef<DateRange>,
 ) {
-  const todos = ref<Todo[]>([])
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const todos = ref<Todo[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
 
-  const rangeStart = computed(() => startOfDay(dateRange.value.start))
-  const rangeEnd = computed(() => startOfDay(dateRange.value.end))
+  const rangeStart = computed(() => startOfDay(dateRange.value.start));
+  const rangeEnd = computed(() => startOfDay(dateRange.value.end));
 
   const visibleTodos = computed(() => {
     return todos.value.filter((t) => {
-      if (!t.start_date) return false
-      const start = startOfDay(parseToDate(t.start_date))
-      return start >= rangeStart.value && start <= rangeEnd.value
-    })
-  })
+      if (!t.start_date) return false;
+      const start = startOfDay(parseToDate(t.start_date));
+      return start >= rangeStart.value && start <= rangeEnd.value;
+    });
+  });
 
   const days = computed<CalendarDay[]>(() => {
-    const result: CalendarDay[] = []
-    const current = new Date(rangeStart.value)
-    const today = new Date()
+    const result: CalendarDay[] = [];
+    const current = new Date(rangeStart.value);
+    const today = new Date();
     // For month view, use the month from the middle of the range to determine "current month"
-    const midDate = new Date(rangeStart.value)
+    const midDate = new Date(rangeStart.value);
     midDate.setDate(
       midDate.getDate() +
         Math.floor(
           (rangeEnd.value.getTime() - rangeStart.value.getTime()) / (1000 * 60 * 60 * 24) / 2,
         ),
-    )
-    const viewMonth = midDate.getMonth()
-    const viewYear = midDate.getFullYear()
+    );
+    const viewMonth = midDate.getMonth();
+    const viewYear = midDate.getFullYear();
 
     while (current <= rangeEnd.value) {
-      const dateStr = format(current, 'yyyy-MM-dd')
+      const dateStr = format(current, 'yyyy-MM-dd');
       result.push({
         date: dateStr,
         isToday: isSameDay(current, today),
@@ -58,69 +58,69 @@ export function useCalendarTodos(
         todos: visibleTodos.value.filter(
           (t) => t.start_date && toDateStr(t.start_date) === dateStr,
         ),
-      })
-      current.setDate(current.getDate() + 1)
+      });
+      current.setDate(current.getDate() + 1);
     }
-    return result
-  })
+    return result;
+  });
 
   const stats = computed<CalendarStats>(() => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd')
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todayCount = todos.value.filter((t) => {
-      if (!t.start_date || t.status !== 'pending') return false
-      return toDateStr(t.start_date) === todayStr
-    }).length
+      if (!t.start_date || t.status !== 'pending') return false;
+      return toDateStr(t.start_date) === todayStr;
+    }).length;
     const overdueCount = todos.value.filter((t) => {
-      if (!t.start_date || t.status !== 'pending') return false
-      return startOfDay(parseToDate(t.start_date)) < startOfDay(new Date())
-    }).length
-    const completedCount = todos.value.filter((t) => t.status === 'completed').length
-    return { todayCount, overdueCount, completedCount }
-  })
+      if (!t.start_date || t.status !== 'pending') return false;
+      return startOfDay(parseToDate(t.start_date)) < startOfDay(new Date());
+    }).length;
+    const completedCount = todos.value.filter((t) => t.status === 'completed').length;
+    return { todayCount, overdueCount, completedCount };
+  });
 
   const loadTodos = async () => {
-    if (!selectedUserId.value) return
-    isLoading.value = true
-    error.value = null
+    if (!selectedUserId.value) return;
+    isLoading.value = true;
+    error.value = null;
     try {
-      const data = await getTodos(selectedUserId.value)
-      todos.value = data
+      const data = await getTodos(selectedUserId.value);
+      todos.value = data;
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load todos'
+      error.value = e instanceof Error ? e.message : 'Failed to load todos';
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
-  }
+  };
 
   const addTodo = async (data: CreateTodoInput) => {
     try {
-      await createTodo(data)
-      await loadTodos()
+      await createTodo(data);
+      await loadTodos();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create todo'
-      throw e
+      error.value = e instanceof Error ? e.message : 'Failed to create todo';
+      throw e;
     }
-  }
+  };
 
   const updateTodoItem = async (id: number, data: Partial<Todo>) => {
     try {
-      await updateTodo(id, data)
-      await loadTodos()
+      await updateTodo(id, data);
+      await loadTodos();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update todo'
-      throw e
+      error.value = e instanceof Error ? e.message : 'Failed to update todo';
+      throw e;
     }
-  }
+  };
 
   const removeTodo = async (id: number) => {
     try {
-      await deleteTodo(id)
-      await loadTodos()
+      await deleteTodo(id);
+      await loadTodos();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete todo'
-      throw e
+      error.value = e instanceof Error ? e.message : 'Failed to delete todo';
+      throw e;
     }
-  }
+  };
 
   return {
     todos,
@@ -133,7 +133,7 @@ export function useCalendarTodos(
     addTodo,
     updateTodoItem,
     removeTodo,
-  }
+  };
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -141,5 +141,5 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
-  )
+  );
 }

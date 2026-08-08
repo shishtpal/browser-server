@@ -1,8 +1,8 @@
-import type { AITask, AITaskStatus, AITaskStatusResponse } from '@browser-server/shared-types'
-import { computed, onUnmounted, ref } from 'vue'
-import { cancelAITask, createAITask, deleteAITask, getAITaskStatus, listAITasks } from '../lib/api'
+import type { AITask, AITaskStatus, AITaskStatusResponse } from '@browser-server/shared-types';
+import { computed, onUnmounted, ref } from 'vue';
+import { cancelAITask, createAITask, deleteAITask, getAITaskStatus, listAITasks } from '../lib/api';
 
-export type TaskFilter = AITaskStatus | 'all'
+export type TaskFilter = AITaskStatus | 'all';
 
 /**
  * Polling interval while any task is queued or running. The server has no
@@ -10,21 +10,21 @@ export type TaskFilter = AITaskStatus | 'all'
  * seconds is frequent enough to feel live without hammering a queue that is
  * usually idle.
  */
-const ACTIVE_POLL_MS = 3000
+const ACTIVE_POLL_MS = 3000;
 
 export function useAITasks() {
-  const tasks = ref<AITask[]>([])
-  const status = ref<AITaskStatusResponse | null>(null)
-  const filter = ref<TaskFilter>('all')
-  const isLoading = ref(false)
-  const isSubmitting = ref(false)
-  const error = ref('')
+  const tasks = ref<AITask[]>([]);
+  const status = ref<AITaskStatusResponse | null>(null);
+  const filter = ref<TaskFilter>('all');
+  const isLoading = ref(false);
+  const isSubmitting = ref(false);
+  const error = ref('');
 
-  let timer: ReturnType<typeof setTimeout> | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
-  const enabled = computed(() => status.value?.enabled ?? false)
-  const workers = computed(() => status.value?.workers ?? 0)
-  const counts = computed(() => status.value?.counts ?? ({} as Record<AITaskStatus, number>))
+  const enabled = computed(() => status.value?.enabled ?? false);
+  const workers = computed(() => status.value?.workers ?? 0);
+  const counts = computed(() => status.value?.counts ?? ({} as Record<AITaskStatus, number>));
 
   /**
    * Whether anything is still moving — the only reason to keep polling. Driven
@@ -33,12 +33,12 @@ export function useAITasks() {
    */
   const hasActive = computed(
     () => (counts.value.queued ?? 0) > 0 || (counts.value.running ?? 0) > 0,
-  )
+  );
 
   function stopPolling() {
     if (timer !== null) {
-      clearTimeout(timer)
-      timer = null
+      clearTimeout(timer);
+      timer = null;
     }
   }
 
@@ -47,74 +47,74 @@ export function useAITasks() {
    * rather than an interval so a slow response cannot stack requests.
    */
   function schedulePoll() {
-    stopPolling()
-    if (!enabled.value || !hasActive.value) return
+    stopPolling();
+    if (!enabled.value || !hasActive.value) return;
     timer = setTimeout(() => {
-      void load(true)
-    }, ACTIVE_POLL_MS)
+      void load(true);
+    }, ACTIVE_POLL_MS);
   }
 
   async function load(silent = false) {
-    if (!silent) isLoading.value = true
+    if (!silent) isLoading.value = true;
     try {
-      status.value = await getAITaskStatus()
+      status.value = await getAITaskStatus();
       if (status.value.enabled) {
-        tasks.value = await listAITasks(filter.value === 'all' ? undefined : filter.value)
+        tasks.value = await listAITasks(filter.value === 'all' ? undefined : filter.value);
       } else {
-        tasks.value = []
+        tasks.value = [];
       }
-      error.value = ''
+      error.value = '';
     } catch (err) {
       // A background refresh that fails should not blank out a list the user is
       // reading; only a foreground load reports the failure.
-      if (!silent) error.value = err instanceof Error ? err.message : 'Failed to load tasks'
+      if (!silent) error.value = err instanceof Error ? err.message : 'Failed to load tasks';
     } finally {
-      isLoading.value = false
-      schedulePoll()
+      isLoading.value = false;
+      schedulePoll();
     }
   }
 
   async function submit(prompt: string, conversationId?: string): Promise<boolean> {
-    const trimmed = prompt.trim()
-    if (!trimmed || isSubmitting.value) return false
-    isSubmitting.value = true
+    const trimmed = prompt.trim();
+    if (!trimmed || isSubmitting.value) return false;
+    isSubmitting.value = true;
     try {
-      await createAITask({ prompt: trimmed, conversation_id: conversationId || undefined })
-      await load(true)
-      error.value = ''
-      return true
+      await createAITask({ prompt: trimmed, conversation_id: conversationId || undefined });
+      await load(true);
+      error.value = '';
+      return true;
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to create task'
-      return false
+      error.value = err instanceof Error ? err.message : 'Failed to create task';
+      return false;
     } finally {
-      isSubmitting.value = false
+      isSubmitting.value = false;
     }
   }
 
   async function cancel(id: string) {
     try {
-      await cancelAITask(id)
-      await load(true)
+      await cancelAITask(id);
+      await load(true);
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to cancel task'
+      error.value = err instanceof Error ? err.message : 'Failed to cancel task';
     }
   }
 
   async function remove(id: string) {
     try {
-      await deleteAITask(id)
-      await load(true)
+      await deleteAITask(id);
+      await load(true);
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to delete task'
+      error.value = err instanceof Error ? err.message : 'Failed to delete task';
     }
   }
 
   function setFilter(next: TaskFilter) {
-    filter.value = next
-    void load()
+    filter.value = next;
+    void load();
   }
 
-  onUnmounted(stopPolling)
+  onUnmounted(stopPolling);
 
   return {
     tasks,
@@ -132,5 +132,5 @@ export function useAITasks() {
     cancel,
     remove,
     setFilter,
-  }
+  };
 }

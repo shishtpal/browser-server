@@ -168,54 +168,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { AIConversation } from '@browser-server/shared-types'
-import ArchivedConversationsList from './ArchivedConversationsList.vue'
+import type { AIConversation } from '@browser-server/shared-types';
+import { ref } from 'vue';
+import ArchivedConversationsList from './ArchivedConversationsList.vue';
 
 defineProps<{
-  conversations: AIConversation[]
-  activeId: string | null
-  search: string
-  statusLabel: string
-  disabled: boolean
-  archivedConversations: AIConversation[]
-  showArchived: boolean
-}>()
+  conversations: AIConversation[];
+  activeId: string | null;
+  search: string;
+  statusLabel: string;
+  disabled: boolean;
+  archivedConversations: AIConversation[];
+  showArchived: boolean;
+}>();
 
 const emit = defineEmits<{
-  new: []
-  select: [id: string]
-  rename: [conversation: AIConversation]
-  delete: [conversation: AIConversation]
-  archive: [conversation: AIConversation]
-  restore: [conversation: AIConversation]
-  'toggle-archived': []
-  'update:search': [value: string]
-}>()
+  new: [];
+  select: [id: string];
+  rename: [conversation: AIConversation];
+  delete: [conversation: AIConversation];
+  archive: [conversation: AIConversation];
+  restore: [conversation: AIConversation];
+  'toggle-archived': [];
+  'update:search': [value: string];
+}>();
 
-const openMenuId = ref<string | null>(null)
+const openMenuId = ref<string | null>(null);
 
 function toggleMenu(id: string) {
-  openMenuId.value = openMenuId.value === id ? null : id
+  openMenuId.value = openMenuId.value === id ? null : id;
 }
 
 function chooseAction(action: 'rename' | 'archive' | 'delete', conversation: AIConversation) {
-  openMenuId.value = null
-  if (action === 'rename') emit('rename', conversation)
-  else if (action === 'archive') emit('archive', conversation)
-  else emit('delete', conversation)
+  openMenuId.value = null;
+  if (action === 'rename') emit('rename', conversation);
+  else if (action === 'archive') emit('archive', conversation);
+  else emit('delete', conversation);
 }
 
 function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return 'just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
+  const diff = Date.now() - new Date(iso).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 </script>

@@ -68,18 +68,18 @@
 </template>
 
 <script setup lang="ts">
-import type { CalendarView } from './types'
+import type { CalendarView } from './types';
 
 defineProps<{
-  periodLabel: string
-  currentView: CalendarView
-}>()
+  periodLabel: string;
+  currentView: CalendarView;
+}>();
 
 defineEmits<{
-  (e: 'navigate', dir: number): void
-  (e: 'today'): void
-  (e: 'changeView', view: CalendarView): void
-}>()
+  (e: 'navigate', dir: number): void;
+  (e: 'today'): void;
+  (e: 'changeView', view: CalendarView): void;
+}>();
 
-const views: CalendarView[] = ['day', 'week', 'month', 'year']
+const views: CalendarView[] = ['day', 'week', 'month', 'year'];
 </script>

@@ -1,116 +1,116 @@
-import { ref, computed, watch, type Ref } from 'vue'
-import { getPrompts, createPrompt, updatePrompt, deletePrompt, searchPrompts } from '../lib/api'
-import type { PromptResponse, CreatePromptInput, UpdatePromptInput } from '../types'
+import { ref, computed, watch, type Ref } from 'vue';
+import { getPrompts, createPrompt, updatePrompt, deletePrompt, searchPrompts } from '../lib/api';
+import type { PromptResponse, CreatePromptInput, UpdatePromptInput } from '../types';
 
-export const UNTAGGED_FILTER = Symbol('untagged-filter')
-export type TagFilter = string | typeof UNTAGGED_FILTER | null
+export const UNTAGGED_FILTER = Symbol('untagged-filter');
+export type TagFilter = string | typeof UNTAGGED_FILTER | null;
 
 export interface TagItem {
-  name: string
-  count: number
+  name: string;
+  count: number;
 }
 
 export function usePrompts(userId: Ref<number | null>) {
-  const prompts = ref<PromptResponse[]>([])
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const prompts = ref<PromptResponse[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
 
   // Search state
-  const searchQuery = ref('')
-  const searchResults = ref<PromptResponse[]>([])
-  const isSearching = ref(false)
+  const searchQuery = ref('');
+  const searchResults = ref<PromptResponse[]>([]);
+  const isSearching = ref(false);
 
   // UI state
-  const activeTag = ref<TagFilter>(null)
-  const showPromptManager = ref(false)
+  const activeTag = ref<TagFilter>(null);
+  const showPromptManager = ref(false);
 
-  const currentUserId = computed(() => userId.value)
+  const currentUserId = computed(() => userId.value);
 
   const allTags = computed<TagItem[]>(() => {
-    const counts = new Map<string, number>()
+    const counts = new Map<string, number>();
     for (const p of prompts.value) {
       for (const tag of p.tags || []) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1)
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
       }
     }
-    const items: TagItem[] = []
+    const items: TagItem[] = [];
     for (const [name, count] of counts.entries()) {
-      items.push({ name, count })
+      items.push({ name, count });
     }
-    return items.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-  })
+    return items.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  });
 
-  const untaggedCount = computed(() => prompts.value.filter((p) => !p.tags?.length).length)
+  const untaggedCount = computed(() => prompts.value.filter((p) => !p.tags?.length).length);
 
   const loadPrompts = async (query?: string | null) => {
-    if (!currentUserId.value) return
-    isLoading.value = true
-    error.value = null
+    if (!currentUserId.value) return;
+    isLoading.value = true;
+    error.value = null;
     try {
-      prompts.value = await getPrompts(currentUserId.value, query ?? undefined)
+      prompts.value = await getPrompts(currentUserId.value, query ?? undefined);
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load prompts'
+      error.value = e instanceof Error ? e.message : 'Failed to load prompts';
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
-  }
+  };
 
   const doSearch = async (query: string) => {
-    if (!currentUserId.value) return
-    isSearching.value = true
+    if (!currentUserId.value) return;
+    isSearching.value = true;
     try {
-      searchResults.value = await searchPrompts(currentUserId.value, query, 20)
+      searchResults.value = await searchPrompts(currentUserId.value, query, 20);
     } catch {
-      searchResults.value = []
+      searchResults.value = [];
     } finally {
-      isSearching.value = false
+      isSearching.value = false;
     }
-  }
+  };
 
   const filterByTag = (tag: TagFilter) => {
-    activeTag.value = tag
-  }
+    activeTag.value = tag;
+  };
 
   const addPrompt = async (data: CreatePromptInput) => {
-    if (!currentUserId.value) return
+    if (!currentUserId.value) return;
     try {
-      const resp = await createPrompt({ ...data, user_id: currentUserId.value })
-      prompts.value.unshift(resp)
-      return resp
+      const resp = await createPrompt({ ...data, user_id: currentUserId.value });
+      prompts.value.unshift(resp);
+      return resp;
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create prompt'
+      error.value = e instanceof Error ? e.message : 'Failed to create prompt';
     }
-  }
+  };
 
   const editPrompt = async (id: number, data: UpdatePromptInput) => {
     try {
-      const resp = await updatePrompt(id, data)
-      const idx = prompts.value.findIndex((p) => p.id === id)
-      if (idx >= 0) prompts.value[idx] = resp
-      return resp
+      const resp = await updatePrompt(id, data);
+      const idx = prompts.value.findIndex((p) => p.id === id);
+      if (idx >= 0) prompts.value[idx] = resp;
+      return resp;
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update prompt'
+      error.value = e instanceof Error ? e.message : 'Failed to update prompt';
     }
-  }
+  };
 
   const removePrompt = async (id: number) => {
     try {
-      await deletePrompt(id)
-      prompts.value = prompts.value.filter((p) => p.id !== id)
+      await deletePrompt(id);
+      prompts.value = prompts.value.filter((p) => p.id !== id);
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete prompt'
+      error.value = e instanceof Error ? e.message : 'Failed to delete prompt';
     }
-  }
+  };
 
   watch(
     () => currentUserId.value,
     (val) => {
       if (val && val > 0) {
-        activeTag.value = null
-        loadPrompts()
+        activeTag.value = null;
+        loadPrompts();
       }
     },
-  )
+  );
 
   return {
     prompts,
@@ -129,5 +129,5 @@ export function usePrompts(userId: Ref<number | null>) {
     addPrompt,
     editPrompt,
     removePrompt,
-  }
+  };
 }

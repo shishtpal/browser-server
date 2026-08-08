@@ -39,61 +39,61 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types'
-import type { ReorderItem } from '../../types'
-import { ref, watch, computed } from 'vue'
-import { PRIORITIES } from '../../composables/useTodoPriority'
-import draggable from 'vuedraggable'
-import TodoKanbanCard from './TodoKanbanCard.vue'
+import type { Todo } from '../../types';
+import type { ReorderItem } from '../../types';
+import { ref, watch, computed } from 'vue';
+import { PRIORITIES } from '../../composables/useTodoPriority';
+import draggable from 'vuedraggable';
+import TodoKanbanCard from './TodoKanbanCard.vue';
 
 const emit = defineEmits<{
-  toggle: [todo: Todo]
-  'toggle-subtask': [todo: Todo]
-  'view-screenshot': [todo: Todo]
-  'start-edit': [todo: Todo]
-  delete: [id: number]
-  reorder: [items: ReorderItem[]]
-  'priority-change': [payload: { todo: Todo; newPriority: string; items: ReorderItem[] }]
-}>()
+  toggle: [todo: Todo];
+  'toggle-subtask': [todo: Todo];
+  'view-screenshot': [todo: Todo];
+  'start-edit': [todo: Todo];
+  delete: [id: number];
+  reorder: [items: ReorderItem[]];
+  'priority-change': [payload: { todo: Todo; newPriority: string; items: ReorderItem[] }];
+}>();
 
 interface Props {
-  todos: Todo[]
+  todos: Todo[];
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
-const columnLists = ref<Record<string, Todo[]>>({})
+const columnLists = ref<Record<string, Todo[]>>({});
 
 watch(
   () => props.todos,
   (newTodos) => {
-    const map: Record<string, Todo[]> = {}
+    const map: Record<string, Todo[]> = {};
     for (const p of PRIORITIES) {
-      map[p.value] = []
+      map[p.value] = [];
     }
-    for (const todo of newTodos) map[todo.priority]?.push(todo)
-    columnLists.value = map
+    for (const todo of newTodos) map[todo.priority]?.push(todo);
+    columnLists.value = map;
   },
   { immediate: true },
-)
+);
 
 const columnCounts = computed(() => {
-  const counts: Record<string, number> = {}
-  for (const p of PRIORITIES) counts[p.value] = 0
+  const counts: Record<string, number> = {};
+  for (const p of PRIORITIES) counts[p.value] = 0;
   props.todos.forEach((t) => {
-    if (counts[t.priority] !== undefined) counts[t.priority]++
-  })
-  return counts
-})
+    if (counts[t.priority] !== undefined) counts[t.priority]++;
+  });
+  return counts;
+});
 
 function onKanbanChange(priority: string, event: any) {
-  const column = columnLists.value[priority] || []
-  const items: ReorderItem[] = column.map((t, idx) => ({ id: t.id, position: idx }))
+  const column = columnLists.value[priority] || [];
+  const items: ReorderItem[] = column.map((t, idx) => ({ id: t.id, position: idx }));
   if (event.moved) {
-    emit('reorder', items)
+    emit('reorder', items);
   }
   if (event.added && event.added.element) {
-    emit('priority-change', { todo: event.added.element, newPriority: priority, items })
+    emit('priority-change', { todo: event.added.element, newPriority: priority, items });
   }
 }
 </script>

@@ -157,29 +157,29 @@
 </template>
 
 <script setup lang="ts">
-import type { PropType } from 'vue'
-import type { Todo } from '../../types'
-import { useTodoDisplay } from '../../composables/useTodoDisplay'
-import TodoPriorityBadge from './TodoPriorityBadge.vue'
-import TodoDueDateBadge from './TodoDueDateBadge.vue'
-import TodoTagBadges from './TodoTagBadges.vue'
-import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
-import TodoSubtaskList from './TodoSubtaskList.vue'
+import type { PropType } from 'vue';
+import type { Todo } from '../../types';
+import { useTodoDisplay } from '../../composables/useTodoDisplay';
+import TodoPriorityBadge from './TodoPriorityBadge.vue';
+import TodoDueDateBadge from './TodoDueDateBadge.vue';
+import TodoTagBadges from './TodoTagBadges.vue';
+import TodoSubtaskProgress from './TodoSubtaskProgress.vue';
+import TodoSubtaskList from './TodoSubtaskList.vue';
 
 const props = defineProps({
   todo: { type: Object as PropType<Todo>, required: true },
-})
+});
 
 const emit = defineEmits<{
-  toggle: [todo: Todo]
-  'toggle-subtask': [todo: Todo]
-  'start-edit': [todo: Todo]
-  delete: [id: number]
-}>()
+  toggle: [todo: Todo];
+  'toggle-subtask': [todo: Todo];
+  'start-edit': [todo: Todo];
+  delete: [id: number];
+}>();
 
 const { subtaskCount, subtaskDoneCount, showSubtasks, toggleSubtaskVisibility, confirmDelete } =
   useTodoDisplay(
     () => props.todo,
     (id) => emit('delete', id),
-  )
+  );
 </script>

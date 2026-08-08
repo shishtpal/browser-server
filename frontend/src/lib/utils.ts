@@ -4,4 +4,4 @@ export {
   timeAgo,
   faviconUrl,
   escapeHtml,
-} from '@browser-server/shared-utils'
+} from '@browser-server/shared-utils';

@@ -146,25 +146,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, toRef } from 'vue'
-import type { AIMessage } from '@browser-server/shared-types'
-import Modal from '../ui/Modal.vue'
-import Button from '../ui/Button.vue'
-import EmptyState from '../ui/EmptyState.vue'
-import ErrorBanner from '../ui/ErrorBanner.vue'
-import MemoryMessageCard from './memory/MemoryMessageCard.vue'
-import { useMemoryExplorer } from './composables/useMemoryExplorer'
+import type { AIMessage } from '@browser-server/shared-types';
+import { computed, toRef } from 'vue';
+import Modal from '../ui/Modal.vue';
+import Button from '../ui/Button.vue';
+import EmptyState from '../ui/EmptyState.vue';
+import ErrorBanner from '../ui/ErrorBanner.vue';
+import MemoryMessageCard from './memory/MemoryMessageCard.vue';
+import { useMemoryExplorer } from './composables/useMemoryExplorer';
 
 const props = defineProps<{
-  open: boolean
-  conversationId: string
-  messages: AIMessage[]
-}>()
+  open: boolean;
+  conversationId: string;
+  messages: AIMessage[];
+}>();
 
 const emit = defineEmits<{
-  close: []
-  updated: [messages: AIMessage[]]
-}>()
+  close: [];
+  updated: [messages: AIMessage[]];
+}>();
 
 const {
   editingId,
@@ -194,5 +194,5 @@ const {
   toRef(props, 'conversationId'),
   toRef(props, 'messages'),
   (msgs) => emit('updated', msgs),
-)
+);
 </script>

@@ -112,17 +112,17 @@
 </template>
 
 <script setup lang="ts">
-import type { AITaskStatus } from '@browser-server/shared-types'
-import { useModal } from '@browser-server/shared-modal'
-import { onMounted, ref } from 'vue'
-import Button from './ui/Button.vue'
-import EmptyState from './ui/EmptyState.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import TaskCard from './tasks/TaskCard.vue'
-import { useAITasks, type TaskFilter } from '../composables/useAITasks'
+import type { AITaskStatus } from '@browser-server/shared-types';
+import { useModal } from '@browser-server/shared-modal';
+import { onMounted, ref } from 'vue';
+import Button from './ui/Button.vue';
+import EmptyState from './ui/EmptyState.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import TaskCard from './tasks/TaskCard.vue';
+import { useAITasks, type TaskFilter } from '../composables/useAITasks';
 
 const {
   tasks,
@@ -140,38 +140,38 @@ const {
   cancel,
   remove,
   setFilter,
-} = useAITasks()
+} = useAITasks();
 
-const { confirm, confirmDelete } = useModal()
-const draft = ref('')
+const { confirm, confirmDelete } = useModal();
+const draft = ref('');
 
-const STATUSES: AITaskStatus[] = ['queued', 'running', 'completed', 'failed']
+const STATUSES: AITaskStatus[] = ['queued', 'running', 'completed', 'failed'];
 
 const filterOptions: { value: TaskFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   ...STATUSES.map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })),
-]
+];
 
 /** 'all' has no per-status count of its own — the header stats carry the totals. */
 function countFor(value: TaskFilter): number | null {
-  return value === 'all' ? null : (counts.value[value] ?? 0)
+  return value === 'all' ? null : (counts.value[value] ?? 0);
 }
 
 async function handleSubmit() {
-  if (await submit(draft.value)) draft.value = ''
+  if (await submit(draft.value)) draft.value = '';
 }
 
 async function handleCancel(id: string) {
   if (await confirm('Cancel this task?', 'It will be marked failed and will not run.')) {
-    await cancel(id)
+    await cancel(id);
   }
 }
 
 async function handleDelete(id: string) {
   if (await confirmDelete('Delete this task?', 'Its result and history will be removed.')) {
-    await remove(id)
+    await remove(id);
   }
 }
 
-onMounted(() => load())
+onMounted(() => load());
 </script>

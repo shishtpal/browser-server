@@ -74,63 +74,63 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
-import type { AIMessage } from '@browser-server/shared-types'
-import ChatBubble from './ChatBubble.vue'
+import type { AIMessage } from '@browser-server/shared-types';
+import { nextTick, ref, watch } from 'vue';
+import ChatBubble from './ChatBubble.vue';
 
 const props = withDefaults(
   defineProps<{
-    messages: AIMessage[]
-    loading: boolean
-    showThinking?: boolean
+    messages: AIMessage[];
+    loading: boolean;
+    showThinking?: boolean;
   }>(),
   { showThinking: true },
-)
+);
 
 defineEmits<{
-  suggestion: [text: string]
-  copy: [content: string]
-  delete: [messageId: string]
-  branch: [messageId: string]
-  'tool-decision': [callId: string, approved: boolean, comment: string]
-}>()
+  suggestion: [text: string];
+  copy: [content: string];
+  delete: [messageId: string];
+  branch: [messageId: string];
+  'tool-decision': [callId: string, approved: boolean, comment: string];
+}>();
 
-const container = ref<HTMLElement | null>(null)
-const userScrolledUp = ref(false)
+const container = ref<HTMLElement | null>(null);
+const userScrolledUp = ref(false);
 
 const suggestions = [
   'Explain how this project works',
   'Help me debug an issue',
   'Write a function that…',
   'Summarize what I should do next',
-]
+];
 
 function handleScroll() {
-  const el = container.value
-  if (!el) return
-  const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-  userScrolledUp.value = distFromBottom > 100
+  const el = container.value;
+  if (!el) return;
+  const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+  userScrolledUp.value = distFromBottom > 100;
 }
 
 function scrollToBottom() {
-  const el = container.value
-  if (el) el.scrollTop = el.scrollHeight
+  const el = container.value;
+  if (el) el.scrollTop = el.scrollHeight;
 }
 
 watch(
   () => props.messages,
   () => {
-    if (!userScrolledUp.value) nextTick(scrollToBottom)
+    if (!userScrolledUp.value) nextTick(scrollToBottom);
   },
   { deep: true },
-)
+);
 
 watch(
   () => props.loading,
   (val) => {
-    if (val && !userScrolledUp.value) nextTick(scrollToBottom)
+    if (val && !userScrolledUp.value) nextTick(scrollToBottom);
   },
-)
+);
 
-defineExpose({ scrollToBottom })
+defineExpose({ scrollToBottom });
 </script>

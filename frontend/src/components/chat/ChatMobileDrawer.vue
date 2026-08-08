@@ -159,39 +159,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { AIConversation } from '@browser-server/shared-types'
+import type { AIConversation } from '@browser-server/shared-types';
+import { ref } from 'vue';
 
 defineProps<{
-  open: boolean
-  conversations: AIConversation[]
-  activeId: string | null
-  disabled: boolean
-  archivedConversations: AIConversation[]
-  showArchived: boolean
-}>()
+  open: boolean;
+  conversations: AIConversation[];
+  activeId: string | null;
+  disabled: boolean;
+  archivedConversations: AIConversation[];
+  showArchived: boolean;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  new: []
-  select: [id: string]
-  rename: [conversation: AIConversation]
-  delete: [conversation: AIConversation]
-  archive: [conversation: AIConversation]
-  restore: [conversation: AIConversation]
-  'toggle-archived': []
-}>()
+  close: [];
+  new: [];
+  select: [id: string];
+  rename: [conversation: AIConversation];
+  delete: [conversation: AIConversation];
+  archive: [conversation: AIConversation];
+  restore: [conversation: AIConversation];
+  'toggle-archived': [];
+}>();
 
-const openMenuId = ref<string | null>(null)
+const openMenuId = ref<string | null>(null);
 
 function toggleMenu(id: string) {
-  openMenuId.value = openMenuId.value === id ? null : id
+  openMenuId.value = openMenuId.value === id ? null : id;
 }
 
 function chooseAction(action: 'rename' | 'archive' | 'delete', conversation: AIConversation) {
-  openMenuId.value = null
-  if (action === 'rename') emit('rename', conversation)
-  else if (action === 'archive') emit('archive', conversation)
-  else emit('delete', conversation)
+  openMenuId.value = null;
+  if (action === 'rename') emit('rename', conversation);
+  else if (action === 'archive') emit('archive', conversation);
+  else emit('delete', conversation);
 }
 </script>

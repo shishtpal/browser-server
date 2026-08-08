@@ -180,100 +180,100 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo, TodoPriority } from '../../types'
-import { ref, computed, watch, nextTick, type PropType } from 'vue'
-import draggable from 'vuedraggable'
-import { reorderTodos, updateTodo } from '../../lib/api'
-import TodoPriorityBadge from './TodoPriorityBadge.vue'
-import TodoDueDateBadge from './TodoDueDateBadge.vue'
-import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
-import { useTodoSubtasks } from '../../composables/useTodoSubtasks'
+import type { Todo, TodoPriority } from '../../types';
+import { ref, computed, watch, nextTick, type PropType } from 'vue';
+import draggable from 'vuedraggable';
+import { reorderTodos, updateTodo } from '../../lib/api';
+import TodoPriorityBadge from './TodoPriorityBadge.vue';
+import TodoDueDateBadge from './TodoDueDateBadge.vue';
+import TodoSubtaskProgress from './TodoSubtaskProgress.vue';
+import { useTodoSubtasks } from '../../composables/useTodoSubtasks';
 
 const props = defineProps({
   todo: { type: Object as PropType<Todo>, required: true },
   defaultExpanded: { type: Boolean, default: true },
-})
+});
 
 const emit = defineEmits<{
-  'toggle-subtask': [todo: Todo]
-}>()
+  'toggle-subtask': [todo: Todo];
+}>();
 
-const expanded = ref(props.defaultExpanded)
+const expanded = ref(props.defaultExpanded);
 
-const userId = computed(() => props.todo.user_id)
+const userId = computed(() => props.todo.user_id);
 const { subtasks, progress, addSubtask, toggleSubtask, removeSubtask } = useTodoSubtasks(
   props.todo.subtasks || [],
   computed(() => props.todo.id),
   userId,
-)
+);
 
 // Sync when parent re-fetches
 watch(
   () => props.todo.subtasks,
   (val) => {
-    subtasks.value = [...(val || [])]
+    subtasks.value = [...(val || [])];
   },
   { deep: true },
-)
+);
 
-const newTitle = ref('')
+const newTitle = ref('');
 
 // ── Inline edit state ─────────────────────────────────────────────────
-const editingId = ref<number | null>(null)
-const editTitle = ref('')
-const editPriority = ref<TodoPriority>('medium')
-const editDueDate = ref('')
-const editInput = ref<HTMLInputElement | null>(null)
+const editingId = ref<number | null>(null);
+const editTitle = ref('');
+const editPriority = ref<TodoPriority>('medium');
+const editDueDate = ref('');
+const editInput = ref<HTMLInputElement | null>(null);
 
 function startEdit(subtask: Todo) {
-  editingId.value = subtask.id
-  editTitle.value = subtask.title
-  editPriority.value = subtask.priority || 'medium'
-  editDueDate.value = subtask.start_date ? subtask.start_date.slice(0, 10) : ''
+  editingId.value = subtask.id;
+  editTitle.value = subtask.title;
+  editPriority.value = subtask.priority || 'medium';
+  editDueDate.value = subtask.start_date ? subtask.start_date.slice(0, 10) : '';
   nextTick(() => {
-    editInput.value?.focus()
-    editInput.value?.select()
-  })
+    editInput.value?.focus();
+    editInput.value?.select();
+  });
 }
 
 function cancelEdit() {
-  editingId.value = null
+  editingId.value = null;
 }
 
 async function saveEdit(subtask: Todo) {
-  const title = editTitle.value.trim()
-  if (!title) return
-  const updates: Record<string, any> = {}
-  if (title !== subtask.title) updates.title = title
-  if (editPriority.value !== subtask.priority) updates.priority = editPriority.value
-  const newDate = editDueDate.value || null
-  const oldDate = subtask.start_date ? subtask.start_date.slice(0, 10) : null
-  if (newDate !== oldDate) updates.start_date = newDate
+  const title = editTitle.value.trim();
+  if (!title) return;
+  const updates: Record<string, any> = {};
+  if (title !== subtask.title) updates.title = title;
+  if (editPriority.value !== subtask.priority) updates.priority = editPriority.value;
+  const newDate = editDueDate.value || null;
+  const oldDate = subtask.start_date ? subtask.start_date.slice(0, 10) : null;
+  if (newDate !== oldDate) updates.start_date = newDate;
 
   if (Object.keys(updates).length > 0) {
-    await updateTodo(subtask.id, updates)
+    await updateTodo(subtask.id, updates);
   }
-  editingId.value = null
+  editingId.value = null;
 }
 
 // ── Actions ───────────────────────────────────────────────────────────
 async function onToggleSubtask(subtask: Todo) {
-  const updated = await toggleSubtask(subtask)
-  if (updated) emit('toggle-subtask', updated)
+  const updated = await toggleSubtask(subtask);
+  if (updated) emit('toggle-subtask', updated);
 }
 
 function onRemoveSubtask(id: number) {
-  removeSubtask(id)
+  removeSubtask(id);
 }
 
 async function onSubtaskEnd(event: any) {
-  if (event.oldIndex === event.newIndex) return
-  await reorderTodos(subtasks.value.map((t, idx) => ({ id: t.id, position: idx })))
+  if (event.oldIndex === event.newIndex) return;
+  await reorderTodos(subtasks.value.map((t, idx) => ({ id: t.id, position: idx })));
 }
 
 function onAddSubtask() {
-  if (!newTitle.value.trim()) return
-  addSubtask(newTitle.value.trim())
-  newTitle.value = ''
+  if (!newTitle.value.trim()) return;
+  addSubtask(newTitle.value.trim());
+  newTitle.value = '';
 }
 </script>

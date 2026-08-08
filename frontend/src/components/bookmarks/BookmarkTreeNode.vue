@@ -84,20 +84,20 @@
 </template>
 
 <script setup lang="ts">
-import type { FlatTreeEntry } from '../../composables/useBookmarkTree'
-import { getInitial, formatHost } from '../../composables/useBookmarks'
-import type { BookmarkResponse } from '../../types'
+import type { BookmarkResponse } from '../../types';
+import type { FlatTreeEntry } from '../../composables/useBookmarkTree';
+import { getInitial, formatHost } from '../../composables/useBookmarks';
 
 interface Props {
-  node: FlatTreeEntry
+  node: FlatTreeEntry;
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 const emit = defineEmits<{
-  toggleFolder: [key: string]
-  edit: [bookmark: BookmarkResponse]
-  delete: [id: number]
-  filterTag: [tag: string]
-}>()
+  toggleFolder: [key: string];
+  edit: [bookmark: BookmarkResponse];
+  delete: [id: number];
+  filterTag: [tag: string];
+}>();
 </script>

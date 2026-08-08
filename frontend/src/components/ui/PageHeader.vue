@@ -41,18 +41,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 const props = withDefaults(
   defineProps<{
-    badge: string
-    title: string
-    color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
+    badge: string;
+    title: string;
+    color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose';
   }>(),
   {
     color: 'indigo',
   },
-)
+);
 
 const badgeClass = computed(() => {
   const colors = {
@@ -62,7 +62,7 @@ const badgeClass = computed(() => {
     emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400',
     amber: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400',
     rose: 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400',
-  }
-  return colors[props.color]
-})
+  };
+  return colors[props.color];
+});
 </script>

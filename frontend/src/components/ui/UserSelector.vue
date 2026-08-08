@@ -12,28 +12,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 const props = withDefaults(
   defineProps<{
-    id: string
-    modelValue: number | null
-    users: Array<{ id: number; username: string }>
-    color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
+    id: string;
+    modelValue: number | null;
+    users: Array<{ id: number; username: string }>;
+    color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose';
   }>(),
   {
     color: 'indigo',
   },
-)
+);
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number | null]
-}>()
+  'update:modelValue': [value: number | null];
+}>();
 
 const onChange = (e: Event) => {
-  const target = e.target as HTMLSelectElement
-  emit('update:modelValue', target.value && target.value !== 'null' ? Number(target.value) : null)
-}
+  const target = e.target as HTMLSelectElement;
+  emit('update:modelValue', target.value && target.value !== 'null' ? Number(target.value) : null);
+};
 
 const focusClass = computed(() => {
   const colors = {
@@ -43,7 +43,7 @@ const focusClass = computed(() => {
     emerald: 'focus:border-emerald-400 focus:ring-emerald-100 dark:focus:ring-emerald-900/30',
     amber: 'focus:border-amber-400 focus:ring-amber-100 dark:focus:ring-amber-900/30',
     rose: 'focus:border-rose-400 focus:ring-rose-100 dark:focus:ring-rose-900/30',
-  }
-  return colors[props.color]
-})
+  };
+  return colors[props.color];
+});
 </script>

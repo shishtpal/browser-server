@@ -380,78 +380,78 @@
 </template>
 
 <script setup lang="ts">
-import type { AIImageAttachment, AIMessage, ChatQuestion } from '@browser-server/shared-types'
-import { computed, ref } from 'vue'
-import { renderMarkdown } from './markdown'
-import ChatQuestionForm from './ChatQuestionForm.vue'
-import ChatThinkingBlock from './ChatThinkingBlock.vue'
-import { getAIImageAttachmentUrl } from '../../lib/api'
+import type { AIImageAttachment, AIMessage, ChatQuestion } from '@browser-server/shared-types';
+import { computed, ref } from 'vue';
+import { renderMarkdown } from './markdown';
+import ChatQuestionForm from './ChatQuestionForm.vue';
+import ChatThinkingBlock from './ChatThinkingBlock.vue';
+import { getAIImageAttachmentUrl } from '../../lib/api';
 
 const props = withDefaults(
   defineProps<{
-    message: AIMessage
-    showThinking?: boolean
+    message: AIMessage;
+    showThinking?: boolean;
   }>(),
   { showThinking: true },
-)
+);
 
 const emit = defineEmits<{
-  copy: [content: string]
-  delete: [messageId: string]
-  branch: [messageId: string]
-  'tool-decision': [callId: string, approved: boolean, comment: string]
-}>()
+  copy: [content: string];
+  delete: [messageId: string];
+  branch: [messageId: string];
+  'tool-decision': [callId: string, approved: boolean, comment: string];
+}>();
 
-const commentDraft = ref('')
-const expanded = ref(true)
-const previewAttachment = ref<AIImageAttachment | null>(null)
-const brokenImageIds = ref<Set<string>>(new Set())
+const commentDraft = ref('');
+const expanded = ref(true);
+const previewAttachment = ref<AIImageAttachment | null>(null);
+const brokenImageIds = ref<Set<string>>(new Set());
 
 const imageAttachments = computed<AIImageAttachment[]>(() =>
   (props.message.attachments ?? []).filter((a) => !brokenImageIds.value.has(a.id)),
-)
-const hasImages = computed(() => imageAttachments.value.length > 0)
+);
+const hasImages = computed(() => imageAttachments.value.length > 0);
 
 function imageUrl(att: AIImageAttachment): string {
-  return getAIImageAttachmentUrl(props.message.conversation_id, att.id)
+  return getAIImageAttachmentUrl(props.message.conversation_id, att.id);
 }
 
 function onImageError(id: string) {
-  brokenImageIds.value.add(id)
+  brokenImageIds.value.add(id);
 }
 
 function openPreview(att: AIImageAttachment) {
-  previewAttachment.value = att
+  previewAttachment.value = att;
 }
 
 function closePreview() {
-  previewAttachment.value = null
+  previewAttachment.value = null;
 }
 
 function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function submitComment() {
-  const text = commentDraft.value.trim()
-  if (!text) return
-  emit('tool-decision', props.message.tool_call_id || '', false, text)
-  commentDraft.value = ''
+  const text = commentDraft.value.trim();
+  if (!text) return;
+  emit('tool-decision', props.message.tool_call_id || '', false, text);
+  commentDraft.value = '';
 }
 
-const isQuestionCall = computed(() => toolData.value.name === 'ask_questions')
-const isRetryCall = computed(() => toolData.value.name === 'retry_tool_call')
+const isQuestionCall = computed(() => toolData.value.name === 'ask_questions');
+const isRetryCall = computed(() => toolData.value.name === 'retry_tool_call');
 const retryMessage = computed(() => {
-  if (!isRetryCall.value || !isRecord(toolData.value.args)) return ''
-  return typeof toolData.value.args.message === 'string' ? toolData.value.args.message : ''
-})
+  if (!isRetryCall.value || !isRecord(toolData.value.args)) return '';
+  return typeof toolData.value.args.message === 'string' ? toolData.value.args.message : '';
+});
 const questionRequest = computed(() => {
-  if (!isQuestionCall.value || !isRecord(toolData.value.args)) return null
+  if (!isQuestionCall.value || !isRecord(toolData.value.args)) return null;
   const questions = Array.isArray(toolData.value.args.questions)
     ? toolData.value.args.questions
-    : []
+    : [];
   return {
     context: typeof toolData.value.args.context === 'string' ? toolData.value.args.context : '',
     questions: questions.filter(isQuestion).map((question) => ({
@@ -462,121 +462,121 @@ const questionRequest = computed(() => {
       default: question.default,
       required: question.required,
     })),
-  }
-})
+  };
+});
 
 function submitQuestionAnswers(
   answers: Array<{ id: string; prompt: string; answer: unknown; skipped: boolean }>,
 ) {
-  emit('tool-decision', props.message.tool_call_id || '', false, JSON.stringify({ answers }))
+  emit('tool-decision', props.message.tool_call_id || '', false, JSON.stringify({ answers }));
 }
 
 function copyCodeBlock(event: MouseEvent) {
-  if (!(event.target instanceof Element)) return
-  const button = event.target.closest<HTMLButtonElement>('[data-copy-code]')
-  if (!button) return
-  const code = button.parentElement?.querySelector<HTMLElement>('code')
-  if (code) emit('copy', code.innerText)
+  if (!(event.target instanceof Element)) return;
+  const button = event.target.closest<HTMLButtonElement>('[data-copy-code]');
+  if (!button) return;
+  const code = button.parentElement?.querySelector<HTMLElement>('code');
+  if (code) emit('copy', code.innerText);
 }
 
-const renderedContent = computed(() => renderMarkdown(props.message.content))
+const renderedContent = computed(() => renderMarkdown(props.message.content));
 
 interface ToolData {
-  name: string
-  args: unknown
-  result: unknown
-  decision: 'approved' | 'rejected' | 'commented' | 'answered' | null
+  name: string;
+  args: unknown;
+  result: unknown;
+  decision: 'approved' | 'rejected' | 'commented' | 'answered' | null;
 }
 
 const toolData = computed<ToolData>(() => {
-  if (props.message.role !== 'tool') return { name: '', args: null, result: null, decision: null }
+  if (props.message.role !== 'tool') return { name: '', args: null, result: null, decision: null };
   try {
-    const parsed = JSON.parse(props.message.content)
+    const parsed = JSON.parse(props.message.content);
     return {
       name: parsed.tool || '',
       args: parsed.args ?? null,
       result: parsed.result ?? parsed,
       decision: parsed.decision ?? null,
-    }
+    };
   } catch {
-    return { name: '', args: null, result: props.message.content, decision: null }
+    return { name: '', args: null, result: props.message.content, decision: null };
   }
-})
+});
 
 interface ToolSection {
-  label: string
-  content: string
-  copyValue: string
+  label: string;
+  content: string;
+  copyValue: string;
 }
 
 const resultRecord = computed<Record<string, unknown> | null>(() =>
   isRecord(toolData.value.result) ? toolData.value.result : null,
-)
+);
 
 const toolLabel = computed(() => {
-  if (toolData.value.name === 'execute_command') return 'Shell'
-  if (toolData.value.name === 'retry_tool_call') return 'tool-call recovery'
-  if (!toolData.value.name) return 'Tool'
+  if (toolData.value.name === 'execute_command') return 'Shell';
+  if (toolData.value.name === 'retry_tool_call') return 'tool-call recovery';
+  if (!toolData.value.name) return 'Tool';
   return toolData.value.name
     .split('_')
     .filter(Boolean)
     .map((word) => word[0].toUpperCase() + word.slice(1))
-    .join(' ')
-})
+    .join(' ');
+});
 
 const feedbackComment = computed(() => {
-  const comment = resultRecord.value?.comment
-  return typeof comment === 'string' ? comment : ''
-})
+  const comment = resultRecord.value?.comment;
+  return typeof comment === 'string' ? comment : '';
+});
 
 const messageIsFinished = computed(
   () => props.message.status !== 'pending' || toolData.value.decision === 'commented',
-)
+);
 
 const toolSections = computed<ToolSection[]>(() => {
   if (toolData.value.name === 'execute_command' && isRecord(toolData.value.args)) {
     const command =
-      typeof toolData.value.args.command === 'string' ? toolData.value.args.command : ''
-    const stdout = resultRecord.value?.stdout
-    const stderr = resultRecord.value?.stderr
-    const error = resultRecord.value?.error
+      typeof toolData.value.args.command === 'string' ? toolData.value.args.command : '';
+    const stdout = resultRecord.value?.stdout;
+    const stderr = resultRecord.value?.stderr;
+    const error = resultRecord.value?.error;
     const stderrText = [
       typeof stderr === 'string' ? stderr.trimEnd() : '',
       typeof error === 'string' ? error : '',
     ]
       .filter(Boolean)
-      .join('\n')
-    const sections: ToolSection[] = []
+      .join('\n');
+    const sections: ToolSection[] = [];
 
-    if (command) sections.push({ label: 'Command', content: `$ ${command}`, copyValue: command })
+    if (command) sections.push({ label: 'Command', content: `$ ${command}`, copyValue: command });
     if (messageIsFinished.value && typeof stdout === 'string') {
-      sections.push({ label: 'Stdout', content: stdout || '(no output)', copyValue: stdout })
+      sections.push({ label: 'Stdout', content: stdout || '(no output)', copyValue: stdout });
     }
     if (messageIsFinished.value && (typeof stderr === 'string' || typeof error === 'string')) {
       sections.push({
         label: 'Stderr',
         content: stderrText || '(no output)',
         copyValue: stderrText,
-      })
+      });
     }
-    return sections
+    return sections;
   }
 
-  const sections: ToolSection[] = []
+  const sections: ToolSection[] = [];
   if (toolData.value.args !== null && toolData.value.args !== undefined) {
-    const args = formatJson(toolData.value.args)
-    sections.push({ label: 'Arguments', content: args, copyValue: args })
+    const args = formatJson(toolData.value.args);
+    sections.push({ label: 'Arguments', content: args, copyValue: args });
   }
   if (
     messageIsFinished.value &&
     toolData.value.result !== null &&
     toolData.value.result !== undefined
   ) {
-    const result = formatJson(toolData.value.result)
-    sections.push({ label: 'Result', content: result || '(no output)', copyValue: result })
+    const result = formatJson(toolData.value.result);
+    sections.push({ label: 'Result', content: result || '(no output)', copyValue: result });
   }
-  return sections
-})
+  return sections;
+});
 
 const toolStatus = computed(() => {
   if (props.message.status === 'pending' && !toolData.value.decision) {
@@ -584,57 +584,57 @@ const toolStatus = computed(() => {
       label: isRetryCall.value ? 'resume required' : 'approval required',
       icon: '!',
       className: 'text-amber-600 dark:text-amber-400',
-    }
+    };
   }
   if (toolData.value.decision === 'commented') {
-    return { label: 'commented', icon: '•', className: 'text-amber-600 dark:text-amber-400' }
+    return { label: 'commented', icon: '•', className: 'text-amber-600 dark:text-amber-400' };
   }
   if (toolData.value.decision === 'answered') {
-    return { label: 'answered', icon: '✓', className: 'text-emerald-600 dark:text-emerald-400' }
+    return { label: 'answered', icon: '✓', className: 'text-emerald-600 dark:text-emerald-400' };
   }
   if (props.message.status === 'pending') {
     return {
       label: isRetryCall.value ? 'resuming' : 'running',
       icon: '•',
       className: 'text-blue-600 dark:text-blue-400',
-    }
+    };
   }
-  const exitCode = resultRecord.value?.exit_code
+  const exitCode = resultRecord.value?.exit_code;
   const failed =
     props.message.status === 'error' ||
     resultRecord.value?.error ||
-    (typeof exitCode === 'number' && exitCode !== 0)
+    (typeof exitCode === 'number' && exitCode !== 0);
   if (failed) {
-    const rejected = resultRecord.value?.error === 'rejected by user'
+    const rejected = resultRecord.value?.error === 'rejected by user';
     return {
       label: rejected ? 'rejected' : 'failed',
       icon: '×',
       className: 'text-red-600 dark:text-red-400',
-    }
+    };
   }
-  return { label: '', icon: '✓', className: 'text-emerald-600 dark:text-emerald-400' }
-})
+  return { label: '', icon: '✓', className: 'text-emerald-600 dark:text-emerald-400' };
+});
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isQuestion(value: unknown): value is ChatQuestion {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.prompt !== 'string')
-    return false
+    return false;
   return (
     value.kind === undefined ||
     ['text', 'choice', 'multi_choice', 'multiple_choice', 'confirm'].includes(value.kind as string)
-  )
+  );
 }
 
 function formatJson(value: unknown): string {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'string') return value
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
   try {
-    return JSON.stringify(value, null, 2)
+    return JSON.stringify(value, null, 2);
   } catch {
-    return String(value)
+    return String(value);
   }
 }
 </script>

@@ -53,22 +53,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import Modal from '../ui/Modal.vue'
-import type { BookmarkResponse } from '../../types'
+import type { BookmarkResponse } from '../../types';
+import { ref, watch } from 'vue';
+import Modal from '../ui/Modal.vue';
 
 interface Props {
-  bookmark: BookmarkResponse | null
+  bookmark: BookmarkResponse | null;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  close: []
-  save: [data: { title: string; url: string; description: string; tagsStr: string }]
-}>()
+  close: [];
+  save: [data: { title: string; url: string; description: string; tagsStr: string }];
+}>();
 
-const localForm = ref({ title: '', url: '', description: '', tagsStr: '' })
+const localForm = ref({ title: '', url: '', description: '', tagsStr: '' });
 
 watch(
   () => props.bookmark,
@@ -79,13 +79,13 @@ watch(
         url: b.url,
         description: b.description,
         tagsStr: b.tags.join(', '),
-      }
+      };
     }
   },
   { immediate: true },
-)
+);
 
 const onSave = () => {
-  emit('save', { ...localForm.value })
-}
+  emit('save', { ...localForm.value });
+};
 </script>

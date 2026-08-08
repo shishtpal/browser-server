@@ -30,50 +30,50 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { CalendarDay } from './types'
-import type { Todo } from '../../types'
-import CalendarTodoChip from './CalendarTodoChip.vue'
+import type { CalendarDay } from './types';
+import type { Todo } from '../../types';
+import { computed } from 'vue';
+import CalendarTodoChip from './CalendarTodoChip.vue';
 
 const props = defineProps<{
-  day: CalendarDay
-}>()
+  day: CalendarDay;
+}>();
 
 const emit = defineEmits<{
-  (e: 'click', date: string): void
-  (e: 'showMore', date: string): void
-  (e: 'todoClick', todo: Todo): void
-}>()
+  (e: 'click', date: string): void;
+  (e: 'showMore', date: string): void;
+  (e: 'todoClick', todo: Todo): void;
+}>();
 
 const dayNumber = computed(() => {
-  return new Date(props.day.date + 'T00:00:00').getDate()
-})
+  return new Date(props.day.date + 'T00:00:00').getDate();
+});
 
 const visibleTodos = computed(() => {
-  return props.day.todos.slice(0, 3)
-})
+  return props.day.todos.slice(0, 3);
+});
 
-const todoCount = computed(() => props.day.todos.length)
+const todoCount = computed(() => props.day.todos.length);
 
 const cellClass = computed(() => {
-  const classes: string[] = []
+  const classes: string[] = [];
   if (!props.day.isCurrentMonth) {
-    classes.push('opacity-40 dark:opacity-30')
+    classes.push('opacity-40 dark:opacity-30');
   }
   if (props.day.isToday) {
-    classes.push('ring-2 ring-indigo-500 dark:ring-indigo-400')
+    classes.push('ring-2 ring-indigo-500 dark:ring-indigo-400');
   }
-  return classes.join(' ')
-})
+  return classes.join(' ');
+});
 
 const dateClass = computed(() => {
   if (props.day.isToday)
-    return 'flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900'
-  if (props.day.isWeekend) return 'text-slate-500 dark:text-slate-400'
-  return 'text-slate-700 dark:text-slate-200'
-})
+    return 'flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white dark:bg-indigo-400 dark:text-slate-900';
+  if (props.day.isWeekend) return 'text-slate-500 dark:text-slate-400';
+  return 'text-slate-700 dark:text-slate-200';
+});
 
 function onCellClick() {
-  emit('click', props.day.date)
+  emit('click', props.day.date);
 }
 </script>

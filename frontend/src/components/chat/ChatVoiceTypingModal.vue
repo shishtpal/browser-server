@@ -64,7 +64,8 @@
 
       <label
         v-if="transcript || state === 'idle'"
-        class="block text-xs font-semibold text-slate-600 dark:text-slate-300">
+        class="block text-xs font-semibold text-slate-600 dark:text-slate-300"
+      >
         Transcript
         <textarea
           v-model="transcript"
@@ -114,12 +115,12 @@
 </template>
 
 <script setup lang="ts">
-import { toRef, watch } from 'vue'
-import Modal from '../ui/Modal.vue'
-import { useVoiceTyping } from './composables/useVoiceTyping'
+import { toRef, watch } from 'vue';
+import Modal from '../ui/Modal.vue';
+import { useVoiceTyping } from './composables/useVoiceTyping';
 
-const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ close: []; use: [text: string] }>()
+const props = defineProps<{ open: boolean }>();
+const emit = defineEmits<{ close: []; use: [text: string] }>();
 const {
   config,
   state,
@@ -137,24 +138,24 @@ const {
   stop,
   cleanup,
   recordAgain,
-} = useVoiceTyping(toRef(props, 'open'))
+} = useVoiceTyping(toRef(props, 'open'));
 
 watch(
   () => props.open,
   (value) => {
-    if (value) void openSession()
-    else cleanup()
+    if (value) void openSession();
+    else cleanup();
   },
-)
+);
 
 function close() {
-  cleanup()
-  emit('close')
+  cleanup();
+  emit('close');
 }
 function useText() {
-  const text = transcript.value.trim()
-  if (!text) return
-  emit('use', text)
-  close()
+  const text = transcript.value.trim();
+  if (!text) return;
+  emit('use', text);
+  close();
 }
 </script>

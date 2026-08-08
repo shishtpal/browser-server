@@ -24,11 +24,11 @@
 
 <script setup lang="ts">
 defineProps<{
-  visible: boolean
-  disabled: boolean
-}>()
+  visible: boolean;
+  disabled: boolean;
+}>();
 
 defineEmits<{
-  regenerate: []
-}>()
+  regenerate: [];
+}>();
 </script>

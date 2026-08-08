@@ -215,38 +215,38 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types'
-import { computed } from 'vue'
-import { formatDate } from '../../lib/utils'
-import { getScreenshotUrl } from '../../lib/api'
-import { linkifyDescription } from '../../lib/descriptionLinks'
-import TodoPriorityBadge from './TodoPriorityBadge.vue'
-import TodoDueDateBadge from './TodoDueDateBadge.vue'
-import TodoTagBadges from './TodoTagBadges.vue'
-import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
+import type { Todo } from '../../types';
+import { computed } from 'vue';
+import { formatDate } from '../../lib/utils';
+import { getScreenshotUrl } from '../../lib/api';
+import { linkifyDescription } from '../../lib/descriptionLinks';
+import TodoPriorityBadge from './TodoPriorityBadge.vue';
+import TodoDueDateBadge from './TodoDueDateBadge.vue';
+import TodoTagBadges from './TodoTagBadges.vue';
+import TodoSubtaskProgress from './TodoSubtaskProgress.vue';
 
 const props = defineProps<{
-  todo: Todo
-  expanded?: boolean
-}>()
+  todo: Todo;
+  expanded?: boolean;
+}>();
 
 const emit = defineEmits<{
-  toggle: [todo: Todo]
-  'toggle-pin': [todo: Todo]
-  archive: [todo: Todo]
-  restore: [todo: Todo]
-  startEdit: [todo: Todo]
-  delete: [id: number]
-  viewScreenshot: [todo: Todo]
-  'toggle-expand': [id: number]
-}>()
+  toggle: [todo: Todo];
+  'toggle-pin': [todo: Todo];
+  archive: [todo: Todo];
+  restore: [todo: Todo];
+  startEdit: [todo: Todo];
+  delete: [id: number];
+  viewScreenshot: [todo: Todo];
+  'toggle-expand': [id: number];
+}>();
 
 const screenshotUrl = computed(() =>
   props.todo.screenshot_path ? getScreenshotUrl(props.todo.id) : '',
-)
+);
 
-const subtaskCount = computed(() => (props.todo.subtasks || []).length)
+const subtaskCount = computed(() => (props.todo.subtasks || []).length);
 const subtaskDoneCount = computed(
   () => (props.todo.subtasks || []).filter((s) => s.status === 'completed').length,
-)
+);
 </script>

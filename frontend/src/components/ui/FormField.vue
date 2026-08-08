@@ -13,8 +13,8 @@
 
 <script setup lang="ts">
 defineProps<{
-  label: string
-  required?: boolean
-  helpText?: string
-}>()
+  label: string;
+  required?: boolean;
+  helpText?: string;
+}>();
 </script>

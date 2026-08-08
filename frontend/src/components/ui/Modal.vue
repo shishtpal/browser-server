@@ -17,10 +17,7 @@
             <h2 class="text-lg font-black text-slate-900 dark:text-white">
               {{ title }}
             </h2>
-            <p
-              v-if="description"
-              class="mt-1 text-xs text-slate-500 dark:text-slate-400"
-            >
+            <p v-if="description" class="mt-1 text-xs text-slate-500 dark:text-slate-400">
               {{ description }}
             </p>
           </div>
@@ -46,25 +43,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted } from 'vue';
 
 interface Props {
-  open: boolean
-  title: string
-  description?: string
-  fullscreen?: boolean
+  open: boolean;
+  title: string;
+  description?: string;
+  fullscreen?: boolean;
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 const emit = defineEmits<{
-  close: []
-}>()
+  close: [];
+}>();
 
-const close = () => emit('close')
+const close = () => emit('close');
 
-const mounted = ref(false)
+const mounted = ref(false);
 onMounted(() => {
-  mounted.value = true
-})
+  mounted.value = true;
+});
 </script>

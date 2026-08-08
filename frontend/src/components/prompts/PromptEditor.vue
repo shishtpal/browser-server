@@ -153,31 +153,31 @@
 </template>
 
 <script setup lang="ts">
-import type { PromptDraft } from '../../composables/usePromptManager'
-import { nextTick, onMounted, ref } from 'vue'
-import { formatShortDate } from './format'
+import type { PromptDraft } from '../../composables/usePromptManager';
+import { nextTick, onMounted, ref } from 'vue';
+import { formatShortDate } from './format';
 
 defineProps<{
-  draft: PromptDraft
-  tagsInput: string
-  parsedTags: string[]
-  canSave: boolean
-  isSaving: boolean
-}>()
+  draft: PromptDraft;
+  tagsInput: string;
+  parsedTags: string[];
+  canSave: boolean;
+  isSaving: boolean;
+}>();
 
 defineEmits<{
-  'update:title': [value: string]
-  'update:description': [value: string]
-  'update:tagsInput': [value: string]
-  'update:content': [value: string]
-  save: []
-  back: []
-  delete: []
-}>()
+  'update:title': [value: string];
+  'update:description': [value: string];
+  'update:tagsInput': [value: string];
+  'update:content': [value: string];
+  save: [];
+  back: [];
+  delete: [];
+}>();
 
-const titleInputRef = ref<HTMLInputElement | null>(null)
+const titleInputRef = ref<HTMLInputElement | null>(null);
 
 onMounted(() => {
-  nextTick(() => titleInputRef.value?.focus())
-})
+  nextTick(() => titleInputRef.value?.focus());
+});
 </script>

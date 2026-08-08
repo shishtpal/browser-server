@@ -249,30 +249,30 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types'
-import { formatDate } from '../../lib/utils'
-import { linkifyDescription } from '../../lib/descriptionLinks'
-import { useTodoDisplay } from '../../composables/useTodoDisplay'
-import TodoPriorityBadge from './TodoPriorityBadge.vue'
-import TodoDueDateBadge from './TodoDueDateBadge.vue'
-import TodoTagBadges from './TodoTagBadges.vue'
-import TodoSubtaskProgress from './TodoSubtaskProgress.vue'
-import TodoSubtaskList from './TodoSubtaskList.vue'
+import type { Todo } from '../../types';
+import { formatDate } from '../../lib/utils';
+import { linkifyDescription } from '../../lib/descriptionLinks';
+import { useTodoDisplay } from '../../composables/useTodoDisplay';
+import TodoPriorityBadge from './TodoPriorityBadge.vue';
+import TodoDueDateBadge from './TodoDueDateBadge.vue';
+import TodoTagBadges from './TodoTagBadges.vue';
+import TodoSubtaskProgress from './TodoSubtaskProgress.vue';
+import TodoSubtaskList from './TodoSubtaskList.vue';
 
 const props = defineProps<{
-  todo: Todo
-}>()
+  todo: Todo;
+}>();
 
 const emit = defineEmits<{
-  toggle: [todo: Todo]
-  'toggle-pin': [todo: Todo]
-  archive: [todo: Todo]
-  restore: [todo: Todo]
-  startEdit: [todo: Todo]
-  delete: [id: number]
-  viewScreenshot: [todo: Todo]
-  'toggle-subtask': [todo: Todo]
-}>()
+  toggle: [todo: Todo];
+  'toggle-pin': [todo: Todo];
+  archive: [todo: Todo];
+  restore: [todo: Todo];
+  startEdit: [todo: Todo];
+  delete: [id: number];
+  viewScreenshot: [todo: Todo];
+  'toggle-subtask': [todo: Todo];
+}>();
 
 const {
   screenshotUrl,
@@ -284,5 +284,5 @@ const {
 } = useTodoDisplay(
   () => props.todo,
   (id) => emit('delete', id),
-)
+);
 </script>

@@ -109,57 +109,57 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { formatDate as formatDateShort } from '../../lib/utils'
-import { revealWalletPassword } from '../../lib/api'
-import type { WalletEntry } from '../../types'
+import type { WalletEntry } from '../../types';
+import { ref } from 'vue';
+import { formatDate as formatDateShort } from '../../lib/utils';
+import { revealWalletPassword } from '../../lib/api';
 
 interface Props {
-  entry: WalletEntry
-  userId: number
+  entry: WalletEntry;
+  userId: number;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  edit: [entry: WalletEntry]
-  delete: [id: number]
-}>()
+  edit: [entry: WalletEntry];
+  delete: [id: number];
+}>();
 
-const revealed = ref(false)
-const revealedPassword = ref('')
-const loading = ref(false)
+const revealed = ref(false);
+const revealedPassword = ref('');
+const loading = ref(false);
 
 const fetchPassword = async () => {
-  if (revealedPassword.value) return revealedPassword.value
-  loading.value = true
+  if (revealedPassword.value) return revealedPassword.value;
+  loading.value = true;
   try {
-    revealedPassword.value = await revealWalletPassword(props.userId, props.entry.id)
-    return revealedPassword.value
+    revealedPassword.value = await revealWalletPassword(props.userId, props.entry.id);
+    return revealedPassword.value;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const toggleReveal = async () => {
   if (revealed.value) {
-    revealed.value = false
-    return
+    revealed.value = false;
+    return;
   }
-  await fetchPassword()
-  revealed.value = true
-}
+  await fetchPassword();
+  revealed.value = true;
+};
 
-const copied = ref(false)
+const copied = ref(false);
 
 const copyPassword = async () => {
   try {
-    const pw = await fetchPassword()
-    await navigator.clipboard.writeText(pw)
-    copied.value = true
-    setTimeout(() => (copied.value = false), 1500)
+    const pw = await fetchPassword();
+    await navigator.clipboard.writeText(pw);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1500);
   } catch {
     // clipboard or fetch failed; ignore
   }
-}
+};
 </script>

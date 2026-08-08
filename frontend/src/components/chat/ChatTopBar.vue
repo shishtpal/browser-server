@@ -274,62 +274,62 @@
 </template>
 
 <script setup lang="ts">
-import type { AIProfile, AISkill } from '@browser-server/shared-types'
-import { computed } from 'vue'
-import type { SelectItem } from '../ui/SearchableSelect.vue'
-import SearchableSelect from '../ui/SearchableSelect.vue'
+import type { AIProfile, AISkill } from '@browser-server/shared-types';
+import type { SelectItem } from '../ui/SearchableSelect.vue';
+import { computed } from 'vue';
+import SearchableSelect from '../ui/SearchableSelect.vue';
 
 interface ModelInfo {
-  id: string
-  label?: string
-  default?: boolean
-  supports_tools?: boolean
+  id: string;
+  label?: string;
+  default?: boolean;
+  supports_tools?: boolean;
 }
 
 const props = defineProps<{
-  profiles: AIProfile[]
-  selectedProfile: string
-  profileLocked: boolean
-  skills: AISkill[]
-  activeSkills: string[]
-  providerNames: string[]
-  selectedProvider: string
-  selectedModel: string
-  models: ModelInfo[]
-  supportsTools: boolean
-  toolsEnabled: boolean
-  yoloMode: boolean
-  disabled: boolean
-  title?: string
-  downloadDisabled?: boolean
-  showToolsPanel?: boolean
-  showMemoryExplorer?: boolean
-  showPromptManager?: boolean
-  showAttachmentGallery?: boolean
-}>()
+  profiles: AIProfile[];
+  selectedProfile: string;
+  profileLocked: boolean;
+  skills: AISkill[];
+  activeSkills: string[];
+  providerNames: string[];
+  selectedProvider: string;
+  selectedModel: string;
+  models: ModelInfo[];
+  supportsTools: boolean;
+  toolsEnabled: boolean;
+  yoloMode: boolean;
+  disabled: boolean;
+  title?: string;
+  downloadDisabled?: boolean;
+  showToolsPanel?: boolean;
+  showMemoryExplorer?: boolean;
+  showPromptManager?: boolean;
+  showAttachmentGallery?: boolean;
+}>();
 
 defineEmits<{
-  'toggle-sidebar': []
-  'update:selectedProfile': [value: string]
-  'update:selectedProvider': [value: string]
-  'update:selectedModel': [value: string]
-  'update:yoloMode': [value: boolean]
-  'toggle-skill': [name: string]
-  download: []
-  'toggle-tools-panel': []
-  'toggle-memory-explorer': []
-  'toggle-prompt-manager': []
-  'toggle-attachment-gallery': []
-}>()
+  'toggle-sidebar': [];
+  'update:selectedProfile': [value: string];
+  'update:selectedProvider': [value: string];
+  'update:selectedModel': [value: string];
+  'update:yoloMode': [value: boolean];
+  'toggle-skill': [name: string];
+  download: [];
+  'toggle-tools-panel': [];
+  'toggle-memory-explorer': [];
+  'toggle-prompt-manager': [];
+  'toggle-attachment-gallery': [];
+}>();
 
 const profileItems = computed<SelectItem[]>(() => [
   { value: '', label: 'Default' },
   ...props.profiles.map((p) => ({ value: p.name, label: p.label })),
-])
+]);
 
 const providerItems = computed<SelectItem[]>(() =>
   props.providerNames.map((name) => ({ value: name, label: name })),
-)
+);
 
 const modelItems = computed<SelectItem[]>(() =>
   props.models.map((m) => ({
@@ -337,5 +337,5 @@ const modelItems = computed<SelectItem[]>(() =>
     label: m.label || m.id,
     supports_tools: m.supports_tools,
   })),
-)
+);
 </script>

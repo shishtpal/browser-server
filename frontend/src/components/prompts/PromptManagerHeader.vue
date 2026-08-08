@@ -93,20 +93,20 @@
 </template>
 
 <script setup lang="ts">
-import type { PromptView } from '../../composables/usePromptManager'
+import type { PromptView } from '../../composables/usePromptManager';
 
 defineProps<{
-  view: PromptView
-  title: string
-  subtitle: string
-  count: number
-  isDirty: boolean
-  search: string
-}>()
+  view: PromptView;
+  title: string;
+  subtitle: string;
+  count: number;
+  isDirty: boolean;
+  search: string;
+}>();
 
 defineEmits<{
-  'update:search': [value: string]
-  create: []
-  close: []
-}>()
+  'update:search': [value: string];
+  create: [];
+  close: [];
+}>();
 </script>

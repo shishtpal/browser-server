@@ -11,9 +11,7 @@
 </template>
 
 <script setup lang="ts">
-interface Props {
-  tags: string[]
-}
-
-defineProps<Props>()
+defineProps<{
+  tags: string[];
+}>();
 </script>

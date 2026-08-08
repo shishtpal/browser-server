@@ -71,53 +71,53 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { CalendarDay } from './types'
-import type { Todo } from '../../types'
-import { linkifyDescription } from '../../lib/descriptionLinks'
+import type { CalendarDay } from './types';
+import type { Todo } from '../../types';
+import { computed } from 'vue';
+import { linkifyDescription } from '../../lib/descriptionLinks';
 
 const props = defineProps<{
-  day: CalendarDay | undefined
-}>()
+  day: CalendarDay | undefined;
+}>();
 
 const emit = defineEmits<{
-  (e: 'todoClick', todo: Todo): void
-}>()
+  (e: 'todoClick', todo: Todo): void;
+}>();
 
-const hours = Array.from({ length: 24 }, (_, i) => i)
+const hours = Array.from({ length: 24 }, (_, i) => i);
 
-const dayTodos = computed(() => props.day?.todos ?? [])
-const todoCount = computed(() => dayTodos.value.length)
+const dayTodos = computed(() => props.day?.todos ?? []);
+const todoCount = computed(() => dayTodos.value.length);
 
 const dayNumber = computed(() => {
-  if (!props.day) return ''
-  return new Date(props.day.date + 'T00:00:00').getDate()
-})
+  if (!props.day) return '';
+  return new Date(props.day.date + 'T00:00:00').getDate();
+});
 
 const dayName = computed(() => {
-  if (!props.day) return ''
-  return new Date(props.day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })
-})
+  if (!props.day) return '';
+  return new Date(props.day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+});
 
 const fullDate = computed(() => {
-  if (!props.day) return ''
+  if (!props.day) return '';
   return new Date(props.day.date + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
-  })
-})
+  });
+});
 
 function formatHour(hour: number) {
-  if (hour === 0) return '12 AM'
-  if (hour < 12) return `${hour} AM`
-  if (hour === 12) return '12 PM'
-  return `${hour - 12} PM`
+  if (hour === 0) return '12 AM';
+  if (hour < 12) return `${hour} AM`;
+  if (hour === 12) return '12 PM';
+  return `${hour - 12} PM`;
 }
 
 function todoClass(todo: Todo) {
-  const base = 'bg-gray-100 dark:bg-slate-700/80'
-  return todo.status === 'completed' ? `${base} opacity-60` : base
+  const base = 'bg-gray-100 dark:bg-slate-700/80';
+  return todo.status === 'completed' ? `${base} opacity-60` : base;
 }
 
 function priorityDot(priority: string) {
@@ -126,7 +126,7 @@ function priorityDot(priority: string) {
     medium: 'bg-blue-400 dark:bg-blue-300',
     high: 'bg-amber-500 dark:bg-amber-400',
     urgent: 'bg-red-500 dark:bg-red-400',
-  }
-  return map[priority] || 'bg-slate-400'
+  };
+  return map[priority] || 'bg-slate-400';
 }
 </script>

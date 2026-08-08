@@ -39,7 +39,7 @@
           class="block truncate text-[0.82rem] font-semibold text-slate-400 dark:text-slate-500"
         >
           {{ conversation.title }}
-      </span>
+        </span>
         <span
           class="mt-0.5 block truncate font-mono text-[0.66rem] text-slate-400 dark:text-slate-500"
         >
@@ -68,29 +68,29 @@
 </template>
 
 <script setup lang="ts">
-import type { AIConversation } from '@browser-server/shared-types'
+import type { AIConversation } from '@browser-server/shared-types';
 
 defineProps<{
-  items: AIConversation[]
-  open: boolean
-}>()
+  items: AIConversation[];
+  open: boolean;
+}>();
 
 defineEmits<{
-  toggle: []
-  select: [id: string]
-  restore: [conversation: AIConversation]
-}>()
+  toggle: [];
+  select: [id: string];
+  restore: [conversation: AIConversation];
+}>();
 
 function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return 'just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
+  const diff = Date.now() - new Date(iso).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 </script>

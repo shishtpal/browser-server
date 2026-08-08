@@ -118,129 +118,129 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { format } from 'date-fns'
-import type { Todo, CreateTodoInput } from '../types'
-import { useUser } from '../composables/useUser'
-import { useCalendar } from '../composables/useCalendar'
-import { useCalendarTodos } from '../composables/useCalendarTodos'
-import PageHeader from './ui/PageHeader.vue'
-import UserSelector from './ui/UserSelector.vue'
-import Button from './ui/Button.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import SelectUserPrompt from './ui/SelectUserPrompt.vue'
-import CalendarHeader from './calendar/CalendarHeader.vue'
-import CalendarMonthView from './calendar/CalendarMonthView.vue'
-import CalendarWeekView from './calendar/CalendarWeekView.vue'
-import CalendarDayView from './calendar/CalendarDayView.vue'
-import CalendarYearView from './calendar/CalendarYearView.vue'
-import StatCard from './ui/StatCard.vue'
-import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
-import CalendarTodoDetail from './calendar/CalendarTodoDetail.vue'
+import type { Todo, CreateTodoInput } from '../types';
+import { ref, watch, computed } from 'vue';
+import { format } from 'date-fns';
+import { useUser } from '../composables/useUser';
+import { useCalendar } from '../composables/useCalendar';
+import { useCalendarTodos } from '../composables/useCalendarTodos';
+import PageHeader from './ui/PageHeader.vue';
+import UserSelector from './ui/UserSelector.vue';
+import Button from './ui/Button.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import SelectUserPrompt from './ui/SelectUserPrompt.vue';
+import CalendarHeader from './calendar/CalendarHeader.vue';
+import CalendarMonthView from './calendar/CalendarMonthView.vue';
+import CalendarWeekView from './calendar/CalendarWeekView.vue';
+import CalendarDayView from './calendar/CalendarDayView.vue';
+import CalendarYearView from './calendar/CalendarYearView.vue';
+import StatCard from './ui/StatCard.vue';
+import CalendarTodoModal from './calendar/CalendarTodoModal.vue';
+import CalendarTodoDetail from './calendar/CalendarTodoDetail.vue';
 
-const { users, currentUserId, setUser, clearUser } = useUser()
-const selectedUserId = ref<number | null>(currentUserId.value)
+const { users, currentUserId, setUser, clearUser } = useUser();
+const selectedUserId = ref<number | null>(currentUserId.value);
 
-const { currentDate, view, dateRange, periodLabel, navigate, goToToday } = useCalendar()
+const { currentDate, view, dateRange, periodLabel, navigate, goToToday } = useCalendar();
 const { todos, isLoading, error, days, stats, loadTodos, addTodo, updateTodoItem, removeTodo } =
-  useCalendarTodos(selectedUserId, dateRange)
+  useCalendarTodos(selectedUserId, dateRange);
 
-const todosStats = computed(() => stats.value)
-const modalOpen = ref(false)
-const editingTodo = ref<Todo | null>(null)
-const modalDueDate = ref('')
-const detailTodo = ref<Todo | null>(null)
+const todosStats = computed(() => stats.value);
+const modalOpen = ref(false);
+const editingTodo = ref<Todo | null>(null);
+const modalDueDate = ref('');
+const detailTodo = ref<Todo | null>(null);
 
 // For week view, only pass the 7 days of the current week
 const weekDays = computed(() => {
-  if (view.value !== 'week') return []
-  return days.value
-})
+  if (view.value !== 'week') return [];
+  return days.value;
+});
 
 // For day view, find the current date's data
 const currentDayData = computed(() => {
-  if (view.value !== 'day') return undefined
-  const dateStr = format(currentDate.value, 'yyyy-MM-dd')
-  return days.value.find((d) => d.date === dateStr) ?? days.value[0]
-})
+  if (view.value !== 'day') return undefined;
+  const dateStr = format(currentDate.value, 'yyyy-MM-dd');
+  return days.value.find((d) => d.date === dateStr) ?? days.value[0];
+});
 
 watch(selectedUserId, (id) => {
   if (id) {
-    setUser(id)
-    loadTodos()
+    setUser(id);
+    loadTodos();
   } else {
-    clearUser()
-    todos.value = []
+    clearUser();
+    todos.value = [];
   }
-})
+});
 
 if (selectedUserId.value) {
-  setUser(selectedUserId.value)
-  loadTodos()
+  setUser(selectedUserId.value);
+  loadTodos();
 }
 
 function openCreateModal(date?: string) {
-  editingTodo.value = null
-  modalDueDate.value = date || format(new Date(), 'yyyy-MM-dd')
-  modalOpen.value = true
+  editingTodo.value = null;
+  modalDueDate.value = date || format(new Date(), 'yyyy-MM-dd');
+  modalOpen.value = true;
 }
 
 function openEditModal(todo: Todo) {
-  detailTodo.value = todo
+  detailTodo.value = todo;
 }
 
 function closeDetail() {
-  detailTodo.value = null
+  detailTodo.value = null;
 }
 
 function editFromDetail(todo: Todo) {
-  detailTodo.value = null
-  editingTodo.value = todo
-  modalDueDate.value = todo.start_date || ''
-  modalOpen.value = true
+  detailTodo.value = null;
+  editingTodo.value = todo;
+  modalDueDate.value = todo.start_date || '';
+  modalOpen.value = true;
 }
 
 function closeModal() {
-  modalOpen.value = false
-  editingTodo.value = null
+  modalOpen.value = false;
+  editingTodo.value = null;
 }
 
 async function handleCreate(data: CreateTodoInput) {
-  await addTodo(data)
+  await addTodo(data);
 }
 
 async function handleUpdate(id: number, data: Partial<Todo>) {
-  await updateTodoItem(id, data)
+  await updateTodoItem(id, data);
 }
 
 async function handleTodoMove(payload: { todo: Todo; date: string }) {
-  await updateTodoItem(payload.todo.id, { start_date: payload.date })
+  await updateTodoItem(payload.todo.id, { start_date: payload.date });
 }
 
 async function handleDelete() {
-  if (!editingTodo.value) return
-  await removeTodo(editingTodo.value.id)
-  closeModal()
+  if (!editingTodo.value) return;
+  await removeTodo(editingTodo.value.id);
+  closeModal();
 }
 
 function showDayTodos(date: string) {
   // Navigate to day view for that date
-  currentDate.value = new Date(date + 'T00:00:00')
-  view.value = 'day'
+  currentDate.value = new Date(date + 'T00:00:00');
+  view.value = 'day';
 }
 
 function onMonthClick(month: number) {
-  currentDate.value = new Date(currentDate.value.getFullYear(), month, 1)
-  view.value = 'month'
+  currentDate.value = new Date(currentDate.value.getFullYear(), month, 1);
+  view.value = 'month';
 }
 
 function onYearDayClick(date: string) {
-  currentDate.value = new Date(date + 'T00:00:00')
-  view.value = 'day'
+  currentDate.value = new Date(date + 'T00:00:00');
+  view.value = 'day';
 }
 
 function onYearChange(year: number) {
-  currentDate.value = new Date(year, currentDate.value.getMonth(), 1)
+  currentDate.value = new Date(year, currentDate.value.getMonth(), 1);
 }
 </script>

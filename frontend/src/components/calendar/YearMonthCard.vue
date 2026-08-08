@@ -56,80 +56,80 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { Todo } from '../../types'
+import type { Todo } from '../../types';
+import { computed } from 'vue';
 
 const props = defineProps<{
-  year: number
-  monthIndex: number
-  todos: Todo[]
-}>()
+  year: number;
+  monthIndex: number;
+  todos: Todo[];
+}>();
 
 const emit = defineEmits<{
-  (e: 'monthClick', month: number): void
-  (e: 'dayClick', date: string): void
-}>()
+  (e: 'monthClick', month: number): void;
+  (e: 'dayClick', date: string): void;
+}>();
 
-const dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+const dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-const monthStart = computed(() => new Date(props.year, props.monthIndex, 1))
-const monthEnd = computed(() => new Date(props.year, props.monthIndex + 1, 0))
+const monthStart = computed(() => new Date(props.year, props.monthIndex, 1));
+const monthEnd = computed(() => new Date(props.year, props.monthIndex + 1, 0));
 
 const isCurrentMonth = computed(() => {
-  const now = new Date()
-  return props.year === now.getFullYear() && props.monthIndex === now.getMonth()
-})
+  const now = new Date();
+  return props.year === now.getFullYear() && props.monthIndex === now.getMonth();
+});
 
 const label = computed(() => {
-  return monthStart.value.toLocaleDateString('en-US', { month: 'short' })
-})
+  return monthStart.value.toLocaleDateString('en-US', { month: 'short' });
+});
 
 function formatDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // PERFORMANCE OPTIMIZATION: Pre-calculate counts to avoid O(N*M) nested loops
 const todoCountMap = computed(() => {
-  const map = new Map<string, number>()
+  const map = new Map<string, number>();
   props.todos.forEach((t) => {
     if (t.start_date && t.status !== 'completed') {
-      map.set(t.start_date, (map.get(t.start_date) || 0) + 1)
+      map.set(t.start_date, (map.get(t.start_date) || 0) + 1);
     }
-  })
-  return map
-})
+  });
+  return map;
+});
 
 const totalTodos = computed(() => {
-  const startStr = formatDate(monthStart.value)
-  const endStr = formatDate(monthEnd.value)
+  const startStr = formatDate(monthStart.value);
+  const endStr = formatDate(monthEnd.value);
   return props.todos.filter((t) => {
-    if (!t.start_date || t.status === 'completed') return false
-    return t.start_date >= startStr && t.start_date <= endStr
-  }).length
-})
+    if (!t.start_date || t.status === 'completed') return false;
+    return t.start_date >= startStr && t.start_date <= endStr;
+  }).length;
+});
 
 const dayData = computed(() => {
-  const gridStart = new Date(monthStart.value)
-  gridStart.setDate(gridStart.getDate() - gridStart.getDay())
-  const gridEnd = new Date(monthEnd.value)
-  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()))
+  const gridStart = new Date(monthStart.value);
+  gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+  const gridEnd = new Date(monthEnd.value);
+  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
 
   const days: Array<{
-    date: string
-    day: number
-    count: number
-    isCurrentMonth: boolean
-    isToday: boolean
-    isWeekend: boolean
-  }> = []
+    date: string;
+    day: number;
+    count: number;
+    isCurrentMonth: boolean;
+    isToday: boolean;
+    isWeekend: boolean;
+  }> = [];
 
-  const today = new Date()
-  const current = new Date(gridStart)
+  const today = new Date();
+  const current = new Date(gridStart);
   while (current <= gridEnd) {
-    const dateStr = formatDate(current)
+    const dateStr = formatDate(current);
     days.push({
       date: dateStr,
       day: current.getDate(),
@@ -140,71 +140,71 @@ const dayData = computed(() => {
         current.getMonth() === today.getMonth() &&
         current.getDate() === today.getDate(),
       isWeekend: current.getDay() === 0 || current.getDay() === 6,
-    })
-    current.setDate(current.getDate() + 1)
+    });
+    current.setDate(current.getDate() + 1);
   }
-  return days
-})
+  return days;
+});
 
 const cardClasses = computed(() => {
   if (isCurrentMonth.value) {
-    return 'border-2 border-indigo-500/80 dark:border-indigo-400/60 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30'
+    return 'border-2 border-indigo-500/80 dark:border-indigo-400/60 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30';
   }
   if (totalTodos.value > 0) {
-    return 'border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50'
+    return 'border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50';
   }
-  return 'border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700'
-})
+  return 'border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700';
+});
 
 const labelClass = computed(() => {
-  if (isCurrentMonth.value) return 'text-indigo-700 dark:text-indigo-300'
-  if (totalTodos.value > 0) return 'text-slate-800 dark:text-slate-200'
-  return 'text-slate-500 dark:text-slate-500'
-})
+  if (isCurrentMonth.value) return 'text-indigo-700 dark:text-indigo-300';
+  if (totalTodos.value > 0) return 'text-slate-800 dark:text-slate-200';
+  return 'text-slate-500 dark:text-slate-500';
+});
 
 const countClass = computed(() => {
   if (totalTodos.value >= 10) {
-    return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300'
+    return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300';
   }
   if (totalTodos.value >= 5) {
-    return 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400'
+    return 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400';
   }
-  return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-})
+  return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+});
 
 function dayClasses(day: {
-  isToday: boolean
-  count: number
-  isWeekend: boolean
-  isCurrentMonth: boolean
+  isToday: boolean;
+  count: number;
+  isWeekend: boolean;
+  isCurrentMonth: boolean;
 }) {
   const base =
-    'relative aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-colors cursor-pointer'
+    'relative aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-colors cursor-pointer';
 
   if (!day.isCurrentMonth) {
-    return `${base} text-slate-300 dark:text-slate-700`
+    return `${base} text-slate-300 dark:text-slate-700`;
   }
 
   if (day.isToday) {
-    return `${base} bg-indigo-600 text-white font-bold shadow-sm shadow-indigo-500/40 dark:bg-indigo-500`
+    return `${base} bg-indigo-600 text-white font-bold shadow-sm shadow-indigo-500/40 dark:bg-indigo-500`;
   }
 
   if (day.count > 0) {
-    return `${base} ${getHeatmapColor(day.count)}`
+    return `${base} ${getHeatmapColor(day.count)}`;
   }
 
   if (day.isWeekend) {
-    return `${base} text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50`
+    return `${base} text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50`;
   }
 
-  return `${base} text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50`
+  return `${base} text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50`;
 }
 
 // Cohesive Indigo Heatmap matching the app's primary theme
 function getHeatmapColor(count: number): string {
-  if (count >= 4) return 'bg-indigo-500 text-white dark:bg-indigo-600 font-bold'
-  if (count >= 3) return 'bg-indigo-200 text-indigo-900 dark:bg-indigo-700/60 text-white'
-  if (count >= 2) return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800/50 text-indigo-200'
-  return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 text-indigo-400'
+  if (count >= 4) return 'bg-indigo-500 text-white dark:bg-indigo-600 font-bold';
+  if (count >= 3) return 'bg-indigo-200 text-indigo-900 dark:bg-indigo-700/60 text-white';
+  if (count >= 2) return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800/50 text-indigo-200';
+  return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 text-indigo-400';
 }
 </script>

@@ -58,17 +58,17 @@ export type StyleKey =
   | 'copyButton'
   | 'footnotes'
   | 'footnoteRef'
-  | 'footnoteBackref'
+  | 'footnoteBackref';
 
 export interface MarkdownOptions {
   /** Render single newlines as `<br/>` (chat-style). Default: `true`. */
-  breaks?: boolean
+  breaks?: boolean;
   /** Add `id="…"` slugs to headings. Default: `true`. */
-  headingIds?: boolean
+  headingIds?: boolean;
   /** `target` for external links, e.g. `'_blank'`. Default: `'_blank'`. */
-  linkTarget?: string | null
+  linkTarget?: string | null;
   /** Override any of the default Tailwind class strings. */
-  classes?: Partial<Record<StyleKey, string>>
+  classes?: Partial<Record<StyleKey, string>>;
 }
 
 /* ---------------------------------------------------------------- styling */
@@ -116,7 +116,7 @@ const DEFAULT_CLASSES: Record<StyleKey, string> = {
   footnotes: 'mt-6 text-[0.85em] text-slate-600 dark:text-slate-400',
   footnoteRef: 'text-sky-600 no-underline dark:text-sky-400',
   footnoteBackref: 'ml-1 text-sky-600 no-underline dark:text-sky-400',
-}
+};
 
 const ALERTS: Record<string, { label: string; icon: string; cls: string }> = {
   note: {
@@ -144,11 +144,11 @@ const ALERTS: Record<string, { label: string; icon: string; cls: string }> = {
     icon: '🛑',
     cls: 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-200',
   },
-}
+};
 
 /* ------------------------------------------------------------------ utils */
 
-const NUL = '\u0000'
+const NUL = '\u0000';
 
 const HTML_ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -156,26 +156,26 @@ const HTML_ESCAPES: Record<string, string> = {
   '>': '&gt;',
   '"': '&quot;',
   "'": '&#39;',
-}
+};
 
 export function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c])
+  return str.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
 
 /** Keep only attribute-safe characters (used for ids). */
 function escapeAttr(str: string): string {
-  return str.replace(/[^\w.:-]/g, '-')
+  return str.replace(/[^\w.:-]/g, '-');
 }
 
-const SAFE_SCHEMES = /^(?:https?|mailto|tel|sms|ftp):/i
+const SAFE_SCHEMES = /^(?:https?|mailto|tel|sms|ftp):/i;
 
 /** Input is already HTML-escaped; we only need to police the scheme. */
 function sanitizeUrl(raw: string): string {
-  const url = raw.trim().replace(/^&lt;/, '').replace(/&gt;$/, '')
-  const probe = url.replace(/[\s\u0000-\u001f]/g, '').toLowerCase()
-  if (/^data:image\/(?:png|jpe?g|gif|webp|avif|svg\+xml);base64,/.test(probe)) return url
-  if (/^[a-z][a-z0-9+.-]*:/.test(probe) && !SAFE_SCHEMES.test(probe)) return '#'
-  return url
+  const url = raw.trim().replace(/^&lt;/, '').replace(/&gt;$/, '');
+  const probe = url.replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
+  if (/^data:image\/(?:png|jpe?g|gif|webp|avif|svg\+xml);base64,/.test(probe)) return url;
+  if (/^[a-z][a-z0-9+.-]*:/.test(probe) && !SAFE_SCHEMES.test(probe)) return '#';
+  return url;
 }
 
 function slugify(text: string, taken: Map<string, number>): string {
@@ -187,36 +187,36 @@ function slugify(text: string, taken: Map<string, number>): string {
       .replace(/[^a-z0-9\s-]/g, '')
       .trim()
       .replace(/\s+/g, '-')
-      .slice(0, 64) || 'section'
-  const seen = taken.get(base) ?? 0
-  taken.set(base, seen + 1)
-  return seen ? `${base}-${seen}` : base
+      .slice(0, 64) || 'section';
+  const seen = taken.get(base) ?? 0;
+  taken.set(base, seen + 1);
+  return seen ? `${base}-${seen}` : base;
 }
 
 /* -------------------------------------------------------------- structure */
 
 interface Ctx {
-  opts: Required<Omit<MarkdownOptions, 'classes'>>
-  cls: Record<StyleKey, string>
-  links: Map<string, { href: string; title?: string }>
-  footnoteDefs: Map<string, string[]>
-  footnoteOrder: string[]
-  slugs: Map<string, number>
+  opts: Required<Omit<MarkdownOptions, 'classes'>>;
+  cls: Record<StyleKey, string>;
+  links: Map<string, { href: string; title?: string }>;
+  footnoteDefs: Map<string, string[]>;
+  footnoteOrder: string[];
+  slugs: Map<string, number>;
 }
 
-const HR_RE = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/
-const ATX_RE = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*(?:[ \t]#+)?[ \t]*$/
-const FENCE_RE = /^( {0,3})(`{3,}|~{3,})[ \t]*(.*)$/
-const LIST_RE = /^( {0,7})([-+*]|\d{1,9}[.)])(?:([ \t]+)(.*)|)$/
-const TABLE_DELIM_RE = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
-const INDENT_CODE_RE = /^ {4}(?=\S)/
+const HR_RE = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
+const ATX_RE = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*(?:[ \t]#+)?[ \t]*$/;
+const FENCE_RE = /^( {0,3})(`{3,}|~{3,})[ \t]*(.*)$/;
+const LIST_RE = /^( {0,7})([-+*]|\d{1,9}[.)])(?:([ \t]+)(.*)|)$/;
+const TABLE_DELIM_RE = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/;
+const INDENT_CODE_RE = /^ {4}(?=\S)/;
 
 function isBlank(line: string): boolean {
-  return !line.trim()
+  return !line.trim();
 }
 
 function isBlockStart(lines: string[], i: number): boolean {
-  const line = lines[i]
+  const line = lines[i];
   return (
     FENCE_RE.test(line) ||
     ATX_RE.test(line) ||
@@ -224,110 +224,110 @@ function isBlockStart(lines: string[], i: number): boolean {
     /^ {0,3}>/.test(line) ||
     /^ {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)/.test(line) ||
     (line.includes('|') && i + 1 < lines.length && TABLE_DELIM_RE.test(lines[i + 1]))
-  )
+  );
 }
 
 /* ------------------------------------------------------- inline rendering */
 
 const LINK_TAIL =
   /\(\s*(?:&lt;([^&\s]*)&gt;|([^\s()]*(?:\([^\s()]*\)[^\s()]*)*))(?:\s+(?:&quot;([\s\S]*?)&quot;|&#39;([\s\S]*?)&#39;))?\s*\)/
-    .source
+    .source;
 
-const INLINE_LINK_RE = new RegExp(`\\[((?:[^\\[\\]]|\\[[^\\[\\]]*\\])*)\\]${LINK_TAIL}`, 'g')
-const IMAGE_RE = new RegExp(`!\\[([^\\[\\]]*)\\]${LINK_TAIL}`, 'g')
+const INLINE_LINK_RE = new RegExp(`\\[((?:[^\\[\\]]|\\[[^\\[\\]]*\\])*)\\]${LINK_TAIL}`, 'g');
+const IMAGE_RE = new RegExp(`!\\[([^\\[\\]]*)\\]${LINK_TAIL}`, 'g');
 
 function anchor(text: string, href: string, title: string | undefined, ctx: Ctx): string {
-  const safe = sanitizeUrl(href)
-  const external = /^(?:https?:)?\/\//i.test(safe)
-  const attrs = [`href="${safe}"`, `class="${ctx.cls.a}"`]
-  if (title) attrs.push(`title="${title}"`)
+  const safe = sanitizeUrl(href);
+  const external = /^(?:https?:)?\/\//i.test(safe);
+  const attrs = [`href="${safe}"`, `class="${ctx.cls.a}"`];
+  if (title) attrs.push(`title="${title}"`);
   if (external && ctx.opts.linkTarget) {
-    attrs.push(`target="${ctx.opts.linkTarget}"`, 'rel="noopener noreferrer nofollow"')
+    attrs.push(`target="${ctx.opts.linkTarget}"`, 'rel="noopener noreferrer nofollow"');
   }
-  return `<a ${attrs.join(' ')}>${text}</a>`
+  return `<a ${attrs.join(' ')}>${text}</a>`;
 }
 
 export function renderInline(src: string, ctx: Ctx): string {
-  const stash: string[] = []
-  const hold = (html: string) => `${NUL}${stash.push(html) - 1}${NUL}`
-  let s = src
+  const stash: string[] = [];
+  const hold = (html: string) => `${NUL}${stash.push(html) - 1}${NUL}`;
+  let s = src;
 
   /* 1 — backslash escapes (also covers already-escaped entities) */
   s = s.replace(/\\(&(?:amp|lt|gt|quot|#39);|[\\`*_{}[\]()#+\-.!>~|=^$])/g, (_m, ch: string) =>
     hold(ch),
-  )
+  );
 
   /* 2 — code spans (supports backtick runs: ``a ` b``) */
   s = s.replace(/(`+)([\s\S]*?[^`])\1(?!`)/g, (_m, _fence: string, code: string) => {
-    let c = code.replace(/\n/g, ' ')
-    if (c.length > 2 && c.startsWith(' ') && c.endsWith(' ') && c.trim()) c = c.slice(1, -1)
-    return hold(`<code class="${ctx.cls.code}">${c}</code>`)
-  })
+    let c = code.replace(/\n/g, ' ');
+    if (c.length > 2 && c.startsWith(' ') && c.endsWith(' ') && c.trim()) c = c.slice(1, -1);
+    return hold(`<code class="${ctx.cls.code}">${c}</code>`);
+  });
 
   /* 3 — footnote references */
   s = s.replace(/\[\^([^\]\s]+)\]/g, (m, rawId: string) => {
-    const id = rawId.toLowerCase()
-    if (!ctx.footnoteDefs.has(id)) return m
-    let index = ctx.footnoteOrder.indexOf(id)
-    if (index === -1) index = ctx.footnoteOrder.push(id) - 1
-    const key = escapeAttr(id)
+    const id = rawId.toLowerCase();
+    if (!ctx.footnoteDefs.has(id)) return m;
+    let index = ctx.footnoteOrder.indexOf(id);
+    if (index === -1) index = ctx.footnoteOrder.push(id) - 1;
+    const key = escapeAttr(id);
     return hold(
       `<sup id="fnref-${key}"><a href="#fn-${key}" class="${ctx.cls.footnoteRef}">[${index + 1}]</a></sup>`,
-    )
-  })
+    );
+  });
 
   /* 4 — images */
   s = s.replace(
     IMAGE_RE,
     (_m, alt: string, angle: string, bare: string, t1: string, t2: string) => {
-      const src2 = sanitizeUrl(angle || bare || '')
-      const title = t1 || t2
+      const src2 = sanitizeUrl(angle || bare || '');
+      const title = t1 || t2;
       return hold(
         `<img src="${src2}" alt="${alt}"${title ? ` title="${title}"` : ''} loading="lazy" class="${ctx.cls.img}"/>`,
-      )
+      );
     },
-  )
+  );
 
   /* 5 — inline links */
   s = s.replace(
     INLINE_LINK_RE,
     (_m, text: string, angle: string, bare: string, t1: string, t2: string) =>
       hold(anchor(renderInline(text, ctx), angle || bare || '', t1 || t2, ctx)),
-  )
+  );
 
   /* 6 — reference links: [text][id], [text][], [id] */
   s = s.replace(
     /\[((?:[^\[\]]|\[[^\[\]]*\])*)\](?:\[([^\]]*)\])?/g,
     (m, text: string, ref?: string) => {
-      const key = (ref && ref.trim() ? ref : text).trim().toLowerCase()
-      const def = ctx.links.get(key)
-      if (!def) return m
-      return hold(anchor(renderInline(text, ctx), def.href, def.title, ctx))
+      const key = (ref && ref.trim() ? ref : text).trim().toLowerCase();
+      const def = ctx.links.get(key);
+      if (!def) return m;
+      return hold(anchor(renderInline(text, ctx), def.href, def.title, ctx));
     },
-  )
+  );
 
   /* 7 — autolinks <https://…> / <mail@example.com> */
   s = s.replace(
     /&lt;((?:https?|ftp|mailto):[^\s&]+|[^\s@&]+@[^\s@&]+\.[^\s@&]+)&gt;/g,
     (_m, url: string) => {
-      const href = url.includes('@') && !url.startsWith('mailto:') ? `mailto:${url}` : url
-      return hold(anchor(url, href, undefined, ctx))
+      const href = url.includes('@') && !url.startsWith('mailto:') ? `mailto:${url}` : url;
+      return hold(anchor(url, href, undefined, ctx));
     },
-  )
+  );
 
   /* 8 — bare URLs & emails */
   s = s.replace(
     /(^|[\s([])((?:https?:\/\/|www\.)[^\s<>"'`]+[^\s<>"'`.,;:!?)\]}])/g,
     (_m, pre: string, url: string) =>
       pre + hold(anchor(url, url.startsWith('www.') ? `http://${url}` : url, undefined, ctx)),
-  )
+  );
   s = s.replace(
     /(^|[\s([])([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g,
     (_m, pre: string, mail: string) => pre + hold(anchor(mail, `mailto:${mail}`, undefined, ctx)),
-  )
+  );
 
   /* 9 — emphasis (strongest first) */
-  const { strong, em, del, mark } = ctx.cls
+  const { strong, em, del, mark } = ctx.cls;
   s = s
     .replace(
       /\*\*\*([^\s*](?:[\s\S]*?[^\s*])?)\*\*\*/g,
@@ -345,18 +345,18 @@ export function renderInline(src: string, ctx: Ctx): string {
     .replace(/\*([^\s*](?:[\s\S]*?[^\s*])?)\*/g, `<em class="${em}">$1</em>`)
     .replace(/(^|[^\w\\])_([^\s_](?:[\s\S]*?[^\s_])?)_(?!\w)/g, `$1<em class="${em}">$2</em>`)
     .replace(/~~([^\s~](?:[\s\S]*?[^\s~])?)~~/g, `<del class="${del}">$1</del>`)
-    .replace(/==([^\s=](?:[\s\S]*?[^\s=])?)==/g, `<mark class="${mark}">$1</mark>`)
+    .replace(/==([^\s=](?:[\s\S]*?[^\s=])?)==/g, `<mark class="${mark}">$1</mark>`);
 
   /* 10 — line breaks */
-  s = s.replace(/(?: {2,}|\\)\n/g, '<br/>\n')
-  s = ctx.opts.breaks ? s.replace(/\n(?!$)/g, '<br/>\n') : s
+  s = s.replace(/(?: {2,}|\\)\n/g, '<br/>\n');
+  s = ctx.opts.breaks ? s.replace(/\n(?!$)/g, '<br/>\n') : s;
 
   /* 11 — restore stashed fragments (nested placeholders need a few passes) */
-  const token = new RegExp(`${NUL}(\\d+)${NUL}`, 'g')
+  const token = new RegExp(`${NUL}(\\d+)${NUL}`, 'g');
   for (let pass = 0; pass < 6 && s.includes(NUL); pass++) {
-    s = s.replace(token, (_m, n: string) => stash[Number(n)] ?? '')
+    s = s.replace(token, (_m, n: string) => stash[Number(n)] ?? '');
   }
-  return s
+  return s;
 }
 
 /* -------------------------------------------------------- block renderers */
@@ -368,159 +368,163 @@ function codeBlockHtml(code: string, info: string, ctx: Ctx): string {
       .split(/\s+/)[0]
       ?.replace(/[^\w+#.-]/g, '')
       .slice(0, 24)
-      .toLowerCase() ?? ''
-  const label = lang ? `<span class="${ctx.cls.codeLang}">${lang}</span>` : ''
+      .toLowerCase() ?? '';
+  const label = lang ? `<span class="${ctx.cls.codeLang}">${lang}</span>` : '';
   return (
     `<div class="${ctx.cls.codeWrap}" data-lang="${lang}">${label}` +
     `<button type="button" data-copy-code class="${ctx.cls.copyButton}" title="Copy code" aria-label="Copy code">Copy</button>` +
     `<pre class="${ctx.cls.pre}"><code class="language-${lang || 'plaintext'}">${code}</code></pre></div>`
-  )
+  );
 }
 
 function headingHtml(level: number, raw: string, ctx: Ctx): string {
-  const inner = renderInline(raw.trim(), ctx)
-  const key = `h${level}` as StyleKey
-  const id = ctx.opts.headingIds ? ` id="${escapeAttr(slugify(inner, ctx.slugs))}"` : ''
-  return `<h${level}${id} class="${ctx.cls[key]}">${inner}</h${level}>`
+  const inner = renderInline(raw.trim(), ctx);
+  const key = `h${level}` as StyleKey;
+  const id = ctx.opts.headingIds ? ` id="${escapeAttr(slugify(inner, ctx.slugs))}"` : '';
+  return `<h${level}${id} class="${ctx.cls[key]}">${inner}</h${level}>`;
 }
 
 function splitTableRow(row: string): string[] {
-  const cells: string[] = []
-  let cur = ''
+  const cells: string[] = [];
+  let cur = '';
   for (let i = 0; i < row.length; i++) {
-    const ch = row[i]
+    const ch = row[i];
     if (ch === '\\' && row[i + 1] === '|') {
-      cur += '|'
-      i++
-      continue
+      cur += '|';
+      i++;
+      continue;
     }
     if (ch === '|') {
-      cells.push(cur)
-      cur = ''
-      continue
+      cells.push(cur);
+      cur = '';
+      continue;
     }
-    cur += ch
+    cur += ch;
   }
-  cells.push(cur)
-  const trimmed = row.trim()
-  if (trimmed.startsWith('|')) cells.shift()
-  if (trimmed.length > 1 && trimmed.endsWith('|') && !trimmed.endsWith('\\|')) cells.pop()
-  return cells.map((c) => c.trim())
+  cells.push(cur);
+  const trimmed = row.trim();
+  if (trimmed.startsWith('|')) cells.shift();
+  if (trimmed.length > 1 && trimmed.endsWith('|') && !trimmed.endsWith('\\|')) cells.pop();
+  return cells.map((c) => c.trim());
 }
 
 function alignStyle(align: string | null): string {
-  return align ? ` style="text-align:${align}"` : ''
+  return align ? ` style="text-align:${align}"` : '';
 }
 
 /* ------------------------------------------------------------ block parse */
 
 function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
-  const out: string[] = []
-  let i = 0
+  const out: string[] = [];
+  let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i]
+    const line = lines[i];
 
     if (isBlank(line)) {
-      i++
-      continue
+      i++;
+      continue;
     }
 
     /* ── fenced code ─────────────────────────────────────────────── */
-    const fence = FENCE_RE.exec(line)
+    const fence = FENCE_RE.exec(line);
     if (fence && !(fence[2][0] === '`' && fence[3].includes('`'))) {
-      const [, indent, marker, info] = fence
-      const close = new RegExp(`^ {0,3}\\${marker[0]}{${marker.length},}[ \\t]*$`)
-      const body: string[] = []
-      i++
+      const [, indent, marker, info] = fence;
+      const close = new RegExp(`^ {0,3}\\${marker[0]}{${marker.length},}[ \\t]*$`);
+      const body: string[] = [];
+      i++;
       while (i < lines.length && !close.test(lines[i])) {
-        body.push(lines[i].startsWith(indent) ? lines[i].slice(indent.length) : lines[i])
-        i++
+        body.push(lines[i].startsWith(indent) ? lines[i].slice(indent.length) : lines[i]);
+        i++;
       }
-      i++ // consume closing fence
-      out.push(codeBlockHtml(body.join('\n').replace(/\n+$/, ''), info, ctx))
-      continue
+      i++; // consume closing fence
+      out.push(codeBlockHtml(body.join('\n').replace(/\n+$/, ''), info, ctx));
+      continue;
     }
 
     /* ── indented code ───────────────────────────────────────────── */
     if (INDENT_CODE_RE.test(line)) {
-      const body: string[] = []
+      const body: string[] = [];
       while (i < lines.length) {
         if (INDENT_CODE_RE.test(lines[i])) {
-          body.push(lines[i].slice(4))
-          i++
-          continue
+          body.push(lines[i].slice(4));
+          i++;
+          continue;
         }
         if (isBlank(lines[i]) && i + 1 < lines.length && INDENT_CODE_RE.test(lines[i + 1])) {
-          body.push('')
-          i++
-          continue
+          body.push('');
+          i++;
+          continue;
         }
-        break
+        break;
       }
-      out.push(codeBlockHtml(body.join('\n'), '', ctx))
-      continue
+      out.push(codeBlockHtml(body.join('\n'), '', ctx));
+      continue;
     }
 
     /* ── thematic break ──────────────────────────────────────────── */
     if (HR_RE.test(line)) {
-      out.push(`<hr class="${ctx.cls.hr}"/>`)
-      i++
-      continue
+      out.push(`<hr class="${ctx.cls.hr}"/>`);
+      i++;
+      continue;
     }
 
     /* ── ATX heading ─────────────────────────────────────────────── */
-    const atx = ATX_RE.exec(line)
+    const atx = ATX_RE.exec(line);
     if (atx) {
-      out.push(headingHtml(atx[1].length, atx[2] ?? '', ctx))
-      i++
-      continue
+      out.push(headingHtml(atx[1].length, atx[2] ?? '', ctx));
+      i++;
+      continue;
     }
 
     /* ── blockquote (with GitHub alerts) ─────────────────────────── */
     if (/^ {0,3}>/.test(line)) {
-      const body: string[] = []
+      const body: string[] = [];
       while (i < lines.length) {
         if (/^ {0,3}>/.test(lines[i])) {
-          body.push(lines[i].replace(/^ {0,3}>[ \t]?/, ''))
-          i++
-          continue
+          body.push(lines[i].replace(/^ {0,3}>[ \t]?/, ''));
+          i++;
+          continue;
         }
         if (!isBlank(lines[i]) && !isBlockStart(lines, i)) {
-          body.push(lines[i])
-          i++
-          continue
+          body.push(lines[i]);
+          i++;
+          continue;
         } // lazy
-        break
+        break;
       }
-      const alert = /^\[!(note|tip|important|warning|caution)\][ \t]*$/i.exec(body[0]?.trim() ?? '')
+      const alert = /^\[!(note|tip|important|warning|caution)\][ \t]*$/i.exec(
+        body[0]?.trim() ?? '',
+      );
       if (alert) {
-        const meta = ALERTS[alert[1].toLowerCase()]
-        const inner = parseBlocks(body.slice(1), ctx)
+        const meta = ALERTS[alert[1].toLowerCase()];
+        const inner = parseBlocks(body.slice(1), ctx);
         out.push(
           `<div class="${ctx.cls.alert} ${meta.cls}">` +
             `<p class="${ctx.cls.alertTitle}"><span aria-hidden="true">${meta.icon}</span>${meta.label}</p>${inner}</div>`,
-        )
+        );
       } else {
-        out.push(`<blockquote class="${ctx.cls.blockquote}">${parseBlocks(body, ctx)}</blockquote>`)
+        out.push(
+          `<blockquote class="${ctx.cls.blockquote}">${parseBlocks(body, ctx)}</blockquote>`,
+        );
       }
-      continue
+      continue;
     }
 
     /* ── table ───────────────────────────────────────────────────── */
     if (line.includes('|') && i + 1 < lines.length && TABLE_DELIM_RE.test(lines[i + 1])) {
-      const header = splitTableRow(line)
+      const header = splitTableRow(line);
       const aligns = splitTableRow(lines[i + 1]).map((c) => {
-        const left = c.startsWith(':')
-        const right = c.endsWith(':')
-        return left && right ? 'center' : right ? 'right' : left ? 'left' : null
-      })
+        const left = c.startsWith(':');
+        const right = c.endsWith(':');
+        return left && right ? 'center' : right ? 'right' : left ? 'left' : null;
+      });
       if (header.length === aligns.length) {
-        i += 2
-        const rows: string[][] = []
+        i += 2;
+        const rows: string[][] = [];
         while (i < lines.length && !isBlank(lines[i]) && lines[i].includes('|')) {
-          rows.push(splitTableRow(lines[i]))
-          i++
+          rows.push(splitTableRow(lines[i]));
+          i++;
         }
         const head =
           `<tr class="${ctx.cls.tr}">` +
@@ -530,10 +534,10 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
                 `<th class="${ctx.cls.th}"${alignStyle(aligns[k])} scope="col">${renderInline(c, ctx)}</th>`,
             )
             .join('') +
-          '</tr>'
+          '</tr>';
         const bodyHtml = rows
           .map((cells) => {
-            const padded = Array.from({ length: header.length }, (_, k) => cells[k] ?? '')
+            const padded = Array.from({ length: header.length }, (_, k) => cells[k] ?? '');
             return (
               `<tr class="${ctx.cls.tr}">` +
               padded
@@ -543,228 +547,228 @@ function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
                 )
                 .join('') +
               '</tr>'
-            )
+            );
           })
-          .join('')
+          .join('');
         out.push(
           `<div class="${ctx.cls.tableWrap}"><table class="${ctx.cls.table}">` +
             `<thead class="${ctx.cls.thead}">${head}</thead>` +
             `<tbody class="${ctx.cls.tbody}">${bodyHtml}</tbody></table></div>`,
-        )
-        continue
+        );
+        continue;
       }
     }
 
     /* ── lists ───────────────────────────────────────────────────── */
     if (LIST_RE.test(line)) {
-      const { html, next } = parseList(lines, i, ctx)
-      out.push(html)
-      i = next
-      continue
+      const { html, next } = parseList(lines, i, ctx);
+      out.push(html);
+      i = next;
+      continue;
     }
 
     /* ── paragraph / setext heading ──────────────────────────────── */
-    const buf: string[] = []
-    let setext: 1 | 2 | null = null
+    const buf: string[] = [];
+    let setext: 1 | 2 | null = null;
     while (i < lines.length) {
-      const cur = lines[i]
-      if (isBlank(cur)) break
+      const cur = lines[i];
+      if (isBlank(cur)) break;
       if (buf.length) {
-        const s = /^ {0,3}(=+|-+)[ \t]*$/.exec(cur)
+        const s = /^ {0,3}(=+|-+)[ \t]*$/.exec(cur);
         if (s) {
-          setext = s[1][0] === '=' ? 1 : 2
-          i++
-          break
+          setext = s[1][0] === '=' ? 1 : 2;
+          i++;
+          break;
         }
-        if (isBlockStart(lines, i)) break
+        if (isBlockStart(lines, i)) break;
       }
-      buf.push(cur.replace(/^ {0,3}/, ''))
-      i++
+      buf.push(cur.replace(/^ {0,3}/, ''));
+      i++;
     }
     if (!buf.length) {
-      i++
-      continue
+      i++;
+      continue;
     }
     if (setext) {
-      out.push(headingHtml(setext, buf.join(' '), ctx))
-      continue
+      out.push(headingHtml(setext, buf.join(' '), ctx));
+      continue;
     }
 
-    const inner = renderInline(buf.join('\n'), ctx)
-    out.push(tight ? inner : `<p class="${ctx.cls.p}">${inner}</p>`)
+    const inner = renderInline(buf.join('\n'), ctx);
+    out.push(tight ? inner : `<p class="${ctx.cls.p}">${inner}</p>`);
   }
 
-  return out.join('\n')
+  return out.join('\n');
 }
 
 /* --------------------------------------------------------------- list ADT */
 
 function parseList(lines: string[], start: number, ctx: Ctx): { html: string; next: number } {
-  const first = LIST_RE.exec(lines[start])!
-  const ordered = /\d/.test(first[2])
-  const startNumber = ordered ? parseInt(first[2], 10) : 1
-  const baseIndent = first[1].length
+  const first = LIST_RE.exec(lines[start])!;
+  const ordered = /\d/.test(first[2]);
+  const startNumber = ordered ? parseInt(first[2], 10) : 1;
+  const baseIndent = first[1].length;
 
-  const items: string[][] = []
-  let loose = false
-  let pendingBlank = false
-  let contentIndent = 0
-  let i = start
+  const items: string[][] = [];
+  let loose = false;
+  let pendingBlank = false;
+  let contentIndent = 0;
+  let i = start;
 
   while (i < lines.length) {
-    const line = lines[i]
+    const line = lines[i];
 
     if (isBlank(line)) {
-      pendingBlank = true
-      i++
-      continue
+      pendingBlank = true;
+      i++;
+      continue;
     }
 
-    const indent = line.length - line.replace(/^ +/, '').length
-    const item = LIST_RE.exec(line)
+    const indent = line.length - line.replace(/^ +/, '').length;
+    const item = LIST_RE.exec(line);
 
     // New sibling item at (roughly) the same level.
     if (item && item[1].length <= baseIndent + 1) {
-      if (/\d/.test(item[2]) !== ordered) break // different list type → new list
-      if (pendingBlank && items.length) loose = true
-      pendingBlank = false
-      contentIndent = item[1].length + item[2].length + Math.min((item[3] ?? ' ').length, 4)
-      items.push([item[4] ?? ''])
-      i++
-      continue
+      if (/\d/.test(item[2]) !== ordered) break; // different list type → new list
+      if (pendingBlank && items.length) loose = true;
+      pendingBlank = false;
+      contentIndent = item[1].length + item[2].length + Math.min((item[3] ?? ' ').length, 4);
+      items.push([item[4] ?? '']);
+      i++;
+      continue;
     }
 
-    if (!items.length) break
+    if (!items.length) break;
 
     // Continuation belonging to the current item.
     if (indent >= contentIndent) {
       if (pendingBlank) {
-        items[items.length - 1].push('')
-        loose = true
-        pendingBlank = false
+        items[items.length - 1].push('');
+        loose = true;
+        pendingBlank = false;
       }
-      items[items.length - 1].push(line.slice(contentIndent))
-      i++
-      continue
+      items[items.length - 1].push(line.slice(contentIndent));
+      i++;
+      continue;
     }
 
     // Lazy paragraph continuation.
     if (!pendingBlank && !isBlockStart(lines, i)) {
-      items[items.length - 1].push(line.trim())
-      i++
-      continue
+      items[items.length - 1].push(line.trim());
+      i++;
+      continue;
     }
 
-    break
+    break;
   }
 
-  let hasTask = false
+  let hasTask = false;
   const rendered = items.map((item) => {
-    const raw = item.join('\n')
-    const task = /^\[([ xX])\](?:[ \t]+|$)([\s\S]*)$/.exec(raw)
+    const raw = item.join('\n');
+    const task = /^\[([ xX])\](?:[ \t]+|$)([\s\S]*)$/.exec(raw);
     if (task) {
-      hasTask = true
-      const checked = task[1].toLowerCase() === 'x'
-      const inner = parseBlocks(task[2].split('\n'), ctx, !loose)
+      hasTask = true;
+      const checked = task[1].toLowerCase() === 'x';
+      const inner = parseBlocks(task[2].split('\n'), ctx, !loose);
       return (
         `<li class="${ctx.cls.taskItem}">` +
         `<input type="checkbox" disabled${checked ? ' checked' : ''} class="${ctx.cls.checkbox}"/>` +
         `<span${checked ? ' class="opacity-70"' : ''}>${inner}</span></li>`
-      )
+      );
     }
-    return `<li class="${ctx.cls.li}">${parseBlocks(item, ctx, !loose)}</li>`
-  })
+    return `<li class="${ctx.cls.li}">${parseBlocks(item, ctx, !loose)}</li>`;
+  });
 
-  const tag = ordered ? 'ol' : 'ul'
-  const cls = hasTask ? ctx.cls.taskList : ctx.cls[tag]
-  const startAttr = ordered && startNumber !== 1 ? ` start="${startNumber}"` : ''
-  return { html: `<${tag} class="${cls}"${startAttr}>${rendered.join('')}</${tag}>`, next: i }
+  const tag = ordered ? 'ol' : 'ul';
+  const cls = hasTask ? ctx.cls.taskList : ctx.cls[tag];
+  const startAttr = ordered && startNumber !== 1 ? ` start="${startNumber}"` : '';
+  return { html: `<${tag} class="${cls}"${startAttr}>${rendered.join('')}</${tag}>`, next: i };
 }
 
 /* ---------------------------------------------------------- pre-pass defs */
 
-const FOOTNOTE_DEF_RE = /^ {0,3}\[\^([^\]\s]+)\]:[ \t]*(.*)$/
+const FOOTNOTE_DEF_RE = /^ {0,3}\[\^([^\]\s]+)\]:[ \t]*(.*)$/;
 const LINK_DEF_RE =
-  /^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*(?:&lt;([^&\s]*)&gt;|(\S+))(?:[ \t]+(?:&quot;([\s\S]*?)&quot;|&#39;([\s\S]*?)&#39;|\(([^)]*)\)))?[ \t]*$/
+  /^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*(?:&lt;([^&\s]*)&gt;|(\S+))(?:[ \t]+(?:&quot;([\s\S]*?)&quot;|&#39;([\s\S]*?)&#39;|\(([^)]*)\)))?[ \t]*$/;
 
 /** Pulls link-reference and footnote definitions out of the document. */
 function extractDefinitions(lines: string[], ctx: Ctx): string[] {
-  const out: string[] = []
-  let fence: string | null = null
+  const out: string[] = [];
+  let fence: string | null = null;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+    const line = lines[i];
 
-    const f = FENCE_RE.exec(line)
+    const f = FENCE_RE.exec(line);
     if (f) {
       if (fence && new RegExp(`^ {0,3}\\${fence[0]}{${fence.length},}[ \t]*$`).test(line))
-        fence = null
-      else if (!fence) fence = f[2]
-      out.push(line)
-      continue
+        fence = null;
+      else if (!fence) fence = f[2];
+      out.push(line);
+      continue;
     }
     if (fence) {
-      out.push(line)
-      continue
+      out.push(line);
+      continue;
     }
 
-    const fn = FOOTNOTE_DEF_RE.exec(line)
+    const fn = FOOTNOTE_DEF_RE.exec(line);
     if (fn) {
-      const body = [fn[2]]
+      const body = [fn[2]];
       while (i + 1 < lines.length) {
-        const next = lines[i + 1]
+        const next = lines[i + 1];
         if (INDENT_CODE_RE.test(next) || /^ {4}/.test(next)) {
-          body.push(next.slice(4))
-          i++
-          continue
+          body.push(next.slice(4));
+          i++;
+          continue;
         }
         if (isBlank(next) && /^ {4}\S/.test(lines[i + 2] ?? '')) {
-          body.push('')
-          i++
-          continue
+          body.push('');
+          i++;
+          continue;
         }
-        break
+        break;
       }
-      ctx.footnoteDefs.set(fn[1].toLowerCase(), body)
-      continue
+      ctx.footnoteDefs.set(fn[1].toLowerCase(), body);
+      continue;
     }
 
-    const def = LINK_DEF_RE.exec(line)
+    const def = LINK_DEF_RE.exec(line);
     if (def) {
       ctx.links.set(def[1].trim().toLowerCase(), {
         href: def[2] || def[3] || '',
         title: def[4] || def[5] || def[6] || undefined,
-      })
-      continue
+      });
+      continue;
     }
 
-    out.push(line)
+    out.push(line);
   }
-  return out
+  return out;
 }
 
 function renderFootnotes(ctx: Ctx): string {
-  if (!ctx.footnoteOrder.length) return ''
+  if (!ctx.footnoteOrder.length) return '';
   const items = ctx.footnoteOrder
     .map((id) => {
-      const key = escapeAttr(id)
-      const inner = parseBlocks(ctx.footnoteDefs.get(id) ?? [''], ctx, true)
+      const key = escapeAttr(id);
+      const inner = parseBlocks(ctx.footnoteDefs.get(id) ?? [''], ctx, true);
       return (
         `<li id="fn-${key}" class="${ctx.cls.li}">${inner}` +
         `<a href="#fnref-${key}" class="${ctx.cls.footnoteBackref}" aria-label="Back to reference">↩</a></li>`
-      )
+      );
     })
-    .join('')
+    .join('');
   return (
     `<section class="${ctx.cls.footnotes}" role="doc-endnotes">` +
     `<hr class="${ctx.cls.hr}"/><ol class="${ctx.cls.ol}">${items}</ol></section>`
-  )
+  );
 }
 
 /* ----------------------------------------------------------------- public */
 
 export function renderMarkdown(text: string, options: MarkdownOptions = {}): string {
-  if (!text) return ''
+  if (!text) return '';
 
   const ctx: Ctx = {
     opts: {
@@ -777,22 +781,22 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
     footnoteDefs: new Map(),
     footnoteOrder: [],
     slugs: new Map(),
-  }
+  };
 
   const normalized = escapeHtml(
     String(text)
       .replace(/\r\n?/g, '\n')
       .replace(/\t/g, '    ')
       .replace(/\u0000/g, ''),
-  )
+  );
 
-  const lines = extractDefinitions(normalized.split('\n'), ctx)
-  return parseBlocks(lines, ctx) + renderFootnotes(ctx)
+  const lines = extractDefinitions(normalized.split('\n'), ctx);
+  return parseBlocks(lines, ctx) + renderFootnotes(ctx);
 }
 
 /** Render a single line/fragment without block wrappers (labels, titles, …). */
 export function renderMarkdownInline(text: string, options: MarkdownOptions = {}): string {
-  if (!text) return ''
+  if (!text) return '';
   const ctx: Ctx = {
     opts: {
       breaks: options.breaks ?? false,
@@ -804,8 +808,8 @@ export function renderMarkdownInline(text: string, options: MarkdownOptions = {}
     footnoteDefs: new Map(),
     footnoteOrder: [],
     slugs: new Map(),
-  }
-  return renderInline(escapeHtml(String(text).replace(/\r\n?/g, '\n')), ctx)
+  };
+  return renderInline(escapeHtml(String(text).replace(/\r\n?/g, '\n')), ctx);
 }
 
-export default renderMarkdown
+export default renderMarkdown;

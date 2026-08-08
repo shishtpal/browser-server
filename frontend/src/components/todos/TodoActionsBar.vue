@@ -292,46 +292,46 @@
 </template>
 
 <script setup lang="ts">
-import type { TodoView, TodoPriority, TodoSortField, TodoFilter, DueDateFilter } from '../../types'
-import { computed } from 'vue'
-import FilterPill from '../ui/FilterPill.vue'
-import TodoViewToggle from './TodoViewToggle.vue'
-import TodoSortBar from './TodoSortBar.vue'
+import type { TodoView, TodoPriority, TodoSortField, TodoFilter, DueDateFilter } from '../../types';
+import { computed } from 'vue';
+import FilterPill from '../ui/FilterPill.vue';
+import TodoViewToggle from './TodoViewToggle.vue';
+import TodoSortBar from './TodoSortBar.vue';
 
 const allPriorityOptions: { value: TodoPriority; label: string }[] = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
   { value: 'urgent', label: 'Urgent' },
-]
+];
 
 defineProps<{
-  filters: { label: string; value: TodoFilter }[]
-  allTags: string[]
-  sortField: TodoSortField
-  sortDir: 'asc' | 'desc'
-}>()
+  filters: { label: string; value: TodoFilter }[];
+  allTags: string[];
+  sortField: TodoSortField;
+  sortDir: 'asc' | 'desc';
+}>();
 
-const view = defineModel<TodoView>('view', { required: true })
-const activeFilter = defineModel<TodoFilter>('activeFilter', { required: true })
-const selectedPriority = defineModel<TodoPriority | null>('selectedPriority', { required: true })
-const dueDateFilter = defineModel<DueDateFilter>('dueDateFilter', { required: true })
-const selectedTag = defineModel<string | null>('selectedTag', { required: true })
+const view = defineModel<TodoView>('view', { required: true });
+const activeFilter = defineModel<TodoFilter>('activeFilter', { required: true });
+const selectedPriority = defineModel<TodoPriority | null>('selectedPriority', { required: true });
+const dueDateFilter = defineModel<DueDateFilter>('dueDateFilter', { required: true });
+const selectedTag = defineModel<string | null>('selectedTag', { required: true });
 
 defineEmits<{
-  'new-todo': []
-  'update:sortField': [value: TodoSortField]
-  'toggle-dir': []
-  'clear-all': []
-}>()
+  'new-todo': [];
+  'update:sortField': [value: TodoSortField];
+  'toggle-dir': [];
+  'clear-all': [];
+}>();
 
 const dueDateLabel = computed(() => {
-  if (!dueDateFilter.value) return ''
+  if (!dueDateFilter.value) return '';
   const labels: Record<string, string> = {
     overdue: 'Overdue',
     today: 'Today',
     this_week: 'This week',
-  }
-  return labels[dueDateFilter.value] || ''
-})
+  };
+  return labels[dueDateFilter.value] || '';
+});
 </script>

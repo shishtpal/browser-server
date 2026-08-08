@@ -162,25 +162,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount, useTemplateRef } from 'vue'
-import { useUser } from '../composables/useUser'
-import { useHistory } from '../composables/useHistory'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import UserSelector from './ui/UserSelector.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import EmptyState from './ui/EmptyState.vue'
-import InputField from './ui/InputField.vue'
-import Button from './ui/Button.vue'
-import SelectUserPrompt from './ui/SelectUserPrompt.vue'
-import HistoryTableRow from './history/HistoryTableRow.vue'
-import HistoryCard from './history/HistoryCard.vue'
-import HistoryImport from './history/HistoryImport.vue'
+import { ref, watch, onBeforeUnmount, useTemplateRef } from 'vue';
+import { useUser } from '../composables/useUser';
+import { useHistory } from '../composables/useHistory';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import UserSelector from './ui/UserSelector.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import EmptyState from './ui/EmptyState.vue';
+import InputField from './ui/InputField.vue';
+import Button from './ui/Button.vue';
+import SelectUserPrompt from './ui/SelectUserPrompt.vue';
+import HistoryTableRow from './history/HistoryTableRow.vue';
+import HistoryCard from './history/HistoryCard.vue';
+import HistoryImport from './history/HistoryImport.vue';
 
-const { users, currentUserId, setUser, clearUser } = useUser()
+const { users, currentUserId, setUser, clearUser } = useUser();
 
-const selectedUserId = ref<number | null>(currentUserId.value)
+const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
   historyEntries,
@@ -198,46 +198,46 @@ const {
   loadMore,
   addEntry,
   removeEntry,
-} = useHistory(selectedUserId)
+} = useHistory(selectedUserId);
 
-const scrollSentinel = useTemplateRef<HTMLDivElement>('scrollSentinel')
-let observer: IntersectionObserver | null = null
+const scrollSentinel = useTemplateRef<HTMLDivElement>('scrollSentinel');
+let observer: IntersectionObserver | null = null;
 
 function setupObserver() {
-  observer?.disconnect()
-  if (!scrollSentinel.value) return
+  observer?.disconnect();
+  if (!scrollSentinel.value) return;
   observer = new IntersectionObserver(
     (entries) => {
       if (entries[0]?.isIntersecting && hasMore.value && !isLoadingMore.value) {
-        loadMore()
+        loadMore();
       }
     },
     { rootMargin: '200px' },
-  )
-  observer.observe(scrollSentinel.value)
+  );
+  observer.observe(scrollSentinel.value);
 }
 
 watch(scrollSentinel, () => {
-  setupObserver()
-})
+  setupObserver();
+});
 
 onBeforeUnmount(() => {
-  observer?.disconnect()
-})
+  observer?.disconnect();
+});
 
 watch(selectedUserId, (id) => {
   if (id) {
-    setUser(id)
-    loadHistory()
+    setUser(id);
+    loadHistory();
   } else {
-    clearUser()
-    historyEntries.value = []
-    urlFilter.value = ''
+    clearUser();
+    historyEntries.value = [];
+    urlFilter.value = '';
   }
-})
+});
 
 if (selectedUserId.value) {
-  setUser(selectedUserId.value)
-  loadHistory()
+  setUser(selectedUserId.value);
+  loadHistory();
 }
 </script>

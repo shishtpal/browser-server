@@ -353,33 +353,33 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo, TodoView, TodoPriority, CreateTodoInput } from '../types'
-import { ref, watch, computed } from 'vue'
-import { useLocalStorage } from '@vueuse/core'
-import draggable from 'vuedraggable'
-import { useUser } from '../composables/useUser'
-import { useTodos } from '../composables/useTodos'
-import Button from './ui/Button.vue'
-import UserSelector from './ui/UserSelector.vue'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import EmptyState from './ui/EmptyState.vue'
-import SelectUserPrompt from './ui/SelectUserPrompt.vue'
-import Modal from './ui/Modal.vue'
-import TodoTableRow from './todos/TodoTableRow.vue'
-import TodoCard from './todos/TodoCard.vue'
-import TodoKanbanBoard from './todos/TodoKanbanBoard.vue'
-import TodoActionsBar from './todos/TodoActionsBar.vue'
-import TodoGridView from './todos/TodoGridView.vue'
-import TodoSubtaskList from './todos/TodoSubtaskList.vue'
-import CalendarTodoModal from './calendar/CalendarTodoModal.vue'
-import { useModal } from '@browser-server/shared-modal'
-import { getScreenshotUrl, reorderTodos } from '../lib/api'
+import type { Todo, TodoView, TodoPriority, CreateTodoInput } from '../types';
+import { ref, watch, computed } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
+import draggable from 'vuedraggable';
+import { useUser } from '../composables/useUser';
+import { useTodos } from '../composables/useTodos';
+import Button from './ui/Button.vue';
+import UserSelector from './ui/UserSelector.vue';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import EmptyState from './ui/EmptyState.vue';
+import SelectUserPrompt from './ui/SelectUserPrompt.vue';
+import Modal from './ui/Modal.vue';
+import TodoTableRow from './todos/TodoTableRow.vue';
+import TodoCard from './todos/TodoCard.vue';
+import TodoKanbanBoard from './todos/TodoKanbanBoard.vue';
+import TodoActionsBar from './todos/TodoActionsBar.vue';
+import TodoGridView from './todos/TodoGridView.vue';
+import TodoSubtaskList from './todos/TodoSubtaskList.vue';
+import CalendarTodoModal from './calendar/CalendarTodoModal.vue';
+import { useModal } from '@browser-server/shared-modal';
+import { getScreenshotUrl, reorderTodos } from '../lib/api';
 
-const { users, currentUserId, setUser, clearUser } = useUser()
-const selectedUserId = ref<number | null>(currentUserId.value)
+const { users, currentUserId, setUser, clearUser } = useUser();
+const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
   todos,
@@ -408,200 +408,200 @@ const {
   tags,
   sort,
   expandedTodoIds,
-} = useTodos(selectedUserId)
+} = useTodos(selectedUserId);
 
 // Vue only unwraps refs exposed as top-level template bindings. Keeping these
 // nested would make v-for iterate the ComputedRef object instead of its value.
-const { selectedPriority } = priority
-const { dueDateFilter } = dueDate
-const { allTags, selectedTag } = tags
-const { sortField, sortDir, setSort, toggleDir: toggleSortDir } = sort
+const { selectedPriority } = priority;
+const { dueDateFilter } = dueDate;
+const { allTags, selectedTag } = tags;
+const { sortField, sortDir, setSort, toggleDir: toggleSortDir } = sort;
 
 function clearAllFilters() {
-  selectedPriority.value = null
-  dueDateFilter.value = null
-  selectedTag.value = null
+  selectedPriority.value = null;
+  dueDateFilter.value = null;
+  selectedTag.value = null;
 }
 
 watch(selectedUserId, (id) => {
   if (id) {
-    setUser(id)
-    loadTodos()
+    setUser(id);
+    loadTodos();
   } else {
-    clearUser()
-    todos.value = []
+    clearUser();
+    todos.value = [];
   }
-})
+});
 
 if (selectedUserId.value) {
-  setUser(selectedUserId.value)
-  loadTodos()
+  setUser(selectedUserId.value);
+  loadTodos();
 }
 
-const view = useLocalStorage<TodoView>(`bs.todos.view`, 'list')
+const view = useLocalStorage<TodoView>(`bs.todos.view`, 'list');
 
-const listTodos = ref<Todo[]>([])
+const listTodos = ref<Todo[]>([]);
 
 watch(
   displayedTodos,
   (val) => {
-    listTodos.value = [...val]
+    listTodos.value = [...val];
   },
   { immediate: true },
-)
+);
 
 async function onListDragEnd(event: any) {
-  if (event.oldIndex === event.newIndex) return
-  await reorderTodos(listTodos.value.map((t, idx) => ({ id: t.id, position: idx })))
-  await loadTodos()
+  if (event.oldIndex === event.newIndex) return;
+  await reorderTodos(listTodos.value.map((t, idx) => ({ id: t.id, position: idx })));
+  await loadTodos();
 }
 
 // ── Native HTML5 drag for desktop table rows ──────────────────────────
-const dragId = ref<number | null>(null)
-const dragAllowed = ref(false)
+const dragId = ref<number | null>(null);
+const dragAllowed = ref(false);
 
 function onRowMouseDown(event: MouseEvent) {
   // Allow drag only when initiated from the drag handle
-  dragAllowed.value = !!(event.target && (event.target as HTMLElement).closest('.drag-handle'))
+  dragAllowed.value = !!(event.target && (event.target as HTMLElement).closest('.drag-handle'));
 }
 
 function onRowDragStart(event: DragEvent, id: number) {
   if (!dragAllowed.value) {
-    event.preventDefault()
-    return
+    event.preventDefault();
+    return;
   }
-  dragId.value = id
+  dragId.value = id;
   if (event.dataTransfer) {
-    event.dataTransfer.setData('text/plain', String(id))
-    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(id));
+    event.dataTransfer.effectAllowed = 'move';
   }
 }
 
 function onRowDragOver(event: DragEvent, id: number) {
-  if (dragId.value === null || dragId.value === id) return
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  if (dragId.value === null || dragId.value === id) return;
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
 }
 
 function onRowDrop(_event: DragEvent, id: number) {
   if (dragId.value === null || dragId.value === id) {
-    dragId.value = null
-    return
+    dragId.value = null;
+    return;
   }
-  const fromIdx = listTodos.value.findIndex((t) => t.id === dragId.value)
-  const toIdx = listTodos.value.findIndex((t) => t.id === id)
-  dragId.value = null
-  if (fromIdx === -1 || toIdx === -1) return
-  const moved = listTodos.value.splice(fromIdx, 1)[0]
-  listTodos.value.splice(toIdx, 0, moved)
-  reorderTodos(listTodos.value.map((t, idx) => ({ id: t.id, position: idx }))).then(loadTodos)
+  const fromIdx = listTodos.value.findIndex((t) => t.id === dragId.value);
+  const toIdx = listTodos.value.findIndex((t) => t.id === id);
+  dragId.value = null;
+  if (fromIdx === -1 || toIdx === -1) return;
+  const moved = listTodos.value.splice(fromIdx, 1)[0];
+  listTodos.value.splice(toIdx, 0, moved);
+  reorderTodos(listTodos.value.map((t, idx) => ({ id: t.id, position: idx }))).then(loadTodos);
 }
 
 function onRowDragEnd() {
-  dragId.value = null
-  dragAllowed.value = false
+  dragId.value = null;
+  dragAllowed.value = false;
 }
 
 function toggleSubtaskRow(id: number) {
-  const next = new Set(expandedTodoIds.value)
-  if (next.has(id)) next.delete(id)
-  else next.add(id)
-  expandedTodoIds.value = next
+  const next = new Set(expandedTodoIds.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  expandedTodoIds.value = next;
 }
 
 function onSubtaskToggled(updated: Todo) {
-  const parentIndex = todos.value.findIndex((todo) => todo.id === updated.parent_id)
-  if (parentIndex === -1) return
-  const parent = todos.value[parentIndex]
+  const parentIndex = todos.value.findIndex((todo) => todo.id === updated.parent_id);
+  if (parentIndex === -1) return;
+  const parent = todos.value[parentIndex];
   todos.value[parentIndex] = {
     ...parent,
     subtasks: (parent.subtasks || []).map((subtask) =>
       subtask.id === updated.id ? updated : subtask,
     ),
-  }
+  };
 }
 
 async function onKanbanReorder(items: { id: number; position: number }[]) {
-  await reorderTodos(items)
-  await loadTodos()
+  await reorderTodos(items);
+  await loadTodos();
 }
 
 async function onKanbanPriorityChange(payload: {
-  todo: Todo
-  newPriority: string
-  items: { id: number; position: number }[]
+  todo: Todo;
+  newPriority: string;
+  items: { id: number; position: number }[];
 }) {
-  await reorderTodos(payload.items)
-  await updateTodoItem(payload.todo.id, { priority: payload.newPriority as TodoPriority })
+  await reorderTodos(payload.items);
+  await updateTodoItem(payload.todo.id, { priority: payload.newPriority as TodoPriority });
 }
 
 const screenshotModal = ref<{ open: boolean; url: string; title: string }>({
   open: false,
   url: '',
   title: '',
-})
+});
 
 function openScreenshot(todo: Todo) {
   screenshotModal.value = {
     open: true,
     url: getScreenshotUrl(todo.id),
     title: todo.title,
-  }
+  };
 }
 
 // ── New / Edit todo modal ──────────────────────────────────────────────
-const modalOpen = ref(false)
-const editingTodo = ref<Todo | null>(null)
-const modalDueDate = ref('')
+const modalOpen = ref(false);
+const editingTodo = ref<Todo | null>(null);
+const modalDueDate = ref('');
 
 function openCreateModal() {
-  if (!selectedUserId.value) return
-  editingTodo.value = null
-  modalDueDate.value = ''
-  modalOpen.value = true
+  if (!selectedUserId.value) return;
+  editingTodo.value = null;
+  modalDueDate.value = '';
+  modalOpen.value = true;
 }
 
 function openEditModal(todo: Todo) {
-  editingTodo.value = todo
-  modalDueDate.value = todo.start_date || ''
-  modalOpen.value = true
+  editingTodo.value = todo;
+  modalDueDate.value = todo.start_date || '';
+  modalOpen.value = true;
 }
 
 function closeModal() {
-  modalOpen.value = false
-  editingTodo.value = null
+  modalOpen.value = false;
+  editingTodo.value = null;
 }
 
 async function handleCreate(data: CreateTodoInput) {
-  await addTodo(data)
+  await addTodo(data);
 }
 
 async function handleUpdate(id: number, data: Partial<Todo>) {
-  await updateTodoItem(id, data)
+  await updateTodoItem(id, data);
 }
 
 async function handleDelete() {
-  if (!editingTodo.value) return
-  const id = editingTodo.value.id
-  closeModal()
-  confirmDelete(id)
+  if (!editingTodo.value) return;
+  const id = editingTodo.value.id;
+  closeModal();
+  confirmDelete(id);
 }
 
 // ── Delete confirmation (imperative modal) ────────────────────────────
-const { confirmDelete: modalConfirmDelete } = useModal()
+const { confirmDelete: modalConfirmDelete } = useModal();
 
 async function confirmDelete(id: number) {
   const confirmed = await modalConfirmDelete(
     'Delete this todo?',
     'This action cannot be undone. The todo and its data will be permanently removed.',
-  )
+  );
   if (confirmed) {
-    await removeTodo(id)
+    await removeTodo(id);
   }
 }
 
 const resultSummary = computed(() => {
-  const count = displayedTodos.value.length
-  if (!searchQuery.value.trim()) return `${count} ${count === 1 ? 'todo' : 'todos'}`
-  return `${count} ${count === 1 ? 'result' : 'results'}`
-})
+  const count = displayedTodos.value.length;
+  if (!searchQuery.value.trim()) return `${count} ${count === 1 ? 'todo' : 'todos'}`;
+  return `${count} ${count === 1 ? 'result' : 'results'}`;
+});
 </script>

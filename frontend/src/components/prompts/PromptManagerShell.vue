@@ -20,15 +20,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue';
 
-defineProps<{ open: boolean }>()
-defineEmits<{ close: [] }>()
+defineProps<{ open: boolean }>();
+defineEmits<{ close: [] }>();
 
-const mounted = ref(false)
+const mounted = ref(false);
 onMounted(() => {
-  mounted.value = true
-})
+  mounted.value = true;
+});
 </script>
 
 <style scoped>

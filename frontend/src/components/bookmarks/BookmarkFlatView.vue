@@ -66,7 +66,8 @@
             <td class="truncate px-3 py-3">
               <span
                 class="block truncate text-sm font-black text-slate-900 transition-colors dark:text-white"
-                :title="b.title">
+                :title="b.title"
+              >
                 {{ b.title }}
               </span>
               <span class="block truncate text-[10px] text-cyan-600 dark:text-cyan-400">{{
@@ -82,7 +83,7 @@
                 :title="b.url"
               >
                 {{ b.url }}
-            </a>
+              </a>
             </td>
             <td class="truncate px-3 py-3">
               <span
@@ -90,7 +91,7 @@
                 :title="b.description"
               >
                 {{ b.description || '—' }}
-            </span>
+              </span>
             </td>
             <td class="truncate px-3 py-3">
               <span
@@ -222,18 +223,18 @@
 </template>
 
 <script setup lang="ts">
-import type { BookmarkResponse } from '../../types'
-import { getInitial, formatHost } from '../../composables/useBookmarks'
+import type { BookmarkResponse } from '../../types';
+import { getInitial, formatHost } from '../../composables/useBookmarks';
 
 interface Props {
-  bookmarks: BookmarkResponse[]
+  bookmarks: BookmarkResponse[];
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 const emit = defineEmits<{
-  edit: [bookmark: BookmarkResponse]
-  delete: [id: number]
-  filterTag: [tag: string]
-}>()
+  edit: [bookmark: BookmarkResponse];
+  delete: [id: number];
+  filterTag: [tag: string];
+}>();
 </script>

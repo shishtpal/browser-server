@@ -118,86 +118,86 @@
 </template>
 
 <script setup lang="ts">
-import type { PromptResponse } from '../../types'
-import { computed, nextTick, ref, watch, type PropType } from 'vue'
+import type { PromptResponse } from '../../types';
+import { computed, nextTick, ref, watch, type PropType } from 'vue';
 
 const props = defineProps({
   results: { type: Array as PropType<PromptResponse[]>, default: () => [] },
   loading: { type: Boolean, default: false },
   query: { type: String, default: '' },
-})
+});
 
 const emit = defineEmits<{
-  select: [prompt: PromptResponse]
-}>()
+  select: [prompt: PromptResponse];
+}>();
 
 /* ───── active index & keyboard nav ───── */
-const activeIndex = ref(0)
-const listRef = ref<HTMLElement | null>(null)
-const itemEls = ref<Record<number, HTMLElement>>({})
+const activeIndex = ref(0);
+const listRef = ref<HTMLElement | null>(null);
+const itemEls = ref<Record<number, HTMLElement>>({});
 
 function setItemRef(index: number, el: any) {
-  if (el) itemEls.value[index] = el as HTMLElement
+  if (el) itemEls.value[index] = el as HTMLElement;
 }
 
 /* Reset when results change */
 watch(
   () => props.results.length,
   () => {
-    activeIndex.value = 0
+    activeIndex.value = 0;
   },
-)
+);
 
 /* Scroll active item into view */
 watch(activeIndex, (idx) => {
   nextTick(() => {
-    itemEls.value[idx]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  })
-})
+    itemEls.value[idx]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+});
 
 /* ───── grouping by first tag ───── */
 const grouped = computed(() => {
-  const map = new Map<string, PromptResponse[]>()
+  const map = new Map<string, PromptResponse[]>();
   for (const p of props.results) {
-    const key = p.tags?.[0] || '__untagged__'
-    const list = map.get(key) || []
-    list.push(p)
-    map.set(key, list)
+    const key = p.tags?.[0] || '__untagged__';
+    const list = map.get(key) || [];
+    list.push(p);
+    map.set(key, list);
   }
   return Array.from(map.entries()).map(([tagName, items]) => ({
     key: tagName,
     name: tagName === '__untagged__' ? '' : tagName,
     items,
-  }))
-})
+  }));
+});
 
 function globalIndex(group: { items: PromptResponse[] }, idx: number): number {
-  let acc = 0
+  let acc = 0;
   for (const g of grouped.value) {
-    if (g === group) return acc + idx
-    acc += g.items.length
+    if (g === group) return acc + idx;
+    acc += g.items.length;
   }
-  return acc
+  return acc;
 }
 
-const flatLength = computed(() => props.results.length)
+const flatLength = computed(() => props.results.length);
 
 /* ───── actions ───── */
 function choose(prompt: PromptResponse) {
-  emit('select', prompt)
+  emit('select', prompt);
 }
 
 function move(delta: number) {
-  if (!flatLength.value) return
-  activeIndex.value = (activeIndex.value + delta + flatLength.value) % flatLength.value
+  if (!flatLength.value) return;
+  activeIndex.value = (activeIndex.value + delta + flatLength.value) % flatLength.value;
 }
 
 function activate() {
-  const prompt = props.results[activeIndex.value]
-  if (prompt) choose(prompt)
+  const prompt = props.results[activeIndex.value];
+  if (prompt) choose(prompt);
 }
 
-defineExpose({ move, activate })
+defineExpose({ move, activate });
 </script>
 
 <style scoped>

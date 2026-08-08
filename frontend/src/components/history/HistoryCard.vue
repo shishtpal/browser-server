@@ -11,7 +11,8 @@
           <span
             class="block truncate text-sm font-black text-slate-900 transition-colors dark:text-white"
           >
-            {{ entry.title }}</span>
+            {{ entry.title }}</span
+          >
           <span
             class="mt-0.5 block truncate text-xs font-semibold text-blue-600 transition-colors hover:underline dark:text-blue-400"
           >
@@ -44,16 +45,14 @@
 </template>
 
 <script setup lang="ts">
-import type { History } from '../../types'
-import { formatDate, formatDuration } from '../../lib/utils'
+import type { History } from '../../types';
+import { formatDate, formatDuration } from '../../lib/utils';
 
-interface Props {
-  entry: History
-}
-
-defineProps<Props>()
+defineProps<{
+  entry: History;
+}>();
 
 const emit = defineEmits<{
-  delete: [id: number]
-}>()
+  delete: [id: number];
+}>();
 </script>

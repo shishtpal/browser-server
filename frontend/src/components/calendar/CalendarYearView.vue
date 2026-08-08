@@ -79,46 +79,46 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
-import type { Todo } from '../../types'
-import YearMonthCard from './YearMonthCard.vue'
+import type { Todo } from '../../types';
+import { nextTick, ref } from 'vue';
+import YearMonthCard from './YearMonthCard.vue';
 
 const props = defineProps<{
-  year: number
-  todos: Todo[]
-}>()
+  year: number;
+  todos: Todo[];
+}>();
 
 const emit = defineEmits<{
-  (e: 'monthClick', month: number): void
-  (e: 'dayClick', date: string): void
-  (e: 'yearChange', year: number): void
-}>()
+  (e: 'monthClick', month: number): void;
+  (e: 'dayClick', date: string): void;
+  (e: 'yearChange', year: number): void;
+}>();
 
-const editing = ref(false)
-const draft = ref('')
-const yearInput = ref<HTMLInputElement | null>(null)
+const editing = ref(false);
+const draft = ref('');
+const yearInput = ref<HTMLInputElement | null>(null);
 
 function startEdit() {
-  draft.value = String(props.year)
-  editing.value = true
+  draft.value = String(props.year);
+  editing.value = true;
   nextTick(() => {
-    yearInput.value?.focus()
-    yearInput.value?.select()
-  })
+    yearInput.value?.focus();
+    yearInput.value?.select();
+  });
 }
 
 function commit() {
-  if (!editing.value) return
-  const parsed = parseInt(draft.value, 10)
-  editing.value = false
-  if (Number.isNaN(parsed)) return
-  const clamped = Math.min(9999, Math.max(1900, parsed))
+  if (!editing.value) return;
+  const parsed = parseInt(draft.value, 10);
+  editing.value = false;
+  if (Number.isNaN(parsed)) return;
+  const clamped = Math.min(9999, Math.max(1900, parsed));
   if (clamped !== props.year) {
-    emit('yearChange', clamped)
+    emit('yearChange', clamped);
   }
 }
 
 function cancel() {
-  editing.value = false
+  editing.value = false;
 }
 </script>

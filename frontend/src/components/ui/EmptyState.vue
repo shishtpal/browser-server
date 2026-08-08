@@ -74,19 +74,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 interface Props {
-  title: string
-  description: string
-  icon?: 'bookmark' | 'search' | 'clock' | 'lock' | 'users' | 'chart' | 'default'
-  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
+  title: string;
+  description: string;
+  icon?: 'bookmark' | 'search' | 'clock' | 'lock' | 'users' | 'chart' | 'default';
+  color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   icon: 'default',
   color: 'indigo',
-})
+});
 
 const bgColors: Record<string, string> = {
   indigo: 'bg-indigo-50 dark:bg-indigo-900/20',
@@ -95,7 +95,7 @@ const bgColors: Record<string, string> = {
   emerald: 'bg-emerald-50 dark:bg-emerald-900/20',
   amber: 'bg-amber-50 dark:bg-amber-900/20',
   rose: 'bg-rose-50 dark:bg-rose-900/20',
-}
+};
 
 const textColors: Record<string, string> = {
   indigo: 'text-indigo-500 dark:text-indigo-400',
@@ -104,8 +104,8 @@ const textColors: Record<string, string> = {
   emerald: 'text-emerald-500 dark:text-emerald-400',
   amber: 'text-amber-500 dark:text-amber-400',
   rose: 'text-rose-500 dark:text-rose-400',
-}
+};
 
-const iconBgClass = computed(() => bgColors[props.color] ?? bgColors.indigo)
-const iconColorClass = computed(() => textColors[props.color] ?? textColors.indigo)
+const iconBgClass = computed(() => bgColors[props.color] ?? bgColors.indigo);
+const iconColorClass = computed(() => textColors[props.color] ?? textColors.indigo);
 </script>

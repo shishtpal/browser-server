@@ -31,7 +31,10 @@
               <span class="font-semibold text-slate-600 dark:text-slate-300">{{
                 String(type).replace('_', ' ')
               }}</span>
-              <span class="rounded bg-slate-100 px-2 py-0.5 font-black text-slate-900 dark:bg-slate-700 dark:text-white">{{ count }}</span>
+              <span
+                class="rounded bg-slate-100 px-2 py-0.5 font-black text-slate-900 dark:bg-slate-700 dark:text-white"
+                >{{ count }}</span
+              >
             </div>
             <p v-if="!Object.keys(stats.by_type).length" class="text-xs text-slate-400">
               No questions yet.
@@ -56,9 +59,10 @@
               <span class="font-semibold text-slate-600 capitalize dark:text-slate-300">{{
                 level
               }}</span>
-              <span class="rounded bg-slate-100 px-2 py-0.5 font-black text-slate-900 dark:bg-slate-700 dark:text-white">{{
-                stats.by_difficulty[level] ?? 0
-              }}</span>
+              <span
+                class="rounded bg-slate-100 px-2 py-0.5 font-black text-slate-900 dark:bg-slate-700 dark:text-white"
+                >{{ stats.by_difficulty[level] ?? 0 }}</span
+              >
             </div>
           </div>
         </div>
@@ -72,34 +76,34 @@
             >
               By tag
             </h3>
-            <span
-              v-if="sortedTags.length"
-              class="text-[10px] font-semibold text-slate-400"
-            >
+            <span v-if="sortedTags.length" class="text-[10px] font-semibold text-slate-400">
               Sorted by count
             </span>
           </div>
 
           <div
             v-if="sortedTags.length"
-            class="max-h-40 space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600"
+            class="max-h-40 scrollbar-thin scrollbar-thumb-slate-300 space-y-1 overflow-y-auto pr-1 dark:scrollbar-thumb-slate-600"
           >
             <div
               v-for="item in sortedTags"
               :key="item.tag"
               class="flex items-center justify-between py-1 text-xs"
             >
-              <span class="truncate font-semibold text-slate-600 dark:text-slate-300" :title="item.tag">
+              <span
+                class="truncate font-semibold text-slate-600 dark:text-slate-300"
+                :title="item.tag"
+              >
                 {{ item.tag }}
               </span>
-              <span class="ml-2 shrink-0 rounded bg-violet-50 px-2 py-0.5 font-black text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+              <span
+                class="ml-2 shrink-0 rounded bg-violet-50 px-2 py-0.5 font-black text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+              >
                 {{ item.count }}
               </span>
             </div>
           </div>
-          <p v-else class="text-xs text-slate-400">
-            No tags yet.
-          </p>
+          <p v-else class="text-xs text-slate-400">No tags yet.</p>
         </div>
       </div>
 
@@ -123,10 +127,10 @@
             v-for="paper in recentPapers"
             :key="paper.id"
             type="button"
-            class="flex w-full flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 rounded-lg border border-gray-100 p-3 text-left transition hover:border-violet-300 hover:bg-violet-50/50 dark:border-slate-700 dark:hover:border-violet-700 dark:hover:bg-violet-900/10"
+            class="flex w-full flex-col justify-between gap-1 rounded-lg border border-gray-100 p-3 text-left transition hover:border-violet-300 hover:bg-violet-50/50 sm:flex-row sm:items-center sm:gap-2 dark:border-slate-700 dark:hover:border-violet-700 dark:hover:bg-violet-900/10"
             @click="$emit('openPaper', paper.id)"
           >
-            <span class="text-xs font-bold text-slate-700 truncate dark:text-slate-200">
+            <span class="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
               {{ paper.title }}
             </span>
             <span class="shrink-0 text-[11px] font-medium text-slate-400">
@@ -140,27 +144,27 @@
 </template>
 
 <script setup lang="ts">
-import type { QuestionPaper, QuizStats } from '../../types'
-import { computed } from 'vue'
-import StatCard from '../ui/StatCard.vue'
-import EmptyState from '../ui/EmptyState.vue'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
+import type { QuestionPaper, QuizStats } from '../../types';
+import { computed } from 'vue';
+import StatCard from '../ui/StatCard.vue';
+import EmptyState from '../ui/EmptyState.vue';
+import LoadingSpinner from '../ui/LoadingSpinner.vue';
 
 const props = defineProps<{
-  stats: QuizStats | null
-  papers: QuestionPaper[]
-}>()
+  stats: QuizStats | null;
+  papers: QuestionPaper[];
+}>();
 
-defineEmits<{ openPaper: [id: number] }>()
+defineEmits<{ openPaper: [id: number] }>();
 
-const recentPapers = computed(() => props.papers.slice(0, 5))
+const recentPapers = computed(() => props.papers.slice(0, 5));
 
 const sortedTags = computed(() => {
-  if (!props.stats?.by_tags) return []
+  if (!props.stats?.by_tags) return [];
   return Object.entries(props.stats.by_tags)
     .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
-})
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+});
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString()
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString();
 </script>

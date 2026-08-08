@@ -15,20 +15,20 @@
 </template>
 
 <script setup lang="ts">
-import type { FlatTreeEntry } from '../../composables/useBookmarkTree'
-import type { BookmarkResponse } from '../../types'
-import BookmarkTreeNode from './BookmarkTreeNode.vue'
+import type { BookmarkResponse } from '../../types';
+import type { FlatTreeEntry } from '../../composables/useBookmarkTree';
+import BookmarkTreeNode from './BookmarkTreeNode.vue';
 
 interface Props {
-  nodes: FlatTreeEntry[]
+  nodes: FlatTreeEntry[];
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 const emit = defineEmits<{
-  toggleFolder: [key: string]
-  edit: [bookmark: BookmarkResponse]
-  delete: [id: number]
-  filterTag: [tag: string]
-}>()
+  toggleFolder: [key: string];
+  edit: [bookmark: BookmarkResponse];
+  delete: [id: number];
+  filterTag: [tag: string];
+}>();
 </script>

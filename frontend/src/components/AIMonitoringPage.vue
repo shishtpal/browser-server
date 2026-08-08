@@ -208,18 +208,18 @@
 </template>
 
 <script setup lang="ts">
-import type { AIRequestLog } from '@browser-server/shared-types'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useAIMonitoring } from '../composables/useAIMonitoring'
-import AIRequestDetail from './ai-monitoring/AIRequestDetail.vue'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import Button from './ui/Button.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import EmptyState from './ui/EmptyState.vue'
+import type { AIRequestLog } from '@browser-server/shared-types';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useAIMonitoring } from '../composables/useAIMonitoring';
+import AIRequestDetail from './ai-monitoring/AIRequestDetail.vue';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import Button from './ui/Button.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import EmptyState from './ui/EmptyState.vue';
 
-const monitor = useAIMonitoring()
+const monitor = useAIMonitoring();
 
 const {
   metrics,
@@ -238,65 +238,73 @@ const {
   loadMore,
   applyIdFilters,
   clearFilters,
-} = monitor
+} = monitor;
 
-const selected = ref<AIRequestLog | null>(null)
+const selected = ref<AIRequestLog | null>(null);
 
-const headings = ['Timestamp', 'Source', 'Provider / model', 'Status', 'Latency', 'Tokens', 'Tools']
+const headings = [
+  'Timestamp',
+  'Source',
+  'Provider / model',
+  'Status',
+  'Latency',
+  'Tokens',
+  'Tools',
+];
 
 const selectedIndex = computed(() => {
-  if (!selected.value) return -1
-  return logs.value.findIndex((log) => log.id === selected.value?.id)
-})
+  if (!selected.value) return -1;
+  return logs.value.findIndex((log) => log.id === selected.value?.id);
+});
 
-const canGoPrev = computed(() => selectedIndex.value > 0)
+const canGoPrev = computed(() => selectedIndex.value > 0);
 
 const canGoNext = computed(
   () => selectedIndex.value >= 0 && selectedIndex.value < logs.value.length - 1,
-)
+);
 
 const moveSelected = (direction: -1 | 1) => {
-  if (!selected.value) return
-  const index = selectedIndex.value
-  if (index < 0) return
-  const nextIndex = index + direction
-  if (nextIndex < 0 || nextIndex >= logs.value.length) return
-  selected.value = logs.value[nextIndex]
-}
+  if (!selected.value) return;
+  const index = selectedIndex.value;
+  if (index < 0) return;
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= logs.value.length) return;
+  selected.value = logs.value[nextIndex];
+};
 
 const toolActivity = computed(
   () =>
     (metrics.value?.tool_successes || 0) +
     (metrics.value?.tool_errors || 0) +
     (metrics.value?.tool_rejections || 0),
-)
+);
 const errorRate = computed(() =>
   metrics.value?.requests
     ? ((metrics.value.errors / metrics.value.requests) * 100).toFixed(1)
     : '0.0',
-)
+);
 
-const formatNumber = (value?: number) => (value || 0).toLocaleString()
+const formatNumber = (value?: number) => (value || 0).toLocaleString();
 const formatOptionalNumber = (value?: number) =>
-  value === undefined ? '—' : value.toLocaleString()
-const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : 'No activity')
+  value === undefined ? '—' : value.toLocaleString();
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : 'No activity');
 const formatDuration = (ms: number) =>
-  ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`
-const sourceLabel = (value: string) => (value === 'task_agent' ? 'Task agent' : 'Chat')
+  ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
+const sourceLabel = (value: string) => (value === 'task_agent' ? 'Task agent' : 'Chat');
 const statusClass = (value: string) =>
   value === 'success'
     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
     : value === 'cancelled'
       ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-      : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-const tokenChanged = () => refresh()
+      : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300';
+const tokenChanged = () => refresh();
 
 onMounted(() => {
-  refresh()
-  window.addEventListener('api-token-changed', tokenChanged)
-})
+  refresh();
+  window.addEventListener('api-token-changed', tokenChanged);
+});
 
-onBeforeUnmount(() => window.removeEventListener('api-token-changed', tokenChanged))
+onBeforeUnmount(() => window.removeEventListener('api-token-changed', tokenChanged));
 </script>
 
 <style scoped>

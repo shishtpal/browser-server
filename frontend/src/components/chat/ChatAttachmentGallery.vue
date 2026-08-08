@@ -418,149 +418,149 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import type { AIAttachmentSummary } from '@browser-server/shared-types'
-import Modal from '../ui/Modal.vue'
-import { getAIImageAttachmentUrl, listAIAttachments, renameAIImageAttachment } from '../../lib/api'
+import type { AIAttachmentSummary } from '@browser-server/shared-types';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import Modal from '../ui/Modal.vue';
+import { getAIImageAttachmentUrl, listAIAttachments, renameAIImageAttachment } from '../../lib/api';
 
-const props = defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean }>();
 
 const emit = defineEmits<{
-  close: []
-  reuse: [attachment: AIAttachmentSummary]
-}>()
+  close: [];
+  reuse: [attachment: AIAttachmentSummary];
+}>();
 
-const attachments = ref<AIAttachmentSummary[]>([])
-const loading = ref(false)
-const error = ref('')
-const query = ref('')
-const preview = ref<AIAttachmentSummary | null>(null)
-const broken = ref<Set<string>>(new Set())
-const editingId = ref<string | null>(null)
-const editingValue = ref('')
-const savingId = ref<string | null>(null)
-const renameError = ref('')
-const renameInputEl = ref<HTMLInputElement | null>(null)
+const attachments = ref<AIAttachmentSummary[]>([]);
+const loading = ref(false);
+const error = ref('');
+const query = ref('');
+const preview = ref<AIAttachmentSummary | null>(null);
+const broken = ref<Set<string>>(new Set());
+const editingId = ref<string | null>(null);
+const editingValue = ref('');
+const savingId = ref<string | null>(null);
+const renameError = ref('');
+const renameInputEl = ref<HTMLInputElement | null>(null);
 
 const filtered = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return attachments.value
-  return attachments.value.filter((a) => a.filename.toLowerCase().includes(q))
-})
+  const q = query.value.trim().toLowerCase();
+  if (!q) return attachments.value;
+  return attachments.value.filter((a) => a.filename.toLowerCase().includes(q));
+});
 
 watch(
   () => props.open,
   (open) => {
-    if (open) load()
+    if (open) load();
     else {
-      preview.value = null
-      cancelRename()
+      preview.value = null;
+      cancelRename();
     }
   },
   { immediate: true },
-)
+);
 
 // Close the lightbox with Escape
 function onPreviewKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') preview.value = null
+  if (e.key === 'Escape') preview.value = null;
 }
 watch(preview, (val) => {
-  if (val) window.addEventListener('keydown', onPreviewKeydown)
-  else window.removeEventListener('keydown', onPreviewKeydown)
-})
-onBeforeUnmount(() => window.removeEventListener('keydown', onPreviewKeydown))
+  if (val) window.addEventListener('keydown', onPreviewKeydown);
+  else window.removeEventListener('keydown', onPreviewKeydown);
+});
+onBeforeUnmount(() => window.removeEventListener('keydown', onPreviewKeydown));
 
 async function load() {
-  loading.value = true
-  error.value = ''
-  broken.value = new Set()
+  loading.value = true;
+  error.value = '';
+  broken.value = new Set();
   try {
-    attachments.value = await listAIAttachments(200)
+    attachments.value = await listAIAttachments(200);
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load attachments'
+    error.value = err instanceof Error ? err.message : 'Failed to load attachments';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function imageUrl(att: AIAttachmentSummary): string {
-  return getAIImageAttachmentUrl(att.conversation_id, att.id)
+  return getAIImageAttachmentUrl(att.conversation_id, att.id);
 }
 
 function openPreview(att: AIAttachmentSummary) {
-  preview.value = att
+  preview.value = att;
 }
 
 function reuse(att: AIAttachmentSummary) {
-  preview.value = null
-  emit('reuse', att)
+  preview.value = null;
+  emit('reuse', att);
 }
 
 function markBroken(id: string) {
-  broken.value = new Set(broken.value).add(id)
+  broken.value = new Set(broken.value).add(id);
 }
 
 function setRenameInputEl(el: unknown) {
-  renameInputEl.value = el instanceof HTMLInputElement ? el : null
+  renameInputEl.value = el instanceof HTMLInputElement ? el : null;
 }
 
 async function startRename(att: AIAttachmentSummary) {
-  editingId.value = att.id
-  editingValue.value = att.filename
-  renameError.value = ''
-  await nextTick()
-  renameInputEl.value?.focus()
-  renameInputEl.value?.select()
+  editingId.value = att.id;
+  editingValue.value = att.filename;
+  renameError.value = '';
+  await nextTick();
+  renameInputEl.value?.focus();
+  renameInputEl.value?.select();
 }
 
 function cancelRename() {
-  editingId.value = null
-  editingValue.value = ''
-  renameError.value = ''
-  savingId.value = null
+  editingId.value = null;
+  editingValue.value = '';
+  renameError.value = '';
+  savingId.value = null;
 }
 
 async function saveRename(att: AIAttachmentSummary) {
-  const name = editingValue.value.trim()
+  const name = editingValue.value.trim();
   if (!name) {
-    renameError.value = 'Name is required'
-    return
+    renameError.value = 'Name is required';
+    return;
   }
   if (name === att.filename) {
-    cancelRename()
-    return
+    cancelRename();
+    return;
   }
-  savingId.value = att.id
-  renameError.value = ''
+  savingId.value = att.id;
+  renameError.value = '';
   try {
-    const updated = await renameAIImageAttachment(att.conversation_id, att.id, name)
-    att.filename = updated.filename
-    if (preview.value && preview.value.id === att.id) preview.value.filename = updated.filename
-    cancelRename()
+    const updated = await renameAIImageAttachment(att.conversation_id, att.id, name);
+    att.filename = updated.filename;
+    if (preview.value && preview.value.id === att.id) preview.value.filename = updated.filename;
+    cancelRename();
   } catch (err) {
-    renameError.value = err instanceof Error ? err.message : 'Failed to rename attachment'
+    renameError.value = err instanceof Error ? err.message : 'Failed to rename attachment';
   } finally {
-    savingId.value = null
+    savingId.value = null;
   }
 }
 
 function renameFromPreview() {
-  const att = preview.value
-  if (!att) return
-  preview.value = null
-  startRename(att)
+  const att = preview.value;
+  if (!att) return;
+  preview.value = null;
+  startRename(att);
 }
 
 function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDate(value: string): string {
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 </script>
 

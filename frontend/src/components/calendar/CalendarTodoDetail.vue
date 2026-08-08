@@ -220,32 +220,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { format } from 'date-fns'
-import type { Todo } from '../../types'
-import { linkifyDescription } from '../../lib/descriptionLinks'
-import { getScreenshotUrl } from '../../lib/api/todos'
+import type { Todo } from '../../types';
+import { computed } from 'vue';
+import { format } from 'date-fns';
+import { linkifyDescription } from '../../lib/descriptionLinks';
+import { getScreenshotUrl } from '../../lib/api/todos';
 
 const props = defineProps<{
-  todo: Todo | null
-}>()
+  todo: Todo | null;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'edit', todo: Todo): void
-}>()
+  (e: 'close'): void;
+  (e: 'edit', todo: Todo): void;
+}>();
 
 const screenshotUrl = computed(() =>
   props.todo?.screenshot_path ? getScreenshotUrl(props.todo.id) : '',
-)
+);
 
 function formatDate(raw: string | null | undefined): string {
-  if (!raw) return '—'
+  if (!raw) return '—';
   try {
-    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00')
-    return format(d, 'MMM d, yyyy')
+    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
+    return format(d, 'MMM d, yyyy');
   } catch {
-    return raw
+    return raw;
   }
 }
 
@@ -257,40 +257,40 @@ function formatRrule(rrule: string): string {
     'FREQ=WEEKLY;INTERVAL=2': 'Every 2 Weeks',
     'FREQ=MONTHLY': 'Monthly',
     'FREQ=YEARLY': 'Yearly',
-  }
-  return map[rrule] || rrule
+  };
+  return map[rrule] || rrule;
 }
 
 const priorityDotClass = computed(() => {
-  if (!props.todo) return ''
-  if (props.todo.status === 'completed') return 'bg-slate-300 dark:bg-slate-600'
+  if (!props.todo) return '';
+  if (props.todo.status === 'completed') return 'bg-slate-300 dark:bg-slate-600';
   const map: Record<string, string> = {
     low: 'bg-slate-400 dark:bg-slate-500',
     medium: 'bg-blue-500 dark:bg-blue-400',
     high: 'bg-amber-500 dark:bg-amber-400',
     urgent: 'bg-red-500 dark:bg-red-400',
-  }
-  return map[props.todo.priority] || 'bg-slate-400'
-})
+  };
+  return map[props.todo.priority] || 'bg-slate-400';
+});
 
 const statusBadgeClass = computed(() => {
-  if (!props.todo) return ''
+  if (!props.todo) return '';
   const map: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
     archived: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
-  }
-  return map[props.todo.status] || ''
-})
+  };
+  return map[props.todo.status] || '';
+});
 
 const priorityBadgeClass = computed(() => {
-  if (!props.todo) return ''
+  if (!props.todo) return '';
   const map: Record<string, string> = {
     low: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
     medium: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     high: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     urgent: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  }
-  return map[props.todo.priority] || ''
-})
+  };
+  return map[props.todo.priority] || '';
+});
 </script>

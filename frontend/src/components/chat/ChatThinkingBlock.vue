@@ -49,13 +49,13 @@
 </template>
 
 <script setup lang="ts">
-import { useLocalStorage } from '@vueuse/core'
+import { useLocalStorage } from '@vueuse/core';
 
 defineProps<{
-  reasoning?: string
-  streaming: boolean
-}>()
+  reasoning?: string;
+  streaming: boolean;
+}>();
 
 // Persist the user's expanded/collapsed preference across messages and reloads.
-const expanded = useLocalStorage('bs.ai.thinkingExpanded', true)
+const expanded = useLocalStorage('bs.ai.thinkingExpanded', true);
 </script>

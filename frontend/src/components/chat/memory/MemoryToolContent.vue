@@ -35,26 +35,26 @@
 </template>
 
 <script setup lang="ts">
-import type { AIMessage } from '@browser-server/shared-types'
-import { computed } from 'vue'
-import { parseToolContent, getToolArgs, getToolResult, getToolDecision } from './memoryUtils'
+import type { AIMessage } from '@browser-server/shared-types';
+import { computed } from 'vue';
+import { parseToolContent, getToolArgs, getToolResult, getToolDecision } from './memoryUtils';
 
 const props = defineProps<{
-  message: AIMessage
-}>()
+  message: AIMessage;
+}>();
 
-const args = computed(() => getToolArgs(props.message))
-const result = computed(() => getToolResult(props.message))
-const decision = computed(() => getToolDecision(props.message))
+const args = computed(() => getToolArgs(props.message));
+const result = computed(() => getToolResult(props.message));
+const decision = computed(() => getToolDecision(props.message));
 
 const decisionClass = computed(() => {
   switch (decision.value) {
     case 'approved':
-      return 'text-emerald-600 dark:text-emerald-400'
+      return 'text-emerald-600 dark:text-emerald-400';
     case 'rejected':
-      return 'text-red-600 dark:text-red-400'
+      return 'text-red-600 dark:text-red-400';
     default:
-      return 'text-amber-600 dark:text-amber-400'
+      return 'text-amber-600 dark:text-amber-400';
   }
-})
+});
 </script>

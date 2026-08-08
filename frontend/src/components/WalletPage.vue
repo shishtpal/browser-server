@@ -239,26 +239,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { useUser } from '../composables/useUser'
-import { useWallet } from '../composables/useWallet'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import UserSelector from './ui/UserSelector.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import EmptyState from './ui/EmptyState.vue'
-import InputField from './ui/InputField.vue'
-import Button from './ui/Button.vue'
-import SelectUserPrompt from './ui/SelectUserPrompt.vue'
-import Modal from './ui/Modal.vue'
-import WalletTableRow from './wallet/WalletTableRow.vue'
-import WalletCard from './wallet/WalletCard.vue'
-import WalletImport from './wallet/WalletImport.vue'
+import { ref, watch, computed } from 'vue';
+import { useUser } from '../composables/useUser';
+import { useWallet } from '../composables/useWallet';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import UserSelector from './ui/UserSelector.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import EmptyState from './ui/EmptyState.vue';
+import InputField from './ui/InputField.vue';
+import Button from './ui/Button.vue';
+import SelectUserPrompt from './ui/SelectUserPrompt.vue';
+import Modal from './ui/Modal.vue';
+import WalletTableRow from './wallet/WalletTableRow.vue';
+import WalletCard from './wallet/WalletCard.vue';
+import WalletImport from './wallet/WalletImport.vue';
 
-const { users, currentUserId, setUser, clearUser } = useUser()
+const { users, currentUserId, setUser, clearUser } = useUser();
 
-const selectedUserId = ref<number | null>(currentUserId.value)
+const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
   walletEntries,
@@ -279,7 +279,7 @@ const {
   openEdit,
   saveEdit,
   removeEntry,
-} = useWallet(selectedUserId)
+} = useWallet(selectedUserId);
 
 const searchPlaceholder = computed(() => {
   const labels: Record<string, string> = {
@@ -288,23 +288,23 @@ const searchPlaceholder = computed(() => {
     username: 'Search by username...',
     description: 'Search description...',
     all: 'Search all columns...',
-  }
-  return labels[searchColumn.value] || 'Search...'
-})
+  };
+  return labels[searchColumn.value] || 'Search...';
+});
 
 watch(selectedUserId, (id) => {
   if (id) {
-    setUser(id)
-    loadWallet()
+    setUser(id);
+    loadWallet();
   } else {
-    clearUser()
-    walletEntries.value = []
-    websiteFilter.value = ''
+    clearUser();
+    walletEntries.value = [];
+    websiteFilter.value = '';
   }
-})
+});
 
 if (selectedUserId.value) {
-  setUser(selectedUserId.value)
-  loadWallet()
+  setUser(selectedUserId.value);
+  loadWallet();
 }
 </script>

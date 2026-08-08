@@ -16,9 +16,9 @@
 
 <script setup lang="ts">
 interface Props {
-  message: string
-  onRetry?: () => void
+  message: string;
+  onRetry?: () => void;
 }
 
-defineProps<Props>()
+defineProps<Props>();
 </script>

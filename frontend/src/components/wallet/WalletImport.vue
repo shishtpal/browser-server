@@ -79,48 +79,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { importWallet } from '../../lib/api'
-import type { WalletImportResult } from '../../types'
+import type { WalletImportResult } from '../../types';
+import { ref } from 'vue';
+import { importWallet } from '../../lib/api';
 
-interface Props {
-  selectedUserId: number
-}
-
-const props = defineProps<Props>()
+const props = defineProps<{
+  selectedUserId: number;
+}>();
 
 const emit = defineEmits<{
-  imported: []
-}>()
+  imported: [];
+}>();
 
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const importFile = ref<File | null>(null)
-const importing = ref(false)
-const importResult = ref<WalletImportResult | null>(null)
-const importError = ref<string | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const importFile = ref<File | null>(null);
+const importing = ref(false);
+const importResult = ref<WalletImportResult | null>(null);
+const importError = ref<string | null>(null);
 
 const onFileChange = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  importFile.value = input.files?.[0] || null
-  importResult.value = null
-  importError.value = null
-}
+  const input = e.target as HTMLInputElement;
+  importFile.value = input.files?.[0] || null;
+  importResult.value = null;
+  importError.value = null;
+};
 
 const doImport = async () => {
-  if (!importFile.value) return
-  importing.value = true
-  importResult.value = null
-  importError.value = null
+  if (!importFile.value) return;
+  importing.value = true;
+  importResult.value = null;
+  importError.value = null;
   try {
-    const result = await importWallet(props.selectedUserId, importFile.value)
-    importResult.value = result
-    importFile.value = null
-    if (fileInputRef.value) fileInputRef.value.value = ''
-    emit('imported')
+    const result = await importWallet(props.selectedUserId, importFile.value);
+    importResult.value = result;
+    importFile.value = null;
+    if (fileInputRef.value) fileInputRef.value.value = '';
+    emit('imported');
   } catch (e) {
-    importError.value = e instanceof Error ? e.message : 'Import failed'
+    importError.value = e instanceof Error ? e.message : 'Import failed';
   } finally {
-    importing.value = false
+    importing.value = false;
   }
-}
+};
 </script>

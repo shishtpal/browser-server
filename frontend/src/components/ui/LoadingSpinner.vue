@@ -12,18 +12,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 const props = withDefaults(
   defineProps<{
-    message?: string
-    color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose'
+    message?: string;
+    color?: 'indigo' | 'cyan' | 'violet' | 'emerald' | 'amber' | 'rose';
   }>(),
   {
     message: 'Loading...',
     color: 'indigo',
   },
-)
+);
 
 const colorClass = computed(() => {
   const colors = {
@@ -33,7 +33,7 @@ const colorClass = computed(() => {
     emerald: 'border-emerald-500',
     amber: 'border-amber-500',
     rose: 'border-rose-500',
-  }
-  return colors[props.color]
-})
+  };
+  return colors[props.color];
+});
 </script>

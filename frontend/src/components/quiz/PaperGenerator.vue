@@ -139,19 +139,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import type { QuestionPaperSection, TagVocabulary } from '../../types'
+import type { QuestionPaperSection, TagVocabulary } from '../../types';
+import { computed, reactive, ref, watch } from 'vue';
 
 defineProps<{
-  vocabulary?: TagVocabulary | null
-  isGenerating?: boolean
-}>()
+  vocabulary?: TagVocabulary | null;
+  isGenerating?: boolean;
+}>();
 
 const emit = defineEmits<{
-  generate: [input: { title: string; sections: QuestionPaperSection[] }]
-}>()
+  generate: [input: { title: string; sections: QuestionPaperSection[] }];
+}>();
 
-const title = ref('')
+const title = ref('');
 const sections = reactive<QuestionPaperSection[]>([
   {
     tags: [],
@@ -161,17 +161,17 @@ const sections = reactive<QuestionPaperSection[]>([
     difficulty: undefined,
     count: 10,
   } as QuestionPaperSection,
-])
-const sectionTagDrafts = ref<string[]>(sections.map(() => ''))
+]);
+const sectionTagDrafts = ref<string[]>(sections.map(() => ''));
 
 watch(
   sections,
   (current) => {
-    while (sectionTagDrafts.value.length < current.length) sectionTagDrafts.value.push('')
-    while (sectionTagDrafts.value.length > current.length) sectionTagDrafts.value.pop()
+    while (sectionTagDrafts.value.length < current.length) sectionTagDrafts.value.push('');
+    while (sectionTagDrafts.value.length > current.length) sectionTagDrafts.value.pop();
   },
   { deep: true },
-)
+);
 
 const addSection = () => {
   sections.push({
@@ -181,45 +181,45 @@ const addSection = () => {
     type: undefined,
     difficulty: undefined,
     count: 10,
-  } as QuestionPaperSection)
-  sectionTagDrafts.value.push('')
-}
+  } as QuestionPaperSection);
+  sectionTagDrafts.value.push('');
+};
 
 function commitSectionTag(i: number) {
-  const draft = sectionTagDrafts.value[i]
-  if (!draft) return
-  const value = draft.trim()
+  const draft = sectionTagDrafts.value[i];
+  if (!draft) return;
+  const value = draft.trim();
   if (!value) {
-    sectionTagDrafts.value[i] = ''
-    return
+    sectionTagDrafts.value[i] = '';
+    return;
   }
-  const tags = sections[i].tags ?? []
+  const tags = sections[i].tags ?? [];
   if (!tags.includes(value)) {
-    sections[i].tags = [...tags, value]
+    sections[i].tags = [...tags, value];
   }
-  sectionTagDrafts.value[i] = ''
+  sectionTagDrafts.value[i] = '';
 }
 
 function removeSectionTag(i: number, tag: string) {
-  const tags = sections[i].tags ?? []
-  sections[i].tags = tags.filter((t) => t !== tag)
+  const tags = sections[i].tags ?? [];
+  sections[i].tags = tags.filter((t) => t !== tag);
 }
 
-const totalCount = computed(() => sections.reduce((sum, s) => sum + (s.count || 0), 0))
+const totalCount = computed(() => sections.reduce((sum, s) => sum + (s.count || 0), 0));
 
 const submit = () => {
   // Pick up any tag the user typed but didn't commit with Enter.
-  sections.forEach((_, i) => commitSectionTag(i))
+  sections.forEach((_, i) => commitSectionTag(i));
   const cleaned = sections.map((s) => {
-    const out: QuestionPaperSection = { count: s.count }
-    if (s.tags && s.tags.length) out.tags = s.tags
-    if (s.subject) out.subject = s.subject
-    if (s.topic) out.topic = s.topic
-    if (s.type) out.type = s.type
-    if (s.difficulty) out.difficulty = s.difficulty
-    return out
-  })
-  emit('generate', { title: title.value.trim(), sections: cleaned })
-  title.value = ''
-}
+    const out: QuestionPaperSection = { count: s.count };
+    if (s.tags && s.tags.length) out.tags = s.tags;
+    if (s.subject) out.subject = s.subject;
+    if (s.topic) out.topic = s.topic;
+    if (s.type) out.type = s.type;
+    if (s.difficulty) out.difficulty = s.difficulty;
+    return out;
+  });
+  emit('generate', { title: title.value.trim(), sections: cleaned });
+  title.value = '';
+};
 </script>

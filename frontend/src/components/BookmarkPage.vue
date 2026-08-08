@@ -142,28 +142,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useUser } from '../composables/useUser'
-import { useBookmarks } from '../composables/useBookmarks'
-import { useBookmarkTree } from '../composables/useBookmarkTree'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import UserSelector from './ui/UserSelector.vue'
-import FilterPill from './ui/FilterPill.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import EmptyState from './ui/EmptyState.vue'
-import SelectUserPrompt from './ui/SelectUserPrompt.vue'
-import BookmarkForm from './bookmarks/BookmarkForm.vue'
-import BookmarkImport from './bookmarks/BookmarkImport.vue'
-import BookmarkSearchBar from './bookmarks/BookmarkSearchBar.vue'
-import BookmarkFlatView from './bookmarks/BookmarkFlatView.vue'
-import BookmarkTreeView from './bookmarks/BookmarkTreeView.vue'
-import BookmarkEditModal from './bookmarks/BookmarkEditModal.vue'
+import { ref, watch } from 'vue';
+import { useUser } from '../composables/useUser';
+import { useBookmarks } from '../composables/useBookmarks';
+import { useBookmarkTree } from '../composables/useBookmarkTree';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import UserSelector from './ui/UserSelector.vue';
+import FilterPill from './ui/FilterPill.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import EmptyState from './ui/EmptyState.vue';
+import SelectUserPrompt from './ui/SelectUserPrompt.vue';
+import BookmarkForm from './bookmarks/BookmarkForm.vue';
+import BookmarkImport from './bookmarks/BookmarkImport.vue';
+import BookmarkSearchBar from './bookmarks/BookmarkSearchBar.vue';
+import BookmarkFlatView from './bookmarks/BookmarkFlatView.vue';
+import BookmarkTreeView from './bookmarks/BookmarkTreeView.vue';
+import BookmarkEditModal from './bookmarks/BookmarkEditModal.vue';
 
-const { users, currentUserId, setUser, clearUser } = useUser()
+const { users, currentUserId, setUser, clearUser } = useUser();
 
-const selectedUserId = ref<number | null>(currentUserId.value)
+const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
   bookmarks,
@@ -186,36 +186,36 @@ const {
   openEdit,
   saveEdit,
   removeBookmark,
-} = useBookmarks(selectedUserId)
+} = useBookmarks(selectedUserId);
 
 const { viewMode, treeNodes, treeCount, toggleTreeFolder } = useBookmarkTree(
   filteredBookmarks,
   searchQuery,
-)
+);
 
 const handleSaveEdit = (data: {
-  title: string
-  url: string
-  description: string
-  tagsStr: string
+  title: string;
+  url: string;
+  description: string;
+  tagsStr: string;
 }) => {
-  editForm.value = data
-  saveEdit()
-}
+  editForm.value = data;
+  saveEdit();
+};
 
 watch(selectedUserId, (id) => {
-  activeTagFilter.value = null
+  activeTagFilter.value = null;
   if (id) {
-    setUser(id)
-    loadBookmarks()
+    setUser(id);
+    loadBookmarks();
   } else {
-    clearUser()
-    bookmarks.value = []
+    clearUser();
+    bookmarks.value = [];
   }
-})
+});
 
 if (selectedUserId.value) {
-  setUser(selectedUserId.value)
-  loadBookmarks()
+  setUser(selectedUserId.value);
+  loadBookmarks();
 }
 </script>

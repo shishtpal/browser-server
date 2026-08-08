@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { isServerOnline } from '../lib/api'
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { isServerOnline } from '../lib/api';
 
-const online = ref<boolean | null>(null)
+const online = ref<boolean | null>(null);
 
-let timer: number | undefined
+let timer: number | undefined;
 
 async function check() {
-  online.value = await isServerOnline()
+  online.value = await isServerOnline();
 }
 
 onMounted(() => {
-  void check()
-  timer = window.setInterval(check, 30_000)
-})
+  void check();
+  timer = window.setInterval(check, 30_000);
+});
 
 onBeforeUnmount(() => {
-  if (timer !== undefined) window.clearInterval(timer)
-})
+  if (timer !== undefined) window.clearInterval(timer);
+});
 </script>
 
 <template>

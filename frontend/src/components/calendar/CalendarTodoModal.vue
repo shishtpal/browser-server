@@ -293,24 +293,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import Modal from '../ui/Modal.vue'
-import Button from '../ui/Button.vue'
-import type { Todo, CreateTodoInput, TodoPriority, TodoStatus } from '../../types'
+import type { Todo, CreateTodoInput, TodoPriority, TodoStatus } from '../../types';
+import { ref, watch } from 'vue';
+import Modal from '../ui/Modal.vue';
+import Button from '../ui/Button.vue';
 
 const props = defineProps<{
-  open: boolean
-  editingTodo?: Todo | null
-  initialDueDate?: string
-  userId: number
-}>()
+  open: boolean;
+  editingTodo?: Todo | null;
+  initialDueDate?: string;
+  userId: number;
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', data: CreateTodoInput): void
-  (e: 'update', id: number, data: Partial<Todo>): void
-  (e: 'delete'): void
-}>()
+  (e: 'close'): void;
+  (e: 'submit', data: CreateTodoInput): void;
+  (e: 'update', id: number, data: Partial<Todo>): void;
+  (e: 'delete'): void;
+}>();
 
 const defaultDomains = [
   'Work',
@@ -321,7 +321,7 @@ const defaultDomains = [
   'Shopping',
   'Errands',
   'Projects',
-]
+];
 const colorOptions = [
   '#3b82f6',
   '#ef4444',
@@ -333,7 +333,7 @@ const colorOptions = [
   '#f97316',
   '#6366f1',
   '#14b8a6',
-]
+];
 
 const form = ref({
   title: '',
@@ -346,69 +346,69 @@ const form = ref({
   color: '',
   rrule: '',
   pinned: false,
-})
+});
 
-const customRrule = ref('')
-const tags = ref<string[]>([])
-const tagInput = ref('')
-const saving = ref(false)
+const customRrule = ref('');
+const tags = ref<string[]>([]);
+const tagInput = ref('');
+const saving = ref(false);
 
 watch(
   () => props.open,
   (open) => {
     if (open) {
       if (props.editingTodo) {
-        form.value.title = props.editingTodo.title
-        form.value.description = props.editingTodo.description
-        form.value.start_date = props.editingTodo.start_date || ''
-        form.value.end_date = props.editingTodo.end_date || ''
-        form.value.priority = props.editingTodo.priority
-        form.value.status = props.editingTodo.status
-        form.value.domain = props.editingTodo.domain || ''
-        form.value.color = props.editingTodo.color || ''
-        form.value.rrule = props.editingTodo.rrule || ''
-        form.value.pinned = props.editingTodo.pinned
-        tags.value = [...(props.editingTodo.tags || [])]
-        customRrule.value = ''
+        form.value.title = props.editingTodo.title;
+        form.value.description = props.editingTodo.description;
+        form.value.start_date = props.editingTodo.start_date || '';
+        form.value.end_date = props.editingTodo.end_date || '';
+        form.value.priority = props.editingTodo.priority;
+        form.value.status = props.editingTodo.status;
+        form.value.domain = props.editingTodo.domain || '';
+        form.value.color = props.editingTodo.color || '';
+        form.value.rrule = props.editingTodo.rrule || '';
+        form.value.pinned = props.editingTodo.pinned;
+        tags.value = [...(props.editingTodo.tags || [])];
+        customRrule.value = '';
       } else {
-        form.value.title = ''
-        form.value.description = ''
-        form.value.start_date = props.initialDueDate || ''
-        form.value.end_date = ''
-        form.value.priority = 'medium'
-        form.value.status = 'pending'
-        form.value.domain = ''
-        form.value.color = ''
-        form.value.rrule = ''
-        form.value.pinned = false
-        tags.value = []
-        customRrule.value = ''
+        form.value.title = '';
+        form.value.description = '';
+        form.value.start_date = props.initialDueDate || '';
+        form.value.end_date = '';
+        form.value.priority = 'medium';
+        form.value.status = 'pending';
+        form.value.domain = '';
+        form.value.color = '';
+        form.value.rrule = '';
+        form.value.pinned = false;
+        tags.value = [];
+        customRrule.value = '';
       }
-      tagInput.value = ''
+      tagInput.value = '';
     }
   },
-)
+);
 
 function addTag() {
-  const tag = tagInput.value.trim()
+  const tag = tagInput.value.trim();
   if (tag && !tags.value.includes(tag)) {
-    tags.value = [...tags.value, tag]
-    tagInput.value = ''
+    tags.value = [...tags.value, tag];
+    tagInput.value = '';
   }
 }
 
 function removeTag(tag: string) {
-  tags.value = tags.value.filter((t) => t !== tag)
+  tags.value = tags.value.filter((t) => t !== tag);
 }
 
 function close() {
-  emit('close')
+  emit('close');
 }
 
 async function onSubmit() {
-  if (!form.value.title.trim()) return
-  saving.value = true
-  const finalRrule = form.value.rrule === 'custom' ? customRrule.value : form.value.rrule
+  if (!form.value.title.trim()) return;
+  saving.value = true;
+  const finalRrule = form.value.rrule === 'custom' ? customRrule.value : form.value.rrule;
   try {
     if (props.editingTodo) {
       emit('update', props.editingTodo.id, {
@@ -423,7 +423,7 @@ async function onSubmit() {
         rrule: finalRrule || undefined,
         pinned: form.value.pinned,
         tags: tags.value,
-      })
+      });
     } else {
       const payload: CreateTodoInput = {
         user_id: props.userId,
@@ -436,12 +436,12 @@ async function onSubmit() {
         color: form.value.color || undefined,
         rrule: finalRrule || undefined,
         tags: tags.value,
-      }
-      emit('submit', payload)
+      };
+      emit('submit', payload);
     }
-    close()
+    close();
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 </script>

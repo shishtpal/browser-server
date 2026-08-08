@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TodoSortField } from '../../types'
+import type { TodoSortField } from '../../types';
 
 const options = [
   { value: 'position' as TodoSortField, label: 'Position' },
@@ -26,13 +26,13 @@ const options = [
   { value: 'start_date' as TodoSortField, label: 'Date' },
   { value: 'created_at' as TodoSortField, label: 'Created' },
   { value: 'title' as TodoSortField, label: 'Title' },
-]
+];
 
 interface Props {
-  sortField: TodoSortField
-  sortDir: 'asc' | 'desc'
+  sortField: TodoSortField;
+  sortDir: 'asc' | 'desc';
 }
 
-defineProps<Props>()
-defineEmits<{ 'update:sortField': [value: TodoSortField]; 'toggle-dir': [] }>()
+defineProps<Props>();
+defineEmits<{ 'update:sortField': [value: TodoSortField]; 'toggle-dir': [] }>();
 </script>

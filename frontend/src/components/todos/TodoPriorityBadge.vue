@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { TodoPriority } from '../../types'
+import type { TodoPriority } from '../../types';
+import { computed } from 'vue';
 
 const PRIORITIES: Record<TodoPriority, { label: string; color: string; accent: string }> = {
   low: {
@@ -35,17 +35,17 @@ const PRIORITIES: Record<TodoPriority, { label: string; color: string; accent: s
     color: 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400',
     accent: 'bg-red-500',
   },
-}
+};
 
 interface Props {
-  priority: TodoPriority
+  priority: TodoPriority;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
-const config = computed(() => PRIORITIES[props.priority] || PRIORITIES.medium)
+const config = computed(() => PRIORITIES[props.priority] || PRIORITIES.medium);
 
-const badgeClass = computed(() => config.value.color)
-const accentClass = computed(() => config.value.accent)
-const label = computed(() => config.value.label)
+const badgeClass = computed(() => config.value.color);
+const accentClass = computed(() => config.value.accent);
+const label = computed(() => config.value.label);
 </script>

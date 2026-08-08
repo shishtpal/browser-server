@@ -1,50 +1,50 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { clearToken, getToken, setToken } from '../lib/auth'
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { clearToken, getToken, setToken } from '../lib/auth';
 
-const open = ref(false)
-const draft = ref('')
-const hasToken = ref(false)
-const saved = ref(false)
+const open = ref(false);
+const draft = ref('');
+const hasToken = ref(false);
+const saved = ref(false);
 
 function refresh() {
-  const token = getToken()
-  hasToken.value = Boolean(token)
-  draft.value = token ?? ''
+  const token = getToken();
+  hasToken.value = Boolean(token);
+  draft.value = token ?? '';
 }
 
 function toggle() {
-  open.value = !open.value
-  if (open.value) refresh()
+  open.value = !open.value;
+  if (open.value) refresh();
 }
 
 function save() {
-  setToken(draft.value)
-  refresh()
-  saved.value = true
-  window.setTimeout(() => (saved.value = false), 1500)
+  setToken(draft.value);
+  refresh();
+  saved.value = true;
+  window.setTimeout(() => (saved.value = false), 1500);
 }
 
 function clear() {
-  clearToken()
-  refresh()
+  clearToken();
+  refresh();
 }
 
 function onDocClick(e: MouseEvent) {
-  const root = document.getElementById('api-token-settings')
+  const root = document.getElementById('api-token-settings');
   if (root && !root.contains(e.target as Node)) {
-    open.value = false
+    open.value = false;
   }
 }
 
 onMounted(() => {
-  refresh()
-  document.addEventListener('click', onDocClick)
-})
+  refresh();
+  document.addEventListener('click', onDocClick);
+});
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocClick)
-})
+  document.removeEventListener('click', onDocClick);
+});
 </script>
 
 <template>

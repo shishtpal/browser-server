@@ -206,63 +206,63 @@
 </template>
 
 <script setup lang="ts">
-import type { AIRequestLog } from '@browser-server/shared-types'
-import { computed, onBeforeUnmount, onMounted } from 'vue'
-import PayloadBlock from './PayloadBlock.vue'
-import Modal from '../ui/Modal.vue'
+import type { AIRequestLog } from '@browser-server/shared-types';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
+import PayloadBlock from './PayloadBlock.vue';
+import Modal from '../ui/Modal.vue';
 
 const props = defineProps<{
-  request: AIRequestLog | null
-  canGoPrev?: boolean
-  canGoNext?: boolean
-}>()
+  request: AIRequestLog | null;
+  canGoPrev?: boolean;
+  canGoNext?: boolean;
+}>();
 
-const emit = defineEmits<{ close: []; prev: []; next: [] }>()
+const emit = defineEmits<{ close: []; prev: []; next: [] }>();
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (!props.request) return
+  if (!props.request) return;
   if (event.key === 'ArrowLeft' && props.canGoPrev) {
-    event.preventDefault()
-    emit('prev')
+    event.preventDefault();
+    emit('prev');
   }
   if (event.key === 'ArrowRight' && props.canGoNext) {
-    event.preventDefault()
-    emit('next')
+    event.preventDefault();
+    emit('next');
   }
-}
+};
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+onMounted(() => window.addEventListener('keydown', handleKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown));
 
 const text = (value: unknown) => {
-  return value === undefined || value === null || value === '' ? '—' : String(value)
-}
+  return value === undefined || value === null || value === '' ? '—' : String(value);
+};
 
 const formatDuration = (ms?: number) => {
-  if (ms === undefined || ms === null) return '—'
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`
-}
+  if (ms === undefined || ms === null) return '—';
+  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
+};
 
 const statusClass = (status?: string) => {
-  const value = status?.toLowerCase() ?? ''
+  const value = status?.toLowerCase() ?? '';
 
   if (['success', 'completed', 'complete', 'ok'].includes(value)) {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300';
   }
 
   if (['failed', 'error', 'cancelled'].includes(value)) {
-    return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
+    return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300';
   }
 
   if (['pending', 'queued', 'running', 'processing'].includes(value)) {
-    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300'
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300';
   }
 
-  return 'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'
-}
+  return 'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300';
+};
 
 const details = computed(() => {
-  if (!props.request) return []
+  if (!props.request) return [];
 
   return [
     { label: 'Created', value: new Date(props.request.created_at).toLocaleString() },
@@ -276,6 +276,6 @@ const details = computed(() => {
       label: 'Tokens (prompt / completion / total)',
       value: `${text(props.request.prompt_tokens)} / ${text(props.request.completion_tokens)} / ${text(props.request.total_tokens)}`,
     },
-  ]
-})
+  ];
+});
 </script>

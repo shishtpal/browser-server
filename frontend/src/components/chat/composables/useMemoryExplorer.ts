@@ -1,6 +1,6 @@
-import type { AIMessage } from '@browser-server/shared-types'
-import { computed, ref, watch, type Ref } from 'vue'
-import { getAIConversation, updateAIMessage, deleteAIMessage } from '../../../lib/api'
+import type { AIMessage } from '@browser-server/shared-types';
+import { computed, ref, watch, type Ref } from 'vue';
+import { getAIConversation, updateAIMessage, deleteAIMessage } from '../../../lib/api';
 
 export function useMemoryExplorer(
   open: Ref<boolean>,
@@ -8,165 +8,165 @@ export function useMemoryExplorer(
   messages: Ref<AIMessage[]>,
   onUpdated: (msgs: AIMessage[]) => void,
 ) {
-  const editingId = ref<string | null>(null)
-  const editContent = ref('')
-  const deleteTargetId = ref<string | null>(null)
-  const confirmRemoveAllTools = ref(false)
-  const saving = ref(false)
-  const errorMsg = ref('')
+  const editingId = ref<string | null>(null);
+  const editContent = ref('');
+  const deleteTargetId = ref<string | null>(null);
+  const confirmRemoveAllTools = ref(false);
+  const saving = ref(false);
+  const errorMsg = ref('');
 
   // ─── Multi-select state ────────────────────────────────
-  const selectedIds = ref<Set<string>>(new Set())
-  const confirmBulkDelete = ref(false)
+  const selectedIds = ref<Set<string>>(new Set());
+  const confirmBulkDelete = ref(false);
 
-  const selectedCount = computed(() => selectedIds.value.size)
+  const selectedCount = computed(() => selectedIds.value.size);
   const allSelected = computed(
     () => messages.value.length > 0 && selectedIds.value.size === messages.value.length,
-  )
+  );
 
   function toggleSelect(id: string) {
-    const next = new Set(selectedIds.value)
+    const next = new Set(selectedIds.value);
     if (next.has(id)) {
-      next.delete(id)
+      next.delete(id);
     } else {
-      next.add(id)
+      next.add(id);
     }
-    selectedIds.value = next
+    selectedIds.value = next;
   }
 
   function toggleSelectAll() {
     if (allSelected.value) {
-      selectedIds.value = new Set()
+      selectedIds.value = new Set();
     } else {
-      selectedIds.value = new Set(messages.value.map((m) => m.id))
+      selectedIds.value = new Set(messages.value.map((m) => m.id));
     }
   }
 
   function clearSelection() {
-    selectedIds.value = new Set()
-    confirmBulkDelete.value = false
+    selectedIds.value = new Set();
+    confirmBulkDelete.value = false;
   }
 
   async function doBulkDelete() {
-    if (!conversationId.value || selectedIds.value.size === 0) return
-    saving.value = true
-    errorMsg.value = ''
-    const ids = [...selectedIds.value]
+    if (!conversationId.value || selectedIds.value.size === 0) return;
+    saving.value = true;
+    errorMsg.value = '';
+    const ids = [...selectedIds.value];
     try {
       for (const id of ids) {
-        await deleteAIMessage(conversationId.value, id)
+        await deleteAIMessage(conversationId.value, id);
       }
-      const newMessages = messages.value.filter((m) => !selectedIds.value.has(m.id))
-      onUpdated(newMessages)
-      selectedIds.value = new Set()
-      confirmBulkDelete.value = false
+      const newMessages = messages.value.filter((m) => !selectedIds.value.has(m.id));
+      onUpdated(newMessages);
+      selectedIds.value = new Set();
+      confirmBulkDelete.value = false;
     } catch (err) {
-      errorMsg.value = err instanceof Error ? err.message : 'Failed to delete selected messages'
+      errorMsg.value = err instanceof Error ? err.message : 'Failed to delete selected messages';
     } finally {
-      saving.value = false
+      saving.value = false;
     }
   }
 
-  const toolMessageCount = computed(() => messages.value.filter((m) => m.role === 'tool').length)
+  const toolMessageCount = computed(() => messages.value.filter((m) => m.role === 'tool').length);
 
   // When the modal opens, re-fetch messages from the backend so we always
   // have real persisted IDs (streaming creates temp frontend-only IDs that
   // the backend won't recognise until a full conversation reload).
   watch(open, async (isOpen) => {
     if (isOpen && conversationId.value) {
-      errorMsg.value = ''
-      editingId.value = null
-      deleteTargetId.value = null
-      confirmRemoveAllTools.value = false
-      selectedIds.value = new Set()
-      confirmBulkDelete.value = false
+      errorMsg.value = '';
+      editingId.value = null;
+      deleteTargetId.value = null;
+      confirmRemoveAllTools.value = false;
+      selectedIds.value = new Set();
+      confirmBulkDelete.value = false;
       try {
-        const detail = await getAIConversation(conversationId.value)
+        const detail = await getAIConversation(conversationId.value);
         if (detail.messages) {
-          onUpdated(detail.messages)
+          onUpdated(detail.messages);
         }
       } catch {
         /* fall through with existing props */
       }
     }
-  })
+  });
 
   // ─── Edit actions ──────────────────────────────────────
 
   function startEdit(msg: AIMessage) {
-    editingId.value = msg.id
-    editContent.value = msg.content
-    errorMsg.value = ''
-    deleteTargetId.value = null
+    editingId.value = msg.id;
+    editContent.value = msg.content;
+    errorMsg.value = '';
+    deleteTargetId.value = null;
   }
 
   function cancelEdit() {
-    editingId.value = null
-    editContent.value = ''
+    editingId.value = null;
+    editContent.value = '';
   }
 
   async function saveEdit(msg: AIMessage) {
-    if (!conversationId.value) return
-    saving.value = true
-    errorMsg.value = ''
+    if (!conversationId.value) return;
+    saving.value = true;
+    errorMsg.value = '';
     try {
       const updated = await updateAIMessage(conversationId.value, msg.id, {
         content: editContent.value,
-      })
-      const newMessages = messages.value.map((m) => (m.id === updated.id ? updated : m))
-      onUpdated(newMessages)
-      editingId.value = null
+      });
+      const newMessages = messages.value.map((m) => (m.id === updated.id ? updated : m));
+      onUpdated(newMessages);
+      editingId.value = null;
     } catch (err) {
-      errorMsg.value = err instanceof Error ? err.message : 'Failed to update message'
+      errorMsg.value = err instanceof Error ? err.message : 'Failed to update message';
     } finally {
-      saving.value = false
+      saving.value = false;
     }
   }
 
   // ─── Delete actions ────────────────────────────────────
 
   function confirmDeleteMessage(msg: AIMessage) {
-    deleteTargetId.value = msg.id
-    errorMsg.value = ''
-    editingId.value = null
+    deleteTargetId.value = msg.id;
+    errorMsg.value = '';
+    editingId.value = null;
   }
 
   function cancelDelete() {
-    deleteTargetId.value = null
+    deleteTargetId.value = null;
   }
 
   async function doDelete(msg: AIMessage) {
-    if (!conversationId.value) return
-    saving.value = true
-    errorMsg.value = ''
+    if (!conversationId.value) return;
+    saving.value = true;
+    errorMsg.value = '';
     try {
-      await deleteAIMessage(conversationId.value, msg.id)
-      const newMessages = messages.value.filter((m) => m.id !== msg.id)
-      onUpdated(newMessages)
-      deleteTargetId.value = null
+      await deleteAIMessage(conversationId.value, msg.id);
+      const newMessages = messages.value.filter((m) => m.id !== msg.id);
+      onUpdated(newMessages);
+      deleteTargetId.value = null;
     } catch (err) {
-      errorMsg.value = err instanceof Error ? err.message : 'Failed to delete message'
+      errorMsg.value = err instanceof Error ? err.message : 'Failed to delete message';
     } finally {
-      saving.value = false
+      saving.value = false;
     }
   }
 
   async function doRemoveAllTools() {
-    if (!conversationId.value) return
-    saving.value = true
-    errorMsg.value = ''
-    const toolMessages = messages.value.filter((m) => m.role === 'tool')
+    if (!conversationId.value) return;
+    saving.value = true;
+    errorMsg.value = '';
+    const toolMessages = messages.value.filter((m) => m.role === 'tool');
     try {
       for (const msg of toolMessages) {
-        await deleteAIMessage(conversationId.value, msg.id)
+        await deleteAIMessage(conversationId.value, msg.id);
       }
-      const newMessages = messages.value.filter((m) => m.role !== 'tool')
-      onUpdated(newMessages)
-      confirmRemoveAllTools.value = false
+      const newMessages = messages.value.filter((m) => m.role !== 'tool');
+      onUpdated(newMessages);
+      confirmRemoveAllTools.value = false;
     } catch (err) {
-      errorMsg.value = err instanceof Error ? err.message : 'Failed to remove tool messages'
+      errorMsg.value = err instanceof Error ? err.message : 'Failed to remove tool messages';
     } finally {
-      saving.value = false
+      saving.value = false;
     }
   }
 
@@ -197,5 +197,5 @@ export function useMemoryExplorer(
     cancelDelete,
     doDelete,
     doRemoveAllTools,
-  }
+  };
 }

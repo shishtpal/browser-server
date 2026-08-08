@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 interface Props {
   variant?:
@@ -23,12 +23,12 @@ interface Props {
     | 'gradient-cyan'
     | 'gradient-violet'
     | 'gradient-emerald'
-    | 'gradient-amber'
-  size?: 'sm' | 'md' | 'lg'
-  disabled?: boolean
-  loading?: boolean
-  loadingText?: string
-  type?: 'button' | 'submit' | 'reset'
+    | 'gradient-amber';
+  size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
+  loading?: boolean;
+  loadingText?: string;
+  type?: 'button' | 'submit' | 'reset';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -38,26 +38,26 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   loadingText: 'Loading...',
   type: 'button',
-})
+});
 
 const emit = defineEmits<{
-  click: [event: MouseEvent]
-}>()
+  click: [event: MouseEvent];
+}>();
 
 const onClick = (e: MouseEvent) => {
   if (!props.disabled && !props.loading) {
-    emit('click', e)
+    emit('click', e);
   }
-}
+};
 
 const buttonClass = computed(() => {
-  const base = 'font-black transition focus:outline-none focus:ring-4'
+  const base = 'font-black transition focus:outline-none focus:ring-4';
 
   const sizes = {
     sm: 'px-2.5 py-1.5 text-xs rounded-lg',
     md: 'px-4 py-2 text-sm rounded-lg',
     lg: 'px-5 py-2.5 text-base rounded-xl',
-  }
+  };
 
   const variants = {
     primary:
@@ -78,11 +78,11 @@ const buttonClass = computed(() => {
       'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25 hover:-translate-y-0.5 hover:shadow-xl focus:ring-emerald-200 dark:focus:ring-emerald-900/40',
     'gradient-amber':
       'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-orange-500/25 hover:-translate-y-0.5 hover:shadow-xl focus:ring-amber-200 dark:focus:ring-amber-900/40',
-  }
+  };
 
   const disabledClass =
-    props.disabled || props.loading ? 'disabled:cursor-not-allowed disabled:opacity-40' : ''
+    props.disabled || props.loading ? 'disabled:cursor-not-allowed disabled:opacity-40' : '';
 
-  return `${base} ${sizes[props.size]} ${variants[props.variant]} ${disabledClass}`
-})
+  return `${base} ${sizes[props.size]} ${variants[props.variant]} ${disabledClass}`;
+});
 </script>

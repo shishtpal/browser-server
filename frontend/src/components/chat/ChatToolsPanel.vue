@@ -506,189 +506,189 @@
 </template>
 
 <script setup lang="ts">
-import type { AIMCPConfig } from '@browser-server/shared-types'
-import { computed, onUnmounted, reactive, ref } from 'vue'
-import { Search, X } from '@lucide/vue'
+import type { AIMCPConfig } from '@browser-server/shared-types';
+import { computed, onUnmounted, reactive, ref } from 'vue';
+import { Search, X } from '@lucide/vue';
 
-const MIN_WIDTH = 200
-const MAX_WIDTH = 500
-const DEFAULT_WIDTH = 280
-const STORAGE_KEY = 'ai-tools-panel-width'
-const TAB_STORAGE_KEY = 'ai-tools-panel-tab'
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 500;
+const DEFAULT_WIDTH = 280;
+const STORAGE_KEY = 'ai-tools-panel-width';
+const TAB_STORAGE_KEY = 'ai-tools-panel-tab';
 
 export interface ToolCallEntry {
-  id: string
-  name: string
-  status: string
-  args?: string
-  result?: string
+  id: string;
+  name: string;
+  status: string;
+  args?: string;
+  result?: string;
 }
 
-type TabId = 'tools' | 'history' | 'settings'
+type TabId = 'tools' | 'history' | 'settings';
 
 const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'tools', label: 'Tools', icon: '🔧' },
   { id: 'history', label: 'History', icon: '📋' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
-]
+];
 
 const props = defineProps<{
-  toolsEnabled: boolean
-  modelSupportsTools: boolean
-  yoloMode: boolean
-  includeAllToolDefinitions: boolean
-  availableTools: string[]
-  toolsByCategory: { category: string; tools: string[] }[]
-  disabledTools: Set<string>
-  toolCalls: ToolCallEntry[]
-  mcp: AIMCPConfig
-  fontFamily: string
-  fontSize: number
+  toolsEnabled: boolean;
+  modelSupportsTools: boolean;
+  yoloMode: boolean;
+  includeAllToolDefinitions: boolean;
+  availableTools: string[];
+  toolsByCategory: { category: string; tools: string[] }[];
+  disabledTools: Set<string>;
+  toolCalls: ToolCallEntry[];
+  mcp: AIMCPConfig;
+  fontFamily: string;
+  fontSize: number;
   /** true = force raw, false = force JSON, null = follow server config */
-  rawToolOutput: boolean | null
-}>()
+  rawToolOutput: boolean | null;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  'update:toolsEnabled': [value: boolean]
-  'update:yoloMode': [value: boolean]
-  'update:includeAllToolDefinitions': [value: boolean]
-  'update:fontFamily': [value: string]
-  'update:fontSize': [value: number]
-  'update:rawToolOutput': [value: boolean | null]
-  'toggle-tool': [name: string, enabled: boolean]
-}>()
+  close: [];
+  'update:toolsEnabled': [value: boolean];
+  'update:yoloMode': [value: boolean];
+  'update:includeAllToolDefinitions': [value: boolean];
+  'update:fontFamily': [value: string];
+  'update:fontSize': [value: number];
+  'update:rawToolOutput': [value: boolean | null];
+  'toggle-tool': [name: string, enabled: boolean];
+}>();
 
 const showThinking = defineModel<boolean>('showThinking', {
   default: true,
-})
+});
 
 // ─── Tab state ─────────────────────────────────────────
 
 function loadTab(): TabId {
-  const stored = localStorage.getItem(TAB_STORAGE_KEY) as TabId | null
-  if (stored && tabs.some((t) => t.id === stored)) return stored
-  return 'tools'
+  const stored = localStorage.getItem(TAB_STORAGE_KEY) as TabId | null;
+  if (stored && tabs.some((t) => t.id === stored)) return stored;
+  return 'tools';
 }
 
-const activeTab = ref<TabId>(loadTab())
+const activeTab = ref<TabId>(loadTab());
 
 // Persist tab selection
-import { watch } from 'vue'
+import { watch } from 'vue';
 watch(activeTab, (val) => {
-  localStorage.setItem(TAB_STORAGE_KEY, val)
-})
+  localStorage.setItem(TAB_STORAGE_KEY, val);
+});
 
 // ─── Category grouping logic ───────────────────────────
 
-const toolSearchQuery = ref('')
+const toolSearchQuery = ref('');
 
 const filteredToolsByCategory = computed(() => {
-  const q = toolSearchQuery.value.toLowerCase().trim()
-  if (!q) return props.toolsByCategory
+  const q = toolSearchQuery.value.toLowerCase().trim();
+  if (!q) return props.toolsByCategory;
   return props.toolsByCategory
     .map((g) => ({
       category: g.category,
       tools: g.tools.filter((t) => t.toLowerCase().includes(q)),
     }))
-    .filter((g) => g.tools.length > 0)
-})
+    .filter((g) => g.tools.length > 0);
+});
 
 const connectedMCPServers = computed(
   () => props.mcp.servers.filter((server) => server.status === 'connected').length,
-)
+);
 const unavailableMCPServers = computed(() =>
   props.mcp.servers.filter((server) => server.status === 'unavailable'),
-)
+);
 const mcpToolCount = computed(() =>
   props.mcp.servers.reduce((total, server) => total + (server.tools?.length ?? 0), 0),
-)
+);
 
 function isCategoryVisible(category: string): boolean {
-  if (!toolSearchQuery.value.trim()) return !collapsed.has(category)
-  return true
+  if (!toolSearchQuery.value.trim()) return !collapsed.has(category);
+  return true;
 }
 
 function visibleToggleTools(tools: string[]): string[] {
-  const q = toolSearchQuery.value.toLowerCase().trim()
-  if (!q) return tools
-  return tools.filter((t) => t.toLowerCase().includes(q))
+  const q = toolSearchQuery.value.toLowerCase().trim();
+  if (!q) return tools;
+  return tools.filter((t) => t.toLowerCase().includes(q));
 }
 
 function clearSearch() {
-  toolSearchQuery.value = ''
+  toolSearchQuery.value = '';
 }
 
-const collapsed = reactive(new Set<string>())
+const collapsed = reactive(new Set<string>());
 
 function toggleCollapse(category: string) {
   if (collapsed.has(category)) {
-    collapsed.delete(category)
+    collapsed.delete(category);
   } else {
-    collapsed.add(category)
+    collapsed.add(category);
   }
 }
 
 function isCategoryFullyEnabled(tools: string[]): boolean {
-  return tools.every((t) => !props.disabledTools.has(t))
+  return tools.every((t) => !props.disabledTools.has(t));
 }
 
 function isCategoryPartial(tools: string[]): boolean {
-  const enabled = tools.filter((t) => !props.disabledTools.has(t)).length
-  return enabled > 0 && enabled < tools.length
+  const enabled = tools.filter((t) => !props.disabledTools.has(t)).length;
+  return enabled > 0 && enabled < tools.length;
 }
 
 function toggleCategory(tools: string[], enabled: boolean) {
   for (const tool of tools) {
-    emit('toggle-tool', tool, enabled)
+    emit('toggle-tool', tool, enabled);
   }
 }
 
 // ─── Resize logic ──────────────────────────────────────
 
-const panelRef = ref<HTMLElement | null>(null)
-const panelWidth = ref(loadWidth())
+const panelRef = ref<HTMLElement | null>(null);
+const panelWidth = ref(loadWidth());
 
-let startX = 0
-let startWidth = 0
+let startX = 0;
+let startWidth = 0;
 
 function loadWidth(): number {
-  const stored = localStorage.getItem(STORAGE_KEY)
+  const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
-    const parsed = Number(stored)
-    if (parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) return parsed
+    const parsed = Number(stored);
+    if (parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) return parsed;
   }
-  return DEFAULT_WIDTH
+  return DEFAULT_WIDTH;
 }
 
 function startResize(e: MouseEvent) {
-  e.preventDefault()
-  startX = e.clientX
-  startWidth = panelWidth.value
-  document.addEventListener('mousemove', onResize)
-  document.addEventListener('mouseup', stopResize)
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
+  e.preventDefault();
+  startX = e.clientX;
+  startWidth = panelWidth.value;
+  document.addEventListener('mousemove', onResize);
+  document.addEventListener('mouseup', stopResize);
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
 }
 
 function onResize(e: MouseEvent) {
-  const delta = startX - e.clientX
-  const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta))
-  panelWidth.value = newWidth
+  const delta = startX - e.clientX;
+  const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
+  panelWidth.value = newWidth;
 }
 
 function stopResize() {
-  document.removeEventListener('mousemove', onResize)
-  document.removeEventListener('mouseup', stopResize)
-  document.body.style.cursor = ''
-  document.body.style.userSelect = ''
-  localStorage.setItem(STORAGE_KEY, String(panelWidth.value))
+  document.removeEventListener('mousemove', onResize);
+  document.removeEventListener('mouseup', stopResize);
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  localStorage.setItem(STORAGE_KEY, String(panelWidth.value));
 }
 
 onUnmounted(() => {
-  document.removeEventListener('mousemove', onResize)
-  document.removeEventListener('mouseup', stopResize)
-})
+  document.removeEventListener('mousemove', onResize);
+  document.removeEventListener('mouseup', stopResize);
+});
 
 // ─── Helpers ───────────────────────────────────────────
 
@@ -696,17 +696,17 @@ function statusClass(status: string): string {
   switch (status) {
     case 'completed':
     case 'success':
-      return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+      return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400';
     case 'commented':
-      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
     case 'error':
     case 'rejected':
-      return 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+      return 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
     case 'pending':
     case 'running':
-      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
     default:
-      return 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
   }
 }
 </script>

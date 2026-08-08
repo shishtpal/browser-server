@@ -66,11 +66,11 @@
 </template>
 
 <script setup lang="ts">
-import type { TodoView } from '../../types'
+import type { TodoView } from '../../types';
 
 defineProps<{
-  view: TodoView
-}>()
+  view: TodoView;
+}>();
 
-defineEmits<{ 'update:view': [value: TodoView] }>()
+defineEmits<{ 'update:view': [value: TodoView] }>();
 </script>

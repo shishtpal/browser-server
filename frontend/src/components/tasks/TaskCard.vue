@@ -94,29 +94,29 @@
 </template>
 
 <script setup lang="ts">
-import type { AITask } from '@browser-server/shared-types'
-import { computed, ref } from 'vue'
-import Button from '../ui/Button.vue'
-import { timeAgo } from '../../lib/utils'
+import type { AITask } from '@browser-server/shared-types';
+import { computed, ref } from 'vue';
+import Button from '../ui/Button.vue';
+import { timeAgo } from '../../lib/utils';
 
-const props = defineProps<{ task: AITask }>()
+const props = defineProps<{ task: AITask }>();
 
 const emit = defineEmits<{
-  cancel: [id: string]
-  delete: [id: string]
-}>()
+  cancel: [id: string];
+  delete: [id: string];
+}>();
 
-const expanded = ref(false)
+const expanded = ref(false);
 
-const stale = computed(() => props.task.stale)
+const stale = computed(() => props.task.stale);
 const isTerminal = computed(
   () => props.task.status === 'completed' || props.task.status === 'failed',
-)
+);
 
 /** A retry backs a task off, so its next run is in the future. */
 const queuedLater = computed(
   () => props.task.status === 'queued' && new Date(props.task.available_at).getTime() > Date.now(),
-)
+);
 
 const statusClass = computed(() => {
   const classes: Record<AITask['status'], string> = {
@@ -124,7 +124,7 @@ const statusClass = computed(() => {
     running: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
     completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
     failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  }
-  return classes[props.task.status]
-})
+  };
+  return classes[props.task.status];
+});
 </script>

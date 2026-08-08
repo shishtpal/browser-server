@@ -83,29 +83,29 @@
 </template>
 
 <script setup lang="ts">
-import type { PromptResponse } from '../../types'
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
-import { usePrompts } from '../../composables/usePrompts'
-import { usePromptManager } from '../../composables/usePromptManager'
-import { useResizableSidebar } from '../../composables/useResizableSidebar'
-import PromptGrid from './PromptGrid.vue'
-import PromptEditor from './PromptEditor.vue'
-import PromptToolbar from './PromptToolbar.vue'
-import PromptTagSidebar from './PromptTagSidebar.vue'
-import PromptManagerShell from './PromptManagerShell.vue'
-import PromptManagerHeader from './PromptManagerHeader.vue'
+import type { PromptResponse } from '../../types';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { usePrompts } from '../../composables/usePrompts';
+import { usePromptManager } from '../../composables/usePromptManager';
+import { useResizableSidebar } from '../../composables/useResizableSidebar';
+import PromptGrid from './PromptGrid.vue';
+import PromptEditor from './PromptEditor.vue';
+import PromptToolbar from './PromptToolbar.vue';
+import PromptTagSidebar from './PromptTagSidebar.vue';
+import PromptManagerShell from './PromptManagerShell.vue';
+import PromptManagerHeader from './PromptManagerHeader.vue';
 
 const props = defineProps<{
-  open: boolean
-  userId: number | null
-}>()
+  open: boolean;
+  userId: number | null;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  select: [prompt: PromptResponse]
-}>()
+  close: [];
+  select: [prompt: PromptResponse];
+}>();
 
-const userIdRef = computed(() => props.userId)
+const userIdRef = computed(() => props.userId);
 
 const {
   prompts,
@@ -117,7 +117,7 @@ const {
   addPrompt,
   editPrompt,
   removePrompt,
-} = usePrompts(userIdRef)
+} = usePrompts(userIdRef);
 
 const {
   view,
@@ -142,12 +142,12 @@ const {
   confirmDeletePrompt,
   copyPrompt,
   selectTag,
-} = usePromptManager({ prompts, activeTag, addPrompt, editPrompt, removePrompt, loadPrompts })
+} = usePromptManager({ prompts, activeTag, addPrompt, editPrompt, removePrompt, loadPrompts });
 
 const { containerRef, sidebarWidth, isResizing, startResize, onResize, stopResize } =
   useResizableSidebar({
     storageKey: 'pm.sidebarWidth',
-  })
+  });
 
 /* Always fetch the full list; filtering happens client-side so tag counts stay
    accurate and switching tags is instant. */
@@ -155,33 +155,33 @@ watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      resetBrowseState()
-      activeTag.value = null
-      loadPrompts(null)
+      resetBrowseState();
+      activeTag.value = null;
+      loadPrompts(null);
     }
   },
   { immediate: true },
-)
+);
 
 function usePrompt(prompt: PromptResponse) {
-  emit('select', prompt)
-  emit('close')
+  emit('select', prompt);
+  emit('close');
 }
 
 function requestClose() {
-  if (view.value === 'editor' && !confirmDiscard()) return
-  emit('close')
+  if (view.value === 'editor' && !confirmDiscard()) return;
+  emit('close');
 }
 
 /* Cmd/Ctrl+S saves while editing */
 function onKeydown(e: KeyboardEvent) {
-  if (!props.open) return
+  if (!props.open) return;
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && view.value === 'editor') {
-    e.preventDefault()
-    savePrompt()
+    e.preventDefault();
+    savePrompt();
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 </script>

@@ -134,20 +134,20 @@
 </template>
 
 <script setup lang="ts">
-import type { PromptResponse } from '../../types'
-import { formatShortDate } from './format'
+import type { PromptResponse } from '../../types';
+import { formatShortDate } from './format';
 
 defineProps<{
-  prompt: PromptResponse
-  copied: boolean
+  prompt: PromptResponse;
+  copied: boolean;
   /** Compact/list layout — hides the content preview and lays out horizontally. */
-  dense?: boolean
-}>()
+  dense?: boolean;
+}>();
 
 defineEmits<{
-  open: [prompt: PromptResponse]
-  use: [prompt: PromptResponse]
-  copy: [prompt: PromptResponse]
-  delete: [prompt: PromptResponse]
-}>()
+  open: [prompt: PromptResponse];
+  use: [prompt: PromptResponse];
+  copy: [prompt: PromptResponse];
+  delete: [prompt: PromptResponse];
+}>();
 </script>

@@ -93,77 +93,77 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch, computed } from 'vue'
-import type { AIProfile, AISkill, AIProviderConfig } from '@browser-server/shared-types'
-import Modal from '../ui/Modal.vue'
+import type { AIProfile, AISkill, AIProviderConfig } from '@browser-server/shared-types';
+import { reactive, watch, computed } from 'vue';
+import Modal from '../ui/Modal.vue';
 
 export interface NewConversationResult {
-  provider: string
-  model: string
-  profile: string
-  skills: string[]
+  provider: string;
+  model: string;
+  profile: string;
+  skills: string[];
 }
 
 const props = defineProps<{
-  open: boolean
-  profiles: AIProfile[]
-  providerNames: string[]
-  providers: Record<string, AIProviderConfig>
-  skills: AISkill[]
-  defaultProvider: string
-  defaultModel: string
-  defaultProfile: string
-  defaultSkills: string[]
-}>()
+  open: boolean;
+  profiles: AIProfile[];
+  providerNames: string[];
+  providers: Record<string, AIProviderConfig>;
+  skills: AISkill[];
+  defaultProvider: string;
+  defaultModel: string;
+  defaultProfile: string;
+  defaultSkills: string[];
+}>();
 
 const emit = defineEmits<{
-  close: []
-  create: [result: NewConversationResult]
-}>()
+  close: [];
+  create: [result: NewConversationResult];
+}>();
 
 const form = reactive({
   profile: '',
   provider: '',
   model: '',
   skills: [] as string[],
-})
+});
 
 // Models for the currently selected provider in the form
 const currentModels = computed(() => {
-  const provider = props.providers[form.provider]
-  return provider?.models ?? []
-})
+  const provider = props.providers[form.provider];
+  return provider?.models ?? [];
+});
 
 // Reset form when modal opens
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      form.profile = props.defaultProfile
-      form.provider = props.defaultProvider
-      form.model = props.defaultModel
-      form.skills = [...props.defaultSkills]
+      form.profile = props.defaultProfile;
+      form.provider = props.defaultProvider;
+      form.model = props.defaultModel;
+      form.skills = [...props.defaultSkills];
     }
   },
-)
+);
 
 // When provider changes in the form, pick a reasonable default model
 watch(
   () => form.provider,
   () => {
-    const models = currentModels.value
+    const models = currentModels.value;
     if (models.length > 0 && !models.some((m) => m.id === form.model)) {
-      form.model = models.find((m) => m.default)?.id || models[0]?.id || ''
+      form.model = models.find((m) => m.default)?.id || models[0]?.id || '';
     }
   },
-)
+);
 
 function toggleSkill(name: string) {
-  const idx = form.skills.indexOf(name)
+  const idx = form.skills.indexOf(name);
   if (idx >= 0) {
-    form.skills.splice(idx, 1)
+    form.skills.splice(idx, 1);
   } else {
-    form.skills.push(name)
+    form.skills.push(name);
   }
 }
 
@@ -173,6 +173,6 @@ function handleCreate() {
     model: form.model,
     profile: form.profile,
     skills: [...form.skills],
-  })
+  });
 }
 </script>

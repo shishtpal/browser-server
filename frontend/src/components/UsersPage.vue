@@ -151,13 +151,13 @@
 </template>
 
 <script setup lang="ts">
-import { useUsers } from '../composables/useUsers'
-import PageHeader from './ui/PageHeader.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import EmptyState from './ui/EmptyState.vue'
-import InputField from './ui/InputField.vue'
-import Button from './ui/Button.vue'
+import { useUsers } from '../composables/useUsers';
+import PageHeader from './ui/PageHeader.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import EmptyState from './ui/EmptyState.vue';
+import InputField from './ui/InputField.vue';
+import Button from './ui/Button.vue';
 
 const {
   usersList,
@@ -169,7 +169,7 @@ const {
   loadUsers,
   addUser,
   removeUser,
-} = useUsers()
+} = useUsers();
 
-loadUsers()
+loadUsers();
 </script>

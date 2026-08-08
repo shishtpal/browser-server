@@ -1,22 +1,22 @@
-import type { Todo } from '../../types'
+import type { Todo } from '../../types';
 
-export type CalendarView = 'month' | 'week' | 'day' | 'year'
+export type CalendarView = 'month' | 'week' | 'day' | 'year';
 
 export interface CalendarDay {
-  date: string
-  isToday: boolean
-  isCurrentMonth: boolean
-  isWeekend: boolean
-  todos: Todo[]
+  date: string;
+  isToday: boolean;
+  isCurrentMonth: boolean;
+  isWeekend: boolean;
+  todos: Todo[];
 }
 
 export interface DateRange {
-  start: Date
-  end: Date
+  start: Date;
+  end: Date;
 }
 
 export interface CalendarStats {
-  todayCount: number
-  overdueCount: number
-  completedCount: number
+  todayCount: number;
+  overdueCount: number;
+  completedCount: number;
 }

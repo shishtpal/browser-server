@@ -14,7 +14,7 @@
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
           $emit('update:filterType', ($event.target as HTMLSelectElement).value);
-          $emit('applyFilters')
+          $emit('applyFilters');
         "
       >
         <option value="">All types</option>
@@ -28,7 +28,7 @@
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
           $emit('update:filterDifficulty', ($event.target as HTMLSelectElement).value);
-          $emit('applyFilters')
+          $emit('applyFilters');
         "
       >
         <option value="">All difficulties</option>
@@ -107,7 +107,7 @@
         class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
         @change="
           $emit('update:filterSubject', ($event.target as HTMLSelectElement).value);
-          $emit('applyFilters')
+          $emit('applyFilters');
         "
       >
         <option value="">All subjects</option>
@@ -142,7 +142,10 @@
       />
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-slate-700">
+      <div
+        v-if="totalPages > 1"
+        class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-slate-700"
+      >
         <p class="text-xs text-slate-500 dark:text-slate-400">
           Showing <span class="font-bold">{{ startIndex + 1 }}</span> to
           <span class="font-bold">{{ Math.min(startIndex + itemsPerPage, questions.length) }}</span>
@@ -152,7 +155,7 @@
           <button
             type="button"
             :disabled="currentPage === 1"
-            class="rounded bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700"
+            class="rounded bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700"
             @click="currentPage--"
           >
             Previous
@@ -163,7 +166,7 @@
           <button
             type="button"
             :disabled="currentPage === totalPages"
-            class="rounded bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700"
+            class="rounded bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700"
             @click="currentPage++"
           >
             Next
@@ -175,73 +178,79 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import EmptyState from '../ui/EmptyState.vue'
-import QuestionCard from './QuestionCard.vue'
-import type { QuestionResponse, TagVocabulary } from '../../types'
+import type { QuestionResponse, TagVocabulary } from '../../types';
+import { computed, ref, watch } from 'vue';
+import EmptyState from '../ui/EmptyState.vue';
+import QuestionCard from './QuestionCard.vue';
 
 const props = defineProps<{
-  questions: QuestionResponse[]
-  vocabulary?: TagVocabulary | null
-  searchQuery: string
-  filterType: string
-  filterDifficulty: string
-  filterTags: string[]
-  filterSubject: string
-}>()
+  questions: QuestionResponse[];
+  vocabulary?: TagVocabulary | null;
+  searchQuery: string;
+  filterType: string;
+  filterDifficulty: string;
+  filterTags: string[];
+  filterSubject: string;
+}>();
 
 const emit = defineEmits<{
-  'update:searchQuery': [value: string]
-  'update:filterType': [value: string]
-  'update:filterDifficulty': [value: string]
-  'update:filterTags': [value: string[]]
-  'update:filterSubject': [value: string]
-  applyFilters: []
-  edit: [question: QuestionResponse]
-  delete: [id: number]
-}>()
+  'update:searchQuery': [value: string];
+  'update:filterType': [value: string];
+  'update:filterDifficulty': [value: string];
+  'update:filterTags': [value: string[]];
+  'update:filterSubject': [value: string];
+  applyFilters: [];
+  edit: [question: QuestionResponse];
+  delete: [id: number];
+}>();
 
-const tagPickerOpen = ref(false)
-const newTagDraft = ref('')
+const tagPickerOpen = ref(false);
+const newTagDraft = ref('');
 
-const availableTags = computed(() => props.vocabulary?.tags ?? [])
+const availableTags = computed(() => props.vocabulary?.tags ?? []);
 
 function toggleTag(tag: string) {
   const next = props.filterTags.includes(tag)
     ? props.filterTags.filter((t) => t !== tag)
-    : [...props.filterTags, tag]
-  emit('update:filterTags', next)
+    : [...props.filterTags, tag];
+  emit('update:filterTags', next);
 }
 
 function addDraftTag() {
-  const value = newTagDraft.value.trim()
-  if (!value) return
+  const value = newTagDraft.value.trim();
+  if (!value) return;
   if (!props.filterTags.includes(value)) {
-    emit('update:filterTags', [...props.filterTags, value])
+    emit('update:filterTags', [...props.filterTags, value]);
   }
-  newTagDraft.value = ''
+  newTagDraft.value = '';
 }
 
 function applyAndClose() {
-  emit('applyFilters')
-  tagPickerOpen.value = false
+  emit('applyFilters');
+  tagPickerOpen.value = false;
 }
 
 // Pagination logic
-const itemsPerPage = 20
-const currentPage = ref(1)
+const itemsPerPage = 20;
+const currentPage = ref(1);
 
 watch(
-  () => [props.searchQuery, props.filterType, props.filterDifficulty, props.filterTags, props.filterSubject],
+  () => [
+    props.searchQuery,
+    props.filterType,
+    props.filterDifficulty,
+    props.filterTags,
+    props.filterSubject,
+  ],
   () => {
-    currentPage.value = 1
+    currentPage.value = 1;
   },
-  { deep: true }
-)
+  { deep: true },
+);
 
-const totalPages = computed(() => Math.ceil(props.questions.length / itemsPerPage))
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
+const totalPages = computed(() => Math.ceil(props.questions.length / itemsPerPage));
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage);
 const paginatedQuestions = computed(() => {
-  return props.questions.slice(startIndex.value, startIndex.value + itemsPerPage)
-})
+  return props.questions.slice(startIndex.value, startIndex.value + itemsPerPage);
+});
 </script>

@@ -115,41 +115,41 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { API_BASE } from '../../lib/api'
-import type { QuestionResponse } from '../../types'
+import type { QuestionResponse } from '../../types';
+import { computed, ref } from 'vue';
+import { API_BASE } from '../../lib/api';
 
-const props = defineProps<{ question: QuestionResponse }>()
-defineEmits<{ edit: [question: QuestionResponse]; delete: [id: number] }>()
+const props = defineProps<{ question: QuestionResponse }>();
+defineEmits<{ edit: [question: QuestionResponse]; delete: [id: number] }>();
 
-const showExplanation = ref(false)
+const showExplanation = ref(false);
 
-const typeLabel = computed(() => props.question.type.replace('_', ' '))
+const typeLabel = computed(() => props.question.type.replace('_', ' '));
 const typeBadge = computed(() => {
   const map: Record<string, string> = {
     single_choice: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
     multiple_choice: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
     input: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
     chronology: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-  }
-  return map[props.question.type] ?? map.single_choice
-})
+  };
+  return map[props.question.type] ?? map.single_choice;
+});
 const difficultyBadge = computed(() => {
   const map: Record<string, string> = {
     easy: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
     medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
     hard: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
-  }
-  return map[props.question.difficulty] ?? map.medium
-})
+  };
+  return map[props.question.difficulty] ?? map.medium;
+});
 
 const imageSrc = computed(() =>
   props.question.image_url?.startsWith('http')
     ? props.question.image_url
     : `${API_BASE}${props.question.image_url}`,
-)
+);
 
 const orderedChronology = computed(() =>
   [...(props.question.chronology_items ?? [])].sort((a, b) => a.correct_order - b.correct_order),
-)
+);
 </script>

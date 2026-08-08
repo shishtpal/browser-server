@@ -149,47 +149,47 @@
 </template>
 
 <script setup lang="ts">
-import type { AIImageModel, GeneratedImage } from '@browser-server/shared-types'
-import { ref } from 'vue'
-import { getGeneratedImageUrl } from '../../lib/api/ai'
-import Button from '../ui/Button.vue'
-import FilterPill from '../ui/FilterPill.vue'
+import type { AIImageModel, GeneratedImage } from '@browser-server/shared-types';
+import { ref } from 'vue';
+import { getGeneratedImageUrl } from '../../lib/api/ai';
+import Button from '../ui/Button.vue';
+import FilterPill from '../ui/FilterPill.vue';
 
 defineProps<{
-  prompt: string
-  provider: string
-  model: string
-  size: string
-  aspectRatio: string
-  count: number
-  providerNames: string[]
-  models: AIImageModel[]
-  sizes: string[]
-  aspectRatios: string[]
-  maxImages: number
-  canEdit: boolean
-  busy: boolean
-  sourceImage: GeneratedImage | null
-}>()
+  prompt: string;
+  provider: string;
+  model: string;
+  size: string;
+  aspectRatio: string;
+  count: number;
+  providerNames: string[];
+  models: AIImageModel[];
+  sizes: string[];
+  aspectRatios: string[];
+  maxImages: number;
+  canEdit: boolean;
+  busy: boolean;
+  sourceImage: GeneratedImage | null;
+}>();
 
 defineEmits<{
-  'update:prompt': [value: string]
-  'update:provider': [value: string]
-  'update:model': [value: string]
-  'update:size': [value: string]
-  'update:aspectRatio': [value: string]
-  'update:count': [value: number]
-  'clear-source': []
-  submit: []
-}>()
+  'update:prompt': [value: string];
+  'update:provider': [value: string];
+  'update:model': [value: string];
+  'update:size': [value: string];
+  'update:aspectRatio': [value: string];
+  'update:count': [value: number];
+  'clear-source': [];
+  submit: [];
+}>();
 
-const imageUrl = (id: string) => getGeneratedImageUrl(id)
+const imageUrl = (id: string) => getGeneratedImageUrl(id);
 
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
-defineExpose({ focus: () => textareaRef.value?.focus() })
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+defineExpose({ focus: () => textareaRef.value?.focus() });
 
 const labelClass =
-  'mb-1 block text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400'
+  'mb-1 block text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400';
 const selectClass =
-  'w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-violet-900/30'
+  'w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-violet-900/30';
 </script>

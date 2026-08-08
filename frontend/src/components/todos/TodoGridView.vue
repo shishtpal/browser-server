@@ -17,23 +17,23 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types'
-import TodoGridCard from './TodoGridCard.vue'
+import type { Todo } from '../../types';
+import TodoGridCard from './TodoGridCard.vue';
 
 interface Props {
-  todos: Todo[]
+  todos: Todo[];
 }
 
-defineProps<Props>()
+defineProps<Props>();
 
 defineEmits<{
-  toggle: [todo: Todo]
-  'toggle-pin': [todo: Todo]
-  archive: [todo: Todo]
-  restore: [todo: Todo]
-  'view-screenshot': [todo: Todo]
-  'start-edit': [todo: Todo]
-  delete: [id: number]
-  'toggle-subtask': [todo: Todo]
-}>()
+  toggle: [todo: Todo];
+  'toggle-pin': [todo: Todo];
+  archive: [todo: Todo];
+  restore: [todo: Todo];
+  'view-screenshot': [todo: Todo];
+  'start-edit': [todo: Todo];
+  delete: [id: number];
+  'toggle-subtask': [todo: Todo];
+}>();
 </script>

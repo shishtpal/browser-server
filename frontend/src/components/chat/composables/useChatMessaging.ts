@@ -4,8 +4,8 @@ import type {
   AIImageAttachment,
   AIStreamEvent,
   AIChatAttachmentsConfig,
-} from '@browser-server/shared-types'
-import { computed, ref } from 'vue'
+} from '@browser-server/shared-types';
+import { computed, ref } from 'vue';
 import {
   appendAIMessage,
   decideAIToolCall,
@@ -15,28 +15,28 @@ import {
   sendAIMessageStream,
   stopAIGeneration,
   uploadAIImageAttachment,
-} from '../../../lib/api'
+} from '../../../lib/api';
 
 interface UploadableImage {
-  id: string
-  file: File
-  previewUrl: string
-  attachment?: AIImageAttachment
-  uploading: boolean
-  error?: string
+  id: string;
+  file: File;
+  previewUrl: string;
+  attachment?: AIImageAttachment;
+  uploading: boolean;
+  error?: string;
 }
 
 interface SendOptions {
-  provider: string
-  model: string
-  toolsEnabled: boolean
-  yoloMode: boolean
-  includeAllToolDefinitions: boolean
-  streamEnabled: boolean
-  activeTools?: string[]
-  skills?: string[]
+  provider: string;
+  model: string;
+  toolsEnabled: boolean;
+  yoloMode: boolean;
+  includeAllToolDefinitions: boolean;
+  streamEnabled: boolean;
+  activeTools?: string[];
+  skills?: string[];
   /** true = force raw tool output, false = force JSON, undefined = follow server config allowlist */
-  rawToolOutput?: boolean
+  rawToolOutput?: boolean;
 }
 
 export function useChatMessaging(
@@ -44,73 +44,73 @@ export function useChatMessaging(
   getMessages: () => AIMessage[],
   setMessages: (msgs: AIMessage[]) => void,
 ) {
-  const isBusy = ref(false)
-  const canAppend = ref(false)
-  const isAppending = ref(false)
-  let streamController: AbortController | null = null
+  const isBusy = ref(false);
+  const canAppend = ref(false);
+  const isAppending = ref(false);
+  let streamController: AbortController | null = null;
 
   // Staged image attachments queued by the composer but not yet sent.
-  const stagedAttachments = ref<UploadableImage[]>([])
+  const stagedAttachments = ref<UploadableImage[]>([]);
 
   const canRegenerate = computed(() => {
-    const conv = getActiveConversation()
-    if (!conv || isBusy.value) return false
-    return getMessages().some((m) => m.role === 'assistant' && m.status !== 'superseded')
-  })
+    const conv = getActiveConversation();
+    if (!conv || isBusy.value) return false;
+    return getMessages().some((m) => m.role === 'assistant' && m.status !== 'superseded');
+  });
 
   const visibleMessages = computed(() => {
-    const visible = getMessages().filter((m) => m.status !== 'superseded')
-    const ordered: AIMessage[] = []
+    const visible = getMessages().filter((m) => m.status !== 'superseded');
+    const ordered: AIMessage[] = [];
     for (let index = 0; index < visible.length; index++) {
-      const message = visible[index]
+      const message = visible[index];
       if (message.role !== 'assistant') {
-        ordered.push(message)
-        continue
+        ordered.push(message);
+        continue;
       }
-      let next = index + 1
+      let next = index + 1;
       while (next < visible.length && visible[next].role === 'tool') {
-        ordered.push(visible[next])
-        next++
+        ordered.push(visible[next]);
+        next++;
       }
-      ordered.push(message)
-      index = next - 1
+      ordered.push(message);
+      index = next - 1;
     }
-    return ordered
-  })
+    return ordered;
+  });
 
   /**
    * Add files to the staged queue. Uploads each one asynchronously, replacing
    * the local entry with the server-issued attachment on success.
    */
   async function addImageAttachments(conversationId: string, files: File[]) {
-    if (!conversationId) return
+    if (!conversationId) return;
     for (const file of files) {
-      const id = 'local-' + Math.random().toString(36).slice(2)
+      const id = 'local-' + Math.random().toString(36).slice(2);
       const entry: UploadableImage = {
         id,
         file,
         previewUrl: URL.createObjectURL(file),
         uploading: true,
-      }
-      stagedAttachments.value.push(entry)
+      };
+      stagedAttachments.value.push(entry);
       try {
-        const attachment = await uploadAIImageAttachment(conversationId, file, file.name)
-        const idx = stagedAttachments.value.findIndex((a) => a.id === id)
+        const attachment = await uploadAIImageAttachment(conversationId, file, file.name);
+        const idx = stagedAttachments.value.findIndex((a) => a.id === id);
         if (idx >= 0) {
           stagedAttachments.value[idx] = {
             ...stagedAttachments.value[idx],
             attachment,
             uploading: false,
-          }
+          };
         }
       } catch (err) {
-        const idx = stagedAttachments.value.findIndex((a) => a.id === id)
+        const idx = stagedAttachments.value.findIndex((a) => a.id === id);
         if (idx >= 0) {
           stagedAttachments.value[idx] = {
             ...stagedAttachments.value[idx],
             uploading: false,
             error: err instanceof Error ? err.message : 'Upload failed',
-          }
+          };
         }
       }
     }
@@ -121,14 +121,14 @@ export function useChatMessaging(
    * staged attachment is cancelled and its storage is reclaimed.
    */
   async function removeStagedAttachment(conversationId: string, id: string) {
-    const idx = stagedAttachments.value.findIndex((a) => a.id === id)
-    if (idx < 0) return
-    const entry = stagedAttachments.value[idx]
-    stagedAttachments.value.splice(idx, 1)
-    if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+    const idx = stagedAttachments.value.findIndex((a) => a.id === id);
+    if (idx < 0) return;
+    const entry = stagedAttachments.value[idx];
+    stagedAttachments.value.splice(idx, 1);
+    if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
     if (entry.attachment?.id) {
       try {
-        await deleteAIImageAttachment(conversationId, entry.attachment.id)
+        await deleteAIImageAttachment(conversationId, entry.attachment.id);
       } catch {
         /* best-effort */
       }
@@ -137,9 +137,9 @@ export function useChatMessaging(
 
   function clearStagedAttachments() {
     for (const entry of stagedAttachments.value) {
-      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+      if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl);
     }
-    stagedAttachments.value = []
+    stagedAttachments.value = [];
   }
 
   async function send(
@@ -149,16 +149,16 @@ export function useChatMessaging(
     onDone: (conversationId: string, firstMessage: string) => Promise<void>,
     onError: (msg: string) => void,
   ) {
-    canAppend.value = false
-    isBusy.value = true
-    const msgs = getMessages()
+    canAppend.value = false;
+    isBusy.value = true;
+    const msgs = getMessages();
 
     const readyAttachments = stagedAttachments.value
       .filter((a) => a.attachment && !a.uploading && !a.error)
-      .map((a) => a.attachment!.id)
+      .map((a) => a.attachment!.id);
 
     // Optimistic user message
-    const tempUserId = 'temp-user-' + Date.now()
+    const tempUserId = 'temp-user-' + Date.now();
     const tempUserMsg: AIMessage = {
       id: tempUserId,
       conversation_id: conversationId,
@@ -169,10 +169,10 @@ export function useChatMessaging(
       attachments: stagedAttachments.value
         .filter((a) => a.attachment && !a.uploading && !a.error)
         .map((a) => a.attachment!),
-    }
+    };
 
     // Pending assistant message for streaming
-    const tempAssistantId = 'temp-assistant-' + Date.now()
+    const tempAssistantId = 'temp-assistant-' + Date.now();
     const tempAssistantMsg: AIMessage = {
       id: tempAssistantId,
       conversation_id: conversationId,
@@ -180,11 +180,11 @@ export function useChatMessaging(
       content: '',
       status: 'pending',
       created_at: new Date().toISOString(),
-    }
+    };
 
-    setMessages([...msgs, tempUserMsg, tempAssistantMsg])
+    setMessages([...msgs, tempUserMsg, tempAssistantMsg]);
 
-    const useStream = options.streamEnabled || options.toolsEnabled
+    const useStream = options.streamEnabled || options.toolsEnabled;
 
     const payload = {
       content: text,
@@ -198,57 +198,57 @@ export function useChatMessaging(
       active_tools: options.activeTools,
       skills: options.skills?.length ? options.skills : undefined,
       raw_tool_output: options.rawToolOutput,
-    }
+    };
 
     if (useStream) {
       streamController = sendAIMessageStream(
         conversationId,
         payload,
         (event: AIStreamEvent) => {
-          const currentMessages = getMessages()
+          const currentMessages = getMessages();
           switch (event.type) {
             case 'append_window':
-              canAppend.value = event.status === 'open'
-              break
+              canAppend.value = event.status === 'open';
+              break;
             case 'reasoning': {
-              const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
+              const idx = currentMessages.findIndex((m) => m.id === tempAssistantId);
               if (idx >= 0) {
                 const msg = {
                   ...currentMessages[idx],
                   reasoning: (currentMessages[idx].reasoning ?? '') + event.content,
-                }
+                };
                 setMessages([
                   ...currentMessages.slice(0, idx),
                   msg,
                   ...currentMessages.slice(idx + 1),
-                ])
+                ]);
               }
-              break
+              break;
             }
             case 'delta': {
-              const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
+              const idx = currentMessages.findIndex((m) => m.id === tempAssistantId);
               if (idx >= 0) {
                 const msg = {
                   ...currentMessages[idx],
                   content: currentMessages[idx].content + event.content,
-                }
+                };
                 setMessages([
                   ...currentMessages.slice(0, idx),
                   msg,
                   ...currentMessages.slice(idx + 1),
-                ])
+                ]);
               }
-              break
+              break;
             }
             case 'tool_call': {
               if (
                 !event.tool_call ||
                 currentMessages.some((m) => m.tool_call_id === event.tool_call.id)
               )
-                break
-              let args: unknown = event.tool_call.arguments
+                break;
+              let args: unknown = event.tool_call.arguments;
               try {
-                args = JSON.parse(event.tool_call.arguments)
+                args = JSON.parse(event.tool_call.arguments);
               } catch {
                 /* display malformed arguments verbatim */
               }
@@ -265,92 +265,92 @@ export function useChatMessaging(
                 tool_call_id: event.tool_call.id,
                 status: 'pending',
                 created_at: new Date().toISOString(),
-              }
-              const assistIdx = currentMessages.findIndex((m) => m.id === tempAssistantId)
+              };
+              const assistIdx = currentMessages.findIndex((m) => m.id === tempAssistantId);
               if (assistIdx >= 0) {
                 setMessages([
                   ...currentMessages.slice(0, assistIdx),
                   toolMsg,
                   ...currentMessages.slice(assistIdx),
-                ])
+                ]);
               } else {
-                setMessages([...currentMessages, toolMsg])
+                setMessages([...currentMessages, toolMsg]);
               }
-              break
+              break;
             }
             case 'tool_result': {
-              const idx = currentMessages.findIndex((m) => m.tool_call_id === event.tool_call?.id)
+              const idx = currentMessages.findIndex((m) => m.tool_call_id === event.tool_call?.id);
               if (idx >= 0) {
                 const updated = {
                   ...currentMessages[idx],
                   content: event.content,
                   status: event.status,
-                }
+                };
                 setMessages([
                   ...currentMessages.slice(0, idx),
                   updated,
                   ...currentMessages.slice(idx + 1),
-                ])
+                ]);
               }
-              break
+              break;
             }
             case 'done': {
-              canAppend.value = false
-              clearStagedAttachments()
+              canAppend.value = false;
+              clearStagedAttachments();
               void onDone(conversationId, text).finally(() => {
-                isBusy.value = false
-                streamController = null
-              })
-              break
+                isBusy.value = false;
+                streamController = null;
+              });
+              break;
             }
             case 'error': {
-              canAppend.value = false
-              const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
+              canAppend.value = false;
+              const idx = currentMessages.findIndex((m) => m.id === tempAssistantId);
               if (idx >= 0) {
-                const msg = { ...currentMessages[idx], status: 'error' as const }
+                const msg = { ...currentMessages[idx], status: 'error' as const };
                 setMessages([
                   ...currentMessages.slice(0, idx),
                   msg,
                   ...currentMessages.slice(idx + 1),
-                ])
+                ]);
               }
-              onError(event.message || 'AI generation failed')
-              isBusy.value = false
-              streamController = null
-              break
+              onError(event.message || 'AI generation failed');
+              isBusy.value = false;
+              streamController = null;
+              break;
             }
           }
         },
         (err) => {
-          canAppend.value = false
-          const currentMessages = getMessages()
-          const idx = currentMessages.findIndex((m) => m.id === tempAssistantId)
+          canAppend.value = false;
+          const currentMessages = getMessages();
+          const idx = currentMessages.findIndex((m) => m.id === tempAssistantId);
           if (idx >= 0) {
-            const msg = { ...currentMessages[idx], status: 'error' as const }
-            setMessages([...currentMessages.slice(0, idx), msg, ...currentMessages.slice(idx + 1)])
+            const msg = { ...currentMessages[idx], status: 'error' as const };
+            setMessages([...currentMessages.slice(0, idx), msg, ...currentMessages.slice(idx + 1)]);
           }
-          onError(err.message || 'Stream connection failed')
-          isBusy.value = false
-          streamController = null
+          onError(err.message || 'Stream connection failed');
+          isBusy.value = false;
+          streamController = null;
         },
-      )
+      );
     } else {
       // Non-streaming fallback
-      const result = await sendAIMessage(conversationId, payload)
-      clearStagedAttachments()
+      const result = await sendAIMessage(conversationId, payload);
+      clearStagedAttachments();
 
       const currentMessages = getMessages().filter(
         (m) => m.id !== tempUserId && m.id !== tempAssistantId,
-      )
-      const newMessages: AIMessage[] = [result.user_message]
+      );
+      const newMessages: AIMessage[] = [result.user_message];
       if (result.tool_messages && result.tool_messages.length > 0) {
-        newMessages.push(...result.tool_messages)
+        newMessages.push(...result.tool_messages);
       }
-      newMessages.push(result.assistant_message)
-      setMessages([...currentMessages, ...newMessages])
+      newMessages.push(result.assistant_message);
+      setMessages([...currentMessages, ...newMessages]);
 
-      await onDone(conversationId, text)
-      isBusy.value = false
+      await onDone(conversationId, text);
+      isBusy.value = false;
     }
   }
 
@@ -359,35 +359,35 @@ export function useChatMessaging(
     conversationId: string,
     onError: (msg: string) => void,
   ): Promise<boolean> {
-    const content = text.trim()
-    if (!content || !isBusy.value || !canAppend.value || isAppending.value) return false
-    isAppending.value = true
+    const content = text.trim();
+    if (!content || !isBusy.value || !canAppend.value || isAppending.value) return false;
+    isAppending.value = true;
     try {
-      const message = await appendAIMessage(conversationId, { content })
-      if (getActiveConversation()?.id !== conversationId) return true
-      const currentMessages = getMessages()
-      if (currentMessages.some((item) => item.id === message.id)) return true
+      const message = await appendAIMessage(conversationId, { content });
+      if (getActiveConversation()?.id !== conversationId) return true;
+      const currentMessages = getMessages();
+      if (currentMessages.some((item) => item.id === message.id)) return true;
       const pendingAssistant = currentMessages.findIndex(
         (item) =>
           item.conversation_id === conversationId &&
           item.role === 'assistant' &&
           item.status === 'pending',
-      )
+      );
       if (pendingAssistant >= 0) {
         setMessages([
           ...currentMessages.slice(0, pendingAssistant),
           message,
           ...currentMessages.slice(pendingAssistant),
-        ])
+        ]);
       } else {
-        setMessages([...currentMessages, message])
+        setMessages([...currentMessages, message]);
       }
-      return true
+      return true;
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to append context')
-      return false
+      onError(err instanceof Error ? err.message : 'Failed to append context');
+      return false;
     } finally {
-      isAppending.value = false
+      isAppending.value = false;
     }
   }
 
@@ -397,71 +397,71 @@ export function useChatMessaging(
     comment: string,
     onError: (msg: string) => void,
   ) {
-    const conv = getActiveConversation()
-    if (!conv) return
-    const currentMessages = getMessages()
-    const index = currentMessages.findIndex((message) => message.tool_call_id === callId)
-    if (index < 0) return
-    const original = currentMessages[index]
+    const conv = getActiveConversation();
+    if (!conv) return;
+    const currentMessages = getMessages();
+    const index = currentMessages.findIndex((message) => message.tool_call_id === callId);
+    if (index < 0) return;
+    const original = currentMessages[index];
     try {
-      const content = JSON.parse(original.content)
-      const decision = comment ? 'commented' : approved ? 'approved' : 'rejected'
-      const updated = { ...original, content: JSON.stringify({ ...content, decision }) }
+      const content = JSON.parse(original.content);
+      const decision = comment ? 'commented' : approved ? 'approved' : 'rejected';
+      const updated = { ...original, content: JSON.stringify({ ...content, decision }) };
       setMessages([
         ...currentMessages.slice(0, index),
         updated,
         ...currentMessages.slice(index + 1),
-      ])
-      await decideAIToolCall(conv.id, callId, approved, comment || undefined)
+      ]);
+      await decideAIToolCall(conv.id, callId, approved, comment || undefined);
     } catch (err) {
-      const msgs = getMessages()
-      const current = msgs.findIndex((message) => message.tool_call_id === callId)
+      const msgs = getMessages();
+      const current = msgs.findIndex((message) => message.tool_call_id === callId);
       if (current >= 0)
-        setMessages([...msgs.slice(0, current), original, ...msgs.slice(current + 1)])
-      onError(err instanceof Error ? err.message : 'Failed to submit tool decision')
+        setMessages([...msgs.slice(0, current), original, ...msgs.slice(current + 1)]);
+      onError(err instanceof Error ? err.message : 'Failed to submit tool decision');
     }
   }
 
   async function regenerate(conversationId: string, onError: (msg: string) => void): Promise<void> {
-    if (isBusy.value) return
-    isBusy.value = true
+    if (isBusy.value) return;
+    isBusy.value = true;
     try {
-      await regenerateAIMessage(conversationId)
+      await regenerateAIMessage(conversationId);
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to regenerate')
+      onError(err instanceof Error ? err.message : 'Failed to regenerate');
     } finally {
-      isBusy.value = false
+      isBusy.value = false;
     }
   }
 
   async function stop(conversationId: string) {
-    canAppend.value = false
+    canAppend.value = false;
     if (streamController) {
-      streamController.abort()
-      streamController = null
+      streamController.abort();
+      streamController = null;
     }
     try {
-      await stopAIGeneration(conversationId)
+      await stopAIGeneration(conversationId);
     } catch {
       /* best-effort */
     }
-    const currentMessages = getMessages()
+    const currentMessages = getMessages();
     setMessages(
       currentMessages.map((m) =>
         m.role === 'assistant' && m.status === 'pending'
           ? { ...m, status: 'cancelled' as const }
           : m,
       ),
-    )
-    isBusy.value = false
+    );
+    isBusy.value = false;
   }
 
   function cleanup() {
-    canAppend.value = false
-    isAppending.value = false
-    streamController?.abort()
-    streamController = null
-    clearStagedAttachments()
+    canAppend.value = false;
+    isAppending.value = false;
+    streamController?.abort();
+    streamController = null;
+    clearStagedAttachments();
   }
 
   return {
@@ -480,7 +480,7 @@ export function useChatMessaging(
     regenerate,
     stop,
     cleanup,
-  }
+  };
 }
 
-export type { UploadableImage, SendOptions }
+export type { UploadableImage, SendOptions };

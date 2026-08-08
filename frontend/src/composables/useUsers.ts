@@ -1,47 +1,47 @@
-import { ref } from 'vue'
-import { getUsers, createUser, deleteUser } from '../lib/api'
-import type { User } from '../types'
+import { ref } from 'vue';
+import { getUsers, createUser, deleteUser } from '../lib/api';
+import type { User } from '../types';
 
 export function useUsers() {
-  const usersList = ref<User[]>([])
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  const successMsg = ref('')
+  const usersList = ref<User[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+  const successMsg = ref('');
 
-  const newUsername = ref('')
-  const newEmail = ref('')
+  const newUsername = ref('');
+  const newEmail = ref('');
 
   const loadUsers = async () => {
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     try {
-      usersList.value = await getUsers()
+      usersList.value = await getUsers();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load users'
+      error.value = e instanceof Error ? e.message : 'Failed to load users';
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
-  }
+  };
 
   const addUser = async () => {
-    if (!newUsername.value.trim()) return
-    const username = newUsername.value.trim()
+    if (!newUsername.value.trim()) return;
+    const username = newUsername.value.trim();
     try {
       await createUser({
         username,
         email: newEmail.value.trim() || undefined,
-      })
-      successMsg.value = `User "${username}" created!`
-      newUsername.value = ''
-      newEmail.value = ''
-      await loadUsers()
+      });
+      successMsg.value = `User "${username}" created!`;
+      newUsername.value = '';
+      newEmail.value = '';
+      await loadUsers();
       setTimeout(() => {
-        successMsg.value = ''
-      }, 3000)
+        successMsg.value = '';
+      }, 3000);
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create user'
+      error.value = e instanceof Error ? e.message : 'Failed to create user';
     }
-  }
+  };
 
   const removeUser = async (id: number) => {
     if (
@@ -49,14 +49,14 @@ export function useUsers() {
         'Delete this user? This will remove all their data (todos, bookmarks, history, wallet entries).',
       )
     )
-      return
+      return;
     try {
-      await deleteUser(id)
-      await loadUsers()
+      await deleteUser(id);
+      await loadUsers();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete user'
+      error.value = e instanceof Error ? e.message : 'Failed to delete user';
     }
-  }
+  };
 
   return {
     usersList,
@@ -68,5 +68,5 @@ export function useUsers() {
     loadUsers,
     addUser,
     removeUser,
-  }
+  };
 }

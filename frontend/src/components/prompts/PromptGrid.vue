@@ -61,30 +61,30 @@
 </template>
 
 <script setup lang="ts">
-import type { PromptResponse } from '../../types'
-import type { PromptLayout } from '../../composables/usePromptManager'
-import { computed } from 'vue'
-import PromptCard from './PromptCard.vue'
+import type { PromptResponse } from '../../types';
+import type { PromptLayout } from '../../composables/usePromptManager';
+import { computed } from 'vue';
+import PromptCard from './PromptCard.vue';
 
 const props = defineProps<{
-  prompts: PromptResponse[]
-  loading: boolean
-  layout: PromptLayout
-  search: string
-  copiedId: number | null
-}>()
+  prompts: PromptResponse[];
+  loading: boolean;
+  layout: PromptLayout;
+  search: string;
+  copiedId: number | null;
+}>();
 
 defineEmits<{
-  open: [prompt: PromptResponse]
-  use: [prompt: PromptResponse]
-  copy: [prompt: PromptResponse]
-  delete: [prompt: PromptResponse]
-  create: []
-}>()
+  open: [prompt: PromptResponse];
+  use: [prompt: PromptResponse];
+  copy: [prompt: PromptResponse];
+  delete: [prompt: PromptResponse];
+  create: [];
+}>();
 
 const gridClass = computed(() =>
   props.layout === 'list'
     ? 'grid-cols-1'
     : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4',
-)
+);
 </script>

@@ -203,147 +203,147 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { QuestionResponse, ReviewRating } from '../../types'
-import { API_BASE } from '../../lib/api'
-import Button from '../ui/Button.vue'
+import type { QuestionResponse, ReviewRating } from '../../types';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { API_BASE } from '../../lib/api';
+import Button from '../ui/Button.vue';
 
 const props = defineProps<{
-  question: QuestionResponse
-  revealed: boolean
-  isRating: boolean
-  isSavingDifficulty: boolean
-  practiceMode: boolean
-}>()
+  question: QuestionResponse;
+  revealed: boolean;
+  isRating: boolean;
+  isSavingDifficulty: boolean;
+  practiceMode: boolean;
+}>();
 
 const emit = defineEmits<{
-  reveal: []
-  rate: [rating: ReviewRating]
-  next: []
-  'difficulty-change': [difficulty: string]
-}>()
+  reveal: [];
+  rate: [rating: ReviewRating];
+  next: [];
+  'difficulty-change': [difficulty: string];
+}>();
 
-const selectedOptionIndex = ref<number | null>(null)
+const selectedOptionIndex = ref<number | null>(null);
 
 const ratings: Array<{
-  name: ReviewRating
-  label: string
-  shortcut: string
-  code: string
+  name: ReviewRating;
+  label: string;
+  shortcut: string;
+  code: string;
 }> = [
   { name: 'again', label: 'Again', shortcut: '0', code: 'Numpad0' },
   { name: 'hard', label: 'Hard', shortcut: '1', code: 'Numpad1' },
   { name: 'good', label: 'Good', shortcut: '2', code: 'Numpad2' },
   { name: 'easy', label: 'Easy', shortcut: '3', code: 'Numpad3' },
-]
+];
 
 const taxonomy = computed(() =>
   [props.question.subject, props.question.topic, props.question.sub_topic].filter(Boolean),
-)
+);
 
 const chronology = computed(() =>
   props.revealed
     ? [...(props.question.chronology_items ?? [])].sort((a, b) => a.correct_order - b.correct_order)
     : (props.question.chronology_items ?? []),
-)
+);
 
 const imageSrc = computed(() =>
   props.question.image_url?.startsWith('http')
     ? props.question.image_url
     : `${API_BASE}${props.question.image_url}`,
-)
+);
 
 const selectedOptionCorrect = computed(() => {
-  if (selectedOptionIndex.value === null) return false
+  if (selectedOptionIndex.value === null) return false;
 
   return props.question.options?.find((option) => option.index === selectedOptionIndex.value)
-    ?.correct
-})
+    ?.correct;
+});
 
 function chooseOption(index: number) {
-  if (props.revealed) return
+  if (props.revealed) return;
 
-  selectedOptionIndex.value = index
-  emit('reveal')
+  selectedOptionIndex.value = index;
+  emit('reveal');
 }
 
 function submitRating(rating: ReviewRating) {
-  if (props.isRating) return
-  emit('rate', rating)
+  if (props.isRating) return;
+  emit('rate', rating);
 }
 
 function optionClass(option: { index: number; correct?: boolean }) {
-  const selected = selectedOptionIndex.value === option.index
+  const selected = selectedOptionIndex.value === option.index;
 
   if (props.revealed && option.correct) {
-    return 'cursor-default border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/35 dark:text-emerald-100'
+    return 'cursor-default border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/35 dark:text-emerald-100';
   }
 
   if (props.revealed && selected && !option.correct) {
-    return 'cursor-default border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-700 dark:bg-rose-950/35 dark:text-rose-100'
+    return 'cursor-default border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-700 dark:bg-rose-950/35 dark:text-rose-100';
   }
 
   if (props.revealed) {
-    return 'cursor-default border-slate-100 bg-slate-50/60 text-slate-400 dark:border-slate-700/60 dark:bg-slate-900/20 dark:text-slate-500'
+    return 'cursor-default border-slate-100 bg-slate-50/60 text-slate-400 dark:border-slate-700/60 dark:bg-slate-900/20 dark:text-slate-500';
   }
 
-  return 'border-slate-200 bg-white text-slate-700 hover:-translate-y-px hover:border-violet-300 hover:bg-violet-50/50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-violet-500 dark:hover:bg-violet-500/10 dark:focus:ring-offset-slate-800'
+  return 'border-slate-200 bg-white text-slate-700 hover:-translate-y-px hover:border-violet-300 hover:bg-violet-50/50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-violet-500 dark:hover:bg-violet-500/10 dark:focus:ring-offset-slate-800';
 }
 
 function optionBadgeClass(option: { index: number; correct?: boolean }) {
-  const selected = selectedOptionIndex.value === option.index
+  const selected = selectedOptionIndex.value === option.index;
 
   if (props.revealed && option.correct) {
-    return 'border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+    return 'border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300';
   }
 
   if (props.revealed && selected && !option.correct) {
-    return 'border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-700 dark:bg-rose-900/50 dark:text-rose-300'
+    return 'border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-700 dark:bg-rose-900/50 dark:text-rose-300';
   }
 
-  return 'border-slate-200 bg-slate-50 text-slate-500 group-hover:border-violet-300 group-hover:bg-violet-100 group-hover:text-violet-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:group-hover:border-violet-500 dark:group-hover:bg-violet-500/20 dark:group-hover:text-violet-300'
+  return 'border-slate-200 bg-slate-50 text-slate-500 group-hover:border-violet-300 group-hover:bg-violet-100 group-hover:text-violet-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:group-hover:border-violet-500 dark:group-hover:bg-violet-500/20 dark:group-hover:text-violet-300';
 }
 
 function isTypingTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false
+  if (!(target instanceof HTMLElement)) return false;
 
-  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
 function handleRatingShortcut(event: KeyboardEvent) {
   if (!props.revealed || props.isRating || isTypingTarget(event.target) || event.repeat) {
-    return
+    return;
   }
 
-  const rating = ratings.find((item) => item.code === event.code)
+  const rating = ratings.find((item) => item.code === event.code);
 
-  if (!rating) return
+  if (!rating) return;
 
-  event.preventDefault()
-  submitRating(rating.name)
+  event.preventDefault();
+  submitRating(rating.name);
 }
 
 watch(
   () => props.question,
   () => {
-    selectedOptionIndex.value = null
+    selectedOptionIndex.value = null;
   },
-)
+);
 
 watch(
   () => props.revealed,
   (revealed) => {
     if (!revealed) {
-      selectedOptionIndex.value = null
+      selectedOptionIndex.value = null;
     }
   },
-)
+);
 
 onMounted(() => {
-  window.addEventListener('keydown', handleRatingShortcut)
-})
+  window.addEventListener('keydown', handleRatingShortcut);
+});
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleRatingShortcut)
-})
+  window.removeEventListener('keydown', handleRatingShortcut);
+});
 </script>

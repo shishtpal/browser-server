@@ -70,25 +70,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import Modal from '../ui/Modal.vue'
-import type { ChronologyItem, QuestionPaper } from '../../types'
+import type { ChronologyItem, QuestionPaper } from '../../types';
+import { computed, ref, watch } from 'vue';
+import Modal from '../ui/Modal.vue';
 
-const props = defineProps<{ paper: QuestionPaper | null }>()
-defineEmits<{ close: [] }>()
+const props = defineProps<{ paper: QuestionPaper | null }>();
+defineEmits<{ close: [] }>();
 
-const showAnswers = ref(false)
+const showAnswers = ref(false);
 watch(
   () => props.paper?.id,
   () => (showAnswers.value = false),
-)
+);
 
 const description = computed(() =>
   props.paper
     ? `${props.paper.question_count} questions · generated ${new Date(props.paper.created_at).toLocaleString()}`
     : undefined,
-)
+);
 
 const ordered = (items: ChronologyItem[]) =>
-  [...items].sort((a, b) => a.correct_order - b.correct_order)
+  [...items].sort((a, b) => a.correct_order - b.correct_order);
 </script>

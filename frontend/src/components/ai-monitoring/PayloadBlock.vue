@@ -51,32 +51,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { copyToClipboard } from '../../utils/copyToClipboard'
+import { ref, computed } from 'vue';
+import { copyToClipboard } from '../../utils/copyToClipboard';
 
 interface FormattedPayload {
-  value: string
-  isJson: boolean
+  value: string;
+  isJson: boolean;
 }
 
 const props = withDefaults(
   defineProps<{
-    title: string
-    payload?: string | null
-    truncated?: boolean
+    title: string;
+    payload?: string | null;
+    truncated?: boolean;
   }>(),
   {
     payload: null,
     truncated: false,
   },
-)
+);
 
-const copied = ref(false)
-const copyFailed = ref(false)
+const copied = ref(false);
+const copyFailed = ref(false);
 
 const formatPayload = (payload: unknown): FormattedPayload | null => {
   if (payload === undefined || payload === null || payload === '') {
-    return null
+    return null;
   }
 
   if (typeof payload === 'string') {
@@ -84,12 +84,12 @@ const formatPayload = (payload: unknown): FormattedPayload | null => {
       return {
         value: '\n' + JSON.stringify(JSON.parse(payload), null, 2),
         isJson: true,
-      }
+      };
     } catch {
       return {
         value: payload,
         isJson: false,
-      }
+      };
     }
   }
 
@@ -97,31 +97,31 @@ const formatPayload = (payload: unknown): FormattedPayload | null => {
     return {
       value: JSON.stringify(payload, null, 2),
       isJson: true,
-    }
+    };
   } catch {
     return {
       value: String(payload),
       isJson: false,
-    }
+    };
   }
-}
+};
 
-const formattedPayload = computed(() => formatPayload(props.payload))
+const formattedPayload = computed(() => formatPayload(props.payload));
 
 const copy = async () => {
-  if (!formattedPayload.value) return
+  if (!formattedPayload.value) return;
 
-  copied.value = false
-  copyFailed.value = false
+  copied.value = false;
+  copyFailed.value = false;
 
   try {
-    await copyToClipboard(formattedPayload.value.value)
-    copied.value = true
+    await copyToClipboard(formattedPayload.value.value);
+    copied.value = true;
     window.setTimeout(() => {
-      copied.value = false
-    }, 1800)
+      copied.value = false;
+    }, 1800);
   } catch {
-    copyFailed.value = true
+    copyFailed.value = true;
   }
-}
+};
 </script>

@@ -9,14 +9,16 @@
           v-if="appliedVisible"
           class="mb-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-500/10"
         >
-          <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[0.65rem] font-bold text-white">
+          <span
+            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[0.65rem] font-bold text-white"
+          >
             ✓
           </span>
           <span class="text-[0.8rem] font-medium text-emerald-700 dark:text-emerald-300">
             Prompt applied
           </span>
           <span class="text-[0.8rem] text-emerald-500 dark:text-emerald-400">
-          — press Enter to send
+            — press Enter to send
           </span>
         </div>
       </Transition>
@@ -249,175 +251,175 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import PromptSearchDropdown from '../prompts/PromptSearchDropdown.vue'
-import { searchPrompts } from '../../lib/api'
-import type { PromptResponse } from '../../types'
-import type { AIChatAttachmentsConfig } from '@browser-server/shared-types'
+import type { PromptResponse } from '../../types';
+import type { AIChatAttachmentsConfig } from '@browser-server/shared-types';
+import { computed, nextTick, ref, watch } from 'vue';
+import PromptSearchDropdown from '../prompts/PromptSearchDropdown.vue';
+import { searchPrompts } from '../../lib/api';
 
 export interface StagedImageInput {
-  id: string
-  file: File
-  previewUrl: string
-  uploading: boolean
-  error?: string
+  id: string;
+  file: File;
+  previewUrl: string;
+  uploading: boolean;
+  error?: string;
 }
 
 const props = defineProps<{
-  modelValue: string
-  disabled: boolean
-  busy: boolean
-  canAppend: boolean
-  isAppending: boolean
-  userId?: number | null
-  conversationId?: string
-  attachmentsConfig?: AIChatAttachmentsConfig | null
-  supportsVision?: boolean
-  stagedImages?: StagedImageInput[]
-}>()
+  modelValue: string;
+  disabled: boolean;
+  busy: boolean;
+  canAppend: boolean;
+  isAppending: boolean;
+  userId?: number | null;
+  conversationId?: string;
+  attachmentsConfig?: AIChatAttachmentsConfig | null;
+  supportsVision?: boolean;
+  stagedImages?: StagedImageInput[];
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  send: [content: string]
-  append: [content: string]
-  stop: []
-  voice: []
-  selectPrompt: [prompt: PromptResponse]
-  addImages: [files: File[]]
-  removeImage: [id: string]
-}>()
+  'update:modelValue': [value: string];
+  send: [content: string];
+  append: [content: string];
+  stop: [];
+  voice: [];
+  selectPrompt: [prompt: PromptResponse];
+  addImages: [files: File[]];
+  removeImage: [id: string];
+}>();
 
 /* ───── refs ───── */
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const dropdownRef = ref<InstanceType<typeof PromptSearchDropdown> | null>(null)
-const fileInputRef = ref<HTMLInputElement | null>(null)
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const dropdownRef = ref<InstanceType<typeof PromptSearchDropdown> | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
-const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
 const attachmentsEnabled = computed(() => {
-  if (props.disabled) return false
+  if (props.disabled) return false;
   // Disable while a message is in flight: that covers a normal send and an
   // open append window, so attachment ordering never collides with a tool
   // continuation (per the product spec, append stays text-only).
-  if (props.busy) return false
-  const cfg = props.attachmentsConfig
-  if (!cfg?.enabled || !props.supportsVision) return false
-  return true
-})
+  if (props.busy) return false;
+  const cfg = props.attachmentsConfig;
+  if (!cfg?.enabled || !props.supportsVision) return false;
+  return true;
+});
 
 const attachmentsDisabledReason = computed(() => {
-  if (props.disabled) return 'Chat is disabled'
-  if (!props.attachmentsConfig?.enabled) return 'Image attachments are disabled on this server'
-  if (!props.supportsVision) return 'The selected model does not support image attachments'
-  return 'Image attachments are unavailable'
-})
+  if (props.disabled) return 'Chat is disabled';
+  if (!props.attachmentsConfig?.enabled) return 'Image attachments are disabled on this server';
+  if (!props.supportsVision) return 'The selected model does not support image attachments';
+  return 'Image attachments are unavailable';
+});
 
-const stagedImages = computed(() => props.stagedImages ?? [])
+const stagedImages = computed(() => props.stagedImages ?? []);
 
 function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function isAllowedImage(file: File): boolean {
-  return allowedMimeTypes.includes(file.type)
+  return allowedMimeTypes.includes(file.type);
 }
 
 function validateFiles(files: File[]): { valid: File[]; rejected: string[] } {
-  const cfg = props.attachmentsConfig
-  const valid: File[] = []
-  const rejected: string[] = []
-  const maxBytes = cfg?.max_image_bytes ?? 5 * 1024 * 1024
-  const maxCount = cfg?.max_images ?? 5
+  const cfg = props.attachmentsConfig;
+  const valid: File[] = [];
+  const rejected: string[] = [];
+  const maxBytes = cfg?.max_image_bytes ?? 5 * 1024 * 1024;
+  const maxCount = cfg?.max_images ?? 5;
   for (const file of files) {
     if (!isAllowedImage(file)) {
-      rejected.push(`${file.name || 'file'} is not a supported image`)
-      continue
+      rejected.push(`${file.name || 'file'} is not a supported image`);
+      continue;
     }
     if (file.size > maxBytes) {
-      rejected.push(`${file.name || 'file'} exceeds the ${formatBytes(maxBytes)} image limit`)
-      continue
+      rejected.push(`${file.name || 'file'} exceeds the ${formatBytes(maxBytes)} image limit`);
+      continue;
     }
     if (valid.length >= maxCount) {
-      rejected.push(`Only ${maxCount} images are allowed per message`)
-      break
+      rejected.push(`Only ${maxCount} images are allowed per message`);
+      break;
     }
-    valid.push(file)
+    valid.push(file);
   }
-  return { valid, rejected }
+  return { valid, rejected };
 }
 
 function onFileSelected(event: Event) {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files || [])
-  input.value = ''
-  if (!files.length) return
-  if (!attachmentsEnabled.value) return
-  const { valid, rejected } = validateFiles(files)
-  if (valid.length > 0) emit('addImages', valid)
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if (!files.length) return;
+  if (!attachmentsEnabled.value) return;
+  const { valid, rejected } = validateFiles(files);
+  if (valid.length > 0) emit('addImages', valid);
   if (rejected.length > 0) {
     // Surface first rejection to the user; the rest are logged only.
-    console.warn('[ChatInput] rejected attachments:', rejected)
+    console.warn('[ChatInput] rejected attachments:', rejected);
   }
 }
 
 function onPaste(event: ClipboardEvent) {
-  if (!attachmentsEnabled.value) return
-  const items = event.clipboardData?.items
-  if (!items) return
-  const files: File[] = []
+  if (!attachmentsEnabled.value) return;
+  const items = event.clipboardData?.items;
+  if (!items) return;
+  const files: File[] = [];
   for (const item of Array.from(items)) {
     if (item.kind === 'file') {
-      const file = item.getAsFile()
-      if (file && isAllowedImage(file)) files.push(file)
+      const file = item.getAsFile();
+      if (file && isAllowedImage(file)) files.push(file);
     }
   }
-  if (files.length === 0) return
-  const { valid, rejected } = validateFiles(files)
+  if (files.length === 0) return;
+  const { valid, rejected } = validateFiles(files);
   if (valid.length > 0) {
-    event.preventDefault()
-    emit('addImages', valid)
+    event.preventDefault();
+    emit('addImages', valid);
   }
   if (rejected.length > 0) {
-    console.warn('[ChatInput] rejected pasted attachments:', rejected)
+    console.warn('[ChatInput] rejected pasted attachments:', rejected);
   }
 }
 
 function removeImage(id: string) {
-  emit('removeImage', id)
+  emit('removeImage', id);
 }
 
 function normalizeToString(v: any): string {
-  if (typeof v === 'string') return v
-  if (v == null) return ''
+  if (typeof v === 'string') return v;
+  if (v == null) return '';
   const candidate =
     (v as any).content ??
     (v as any).Content ??
     (v as any).Prompt?.content ??
-    (v as any).prompt?.content
-  if (typeof candidate === 'string') return candidate
+    (v as any).prompt?.content;
+  if (typeof candidate === 'string') return candidate;
   try {
-    return JSON.stringify(v)
+    return JSON.stringify(v);
   } catch {
-    return String(v)
+    return String(v);
   }
 }
 
-const localValue = ref<string>(normalizeToString(props.modelValue))
+const localValue = ref<string>(normalizeToString(props.modelValue));
 
 watch(
   () => props.modelValue,
   (v) => {
-    const newVal = normalizeToString(v)
+    const newVal = normalizeToString(v);
     if (newVal !== localValue.value) {
-      localValue.value = newVal
+      localValue.value = newVal;
       // modelValue can be set programmatically (e.g. inserting a prompt from the
       // manager); the @input handler never fires in that case, so resize manually.
-      nextTick(() => autoResize())
+      nextTick(() => autoResize());
     }
   },
-)
+);
 
 const canSubmit = computed(
   () =>
@@ -425,78 +427,78 @@ const canSubmit = computed(
     (localValue.value.trim().length > 0 ||
       stagedImages.value.some((i) => !i.uploading && !i.error)) &&
     (!props.busy || (props.canAppend && !props.isAppending)),
-)
+);
 
 /* ───── prompt-mode state ───── */
-const promptMode = ref(false)
-const promptQuery = ref('')
-const promptResults = ref<PromptResponse[]>([])
-const promptLoading = ref(false)
-let promptDebounce: ReturnType<typeof setTimeout> | null = null
+const promptMode = ref(false);
+const promptQuery = ref('');
+const promptResults = ref<PromptResponse[]>([]);
+const promptLoading = ref(false);
+let promptDebounce: ReturnType<typeof setTimeout> | null = null;
 
 /* ───── applied indicator ───── */
-const appliedVisible = ref(false)
-let appliedTimer: ReturnType<typeof setTimeout> | null = null
+const appliedVisible = ref(false);
+let appliedTimer: ReturnType<typeof setTimeout> | null = null;
 
 function showAppliedIndicator() {
-  appliedVisible.value = true
-  if (appliedTimer) clearTimeout(appliedTimer)
+  appliedVisible.value = true;
+  if (appliedTimer) clearTimeout(appliedTimer);
   appliedTimer = setTimeout(() => {
-    appliedVisible.value = false
-  }, 2500)
+    appliedVisible.value = false;
+  }, 2500);
 }
 
 /* ───── auto-resize ───── */
 function autoResize() {
-  const el = textareaRef.value
-  if (!el) return
-  el.style.height = 'auto'
-  el.style.height = Math.min(el.scrollHeight, 192) + 'px'
+  const el = textareaRef.value;
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 192) + 'px';
 }
 
 /* ───── input handler ───── */
 function onInput() {
-  autoResize()
+  autoResize();
 
-  emit('update:modelValue', localValue.value)
+  emit('update:modelValue', localValue.value);
 
-  const value = localValue.value
+  const value = localValue.value;
 
   /* Already in prompt mode */
   if (promptMode.value) {
     if (!value.startsWith('/')) {
       // User backspaced over the "/" — exit prompt mode, keep remaining text
-      exitPromptMode()
-      return
+      exitPromptMode();
+      return;
     }
-    const query = value.slice(1)
-    promptQuery.value = query
+    const query = value.slice(1);
+    promptQuery.value = query;
     if (!query.trim()) {
-      promptResults.value = []
-      promptLoading.value = false
-      return
+      promptResults.value = [];
+      promptLoading.value = false;
+      return;
     }
-    debouncedSearch(query)
-    return
+    debouncedSearch(query);
+    return;
   }
 
   /* Not in prompt mode — check if user just typed "/" */
   if (value.startsWith('/')) {
-    enterPromptMode(value.slice(1))
+    enterPromptMode(value.slice(1));
   }
 }
 
 /* ───── prompt-mode helpers ───── */
 function enterPromptMode(query = '') {
-  promptMode.value = true
-  promptQuery.value = query
-  localValue.value = '/' + query
-  emit('update:modelValue', localValue.value)
+  promptMode.value = true;
+  promptQuery.value = query;
+  localValue.value = '/' + query;
+  emit('update:modelValue', localValue.value);
   if (query.trim()) {
-    runPromptSearch(query)
+    runPromptSearch(query);
   } else {
-    promptResults.value = []
-    promptLoading.value = false
+    promptResults.value = [];
+    promptLoading.value = false;
   }
 }
 
@@ -505,13 +507,13 @@ function enterPromptMode(query = '') {
  * Used when the user backspaces over the "/" or when a prompt is selected.
  */
 function exitPromptMode() {
-  promptMode.value = false
-  promptQuery.value = ''
-  promptResults.value = []
-  promptLoading.value = false
+  promptMode.value = false;
+  promptQuery.value = '';
+  promptResults.value = [];
+  promptLoading.value = false;
   if (promptDebounce) {
-    clearTimeout(promptDebounce)
-    promptDebounce = null
+    clearTimeout(promptDebounce);
+    promptDebounce = null;
   }
 }
 
@@ -519,75 +521,75 @@ function exitPromptMode() {
  * Exit prompt mode **and** clear the input (e.g. Escape).
  */
 function clearPromptMode() {
-  exitPromptMode()
-  localValue.value = ''
-  emit('update:modelValue', '')
+  exitPromptMode();
+  localValue.value = '';
+  emit('update:modelValue', '');
 }
 
 function debouncedSearch(query: string) {
-  if (promptDebounce) clearTimeout(promptDebounce)
-  promptDebounce = setTimeout(() => runPromptSearch(query), 180)
+  if (promptDebounce) clearTimeout(promptDebounce);
+  promptDebounce = setTimeout(() => runPromptSearch(query), 180);
 }
 
 function runPromptSearch(query: string) {
-  if (!props.userId || props.userId <= 0) return
-  const q = query.trim()
+  if (!props.userId || props.userId <= 0) return;
+  const q = query.trim();
   if (!q) {
-    promptResults.value = []
-    promptLoading.value = false
-    return
+    promptResults.value = [];
+    promptLoading.value = false;
+    return;
   }
 
-  promptLoading.value = true
+  promptLoading.value = true;
   searchPrompts(props.userId, q, 20)
     .then((r) => {
-      promptResults.value = r
+      promptResults.value = r;
     })
     .catch(() => {
-      promptResults.value = []
+      promptResults.value = [];
     })
     .finally(() => {
-      promptLoading.value = false
-    })
+      promptLoading.value = false;
+    });
 }
 
 /* ───── prompt selection ───── */
 function onPromptSelect(prompt: PromptResponse) {
   // 1. Exit prompt mode WITHOUT clearing the input
-  exitPromptMode()
+  exitPromptMode();
 
   // 2. Fill the input with the prompt content
   // Some responses may contain the prompt content as an object (older shapes
   // or nested payloads). Normalize to a string so the textarea doesn't get
   // `[object Object]` inserted.
-  let contentValue: string
-  const raw: any = prompt as any
-  const candidate = raw.content ?? raw.Content ?? raw.Prompt?.content ?? raw.prompt?.content
+  let contentValue: string;
+  const raw: any = prompt as any;
+  const candidate = raw.content ?? raw.Content ?? raw.Prompt?.content ?? raw.prompt?.content;
   if (typeof candidate === 'string') {
-    contentValue = candidate
+    contentValue = candidate;
   } else if (candidate == null) {
     // Fallback to an empty string if nothing available
-    contentValue = ''
+    contentValue = '';
   } else {
     try {
-      contentValue = JSON.stringify(candidate)
+      contentValue = JSON.stringify(candidate);
     } catch {
-      contentValue = String(candidate)
+      contentValue = String(candidate);
     }
   }
 
-  localValue.value = contentValue
-  emit('update:modelValue', contentValue)
-  emit('selectPrompt', prompt)
+  localValue.value = contentValue;
+  emit('update:modelValue', contentValue);
+  emit('selectPrompt', prompt);
 
   // 3. Show the "applied" indicator
-  showAppliedIndicator()
+  showAppliedIndicator();
 
   // 4. Refocus & resize
   nextTick(() => {
-    textareaRef.value?.focus()
-    autoResize()
-  })
+    textareaRef.value?.focus();
+    autoResize();
+  });
 }
 
 /* ───── keyboard ───── */
@@ -595,57 +597,57 @@ function onKeydown(event: KeyboardEvent) {
   /* ── Prompt-mode shortcuts ── */
   if (promptMode.value) {
     if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      dropdownRef.value?.move(1)
-      return
+      event.preventDefault();
+      dropdownRef.value?.move(1);
+      return;
     }
     if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      dropdownRef.value?.move(-1)
-      return
+      event.preventDefault();
+      dropdownRef.value?.move(-1);
+      return;
     }
     if (event.key === 'Enter') {
-      event.preventDefault()
-      dropdownRef.value?.activate()
-      return
+      event.preventDefault();
+      dropdownRef.value?.activate();
+      return;
     }
     if (event.key === 'Escape') {
-      event.preventDefault()
-      clearPromptMode()
-      return
+      event.preventDefault();
+      clearPromptMode();
+      return;
     }
-    return
+    return;
   }
 
   /* ── Normal-mode shortcuts ── */
   if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
-    submit()
+    event.preventDefault();
+    submit();
   }
 }
 
 /* ───── submit ───── */
 function submit() {
-  if (!canSubmit.value) return
+  if (!canSubmit.value) return;
   // In prompt mode, Enter selects from the dropdown — don't send
-  if (promptMode.value) return
+  if (promptMode.value) return;
 
-  const content = localValue.value.trim()
+  const content = localValue.value.trim();
   if (props.busy) {
-    emit('append', content)
-    return
+    emit('append', content);
+    return;
   }
-  localValue.value = ''
-  emit('update:modelValue', '')
-  emit('send', content)
-  if (textareaRef.value) textareaRef.value.style.height = 'auto'
+  localValue.value = '';
+  emit('update:modelValue', '');
+  emit('send', content);
+  if (textareaRef.value) textareaRef.value.style.height = 'auto';
 }
 
 function focus() {
-  textareaRef.value?.focus()
+  textareaRef.value?.focus();
 }
 
-defineExpose({ focus })
+defineExpose({ focus });
 </script>
 
 <style scoped>

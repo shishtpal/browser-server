@@ -93,22 +93,22 @@
 </template>
 
 <script setup lang="ts">
-import type { PromptSort, PromptLayout } from '../../composables/usePromptManager'
+import type { PromptSort, PromptLayout } from '../../composables/usePromptManager';
 
 defineProps<{
-  activeTagLabel: string
-  search: string
-  sortBy: PromptSort
-  layout: PromptLayout
-}>()
+  activeTagLabel: string;
+  search: string;
+  sortBy: PromptSort;
+  layout: PromptLayout;
+}>();
 
 defineEmits<{
-  'update:search': [value: string]
-  'update:sortBy': [value: string]
-  'update:layout': [value: PromptLayout]
-}>()
+  'update:search': [value: string];
+  'update:sortBy': [value: string];
+  'update:layout': [value: PromptLayout];
+}>();
 
-const activeBtn = 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300'
+const activeBtn = 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300';
 const idleBtn =
-  'text-slate-400 hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-200'
+  'text-slate-400 hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-white/5 dark:hover:text-slate-200';
 </script>

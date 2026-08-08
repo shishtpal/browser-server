@@ -91,22 +91,22 @@
 </template>
 
 <script setup lang="ts">
-import { UNTAGGED_FILTER, type TagFilter, type TagItem } from '../../composables/usePrompts'
+import { UNTAGGED_FILTER, type TagFilter, type TagItem } from '../../composables/usePrompts';
 
 defineProps<{
-  tags: TagItem[]
-  activeTag: TagFilter
-  totalCount: number
-  untaggedCount: number
-  width: number
-}>()
+  tags: TagItem[];
+  activeTag: TagFilter;
+  totalCount: number;
+  untaggedCount: number;
+  width: number;
+}>();
 
 defineEmits<{
-  select: [tag: TagFilter]
-}>()
+  select: [tag: TagFilter];
+}>();
 
 const active =
-  'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-500/15 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-400/10'
+  'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-500/15 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-400/10';
 const idle =
-  'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white'
+  'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white';
 </script>

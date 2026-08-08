@@ -152,11 +152,11 @@
       @close="showMobileSidebar = false"
       @new="
         startConversation();
-        showMobileSidebar = false
+        showMobileSidebar = false;
       "
       @select="
         handleSelectConversation($event);
-        showMobileSidebar = false
+        showMobileSidebar = false;
       "
       @rename="openRename"
       @delete="confirmDelete"
@@ -341,37 +341,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useLocalStorage } from '@vueuse/core'
+import type { AIAttachmentSummary, AIChatAttachmentsConfig } from '@browser-server/shared-types';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
 import {
   deleteAIMessage,
   getAIConfig,
   getAIConversation,
   getAIImageAttachmentBlob,
-} from '../lib/api'
-import type { AIAttachmentSummary, AIChatAttachmentsConfig } from '@browser-server/shared-types'
-import Modal from './ui/Modal.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import ChatSidebar from './chat/ChatSidebar.vue'
-import ChatTopBar from './chat/ChatTopBar.vue'
-import ChatMessageList from './chat/ChatMessageList.vue'
-import ChatInput from './chat/ChatInput.vue'
-import ChatRegenerateButton from './chat/ChatRegenerateButton.vue'
-import ChatMobileDrawer from './chat/ChatMobileDrawer.vue'
-import ChatDisabledState from './chat/ChatDisabledState.vue'
-import ChatCopyToast from './chat/ChatCopyToast.vue'
-import ChatToolsPanel from './chat/ChatToolsPanel.vue'
-import ChatMemoryExplorer from './chat/ChatMemoryExplorer.vue'
-import ChatNewConversationModal from './chat/ChatNewConversationModal.vue'
-import ChatAttachmentGallery from './chat/ChatAttachmentGallery.vue'
-import ChatVoiceTypingModal from './chat/ChatVoiceTypingModal.vue'
-import type { NewConversationResult } from './chat/ChatNewConversationModal.vue'
-import type { ToolCallEntry } from './chat/ChatToolsPanel.vue'
-import { useChatConfig } from './chat/composables/useChatConfig'
-import { useChatConversations } from './chat/composables/useChatConversations'
-import { useChatMessaging } from './chat/composables/useChatMessaging'
-import { useUser } from '../composables/useUser'
-import PromptManager from './prompts/PromptManager.vue'
+} from '../lib/api';
+import Modal from './ui/Modal.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import ChatSidebar from './chat/ChatSidebar.vue';
+import ChatTopBar from './chat/ChatTopBar.vue';
+import ChatMessageList from './chat/ChatMessageList.vue';
+import ChatInput from './chat/ChatInput.vue';
+import ChatRegenerateButton from './chat/ChatRegenerateButton.vue';
+import ChatMobileDrawer from './chat/ChatMobileDrawer.vue';
+import ChatDisabledState from './chat/ChatDisabledState.vue';
+import ChatCopyToast from './chat/ChatCopyToast.vue';
+import ChatToolsPanel from './chat/ChatToolsPanel.vue';
+import ChatMemoryExplorer from './chat/ChatMemoryExplorer.vue';
+import ChatNewConversationModal from './chat/ChatNewConversationModal.vue';
+import ChatAttachmentGallery from './chat/ChatAttachmentGallery.vue';
+import ChatVoiceTypingModal from './chat/ChatVoiceTypingModal.vue';
+import type { NewConversationResult } from './chat/ChatNewConversationModal.vue';
+import type { ToolCallEntry } from './chat/ChatToolsPanel.vue';
+import { useChatConfig } from './chat/composables/useChatConfig';
+import { useChatConversations } from './chat/composables/useChatConversations';
+import { useChatMessaging } from './chat/composables/useChatMessaging';
+import { useUser } from '../composables/useUser';
+import PromptManager from './prompts/PromptManager.vue';
 
 // ─── Composables ───────────────────────────────────────
 
@@ -402,7 +402,7 @@ const {
   toggleSkill,
   setActiveSkills,
   initFromConfig,
-} = useChatConfig()
+} = useChatConfig();
 
 const {
   conversations,
@@ -441,7 +441,7 @@ const {
   selectConversation,
   refreshConversation,
   autoTitle,
-} = useChatConversations()
+} = useChatConversations();
 
 const {
   isBusy,
@@ -462,65 +462,65 @@ const {
   () => activeConversation.value,
   () => messages.value,
   (msgs) => {
-    messages.value = msgs
+    messages.value = msgs;
   },
-)
+);
 
-const { currentUserId } = useUser()
+const { currentUserId } = useUser();
 
 // ─── Local state ───────────────────────────────────────
 
-const draft = ref('')
-const error = ref('')
-const showMobileSidebar = ref(false)
-const showCopyToast = ref(false)
-const showBranchToast = ref(false)
-const showToolsPanel = ref(true)
-const showMemoryExplorer = ref(false)
-const showNewConversationModal = ref(false)
-const showPromptManager = ref(false)
-const showAttachmentGallery = ref(false)
-const showVoiceModal = ref(false)
+const draft = ref('');
+const error = ref('');
+const showMobileSidebar = ref(false);
+const showCopyToast = ref(false);
+const showBranchToast = ref(false);
+const showToolsPanel = ref(true);
+const showMemoryExplorer = ref(false);
+const showNewConversationModal = ref(false);
+const showPromptManager = ref(false);
+const showAttachmentGallery = ref(false);
+const showVoiceModal = ref(false);
 
 // Archive/Restore local state
-const chatFontFamily = useLocalStorage(`bs.ai.chatFontFamily`, 'system-ui')
-const chatFontSize = useLocalStorage(`bs.ai.chatFontSize`, 14)
+const chatFontFamily = useLocalStorage(`bs.ai.chatFontFamily`, 'system-ui');
+const chatFontSize = useLocalStorage(`bs.ai.chatFontSize`, 14);
 const rawToolOutput = useLocalStorage<boolean | null>('bs.ai.rawToolOutput', null, {
   serializer: {
     read: (v) => {
-      if (v == null) return null
-      if (v === 'true') return true
-      if (v === 'false') return false
-      return null
+      if (v == null) return null;
+      if (v === 'true') return true;
+      if (v === 'false') return false;
+      return null;
     },
     write: (v) => String(v),
   },
-})
+});
 
-const messageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null)
-const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
+const messageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null);
+const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null);
 
-const providerNames = computed(() => Object.keys(config.value?.providers ?? {}))
+const providerNames = computed(() => Object.keys(config.value?.providers ?? {}));
 
 // Profile is locked once the conversation has messages (cannot change mid-conversation)
 const profileLocked = computed(() => {
-  if (!activeConversation.value) return false
-  return messages.value.length > 0
-})
+  if (!activeConversation.value) return false;
+  return messages.value.length > 0;
+});
 
 // ─── Grid layout ───────────────────────────────────────
 
 const gridClass = computed(() => {
   if (showToolsPanel.value) {
-    return 'lg:grid-cols-[300px_minmax(0,1fr)_auto]'
+    return 'lg:grid-cols-[300px_minmax(0,1fr)_auto]';
   }
-  return 'lg:grid-cols-[300px_minmax(0,1fr)]'
-})
+  return 'lg:grid-cols-[300px_minmax(0,1fr)]';
+});
 
 const chatFontStyle = computed(() => ({
   fontFamily: chatFontFamily.value,
   fontSize: chatFontSize.value + 'px',
-}))
+}));
 
 // ─── Tool call entries for the panel ───────────────────
 
@@ -528,131 +528,131 @@ const toolCallEntries = computed<ToolCallEntry[]>(() => {
   return messages.value
     .filter((m) => m.role === 'tool')
     .map((m) => {
-      let name = 'Tool call'
-      let args: string | undefined
-      let result: string | undefined
-      let status = m.status === 'pending' ? 'pending' : 'completed'
+      let name = 'Tool call';
+      let args: string | undefined;
+      let result: string | undefined;
+      let status = m.status === 'pending' ? 'pending' : 'completed';
       try {
-        const parsed = JSON.parse(m.content)
-        name = parsed.tool || name
+        const parsed = JSON.parse(m.content);
+        name = parsed.tool || name;
         if (parsed.args)
           args =
-            typeof parsed.args === 'string' ? parsed.args : JSON.stringify(parsed.args, null, 2)
+            typeof parsed.args === 'string' ? parsed.args : JSON.stringify(parsed.args, null, 2);
         if (parsed.result !== null && parsed.result !== undefined) {
           result =
             typeof parsed.result === 'string'
               ? parsed.result
-              : JSON.stringify(parsed.result, null, 2)
+              : JSON.stringify(parsed.result, null, 2);
         }
-        if (parsed.decision === 'rejected') status = 'rejected'
-        else if (parsed.decision === 'commented') status = 'commented'
-        else if (parsed.result?.error) status = 'error'
-        else if (m.status === 'completed') status = 'completed'
-        else if (m.status === 'error') status = 'error'
+        if (parsed.decision === 'rejected') status = 'rejected';
+        else if (parsed.decision === 'commented') status = 'commented';
+        else if (parsed.result?.error) status = 'error';
+        else if (m.status === 'completed') status = 'completed';
+        else if (m.status === 'error') status = 'error';
       } catch {
         /* use defaults */
       }
-      return { id: m.tool_call_id || m.id, name, status, args, result }
-    })
-})
+      return { id: m.tool_call_id || m.id, name, status, args, result };
+    });
+});
 
 // ─── Lifecycle ─────────────────────────────────────────
 
 onMounted(async () => {
-  window.addEventListener('api-token-changed', reload)
-  window.addEventListener('popstate', handleHistoryNavigation)
-  await reload()
-})
+  window.addEventListener('api-token-changed', reload);
+  window.addEventListener('popstate', handleHistoryNavigation);
+  await reload();
+});
 
 onUnmounted(() => {
-  window.removeEventListener('api-token-changed', reload)
-  window.removeEventListener('popstate', handleHistoryNavigation)
-  cleanup()
-})
+  window.removeEventListener('api-token-changed', reload);
+  window.removeEventListener('popstate', handleHistoryNavigation);
+  cleanup();
+});
 
 // ─── Core actions ──────────────────────────────────────
 
 async function reload() {
-  error.value = ''
+  error.value = '';
   try {
-    const cfg = await getAIConfig()
-    initFromConfig(cfg)
-    if (!cfg.enabled) return
-    await loadConversations()
-    const requestedID = conversationIDFromLocation()
+    const cfg = await getAIConfig();
+    initFromConfig(cfg);
+    if (!cfg.enabled) return;
+    await loadConversations();
+    const requestedID = conversationIDFromLocation();
     if (requestedID) {
       try {
-        await handleSelectConversation(requestedID, false)
-        return
+        await handleSelectConversation(requestedID, false);
+        return;
       } catch {
         // A deleted or unavailable shared link falls back to the latest conversation.
       }
     }
     if (conversations.value.length > 0) {
-      await handleSelectConversation(conversations.value[0].id)
+      await handleSelectConversation(conversations.value[0].id);
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load AI chat'
+    error.value = err instanceof Error ? err.message : 'Failed to load AI chat';
   }
 }
 
 async function startConversation() {
-  if (!config.value?.enabled) return
-  showNewConversationModal.value = true
+  if (!config.value?.enabled) return;
+  showNewConversationModal.value = true;
 }
 
 async function handleNewConversationCreate(result: NewConversationResult) {
-  showNewConversationModal.value = false
-  error.value = ''
+  showNewConversationModal.value = false;
+  error.value = '';
   try {
     // Apply the user's choices to the active config state
-    selectedProvider.value = result.provider
-    selectedModel.value = result.model
-    selectedProfile.value = result.profile
-    setActiveSkills(result.skills)
+    selectedProvider.value = result.provider;
+    selectedModel.value = result.model;
+    selectedProfile.value = result.profile;
+    setActiveSkills(result.skills);
 
     const conversation = await createConversation(
       result.provider,
       result.model,
       result.profile || undefined,
-    )
-    updateConversationURL(conversation.id)
-    nextTick(() => chatInputRef.value?.focus())
+    );
+    updateConversationURL(conversation.id);
+    nextTick(() => chatInputRef.value?.focus());
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to create conversation'
+    error.value = err instanceof Error ? err.message : 'Failed to create conversation';
   }
 }
 
 async function handleSelectConversation(id: string, updateURL = true) {
-  error.value = ''
+  error.value = '';
   try {
-    const { provider, model } = await selectConversation(id)
-    selectedProvider.value = provider
-    selectedModel.value = model
+    const { provider, model } = await selectConversation(id);
+    selectedProvider.value = provider;
+    selectedModel.value = model;
     // Set profile from the conversation (locked once selected)
-    selectedProfile.value = activeConversation.value?.profile || ''
+    selectedProfile.value = activeConversation.value?.profile || '';
     // Restore active skills from conversation state
-    setActiveSkills(activeConversation.value?.skills ?? [])
-    if (updateURL) updateConversationURL(id)
-    nextTick(() => messageListRef.value?.scrollToBottom())
+    setActiveSkills(activeConversation.value?.skills ?? []);
+    if (updateURL) updateConversationURL(id);
+    nextTick(() => messageListRef.value?.scrollToBottom());
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load conversation'
+    error.value = err instanceof Error ? err.message : 'Failed to load conversation';
   }
 }
 
 async function sendMessage(content?: string) {
-  const text = content?.trim() || draft.value.trim()
+  const text = content?.trim() || draft.value.trim();
   if (!config.value?.enabled || !selectedProvider.value || !selectedModel.value || isBusy.value)
-    return
-  if (!text && stagedAttachments.value.length === 0) return
-  error.value = ''
-  draft.value = ''
+    return;
+  if (!text && stagedAttachments.value.length === 0) return;
+  error.value = '';
+  draft.value = '';
 
   try {
     if (!activeConversation.value) {
-      await startConversation()
+      await startConversation();
     }
-    if (!activeConversation.value) return
+    if (!activeConversation.value) return;
 
     await send(
       text,
@@ -669,80 +669,80 @@ async function sendMessage(content?: string) {
         rawToolOutput: rawToolOutput.value ?? undefined,
       },
       async (conversationId, firstMessage) => {
-        await refreshConversation(conversationId)
-        await autoTitle(firstMessage)
-        await loadConversations()
+        await refreshConversation(conversationId);
+        await autoTitle(firstMessage);
+        await loadConversations();
       },
       (msg) => {
-        error.value = msg
+        error.value = msg;
       },
-    )
+    );
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to send message'
+    error.value = err instanceof Error ? err.message : 'Failed to send message';
   }
 }
 
 async function addImages(files: File[]) {
-  if (!activeConversation.value) return
-  await addImageAttachments(activeConversation.value.id, files)
+  if (!activeConversation.value) return;
+  await addImageAttachments(activeConversation.value.id, files);
 }
 
 async function removeStagedImage(id: string) {
-  if (!activeConversation.value) return
-  await removeStagedAttachment(activeConversation.value.id, id)
+  if (!activeConversation.value) return;
+  await removeStagedAttachment(activeConversation.value.id, id);
 }
 
 async function handleReuseAttachment(att: AIAttachmentSummary) {
   if (!activeConversation.value) {
-    error.value = 'Select or create a conversation before reusing an attachment.'
-    return
+    error.value = 'Select or create a conversation before reusing an attachment.';
+    return;
   }
-  error.value = ''
+  error.value = '';
   try {
-    const blob = await getAIImageAttachmentBlob(att.conversation_id, att.id)
-    const file = new File([blob], att.filename, { type: att.content_type })
-    await addImages([file])
-    showAttachmentGallery.value = false
-    nextTick(() => chatInputRef.value?.focus())
+    const blob = await getAIImageAttachmentBlob(att.conversation_id, att.id);
+    const file = new File([blob], att.filename, { type: att.content_type });
+    await addImages([file]);
+    showAttachmentGallery.value = false;
+    nextTick(() => chatInputRef.value?.focus());
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to reuse attachment'
+    error.value = err instanceof Error ? err.message : 'Failed to reuse attachment';
   }
 }
 
 async function appendContext(content: string) {
-  const text = content.trim()
-  if (!text || !activeConversation.value) return
-  const conversationId = activeConversation.value.id
-  const draftAtSubmit = draft.value
-  error.value = ''
+  const text = content.trim();
+  if (!text || !activeConversation.value) return;
+  const conversationId = activeConversation.value.id;
+  const draftAtSubmit = draft.value;
+  error.value = '';
   const appended = await append(text, conversationId, (msg) => {
-    error.value = msg
-  })
+    error.value = msg;
+  });
   if (
     appended &&
     activeConversation.value?.id === conversationId &&
     draft.value === draftAtSubmit
   ) {
-    draft.value = ''
+    draft.value = '';
   }
 }
 
 async function handleToolDecision(callId: string, approved: boolean, comment: string) {
   await decideToolCall(callId, approved, comment, (msg) => {
-    error.value = msg
-  })
+    error.value = msg;
+  });
 }
 
 async function handleRegenerate() {
-  if (!activeConversation.value) return
-  error.value = ''
+  if (!activeConversation.value) return;
+  error.value = '';
   await regenerate(activeConversation.value.id, (msg) => {
-    error.value = msg
-  })
+    error.value = msg;
+  });
   if (activeConversation.value) {
     try {
-      const detail = await getAIConversation(activeConversation.value.id)
-      messages.value = detail.messages ?? []
+      const detail = await getAIConversation(activeConversation.value.id);
+      messages.value = detail.messages ?? [];
     } catch {
       /* messages will refresh on next action */
     }
@@ -750,170 +750,170 @@ async function handleRegenerate() {
 }
 
 async function handleStop() {
-  if (!activeConversation.value) return
-  await stop(activeConversation.value.id)
+  if (!activeConversation.value) return;
+  await stop(activeConversation.value.id);
 }
 
 async function handleRename() {
   try {
-    await doRename()
+    await doRename();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to rename'
+    error.value = err instanceof Error ? err.message : 'Failed to rename';
   }
 }
 
 async function handleDelete() {
   try {
-    await doDelete()
-    if (!activeConversation.value) updateConversationURL(null)
+    await doDelete();
+    if (!activeConversation.value) updateConversationURL(null);
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to delete'
+    error.value = err instanceof Error ? err.message : 'Failed to delete';
   }
 }
 
 async function handleArchive() {
   try {
-    await doArchive()
-    if (!activeConversation.value) updateConversationURL(null)
-    await loadArchivedConversations()
+    await doArchive();
+    if (!activeConversation.value) updateConversationURL(null);
+    await loadArchivedConversations();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to archive'
+    error.value = err instanceof Error ? err.message : 'Failed to archive';
   }
 }
 
 async function handleRestore() {
   try {
-    await doRestore()
-    await loadArchivedConversations()
-    await loadConversations()
+    await doRestore();
+    await loadArchivedConversations();
+    await loadConversations();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to restore'
+    error.value = err instanceof Error ? err.message : 'Failed to restore';
   }
 }
 
 // ─── Utilities ─────────────────────────────────────────
 
 function useSuggestion(text: string | { content?: string }) {
-  draft.value = typeof text === 'string' ? text : (text.content ?? '')
-  nextTick(() => chatInputRef.value?.focus())
+  draft.value = typeof text === 'string' ? text : (text.content ?? '');
+  nextTick(() => chatInputRef.value?.focus());
 }
 
 function useVoiceTranscript(text: string) {
-  const existing = draft.value.trimEnd()
-  draft.value = existing ? `${existing} ${text.trim()}` : text.trim()
-  showVoiceModal.value = false
-  nextTick(() => chatInputRef.value?.focus())
+  const existing = draft.value.trimEnd();
+  draft.value = existing ? `${existing} ${text.trim()}` : text.trim();
+  showVoiceModal.value = false;
+  nextTick(() => chatInputRef.value?.focus());
 }
 
 function applyPromptFromManager(prompt: unknown) {
-  const raw = prompt as Record<string, unknown> | null | undefined
+  const raw = prompt as Record<string, unknown> | null | undefined;
   const candidate =
     raw?.content ??
     raw?.Content ??
     (raw?.Prompt as Record<string, unknown> | undefined)?.content ??
-    (raw?.prompt as Record<string, unknown> | undefined)?.content
+    (raw?.prompt as Record<string, unknown> | undefined)?.content;
 
-  let text = ''
+  let text = '';
   if (typeof candidate === 'string') {
-    text = candidate
+    text = candidate;
   } else if (candidate != null) {
     try {
-      text = JSON.stringify(candidate)
+      text = JSON.stringify(candidate);
     } catch {
-      text = String(candidate)
+      text = String(candidate);
     }
   }
 
-  if (!text) return
-  draft.value = text
-  showPromptManager.value = false
-  nextTick(() => chatInputRef.value?.focus())
+  if (!text) return;
+  draft.value = text;
+  showPromptManager.value = false;
+  nextTick(() => chatInputRef.value?.focus());
 }
 
 async function copyMessage(content: string) {
   try {
-    await navigator.clipboard.writeText(content)
-    showCopyToast.value = true
+    await navigator.clipboard.writeText(content);
+    showCopyToast.value = true;
     setTimeout(() => {
-      showCopyToast.value = false
-    }, 2000)
+      showCopyToast.value = false;
+    }, 2000);
   } catch {
     /* silent */
   }
 }
 
 async function deleteMessage(messageId: string) {
-  if (!activeConversation.value || isBusy.value || messageId.startsWith('temp-')) return
-  if (!window.confirm('Delete this message? This action cannot be undone.')) return
+  if (!activeConversation.value || isBusy.value || messageId.startsWith('temp-')) return;
+  if (!window.confirm('Delete this message? This action cannot be undone.')) return;
 
-  error.value = ''
+  error.value = '';
   try {
-    await deleteAIMessage(activeConversation.value.id, messageId)
-    messages.value = messages.value.filter((message) => message.id !== messageId)
+    await deleteAIMessage(activeConversation.value.id, messageId);
+    messages.value = messages.value.filter((message) => message.id !== messageId);
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to delete message'
+    error.value = err instanceof Error ? err.message : 'Failed to delete message';
   }
 }
 
 async function handleBranch(messageId: string) {
-  if (!activeConversation.value || isBusy.value || messageId.startsWith('temp-')) return
-  error.value = ''
+  if (!activeConversation.value || isBusy.value || messageId.startsWith('temp-')) return;
+  error.value = '';
   try {
-    const source = activeConversation.value
-    const forked = await forkConversation(source.id, messageId)
+    const source = activeConversation.value;
+    const forked = await forkConversation(source.id, messageId);
     // Carry the source conversation's runtime selection into the new branch.
-    selectedProvider.value = forked.provider
-    selectedModel.value = forked.model
-    selectedProfile.value = forked.profile || ''
-    setActiveSkills(forked.skills ?? [])
-    await loadConversations()
-    updateConversationURL(forked.id)
-    showBranchToast.value = true
+    selectedProvider.value = forked.provider;
+    selectedModel.value = forked.model;
+    selectedProfile.value = forked.profile || '';
+    setActiveSkills(forked.skills ?? []);
+    await loadConversations();
+    updateConversationURL(forked.id);
+    showBranchToast.value = true;
     setTimeout(() => {
-      showBranchToast.value = false
-    }, 2200)
+      showBranchToast.value = false;
+    }, 2200);
     nextTick(() => {
-      messageListRef.value?.scrollToBottom()
-      chatInputRef.value?.focus()
-    })
+      messageListRef.value?.scrollToBottom();
+      chatInputRef.value?.focus();
+    });
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to branch conversation'
+    error.value = err instanceof Error ? err.message : 'Failed to branch conversation';
   }
 }
 
 function conversationIDFromLocation(): string | null {
-  const prefix = '/chat/'
-  if (!window.location.pathname.startsWith(prefix)) return null
-  const encodedID = window.location.pathname.slice(prefix.length)
-  if (!encodedID || encodedID.includes('/')) return null
+  const prefix = '/chat/';
+  if (!window.location.pathname.startsWith(prefix)) return null;
+  const encodedID = window.location.pathname.slice(prefix.length);
+  if (!encodedID || encodedID.includes('/')) return null;
   try {
-    return decodeURIComponent(encodedID)
+    return decodeURIComponent(encodedID);
   } catch {
-    return null
+    return null;
   }
 }
 
 function updateConversationURL(id: string | null) {
-  const pathname = id ? `/chat/${encodeURIComponent(id)}` : '/chat/'
-  if (window.location.pathname === pathname) return
-  window.history.pushState({}, '', `${pathname}${window.location.search}${window.location.hash}`)
+  const pathname = id ? `/chat/${encodeURIComponent(id)}` : '/chat/';
+  if (window.location.pathname === pathname) return;
+  window.history.pushState({}, '', `${pathname}${window.location.search}${window.location.hash}`);
 }
 
 async function handleHistoryNavigation() {
-  const id = conversationIDFromLocation()
-  if (!id || id === activeConversation.value?.id) return
-  await handleSelectConversation(id, false)
+  const id = conversationIDFromLocation();
+  if (!id || id === activeConversation.value?.id) return;
+  await handleSelectConversation(id, false);
 }
 
 function downloadConversation() {
-  const conversation = activeConversation.value
-  if (!conversation) return
+  const conversation = activeConversation.value;
+  if (!conversation) return;
 
-  const title = conversation.title.replace(/[\r\n]+/g, ' ').trim() || 'AI conversation'
+  const title = conversation.title.replace(/[\r\n]+/g, ' ').trim() || 'AI conversation';
   const sections = visibleMessages.value.map((message) => {
-    const role = message.role.charAt(0).toUpperCase() + message.role.slice(1)
-    return `## ${role}\n\n${message.content.trim()}`
-  })
+    const role = message.role.charAt(0).toUpperCase() + message.role.slice(1);
+    return `## ${role}\n\n${message.content.trim()}`;
+  });
   const markdown =
     [
       `# ${title}`,
@@ -926,16 +926,18 @@ function downloadConversation() {
       ...sections.flatMap((section) => [section, '']),
     ]
       .join('\n')
-      .trimEnd() + '\n'
+      .trimEnd() + '\n';
 
-  const blobUrl = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }))
-  const link = document.createElement('a')
-  link.href = blobUrl
-  link.download = `${filenameSafe(title)}.md`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(blobUrl)
+  const blobUrl = URL.createObjectURL(
+    new Blob([markdown], { type: 'text/markdown;charset=utf-8' }),
+  );
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = `${filenameSafe(title)}.md`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(blobUrl);
 }
 
 function filenameSafe(value: string): string {
@@ -944,6 +946,6 @@ function filenameSafe(value: string): string {
       .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
       .replace(/[. ]+$/g, '')
       .slice(0, 100) || 'ai-conversation'
-  )
+  );
 }
 </script>

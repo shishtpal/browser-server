@@ -127,24 +127,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue';
 
 export interface SelectItem {
-  value: string
-  label: string
-  disabled?: boolean
-  [key: string]: any
+  value: string;
+  label: string;
+  disabled?: boolean;
+  [key: string]: any;
 }
 
 const props = withDefaults(
   defineProps<{
-    items: SelectItem[]
-    modelValue: string
-    placeholder?: string
-    disabled?: boolean
-    searchable?: boolean
-    searchPlaceholder?: string
-    title?: string
+    items: SelectItem[];
+    modelValue: string;
+    placeholder?: string;
+    disabled?: boolean;
+    searchable?: boolean;
+    searchPlaceholder?: string;
+    title?: string;
   }>(),
   {
     placeholder: 'Select...',
@@ -153,32 +153,32 @@ const props = withDefaults(
     searchPlaceholder: 'Search...',
     title: undefined,
   },
-)
+);
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
-}>()
+  'update:modelValue': [value: string];
+}>();
 
-const triggerRef = ref<HTMLButtonElement | null>(null)
-const searchInputRef = ref<HTMLInputElement | null>(null)
-const listRef = ref<HTMLUListElement | null>(null)
-const isOpen = ref(false)
-const searchQuery = ref('')
-const highlightedIndex = ref(-1)
+const triggerRef = ref<HTMLButtonElement | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
+const listRef = ref<HTMLUListElement | null>(null);
+const isOpen = ref(false);
+const searchQuery = ref('');
+const highlightedIndex = ref(-1);
 
 const selectedItem = computed(
   () => props.items.find((item) => item.value === props.modelValue) ?? null,
-)
+);
 
-const displayLabel = computed(() => selectedItem.value?.label ?? props.placeholder)
+const displayLabel = computed(() => selectedItem.value?.label ?? props.placeholder);
 
 const filteredItems = computed(() => {
-  if (!props.searchable || !searchQuery.value) return props.items
-  const query = searchQuery.value.toLowerCase()
+  if (!props.searchable || !searchQuery.value) return props.items;
+  const query = searchQuery.value.toLowerCase();
   return props.items.filter(
     (item) => item.label.toLowerCase().includes(query) || item.value.toLowerCase().includes(query),
-  )
-})
+  );
+});
 
 const triggerClasses = computed(() => [
   'flex h-8 w-full items-center justify-between rounded-lg border px-2.5 text-left text-[0.8rem] font-medium transition-all duration-150 outline-none',
@@ -188,11 +188,11 @@ const triggerClasses = computed(() => [
   'disabled:cursor-not-allowed disabled:opacity-50',
   'dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-white/20',
   isOpen.value && 'border-indigo-400 ring-2 ring-indigo-500/20',
-])
+]);
 
 function getItemClasses(item: SelectItem, index: number): Record<string, boolean> {
-  const isSelected = item.value === props.modelValue
-  const isHighlighted = highlightedIndex.value === index
+  const isSelected = item.value === props.modelValue;
+  const isHighlighted = highlightedIndex.value === index;
   return {
     'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300':
       isSelected && !isHighlighted,
@@ -201,80 +201,80 @@ function getItemClasses(item: SelectItem, index: number): Record<string, boolean
     'bg-slate-100 text-slate-900 dark:bg-white/5 dark:text-slate-100': !isSelected && isHighlighted,
     'text-slate-700 dark:text-slate-300': !isSelected && !isHighlighted,
     'opacity-50 pointer-events-none': item.disabled === true,
-  }
+  };
 }
 
 function toggle() {
-  isOpen.value ? close() : open()
+  isOpen.value ? close() : open();
 }
 
 function open() {
-  if (props.disabled) return
-  isOpen.value = true
-  searchQuery.value = ''
-  highlightedIndex.value = -1
+  if (props.disabled) return;
+  isOpen.value = true;
+  searchQuery.value = '';
+  highlightedIndex.value = -1;
 }
 
 function close() {
-  isOpen.value = false
-  searchQuery.value = ''
-  highlightedIndex.value = -1
-  triggerRef.value?.focus()
+  isOpen.value = false;
+  searchQuery.value = '';
+  highlightedIndex.value = -1;
+  triggerRef.value?.focus();
 }
 
 function select(item: SelectItem) {
-  if (item.disabled) return
-  emit('update:modelValue', item.value)
-  close()
+  if (item.disabled) return;
+  emit('update:modelValue', item.value);
+  close();
 }
 
 function selectHighlighted() {
   if (highlightedIndex.value >= 0 && highlightedIndex.value < filteredItems.value.length) {
-    select(filteredItems.value[highlightedIndex.value])
+    select(filteredItems.value[highlightedIndex.value]);
   }
 }
 
 function highlightNext() {
-  if (filteredItems.value.length === 0) return
-  highlightedIndex.value = (highlightedIndex.value + 1) % filteredItems.value.length
-  scrollToHighlighted()
+  if (filteredItems.value.length === 0) return;
+  highlightedIndex.value = (highlightedIndex.value + 1) % filteredItems.value.length;
+  scrollToHighlighted();
 }
 
 function highlightPrev() {
-  if (filteredItems.value.length === 0) return
+  if (filteredItems.value.length === 0) return;
   highlightedIndex.value =
-    highlightedIndex.value <= 0 ? filteredItems.value.length - 1 : highlightedIndex.value - 1
-  scrollToHighlighted()
+    highlightedIndex.value <= 0 ? filteredItems.value.length - 1 : highlightedIndex.value - 1;
+  scrollToHighlighted();
 }
 
 function scrollToHighlighted() {
   nextTick(() => {
-    if (!listRef.value || highlightedIndex.value < 0) return
-    const items = listRef.value.querySelectorAll('li')
-    items[highlightedIndex.value]?.scrollIntoView({ block: 'nearest' })
-  })
+    if (!listRef.value || highlightedIndex.value < 0) return;
+    const items = listRef.value.querySelectorAll('li');
+    items[highlightedIndex.value]?.scrollIntoView({ block: 'nearest' });
+  });
 }
 
 function handleTriggerDown() {
-  if (!isOpen.value) open()
-  nextTick(() => highlightNext())
+  if (!isOpen.value) open();
+  nextTick(() => highlightNext());
 }
 
 function handleTriggerUp() {
-  if (!isOpen.value) open()
-  nextTick(() => highlightPrev())
+  if (!isOpen.value) open();
+  nextTick(() => highlightPrev());
 }
 
 watch(isOpen, async (val) => {
   if (val) {
-    await nextTick()
+    await nextTick();
     if (props.searchable) {
-      searchInputRef.value?.focus()
+      searchInputRef.value?.focus();
     }
   }
-})
+});
 
 watch(searchQuery, () => {
-  highlightedIndex.value = -1
-})
+  highlightedIndex.value = -1;
+});
 </script>

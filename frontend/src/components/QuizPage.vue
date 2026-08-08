@@ -102,25 +102,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useUser } from '../composables/useUser'
-import { useQuestions } from '../composables/useQuestions'
-import { useQuizPapers } from '../composables/useQuizPapers'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import UserSelector from './ui/UserSelector.vue'
-import FilterPill from './ui/FilterPill.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import SelectUserPrompt from './ui/SelectUserPrompt.vue'
-import QuestionDashboard from './quiz/QuestionDashboard.vue'
-import QuestionList from './quiz/QuestionList.vue'
-import QuestionModal from './quiz/QuestionModal.vue'
-import PaperGenerator from './quiz/PaperGenerator.vue'
-import PaperList from './quiz/PaperList.vue'
-import PaperDetail from './quiz/PaperDetail.vue'
-import QuestionCards from './quiz/QuestionCards.vue'
-import type { QuestionResponse, QuestionPaperSection } from '../types'
+import type { QuestionResponse, QuestionPaperSection } from '../types';
+import { ref, watch } from 'vue';
+import { useUser } from '../composables/useUser';
+import { useQuestions } from '../composables/useQuestions';
+import { useQuizPapers } from '../composables/useQuizPapers';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import UserSelector from './ui/UserSelector.vue';
+import FilterPill from './ui/FilterPill.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import SelectUserPrompt from './ui/SelectUserPrompt.vue';
+import QuestionDashboard from './quiz/QuestionDashboard.vue';
+import QuestionList from './quiz/QuestionList.vue';
+import QuestionModal from './quiz/QuestionModal.vue';
+import PaperGenerator from './quiz/PaperGenerator.vue';
+import PaperList from './quiz/PaperList.vue';
+import PaperDetail from './quiz/PaperDetail.vue';
+import QuestionCards from './quiz/QuestionCards.vue';
 
 const tabs = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -128,13 +128,13 @@ const tabs = [
   { key: 'cards', label: 'Cards' },
   { key: 'generate', label: 'Generate Paper' },
   { key: 'papers', label: 'Papers' },
-] as const
+] as const;
 
-type TabKey = (typeof tabs)[number]['key']
-const activeTab = ref<TabKey>('dashboard')
+type TabKey = (typeof tabs)[number]['key'];
+const activeTab = ref<TabKey>('dashboard');
 
-const { users, currentUserId, setUser, clearUser } = useUser()
-const selectedUserId = ref<number | null>(currentUserId.value)
+const { users, currentUserId, setUser, clearUser } = useUser();
+const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
   questions,
@@ -153,7 +153,7 @@ const {
   addQuestion,
   editQuestion,
   removeQuestion,
-} = useQuestions(selectedUserId)
+} = useQuestions(selectedUserId);
 
 const {
   papers,
@@ -164,68 +164,72 @@ const {
   openPaper,
   closePaper,
   removePaper,
-} = useQuizPapers(selectedUserId)
+} = useQuizPapers(selectedUserId);
 
-const isQuestionModalOpen = ref(false)
-const editing = ref<QuestionResponse | null>(null)
-const isSaving = ref(false)
-const questionCards = ref<{ reset: () => void } | null>(null)
+const isQuestionModalOpen = ref(false);
+const editing = ref<QuestionResponse | null>(null);
+const isSaving = ref(false);
+const questionCards = ref<{ reset: () => void } | null>(null);
 
 const openAddModal = () => {
-  editing.value = null
-  isQuestionModalOpen.value = true
-}
+  editing.value = null;
+  isQuestionModalOpen.value = true;
+};
 
 const openEditModal = (q: QuestionResponse) => {
-  editing.value = q
-  isQuestionModalOpen.value = true
-}
+  editing.value = q;
+  isQuestionModalOpen.value = true;
+};
 
 const closeModal = () => {
-  isQuestionModalOpen.value = false
-  editing.value = null
-}
+  isQuestionModalOpen.value = false;
+  editing.value = null;
+};
 
 watch(selectedUserId, (id) => {
-  questionCards.value?.reset()
+  questionCards.value?.reset();
   if (id) {
-    setUser(id)
+    setUser(id);
   } else {
-    clearUser()
+    clearUser();
   }
-})
+});
 
-const handleModalSave = async (id: number | null, payload: Record<string, unknown>, image: File | null) => {
-  isSaving.value = true
+const handleModalSave = async (
+  id: number | null,
+  payload: Record<string, unknown>,
+  image: File | null,
+) => {
+  isSaving.value = true;
   try {
     if (id) {
-      const resp = await editQuestion(id, payload as never, image)
-      if (resp) closeModal()
+      const resp = await editQuestion(id, payload as never, image);
+      if (resp) closeModal();
     } else {
-      const resp = await addQuestion(payload as never, image)
-      if (resp) closeModal()
+      const resp = await addQuestion(payload as never, image);
+      if (resp) closeModal();
     }
   } finally {
-    isSaving.value = false
+    isSaving.value = false;
   }
-}
+};
 
 const handleGenerate = async (input: { title: string; sections: QuestionPaperSection[] }) => {
-  const paper = await generate(input)
+  const paper = await generate(input);
   if (paper) {
-    activeTab.value = 'papers'
-    await openPaper(paper.id)
+    activeTab.value = 'papers';
+    await openPaper(paper.id);
   }
-}
+};
 
 const openPaperAndSwitch = async (id: number) => {
-  activeTab.value = 'papers'
-  await openPaper(id)
-}
+  activeTab.value = 'papers';
+  await openPaper(id);
+};
 
 if (selectedUserId.value) {
-  setUser(selectedUserId.value)
-  refreshAll()
-  loadPapers()
+  setUser(selectedUserId.value);
+  refreshAll();
+  loadPapers();
 }
 </script>

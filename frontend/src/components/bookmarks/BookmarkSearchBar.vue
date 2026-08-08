@@ -73,29 +73,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { BookmarkSearchColumn } from '../../composables/useBookmarks'
+import type { BookmarkSearchColumn } from '../../composables/useBookmarks';
+import { computed } from 'vue';
 
 interface Props {
-  searchQuery: string
-  searchColumn: BookmarkSearchColumn
-  viewMode: 'flat' | 'tree'
-  filteredCount: number
-  treeCount: number
-  totalCount: number
+  searchQuery: string;
+  searchColumn: BookmarkSearchColumn;
+  viewMode: 'flat' | 'tree';
+  filteredCount: number;
+  treeCount: number;
+  totalCount: number;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  'update:searchQuery': [value: string]
-  'update:searchColumn': [value: BookmarkSearchColumn]
-  'update:viewMode': [value: 'flat' | 'tree']
-}>()
+  'update:searchQuery': [value: string];
+  'update:searchColumn': [value: BookmarkSearchColumn];
+  'update:viewMode': [value: 'flat' | 'tree'];
+}>();
 
 const displayCount = computed(() =>
   props.viewMode === 'tree' ? props.treeCount : props.filteredCount,
-)
+);
 
 const placeholders: Record<BookmarkSearchColumn, string> = {
   all: 'Search bookmarks...',
@@ -104,15 +104,15 @@ const placeholders: Record<BookmarkSearchColumn, string> = {
   description: 'Search description...',
   folder: 'Search folder path...',
   tags: 'Search tags...',
-}
+};
 
-const placeholder = computed(() => placeholders[props.searchColumn])
+const placeholder = computed(() => placeholders[props.searchColumn]);
 
 const onSearchInput = (e: Event) => {
-  emit('update:searchQuery', (e.target as HTMLInputElement).value)
-}
+  emit('update:searchQuery', (e.target as HTMLInputElement).value);
+};
 
 const onColumnChange = (e: Event) => {
-  emit('update:searchColumn', (e.target as HTMLSelectElement).value as BookmarkSearchColumn)
-}
+  emit('update:searchColumn', (e.target as HTMLSelectElement).value as BookmarkSearchColumn);
+};
 </script>

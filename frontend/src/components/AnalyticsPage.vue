@@ -169,22 +169,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useUser } from '../composables/useUser'
-import { useAnalytics } from '../composables/useAnalytics'
-import { formatDuration } from '../lib/utils'
-import PageHeader from './ui/PageHeader.vue'
-import StatCard from './ui/StatCard.vue'
-import UserSelector from './ui/UserSelector.vue'
-import LoadingSpinner from './ui/LoadingSpinner.vue'
-import ErrorBanner from './ui/ErrorBanner.vue'
-import EmptyState from './ui/EmptyState.vue'
-import SelectUserPrompt from './ui/SelectUserPrompt.vue'
-import type { DatePreset, GroupBy } from '../composables/useAnalytics'
+import type { DatePreset, GroupBy } from '../composables/useAnalytics';
+import { ref, watch } from 'vue';
+import { useUser } from '../composables/useUser';
+import { useAnalytics } from '../composables/useAnalytics';
+import { formatDuration } from '../lib/utils';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
+import UserSelector from './ui/UserSelector.vue';
+import LoadingSpinner from './ui/LoadingSpinner.vue';
+import ErrorBanner from './ui/ErrorBanner.vue';
+import EmptyState from './ui/EmptyState.vue';
+import SelectUserPrompt from './ui/SelectUserPrompt.vue';
 
-const { users, currentUserId, setUser, clearUser } = useUser()
+const { users, currentUserId, setUser, clearUser } = useUser();
 
-const selectedUserId = ref<number | null>(currentUserId.value)
+const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
   summary,
@@ -199,22 +199,22 @@ const {
   maxTimelineValue,
   timelineLabels,
   load,
-} = useAnalytics(selectedUserId)
+} = useAnalytics(selectedUserId);
 
-const chartMaxHeight = 160
+const chartMaxHeight = 160;
 
 const presets: { value: DatePreset; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: '7days', label: '7 Days' },
   { value: '30days', label: '30 Days' },
   { value: 'custom', label: 'Custom' },
-]
+];
 
 const groupOptions: { value: GroupBy; label: string }[] = [
   { value: 'day', label: 'Day' },
   { value: 'week', label: 'Week' },
   { value: 'month', label: 'Month' },
-]
+];
 
 const barColors = [
   'bg-rose-500',
@@ -227,23 +227,23 @@ const barColors = [
   'bg-slate-700',
   'bg-slate-800',
   'bg-slate-900',
-]
+];
 
 function barColor(index: number): string {
-  return barColors[index % barColors.length]
+  return barColors[index % barColors.length];
 }
 
 watch(selectedUserId, (id) => {
   if (id) {
-    setUser(id)
-    load()
+    setUser(id);
+    load();
   } else {
-    clearUser()
+    clearUser();
   }
-})
+});
 
 if (selectedUserId.value) {
-  setUser(selectedUserId.value)
-  load()
+  setUser(selectedUserId.value);
+  load();
 }
 </script>

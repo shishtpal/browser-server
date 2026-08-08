@@ -107,7 +107,13 @@
       <span class="flex-1 text-[11px] text-red-700 dark:text-red-300">
         Delete this {{ message.role }} message?
       </span>
-      <Button variant="danger" size="sm" :loading="saving" loading-text="…" @click="$emit('delete')">
+      <Button
+        variant="danger"
+        size="sm"
+        :loading="saving"
+        loading-text="…"
+        @click="$emit('delete')"
+      >
         Delete
       </Button>
       <Button variant="ghost" size="sm" @click="$emit('cancelDelete')">Cancel</Button>
@@ -116,37 +122,37 @@
 </template>
 
 <script setup lang="ts">
-import type { AIMessage } from '@browser-server/shared-types'
-import { computed } from 'vue'
-import Button from '../../ui/Button.vue'
-import MemoryToolContent from './MemoryToolContent.vue'
+import type { AIMessage } from '@browser-server/shared-types';
+import { computed } from 'vue';
+import Button from '../../ui/Button.vue';
+import MemoryToolContent from './MemoryToolContent.vue';
 import {
   getToolName,
   formatTime,
   truncateContent,
   roleBadgeClass,
   messageBorderClass,
-} from './memoryUtils'
+} from './memoryUtils';
 
 const props = defineProps<{
-  message: AIMessage
-  editing: boolean
-  editContent: string
-  isDeleteTarget: boolean
-  saving: boolean
-  selected: boolean
-}>()
+  message: AIMessage;
+  editing: boolean;
+  editContent: string;
+  isDeleteTarget: boolean;
+  saving: boolean;
+  selected: boolean;
+}>();
 
 defineEmits<{
-  edit: []
-  editInput: [value: string]
-  save: []
-  cancelEdit: []
-  confirmDelete: []
-  delete: []
-  cancelDelete: []
-  toggleSelect: []
-}>()
+  edit: [];
+  editInput: [value: string];
+  save: [];
+  cancelEdit: [];
+  confirmDelete: [];
+  delete: [];
+  cancelDelete: [];
+  toggleSelect: [];
+}>();
 
-const toolName = computed(() => getToolName(props.message))
+const toolName = computed(() => getToolName(props.message));
 </script>

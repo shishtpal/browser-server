@@ -1,41 +1,41 @@
-import { ref, computed, watch, type Ref } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue';
 import {
   getWallet,
   createWalletEntry,
   updateWalletEntry,
   deleteWalletEntry,
   revealWalletPassword,
-} from '../lib/api'
-import type { WalletEntry } from '../types'
+} from '../lib/api';
+import type { WalletEntry } from '../types';
 
 export function useWallet(selectedUserId: Ref<number | null>) {
-  const walletEntries = ref<WalletEntry[]>([])
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  const websiteFilter = ref('')
+  const walletEntries = ref<WalletEntry[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
+  const websiteFilter = ref('');
   const searchColumn = ref<'website' | 'login_provider' | 'username' | 'description' | 'all'>(
     'website',
-  )
+  );
 
-  const newWebsite = ref('')
-  const newLoginProvider = ref('Password')
-  const newUsername = ref('')
-  const newPassword = ref('')
-  const newDescription = ref('')
+  const newWebsite = ref('');
+  const newLoginProvider = ref('Password');
+  const newUsername = ref('');
+  const newPassword = ref('');
+  const newDescription = ref('');
 
-  const editing = ref<WalletEntry | null>(null)
+  const editing = ref<WalletEntry | null>(null);
   const editForm = ref({
     website: '',
     login_provider: 'Password',
     username: '',
     password: '',
     description: '',
-  })
+  });
 
   const filteredEntries = computed(() => {
-    if (!websiteFilter.value.trim()) return walletEntries.value
-    const q = websiteFilter.value.toLowerCase()
-    const col = searchColumn.value
+    if (!websiteFilter.value.trim()) return walletEntries.value;
+    const q = websiteFilter.value.toLowerCase();
+    const col = searchColumn.value;
     return walletEntries.value.filter((e) => {
       if (col === 'all') {
         return (
@@ -43,33 +43,33 @@ export function useWallet(selectedUserId: Ref<number | null>) {
           e.login_provider.toLowerCase().includes(q) ||
           e.username.toLowerCase().includes(q) ||
           e.description.toLowerCase().includes(q)
-        )
+        );
       }
-      if (col === 'website') return e.website.toLowerCase().includes(q)
-      if (col === 'login_provider') return e.login_provider.toLowerCase().includes(q)
-      if (col === 'username') return e.username.toLowerCase().includes(q)
-      if (col === 'description') return e.description.toLowerCase().includes(q)
-      return false
-    })
-  })
+      if (col === 'website') return e.website.toLowerCase().includes(q);
+      if (col === 'login_provider') return e.login_provider.toLowerCase().includes(q);
+      if (col === 'username') return e.username.toLowerCase().includes(q);
+      if (col === 'description') return e.description.toLowerCase().includes(q);
+      return false;
+    });
+  });
 
   const loadWallet = async () => {
-    if (!selectedUserId.value) return
-    isLoading.value = true
-    error.value = null
+    if (!selectedUserId.value) return;
+    isLoading.value = true;
+    error.value = null;
     try {
-      walletEntries.value = await getWallet(selectedUserId.value)
+      walletEntries.value = await getWallet(selectedUserId.value);
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load wallet'
+      error.value = e instanceof Error ? e.message : 'Failed to load wallet';
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
-  }
+  };
 
   const addEntry = async () => {
-    const provider = newLoginProvider.value.trim() || 'Password'
-    if (!selectedUserId.value || !newWebsite.value.trim() || !newUsername.value.trim()) return
-    if (provider.toLowerCase() === 'password' && !newPassword.value) return
+    const provider = newLoginProvider.value.trim() || 'Password';
+    if (!selectedUserId.value || !newWebsite.value.trim() || !newUsername.value.trim()) return;
+    if (provider.toLowerCase() === 'password' && !newPassword.value) return;
     try {
       await createWalletEntry({
         user_id: selectedUserId.value,
@@ -78,57 +78,57 @@ export function useWallet(selectedUserId: Ref<number | null>) {
         username: newUsername.value.trim(),
         password: newPassword.value,
         description: newDescription.value.trim() || undefined,
-      })
-      newWebsite.value = ''
-      newLoginProvider.value = 'Password'
-      newUsername.value = ''
-      newPassword.value = ''
-      newDescription.value = ''
-      await loadWallet()
+      });
+      newWebsite.value = '';
+      newLoginProvider.value = 'Password';
+      newUsername.value = '';
+      newPassword.value = '';
+      newDescription.value = '';
+      await loadWallet();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to add entry'
+      error.value = e instanceof Error ? e.message : 'Failed to add entry';
     }
-  }
+  };
 
   const openEdit = async (e: WalletEntry) => {
-    editing.value = e
+    editing.value = e;
     editForm.value = {
       website: e.website,
       login_provider: e.login_provider,
       username: e.username,
       password: '',
       description: e.description,
-    }
+    };
     // Passwords are not included in the list response; fetch on demand.
     if (selectedUserId.value) {
       try {
-        editForm.value.password = await revealWalletPassword(selectedUserId.value, e.id)
+        editForm.value.password = await revealWalletPassword(selectedUserId.value, e.id);
       } catch {
-        editForm.value.password = ''
+        editForm.value.password = '';
       }
     }
-  }
+  };
 
   const saveEdit = async () => {
-    if (!editing.value) return
+    if (!editing.value) return;
     try {
-      await updateWalletEntry(editing.value.id, { ...editing.value, ...editForm.value })
-      editing.value = null
-      await loadWallet()
+      await updateWalletEntry(editing.value.id, { ...editing.value, ...editForm.value });
+      editing.value = null;
+      await loadWallet();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to update entry'
+      error.value = e instanceof Error ? e.message : 'Failed to update entry';
     }
-  }
+  };
 
   const removeEntry = async (id: number) => {
-    if (!confirm('Delete this wallet entry?')) return
+    if (!confirm('Delete this wallet entry?')) return;
     try {
-      await deleteWalletEntry(id)
-      await loadWallet()
+      await deleteWalletEntry(id);
+      await loadWallet();
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to delete entry'
+      error.value = e instanceof Error ? e.message : 'Failed to delete entry';
     }
-  }
+  };
 
   return {
     walletEntries,
@@ -149,5 +149,5 @@ export function useWallet(selectedUserId: Ref<number | null>) {
     openEdit,
     saveEdit,
     removeEntry,
-  }
+  };
 }

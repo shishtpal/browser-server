@@ -13,15 +13,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-interface Props {
-  title: string
-  usersCount: number
-  selectedUserId: number | null
-}
+const props = defineProps<{
+  title: string;
+  usersCount: number;
+  selectedUserId: number | null;
+}>();
 
-const props = defineProps<Props>()
-
-const show = computed(() => props.usersCount > 0 && !props.selectedUserId)
+const show = computed(() => props.usersCount > 0 && !props.selectedUserId);
 </script>

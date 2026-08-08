@@ -67,7 +67,7 @@
         </div>
       </div>
 
-      <div class="p-5 space-y-5">
+      <div class="space-y-5 p-5">
         <!-- Mode & Session Size Controls -->
         <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <!-- All Questions Toggle -->
@@ -110,7 +110,7 @@
             </div>
             <select
               v-model.number="limit"
-              class="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-violet-900/30"
+              class="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 transition outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-violet-900/30"
             >
               <option :value="10">10 cards</option>
               <option :value="20">20 cards</option>
@@ -143,7 +143,7 @@
             >
               <button
                 type="button"
-                class="rounded-md px-2 py-1 text-[11px] font-semibold text-violet-600 hover:bg-violet-50 transition dark:text-violet-400 dark:hover:bg-violet-950/40"
+                class="rounded-md px-2 py-1 text-[11px] font-semibold text-violet-600 transition hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/40"
                 @click="toggleAllFiltered"
               >
                 {{ areAllFilteredSelected ? 'Deselect visible' : 'Select visible' }}
@@ -152,7 +152,7 @@
               <button
                 v-if="selectedTags.length"
                 type="button"
-                class="rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 transition dark:text-slate-400 dark:hover:bg-slate-800"
+                class="rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 @click="clearAllTags"
               >
                 Clear all
@@ -184,7 +184,7 @@
               :disabled="allQuestions"
               type="text"
               placeholder="Search tags..."
-              class="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-1.5 pr-8 pl-9 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-violet-500 dark:focus:bg-slate-900 dark:focus:ring-violet-900/30"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-1.5 pr-8 pl-9 text-xs text-slate-800 placeholder-slate-400 transition outline-none focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-violet-500 dark:focus:bg-slate-900 dark:focus:ring-violet-900/30"
             />
             <button
               v-if="tagSearchQuery"
@@ -206,7 +206,7 @@
 
           <!-- Scrollable Tags Box -->
           <div
-            class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/40 p-3 scrollbar-thin scrollbar-thumb-slate-300 dark:border-slate-700/80 dark:bg-slate-900/40 dark:scrollbar-thumb-slate-600"
+            class="max-h-48 scrollbar-thin scrollbar-thumb-slate-300 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/40 p-3 dark:scrollbar-thumb-slate-600 dark:border-slate-700/80 dark:bg-slate-900/40"
             :class="{ 'pointer-events-none opacity-50': allQuestions }"
           >
             <p
@@ -233,7 +233,7 @@
               <label
                 v-for="tag in filteredTags"
                 :key="tag"
-                class="group flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold select-none transition-all"
+                class="group flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all select-none"
                 :class="
                   selectedTags.includes(tag) && !allQuestions
                     ? 'border-violet-300 bg-violet-100/80 text-violet-800 shadow-2xs dark:border-violet-600/70 dark:bg-violet-950/60 dark:text-violet-200'
@@ -289,7 +289,7 @@
             <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
             <p aria-live="polite" class="font-black text-slate-800 dark:text-slate-100">
               Card {{ reviewed + 1 }}
-              <span class="font-normal text-slate-400 text-sm"
+              <span class="text-sm font-normal text-slate-400"
                 >of {{ reviewed + items.length }}</span
               >
             </p>
@@ -375,13 +375,7 @@
       <div
         class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300"
       >
-        <svg
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-        >
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -398,8 +392,7 @@
         You practiced the selected cards without altering their spaced repetition schedule.
       </p>
       <p v-else class="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
-        Great job! You reviewed <span class="font-bold">{{ reviewed }}</span> cards in this
-        session.
+        Great job! You reviewed <span class="font-bold">{{ reviewed }}</span> cards in this session.
       </p>
 
       <!-- Rating Breakdown Badges -->
@@ -469,26 +462,26 @@
 </template>
 
 <script setup lang="ts">
-import type { QuestionDifficulty, TagVocabulary } from '../../types'
-import { computed, ref, toRef } from 'vue'
-import Button from '../ui/Button.vue'
-import EmptyState from '../ui/EmptyState.vue'
-import ErrorBanner from '../ui/ErrorBanner.vue'
-import LoadingSpinner from '../ui/LoadingSpinner.vue'
-import ReviewCard from './ReviewCard.vue'
-import { useQuestionCards } from '../../composables/useQuestionCards'
+import type { QuestionDifficulty, TagVocabulary } from '../../types';
+import { computed, ref, toRef } from 'vue';
+import Button from '../ui/Button.vue';
+import EmptyState from '../ui/EmptyState.vue';
+import ErrorBanner from '../ui/ErrorBanner.vue';
+import LoadingSpinner from '../ui/LoadingSpinner.vue';
+import ReviewCard from './ReviewCard.vue';
+import { useQuestionCards } from '../../composables/useQuestionCards';
 
 const props = defineProps<{
-  userId: number | null
-  vocabulary: TagVocabulary | null
-  onDifficultyChanged: () => void
-}>()
+  userId: number | null;
+  vocabulary: TagVocabulary | null;
+  onDifficultyChanged: () => void;
+}>();
 
 const cards = useQuestionCards(
   toRef(props, 'userId'),
   toRef(props, 'vocabulary'),
   props.onDifficultyChanged,
-)
+);
 
 const {
   phase,
@@ -515,42 +508,41 @@ const {
   submitRating,
   changeDifficulty,
   ratingCounts,
-} = cards
+} = cards;
 
 // Tag Search & Selection Management
-const tagSearchQuery = ref('')
+const tagSearchQuery = ref('');
 
 const filteredTags = computed(() => {
-  const query = tagSearchQuery.value.trim().toLowerCase()
-  if (!query) return tagOptions.value
-  return tagOptions.value.filter((tag) => tag.toLowerCase().includes(query))
-})
+  const query = tagSearchQuery.value.trim().toLowerCase();
+  if (!query) return tagOptions.value;
+  return tagOptions.value.filter((tag) => tag.toLowerCase().includes(query));
+});
 
 const areAllFilteredSelected = computed(() => {
-  if (!filteredTags.value.length) return false
-  return filteredTags.value.every((tag) => selectedTags.value.includes(tag))
-})
+  if (!filteredTags.value.length) return false;
+  return filteredTags.value.every((tag) => selectedTags.value.includes(tag));
+});
 
 const toggleAllFiltered = () => {
-  if (allQuestions.value) return
+  if (allQuestions.value) return;
   if (areAllFilteredSelected.value) {
-    const toRemove = new Set(filteredTags.value)
-    selectedTags.value = selectedTags.value.filter((tag) => !toRemove.has(tag))
+    const toRemove = new Set(filteredTags.value);
+    selectedTags.value = selectedTags.value.filter((tag) => !toRemove.has(tag));
   } else {
-    const combined = new Set([...selectedTags.value, ...filteredTags.value])
-    selectedTags.value = Array.from(combined)
+    const combined = new Set([...selectedTags.value, ...filteredTags.value]);
+    selectedTags.value = Array.from(combined);
   }
-}
+};
 
 const clearAllTags = () => {
-  if (allQuestions.value) return
-  selectedTags.value = []
-}
+  if (allQuestions.value) return;
+  selectedTags.value = [];
+};
 
 const clearTagSearch = () => {
-  tagSearchQuery.value = ''
-}
+  tagSearchQuery.value = '';
+};
 
-defineExpose({ reset: cards.reset })
+defineExpose({ reset: cards.reset });
 </script>
-

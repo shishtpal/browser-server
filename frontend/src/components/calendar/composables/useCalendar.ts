@@ -1,6 +1,7 @@
-import { ref, computed, watch } from 'vue';
-import type { CalendarView, DateRange } from '../components/calendar/types';
+import { ref, computed } from 'vue';
+import type { CalendarView, DateRange } from '../types';
 
+/** Calendar navigation state: current date + view, derived range and label. */
 export function useCalendar() {
   const currentDate = ref(new Date());
   const view = ref<CalendarView>('month');
@@ -15,7 +16,7 @@ export function useCalendar() {
       return { start, end };
     }
     if (view.value === 'month') {
-      // Include leading days from previous month and trailing days to fill the grid
+      // Include leading days from previous month and trailing days to fill the grid.
       const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
       const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       const start = new Date(firstDay);
@@ -53,10 +54,8 @@ export function useCalendar() {
       return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
     if (view.value === 'week') {
-      const start = dateRange.value.start;
-      const end = dateRange.value.end;
-      const sameMonth = start.getMonth() === end.getMonth();
-      if (sameMonth) {
+      const { start, end } = dateRange.value;
+      if (start.getMonth() === end.getMonth()) {
         return `${start.toLocaleDateString('en-US', { month: 'long' })} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
       }
       return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${end.getFullYear()}`;
@@ -86,9 +85,20 @@ export function useCalendar() {
     currentDate.value = new Date();
   }
 
-  watch(view, () => {
-    // Keep current date when switching views
-  });
+  /** Jump to a specific date and (optionally) switch view — used for drill-down. */
+  function jumpToDate(date: string, targetView?: CalendarView) {
+    currentDate.value = new Date(date + 'T00:00:00');
+    if (targetView) view.value = targetView;
+  }
+
+  function jumpToMonth(monthIndex: number) {
+    currentDate.value = new Date(currentDate.value.getFullYear(), monthIndex, 1);
+    view.value = 'month';
+  }
+
+  function jumpToYear(year: number) {
+    currentDate.value = new Date(year, currentDate.value.getMonth(), 1);
+  }
 
   return {
     currentDate,
@@ -97,5 +107,8 @@ export function useCalendar() {
     periodLabel,
     navigate,
     goToToday,
+    jumpToDate,
+    jumpToMonth,
+    jumpToYear,
   };
 }

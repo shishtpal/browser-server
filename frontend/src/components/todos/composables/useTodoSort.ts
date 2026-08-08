@@ -1,15 +1,6 @@
-import type { Todo, TodoSortField } from '../types';
+import type { Todo, TodoSortField } from '../../../types';
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
-
-export const SORT_OPTIONS: { value: TodoSortField; label: string }[] = [
-  { value: 'position', label: 'Position' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'start_date', label: 'Date' },
-  { value: 'created_at', label: 'Created' },
-  { value: 'title', label: 'Title' },
-];
-
-const PRIORITY_WEIGHT: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+import { priorityWeight } from '../todoFormat';
 
 export function useTodoSort(sourceTodos: Ref<Todo[]>) {
   const sortField: Ref<TodoSortField> = ref('position');
@@ -29,7 +20,7 @@ export function useTodoSort(sourceTodos: Ref<Todo[]>) {
           cmp = a.position - b.position;
           break;
         case 'priority':
-          cmp = (PRIORITY_WEIGHT[a.priority] ?? 4) - (PRIORITY_WEIGHT[b.priority] ?? 4);
+          cmp = priorityWeight(a.priority) - priorityWeight(b.priority);
           break;
         case 'start_date': {
           const ad = a.start_date ? new Date(a.start_date).getTime() : Infinity;

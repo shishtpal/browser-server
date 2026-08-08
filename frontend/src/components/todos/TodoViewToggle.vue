@@ -1,76 +1,39 @@
 <template>
   <div
     class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/80"
+    role="group"
+    aria-label="Todo view"
   >
     <button
+      v-for="option in options"
+      :key="option.value"
       type="button"
-      @click="$emit('update:view', 'list')"
+      :aria-pressed="view === option.value"
+      :title="`${option.label} view`"
       :class="[
-        'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-black transition',
-        view === 'list'
+        'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-black transition sm:px-3',
+        view === option.value
           ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
           : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
       ]"
+      @click="$emit('update:view', option.value)"
     >
-      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2.5"
-          d="M4 6h16M4 12h16M4 18h16"
-        />
-      </svg>
-      List
-    </button>
-    <button
-      type="button"
-      @click="$emit('update:view', 'kanban')"
-      :class="[
-        'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-black transition',
-        view === 'kanban'
-          ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
-          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
-      ]"
-    >
-      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2.5"
-          d="M9 17V7m0 10v-10m4 10V7m0 10v-10"
-        />
-      </svg>
-      Kanban
-    </button>
-    <button
-      type="button"
-      @click="$emit('update:view', 'grid')"
-      :class="[
-        'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-black transition',
-        view === 'grid'
-          ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
-          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
-      ]"
-    >
-      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2.5"
-          d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"
-        />
-      </svg>
-      Grid
+      <component :is="option.icon" class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
+      <span class="hidden sm:inline">{{ option.label }}</span>
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { TodoView } from '../../types';
+import { LayoutGrid, Columns3, List, type LucideIcon } from '@lucide/vue';
 
-defineProps<{
-  view: TodoView;
-}>();
-
+defineProps<{ view: TodoView }>();
 defineEmits<{ 'update:view': [value: TodoView] }>();
+
+const options: { value: TodoView; label: string; icon: LucideIcon }[] = [
+  { value: 'list', label: 'List', icon: List },
+  { value: 'kanban', label: 'Kanban', icon: Columns3 },
+  { value: 'grid', label: 'Grid', icon: LayoutGrid },
+];
 </script>

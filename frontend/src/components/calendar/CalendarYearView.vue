@@ -1,24 +1,14 @@
 <template>
   <div>
-    <!-- Editable Year Header -->
+    <!-- Editable year header -->
     <div class="mb-4 flex items-center justify-center gap-2">
       <button
         type="button"
-        class="grid h-7 w-7 place-items-center rounded-lg border border-gray-200 text-slate-500 transition hover:bg-gray-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+        class="grid h-8 w-8 place-items-center rounded-lg border border-gray-200 text-slate-500 transition hover:border-violet-300 hover:bg-gray-100 hover:text-violet-600 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
         aria-label="Previous year"
-        @click="emit('yearChange', year - 1)"
+        @click="$emit('yearChange', year - 1)"
       >
-        <svg
-          class="h-3.5 w-3.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
+        <ChevronLeft class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
       </button>
 
       <div class="relative">
@@ -37,7 +27,7 @@
           type="number"
           min="1900"
           max="9999"
-          class="w-24 rounded-md border border-indigo-400 bg-white px-2 py-0.5 text-center text-lg font-black text-slate-900 tabular-nums shadow-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none dark:border-indigo-500 dark:bg-slate-800 dark:text-white"
+          class="w-24 rounded-md border border-violet-400 bg-white px-2 py-0.5 text-center text-lg font-black text-slate-900 tabular-nums shadow-sm focus:ring-2 focus:ring-violet-400 focus:outline-none dark:border-violet-500 dark:bg-slate-800 dark:text-white"
           @keydown.enter="commit"
           @keydown.esc="cancel"
           @blur="commit"
@@ -46,41 +36,34 @@
 
       <button
         type="button"
-        class="grid h-7 w-7 place-items-center rounded-lg border border-gray-200 text-slate-500 transition hover:bg-gray-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+        class="grid h-8 w-8 place-items-center rounded-lg border border-gray-200 text-slate-500 transition hover:border-violet-300 hover:bg-gray-100 hover:text-violet-600 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
         aria-label="Next year"
-        @click="emit('yearChange', year + 1)"
+        @click="$emit('yearChange', year + 1)"
       >
-        <svg
-          class="h-3.5 w-3.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
+        <ChevronRight class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
       </button>
     </div>
 
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-5 lg:gap-6">
+    <div
+      class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:gap-5"
+    >
       <YearMonthCard
         v-for="monthIdx in 12"
         :key="monthIdx - 1"
         :year="year"
         :month-index="monthIdx - 1"
         :todos="todos"
-        @month-click="emit('monthClick', $event)"
-        @day-click="emit('dayClick', $event)"
+        @month-click="$emit('monthClick', $event)"
+        @day-click="$emit('dayClick', $event)"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types';
 import { nextTick, ref } from 'vue';
+import { ChevronLeft, ChevronRight } from '@lucide/vue';
+import type { Todo } from '../../types';
 import YearMonthCard from './YearMonthCard.vue';
 
 const props = defineProps<{

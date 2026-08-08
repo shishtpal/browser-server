@@ -2,9 +2,11 @@
   <div
     :class="cardClasses"
     class="group cursor-pointer rounded-2xl p-3 transition-all duration-200 hover:-translate-y-0.5 sm:p-4"
-    @click="emit('monthClick', monthIndex)"
+    role="button"
+    :aria-label="`Open ${label} ${year}`"
+    @click="$emit('monthClick', monthIndex)"
   >
-    <!-- Header: Month Name & Badges -->
+    <!-- Header: month name + badges -->
     <div class="mb-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <h3 class="text-sm font-semibold tracking-tight" :class="labelClass">
@@ -12,7 +14,7 @@
         </h3>
         <span
           v-if="isCurrentMonth"
-          class="flex h-4 items-center rounded-full bg-indigo-600 px-1.5 text-[9px] font-bold tracking-wide text-white uppercase shadow-sm shadow-indigo-500/30 dark:bg-indigo-500"
+          class="flex h-4 items-center rounded-full bg-violet-600 px-1.5 text-[9px] font-bold tracking-wide text-white uppercase shadow-sm shadow-violet-500/30 dark:bg-violet-500"
         >
           Today
         </span>
@@ -27,11 +29,11 @@
       </span>
     </div>
 
-    <!-- Mini Calendar Grid -->
+    <!-- Mini calendar grid -->
     <div class="grid grid-cols-7 gap-x-0.5 gap-y-1">
       <div
-        v-for="d in dayHeaders"
-        :key="d"
+        v-for="(d, i) in dayHeaders"
+        :key="i"
         class="pb-0.5 text-center text-[9px] font-medium text-slate-400 select-none dark:text-slate-500"
       >
         {{ d }}
@@ -41,12 +43,14 @@
         v-for="(day, i) in dayData"
         :key="i"
         :class="dayClasses(day)"
-        @click.stop="emit('dayClick', day.date)"
+        role="button"
+        :aria-label="`${day.date}${day.count ? `, ${day.count} todos` : ''}`"
+        @click.stop="$emit('dayClick', day.date)"
       >
         <span class="leading-none">{{ day.day }}</span>
         <span
           v-if="day.count > 0"
-          class="absolute right-0 bottom-0 flex h-3 min-w-3 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full bg-indigo-600 px-0.5 text-[7px] leading-none font-bold text-white shadow-sm ring-1 ring-white/80 dark:bg-indigo-500 dark:ring-slate-900/80"
+          class="absolute right-0 bottom-0 flex h-3 min-w-3 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full bg-violet-600 px-0.5 text-[7px] leading-none font-bold text-white shadow-sm ring-1 ring-white/80 dark:bg-violet-500 dark:ring-slate-900/80"
         >
           {{ day.count }}
         </span>
@@ -56,8 +60,8 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types';
 import { computed } from 'vue';
+import type { Todo } from '../../types';
 
 const props = defineProps<{
   year: number;
@@ -80,9 +84,7 @@ const isCurrentMonth = computed(() => {
   return props.year === now.getFullYear() && props.monthIndex === now.getMonth();
 });
 
-const label = computed(() => {
-  return monthStart.value.toLocaleDateString('en-US', { month: 'short' });
-});
+const label = computed(() => monthStart.value.toLocaleDateString('en-US', { month: 'short' }));
 
 function formatDate(d: Date): string {
   const y = d.getFullYear();
@@ -91,7 +93,7 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-// PERFORMANCE OPTIMIZATION: Pre-calculate counts to avoid O(N*M) nested loops
+// Pre-computed per-date counts to avoid O(days × todos) nested loops.
 const todoCountMap = computed(() => {
   const map = new Map<string, number>();
   props.todos.forEach((t) => {
@@ -133,7 +135,7 @@ const dayData = computed(() => {
     days.push({
       date: dateStr,
       day: current.getDate(),
-      count: todoCountMap.value.get(dateStr) || 0, // Use optimized map
+      count: todoCountMap.value.get(dateStr) || 0,
       isCurrentMonth: current.getMonth() === props.monthIndex,
       isToday:
         current.getFullYear() === today.getFullYear() &&
@@ -148,26 +150,26 @@ const dayData = computed(() => {
 
 const cardClasses = computed(() => {
   if (isCurrentMonth.value) {
-    return 'border-2 border-indigo-500/80 dark:border-indigo-400/60 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30';
+    return 'border-2 border-violet-500/80 dark:border-violet-400/60 bg-violet-50/50 dark:bg-violet-950/20 shadow-md shadow-violet-200/50 dark:shadow-violet-900/30';
   }
   if (totalTodos.value > 0) {
-    return 'border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50';
+    return 'border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/50 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50';
   }
   return 'border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700';
 });
 
 const labelClass = computed(() => {
-  if (isCurrentMonth.value) return 'text-indigo-700 dark:text-indigo-300';
+  if (isCurrentMonth.value) return 'text-violet-700 dark:text-violet-300';
   if (totalTodos.value > 0) return 'text-slate-800 dark:text-slate-200';
   return 'text-slate-500 dark:text-slate-500';
 });
 
 const countClass = computed(() => {
   if (totalTodos.value >= 10) {
-    return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300';
+    return 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300';
   }
   if (totalTodos.value >= 5) {
-    return 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400';
+    return 'bg-violet-50 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400';
   }
   return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
 });
@@ -184,27 +186,23 @@ function dayClasses(day: {
   if (!day.isCurrentMonth) {
     return `${base} text-slate-300 dark:text-slate-700`;
   }
-
   if (day.isToday) {
-    return `${base} bg-indigo-600 text-white font-bold shadow-sm shadow-indigo-500/40 dark:bg-indigo-500`;
+    return `${base} bg-violet-600 text-white font-bold shadow-sm shadow-violet-500/40 dark:bg-violet-500`;
   }
-
   if (day.count > 0) {
-    return `${base} ${getHeatmapColor(day.count)}`;
+    return `${base} ${heatmapClass(day.count)}`;
   }
-
   if (day.isWeekend) {
     return `${base} text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50`;
   }
-
   return `${base} text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50`;
 }
 
-// Cohesive Indigo Heatmap matching the app's primary theme
-function getHeatmapColor(count: number): string {
-  if (count >= 4) return 'bg-indigo-500 text-white dark:bg-indigo-600 font-bold';
-  if (count >= 3) return 'bg-indigo-200 text-indigo-900 dark:bg-indigo-700/60 text-white';
-  if (count >= 2) return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800/50 text-indigo-200';
-  return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 text-indigo-400';
+// Violet heatmap matching the calendar theme.
+function heatmapClass(count: number): string {
+  if (count >= 4) return 'bg-violet-500 text-white dark:bg-violet-600 font-bold';
+  if (count >= 3) return 'bg-violet-200 text-violet-900 dark:bg-violet-700/60 dark:text-white';
+  if (count >= 2) return 'bg-violet-100 text-violet-800 dark:bg-violet-800/50 dark:text-violet-200';
+  return 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
 }
 </script>

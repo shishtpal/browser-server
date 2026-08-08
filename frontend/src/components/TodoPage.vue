@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-full px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
+  <div class="mx-auto max-w-full px-3 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Task manager" title="Todos" color="indigo">
       <template #stats>
         <StatCard :value="totalCount" label="Total" variant="dark" color="indigo" />
@@ -34,20 +34,14 @@
           size="sm"
           :disabled="!selectedUserId"
           class="group"
-          @click="$emit('new-todo')"
+          @click="openCreateModal"
         >
           <span class="flex items-center gap-1.5">
-            <svg
+            <Plus
               class="h-4 w-4 transition-transform duration-200 group-hover:rotate-90"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+              :stroke-width="2.5"
+              aria-hidden="true"
+            />
             New Todo
           </span>
         </Button>
@@ -65,7 +59,6 @@
           :sort-dir="sortDir"
           @update:sort-field="setSort($event)"
           @toggle-dir="toggleSortDir()"
-          @new-todo="openCreateModal"
           @clear-all="clearAllFilters"
         />
       </template>
@@ -78,287 +71,115 @@
     />
 
     <LoadingSpinner v-if="isLoading" message="Loading todos..." color="indigo" />
-
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadTodos" />
 
     <div v-else-if="selectedUserId">
       <div
         v-if="activeFilter === 'archived'"
         class="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-300"
+        role="note"
       >
-        <svg
-          class="h-5 w-5 shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M5 8h14M7 8V5h10v3m-9 0v11h8V8m-5 4h2"
-          />
-        </svg>
-        <span
-          ><strong>Archived todos</strong> are hidden from your normal workspace. Restore one to
-          make it active again.</span
-        >
+        <Archive class="h-5 w-5 shrink-0" :stroke-width="2" aria-hidden="true" />
+        <span>
+          <strong>Archived todos</strong> are hidden from your normal workspace. Restore one to make
+          it active again.
+        </span>
       </div>
 
-      <div
-        class="mb-4 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
-      >
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label class="relative min-w-0 flex-1">
-            <span class="sr-only">Search todos</span>
-            <svg
-              class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
-              />
-            </svg>
-            <input
-              v-model="searchQuery"
-              type="search"
-              placeholder="Search titles, descriptions, or tags..."
-              class="w-full rounded-xl border border-gray-300 bg-gray-50 py-2.5 pr-10 pl-10 text-sm font-semibold text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-indigo-900/30"
-            />
-            <button
-              v-if="searchQuery"
-              type="button"
-              class="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-gray-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-              aria-label="Clear todo search"
-              @click="searchQuery = ''"
-            >
-              <svg
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18 18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </label>
-          <p
-            class="shrink-0 text-xs font-bold text-slate-500 dark:text-slate-400"
-            aria-live="polite"
-          >
-            {{ resultSummary }}
-          </p>
-        </div>
-      </div>
+      <TodoSearchBar v-model="searchQuery" :result-count="displayedTodos.length" />
 
       <EmptyState
         v-if="displayedTodos.length === 0"
-        :title="
-          searchQuery
-            ? 'No matching todos'
-            : activeFilter === 'archived'
-              ? 'Archive is empty'
-              : 'No todos here'
-        "
-        :description="
-          searchQuery
-            ? `Nothing matches “${searchQuery}”. Try another search.`
-            : activeFilter === 'archived'
-              ? 'Completed todos you archive will appear here.'
-              : 'Create your first task above or change the filters.'
-        "
+        :title="emptyTitle"
+        :description="emptyDescription"
         :icon="searchQuery ? 'search' : 'default'"
         color="indigo"
       />
 
-      <div v-else>
-        <!-- Desktop list (md+): the table, kanban, and grid branches below form one v-if/v-else-if chain. -->
-        <div
-          v-if="view === 'list'"
-          class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors md:block dark:border-slate-700/80 dark:bg-slate-800/90"
-        >
-          <table
-            class="min-w-full divide-y divide-gray-200 transition-colors dark:divide-slate-700"
-          >
-            <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
-              <tr>
-                <th class="w-14 px-3 py-3"></th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Title
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Description
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Due date
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Tags
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Updated
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Subtasks
-                </th>
-                <th
-                  class="w-44 px-3 py-3 text-right text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
-              <template v-for="todo in listTodos" :key="todo.id">
-                <TodoTableRow
-                  :todo="todo"
-                  :expanded="expandedTodoIds.has(todo.id)"
-                  draggable="true"
-                  @toggle="toggleTodo"
-                  @toggle-pin="togglePinned"
-                  @archive="archiveTodo"
-                  @restore="restoreTodo"
-                  @toggle-expand="toggleSubtaskRow"
-                  @start-edit="openEditModal"
-                  @delete="confirmDelete"
-                  @view-screenshot="openScreenshot"
-                  @mousedown="onRowMouseDown"
-                  @dragstart="onRowDragStart($event, todo.id)"
-                  @dragover.prevent="onRowDragOver($event, todo.id)"
-                  @drop="onRowDrop($event, todo.id)"
-                  @dragend="onRowDragEnd"
-                />
-                <tr
-                  v-if="expandedTodoIds.has(todo.id)"
-                  class="bg-indigo-50/40 dark:bg-slate-800/40"
-                >
-                  <td colspan="8" class="px-4 py-3">
-                    <TodoSubtaskList
-                      :todo="todo"
-                      :default-expanded="true"
-                      @toggle-subtask="onSubtaskToggled"
-                    />
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-else-if="view === 'kanban'">
-          <TodoKanbanBoard
-            :todos="displayedTodos"
-            @toggle="toggleTodo"
-            @toggle-subtask="onSubtaskToggled"
-            @toggle-pin="togglePinned"
-            @archive="archiveTodo"
-            @restore="restoreTodo"
-            @view-screenshot="openScreenshot"
-            @start-edit="openEditModal"
-            @delete="confirmDelete"
-            @reorder="onKanbanReorder"
-            @priority-change="onKanbanPriorityChange"
-          />
-        </div>
-
-        <div v-else-if="view === 'grid'">
-          <TodoGridView
-            :todos="displayedTodos"
-            @toggle="toggleTodo"
-            @toggle-pin="togglePinned"
-            @archive="archiveTodo"
-            @restore="restoreTodo"
-            @view-screenshot="openScreenshot"
-            @start-edit="openEditModal"
-            @delete="confirmDelete"
-            @toggle-subtask="onSubtaskToggled"
-          />
-        </div>
-
-        <!-- Mobile list (md-): separate element that intentionally stays v-if (NOT part of the chain above) so it renders together with the desktop table when view === 'list'. -->
-        <draggable
+      <template v-else>
+        <TodoListView
           v-if="view === 'list'"
           v-model="listTodos"
-          item-key="id"
-          handle=".drag-handle"
-          @end="onListDragEnd"
-          tag="ul"
-          class="space-y-2 md:hidden"
-        >
-          <template #item="{ element: todo }">
-            <TodoCard
-              :todo="todo"
-              @toggle="toggleTodo"
-              @toggle-pin="togglePinned"
-              @archive="archiveTodo"
-              @restore="restoreTodo"
-              @start-edit="openEditModal"
-              @delete="confirmDelete"
-              @view-screenshot="openScreenshot"
-              @toggle-subtask="onSubtaskToggled"
-            />
-          </template>
-        </draggable>
-      </div>
+          :expanded-ids="expandedTodoIds"
+          @toggle="toggleTodo"
+          @toggle-pin="togglePinned"
+          @archive="archiveTodo"
+          @restore="restoreTodo"
+          @start-edit="openEditModal"
+          @delete="confirmDelete"
+          @view-screenshot="openScreenshot"
+          @toggle-expand="toggleExpanded"
+          @toggle-subtask="onSubtaskToggled"
+          @row-mousedown="onRowMouseDown"
+          @row-dragstart="onRowDragStart"
+          @row-dragover="onRowDragOver"
+          @row-drop="onRowDrop"
+          @row-dragend="onRowDragEnd"
+          @mobile-dragend="onDragEnd"
+        />
+
+        <TodoKanbanBoard
+          v-else-if="view === 'kanban'"
+          :todos="displayedTodos"
+          @toggle="toggleTodo"
+          @toggle-subtask="onSubtaskToggled"
+          @toggle-pin="togglePinned"
+          @archive="archiveTodo"
+          @restore="restoreTodo"
+          @view-screenshot="openScreenshot"
+          @start-edit="openEditModal"
+          @delete="confirmDelete"
+          @reorder="onKanbanReorder"
+          @priority-change="onKanbanPriorityChange"
+        />
+
+        <TodoGridView
+          v-else-if="view === 'grid'"
+          :todos="displayedTodos"
+          @toggle="toggleTodo"
+          @toggle-pin="togglePinned"
+          @archive="archiveTodo"
+          @restore="restoreTodo"
+          @view-screenshot="openScreenshot"
+          @start-edit="openEditModal"
+          @delete="confirmDelete"
+          @toggle-subtask="onSubtaskToggled"
+        />
+      </template>
     </div>
 
+    <!-- Screenshot lightbox -->
     <Modal
       :open="screenshotModal.open"
       :title="screenshotModal.title"
-      @close="screenshotModal.open = false"
       fullscreen
+      @close="closeScreenshot"
     >
       <img
         :src="screenshotModal.url"
+        alt="Todo screenshot"
         class="h-full w-full rounded-lg border border-gray-200 object-contain dark:border-slate-700"
       />
     </Modal>
 
-    <CalendarTodoModal
-      :open="modalOpen"
+    <TodoEditorModal
+      :open="editorOpen"
       :editing-todo="editingTodo"
-      :initial-due-date="modalDueDate"
-      :user-id="selectedUserId!"
-      @close="closeModal"
+      :initial-due-date="editorDueDate"
+      :user-id="selectedUserId ?? 0"
+      @close="closeEditor"
       @submit="handleCreate"
       @update="handleUpdate"
-      @delete="handleDelete"
+      @delete="handleEditorDelete"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Todo, TodoView, TodoPriority, CreateTodoInput } from '../types';
-import { ref, watch, computed } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
-import draggable from 'vuedraggable';
+import { computed, ref, watch } from 'vue';
+import { Archive, Plus } from '@lucide/vue';
 import { useUser } from '../composables/useUser';
-import { useTodos } from '../composables/useTodos';
+import { useTodoPage } from './todos/composables/useTodoPage';
 import Button from './ui/Button.vue';
 import UserSelector from './ui/UserSelector.vue';
 import PageHeader from './ui/PageHeader.vue';
@@ -368,240 +189,94 @@ import ErrorBanner from './ui/ErrorBanner.vue';
 import EmptyState from './ui/EmptyState.vue';
 import SelectUserPrompt from './ui/SelectUserPrompt.vue';
 import Modal from './ui/Modal.vue';
-import TodoTableRow from './todos/TodoTableRow.vue';
-import TodoCard from './todos/TodoCard.vue';
-import TodoKanbanBoard from './todos/TodoKanbanBoard.vue';
 import TodoActionsBar from './todos/TodoActionsBar.vue';
-import TodoGridView from './todos/TodoGridView.vue';
-import TodoSubtaskList from './todos/TodoSubtaskList.vue';
-import CalendarTodoModal from './calendar/CalendarTodoModal.vue';
-import { useModal } from '@browser-server/shared-modal';
-import { getScreenshotUrl, reorderTodos } from '../lib/api';
+import TodoSearchBar from './todos/TodoSearchBar.vue';
+import TodoListView from './todos/views/TodoListView.vue';
+import TodoKanbanBoard from './todos/views/TodoKanbanBoard.vue';
+import TodoGridView from './todos/views/TodoGridView.vue';
+import TodoEditorModal from './todos/editor/TodoEditorModal.vue';
 
 const { users, currentUserId, setUser, clearUser } = useUser();
 const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
-  todos,
-  isLoading,
-  error,
-  activeFilter,
-  searchQuery,
-  filters,
-  totalCount,
-  activeCount,
-  inProgressCount,
-  completedCount,
-  archivedCount,
-  overdueCount,
-  displayedTodos,
-  loadTodos,
-  addTodo,
-  updateTodoItem,
-  toggleTodo,
-  togglePinned,
-  archiveTodo,
-  restoreTodo,
-  removeTodo,
-  priority,
-  dueDate,
-  tags,
-  sort,
-  expandedTodoIds,
-} = useTodos(selectedUserId);
-
-// Vue only unwraps refs exposed as top-level template bindings. Keeping these
-// nested would make v-for iterate the ComputedRef object instead of its value.
-const { selectedPriority } = priority;
-const { dueDateFilter } = dueDate;
-const { allTags, selectedTag } = tags;
-const { sortField, sortDir, setSort, toggleDir: toggleSortDir } = sort;
-
-function clearAllFilters() {
-  selectedPriority.value = null;
-  dueDateFilter.value = null;
-  selectedTag.value = null;
-}
+  todosApi: {
+    todos,
+    isLoading,
+    error,
+    activeFilter,
+    searchQuery,
+    filters,
+    totalCount,
+    activeCount,
+    inProgressCount,
+    completedCount,
+    archivedCount,
+    overdueCount,
+    displayedTodos,
+    loadTodos,
+    toggleTodo,
+    togglePinned,
+    archiveTodo,
+    restoreTodo,
+    expandedTodoIds,
+    toggleExpanded,
+  },
+  view,
+  selectedPriority,
+  dueDateFilter,
+  allTags,
+  selectedTag,
+  sortField,
+  sortDir,
+  setSort,
+  toggleSortDir,
+  clearAllFilters,
+  listTodos,
+  onDragEnd,
+  onRowMouseDown,
+  onRowDragStart,
+  onRowDragOver,
+  onRowDrop,
+  onRowDragEnd,
+  onKanbanReorder,
+  onKanbanPriorityChange,
+  onSubtaskToggled,
+  editorOpen,
+  editingTodo,
+  editorDueDate,
+  openCreateModal,
+  openEditModal,
+  closeEditor,
+  handleCreate,
+  handleUpdate,
+  handleEditorDelete,
+  confirmDelete,
+  screenshotModal,
+  openScreenshot,
+  closeScreenshot,
+} = useTodoPage(selectedUserId);
 
 watch(selectedUserId, (id) => {
   if (id) {
     setUser(id);
-    loadTodos();
   } else {
     clearUser();
     todos.value = [];
   }
 });
 
-if (selectedUserId.value) {
-  setUser(selectedUserId.value);
-  loadTodos();
-}
+// Data load kicks in automatically via the immediate watcher inside useTodos.
 
-const view = useLocalStorage<TodoView>(`bs.todos.view`, 'list');
-
-const listTodos = ref<Todo[]>([]);
-
-watch(
-  displayedTodos,
-  (val) => {
-    listTodos.value = [...val];
-  },
-  { immediate: true },
-);
-
-async function onListDragEnd(event: any) {
-  if (event.oldIndex === event.newIndex) return;
-  await reorderTodos(listTodos.value.map((t, idx) => ({ id: t.id, position: idx })));
-  await loadTodos();
-}
-
-// ── Native HTML5 drag for desktop table rows ──────────────────────────
-const dragId = ref<number | null>(null);
-const dragAllowed = ref(false);
-
-function onRowMouseDown(event: MouseEvent) {
-  // Allow drag only when initiated from the drag handle
-  dragAllowed.value = !!(event.target && (event.target as HTMLElement).closest('.drag-handle'));
-}
-
-function onRowDragStart(event: DragEvent, id: number) {
-  if (!dragAllowed.value) {
-    event.preventDefault();
-    return;
-  }
-  dragId.value = id;
-  if (event.dataTransfer) {
-    event.dataTransfer.setData('text/plain', String(id));
-    event.dataTransfer.effectAllowed = 'move';
-  }
-}
-
-function onRowDragOver(event: DragEvent, id: number) {
-  if (dragId.value === null || dragId.value === id) return;
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-}
-
-function onRowDrop(_event: DragEvent, id: number) {
-  if (dragId.value === null || dragId.value === id) {
-    dragId.value = null;
-    return;
-  }
-  const fromIdx = listTodos.value.findIndex((t) => t.id === dragId.value);
-  const toIdx = listTodos.value.findIndex((t) => t.id === id);
-  dragId.value = null;
-  if (fromIdx === -1 || toIdx === -1) return;
-  const moved = listTodos.value.splice(fromIdx, 1)[0];
-  listTodos.value.splice(toIdx, 0, moved);
-  reorderTodos(listTodos.value.map((t, idx) => ({ id: t.id, position: idx }))).then(loadTodos);
-}
-
-function onRowDragEnd() {
-  dragId.value = null;
-  dragAllowed.value = false;
-}
-
-function toggleSubtaskRow(id: number) {
-  const next = new Set(expandedTodoIds.value);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  expandedTodoIds.value = next;
-}
-
-function onSubtaskToggled(updated: Todo) {
-  const parentIndex = todos.value.findIndex((todo) => todo.id === updated.parent_id);
-  if (parentIndex === -1) return;
-  const parent = todos.value[parentIndex];
-  todos.value[parentIndex] = {
-    ...parent,
-    subtasks: (parent.subtasks || []).map((subtask) =>
-      subtask.id === updated.id ? updated : subtask,
-    ),
-  };
-}
-
-async function onKanbanReorder(items: { id: number; position: number }[]) {
-  await reorderTodos(items);
-  await loadTodos();
-}
-
-async function onKanbanPriorityChange(payload: {
-  todo: Todo;
-  newPriority: string;
-  items: { id: number; position: number }[];
-}) {
-  await reorderTodos(payload.items);
-  await updateTodoItem(payload.todo.id, { priority: payload.newPriority as TodoPriority });
-}
-
-const screenshotModal = ref<{ open: boolean; url: string; title: string }>({
-  open: false,
-  url: '',
-  title: '',
+const emptyTitle = computed(() => {
+  if (searchQuery.value) return 'No matching todos';
+  return activeFilter.value === 'archived' ? 'Archive is empty' : 'No todos here';
 });
 
-function openScreenshot(todo: Todo) {
-  screenshotModal.value = {
-    open: true,
-    url: getScreenshotUrl(todo.id),
-    title: todo.title,
-  };
-}
-
-// ── New / Edit todo modal ──────────────────────────────────────────────
-const modalOpen = ref(false);
-const editingTodo = ref<Todo | null>(null);
-const modalDueDate = ref('');
-
-function openCreateModal() {
-  if (!selectedUserId.value) return;
-  editingTodo.value = null;
-  modalDueDate.value = '';
-  modalOpen.value = true;
-}
-
-function openEditModal(todo: Todo) {
-  editingTodo.value = todo;
-  modalDueDate.value = todo.start_date || '';
-  modalOpen.value = true;
-}
-
-function closeModal() {
-  modalOpen.value = false;
-  editingTodo.value = null;
-}
-
-async function handleCreate(data: CreateTodoInput) {
-  await addTodo(data);
-}
-
-async function handleUpdate(id: number, data: Partial<Todo>) {
-  await updateTodoItem(id, data);
-}
-
-async function handleDelete() {
-  if (!editingTodo.value) return;
-  const id = editingTodo.value.id;
-  closeModal();
-  confirmDelete(id);
-}
-
-// ── Delete confirmation (imperative modal) ────────────────────────────
-const { confirmDelete: modalConfirmDelete } = useModal();
-
-async function confirmDelete(id: number) {
-  const confirmed = await modalConfirmDelete(
-    'Delete this todo?',
-    'This action cannot be undone. The todo and its data will be permanently removed.',
-  );
-  if (confirmed) {
-    await removeTodo(id);
-  }
-}
-
-const resultSummary = computed(() => {
-  const count = displayedTodos.value.length;
-  if (!searchQuery.value.trim()) return `${count} ${count === 1 ? 'todo' : 'todos'}`;
-  return `${count} ${count === 1 ? 'result' : 'results'}`;
+const emptyDescription = computed(() => {
+  if (searchQuery.value) return `Nothing matches “${searchQuery.value}”. Try another search.`;
+  return activeFilter.value === 'archived'
+    ? 'Completed todos you archive will appear here.'
+    : 'Create your first task above or change the filters.';
 });
 </script>

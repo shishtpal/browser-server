@@ -1,31 +1,35 @@
-import type { Todo, TodoStatus, TodoFilter } from '../types';
+import type { Todo, TodoStatus, TodoFilter } from '../../../types';
 import { ref, computed, watch, type Ref } from 'vue';
-import { getTodos, createTodo, updateTodo, deleteTodo } from '../lib/api';
+import { getTodos, createTodo, updateTodo, deleteTodo } from '../../../lib/api';
+import { useLocalStorage, useSessionStorage } from '@vueuse/core';
+import {
+  isDueThisWeek,
+  isDueToday,
+  isOverdue,
+  matchesDueDateFilter,
+  NEXT_STATUS,
+  STATUS_FILTERS,
+} from '../todoFormat';
 import { useTodoPriority } from './useTodoPriority';
 import { useTodoDueDate } from './useTodoDueDate';
 import { useTodoTags } from './useTodoTags';
 import { useTodoSort } from './useTodoSort';
 
-import { isOverdue, isDueToday, isDueThisWeek } from './useTodoDueDate';
-import { useLocalStorage, useSessionStorage } from '@vueuse/core';
-
+/**
+ * Todo bank state for the selected user: the full list, status/search/priority/
+ * due-date/tag filters, sorting, and CRUD actions that patch the local list
+ * in place.
+ *
+ * Loading starts automatically (immediate watcher) whenever the user changes.
+ */
 export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<string | null>) {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
   const todos = useSessionStorage<Todo[]>(`bs.todos.todos`, []);
-
   const activeFilter = useLocalStorage<TodoFilter>(`bs.todos.activeFilter`, 'active');
-
   const searchQuery = ref('');
-
-  const filters = [
-    { label: 'All', value: 'all' as const },
-    { label: 'Active', value: 'active' as const },
-    { label: 'In Progress', value: 'in_progress' as const },
-    { label: 'Completed', value: 'completed' as const },
-    { label: 'Archived', value: 'archived' as const },
-  ];
+  const filters = STATUS_FILTERS;
 
   const counts = computed(() => {
     const result = { total: 0, active: 0, inProgress: 0, completed: 0, archived: 0, overdue: 0 };
@@ -75,17 +79,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
       list = list.filter((t) => t.priority === priority.selectedPriority.value);
     }
     if (dueDate.dueDateFilter.value) {
-      list = list.filter((t) => {
-        switch (dueDate.dueDateFilter.value) {
-          case 'overdue':
-            return isOverdue(t);
-          case 'today':
-            return isDueToday(t);
-          case 'this_week':
-            return isDueThisWeek(t);
-        }
-        return true;
-      });
+      list = list.filter((t) => matchesDueDateFilter(t, dueDate.dueDateFilter.value));
     }
     if (tags.selectedTag.value) {
       list = list.filter((t) => (t.tags || []).includes(tags.selectedTag.value!));
@@ -97,16 +91,23 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     return list;
   });
 
-  const sort = useTodoSort(baseFiltered);
+  const sort = useTodoSort(baseFiltered as Ref<Todo[]>);
   const displayedTodos = sort.sorted;
 
-  // Set of TODOs IDs user has clicked to expand for sub-tasks
+  /** Todos the user expanded to reveal their subtasks. */
   const expandedTodoIds = useLocalStorage<Set<number>>(`bs.todos.expandedTodoIds`, new Set(), {
     serializer: {
       read: (v) => (v ? new Set(JSON.parse(v)) : new Set()),
       write: (v) => JSON.stringify([...v]),
     },
   });
+
+  function toggleExpanded(id: number) {
+    const next = new Set(expandedTodoIds.value);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    expandedTodoIds.value = next;
+  }
 
   const loadTodos = async () => {
     if (!selectedUserId.value) return;
@@ -170,12 +171,7 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
 
   const toggleTodo = async (todo: Todo) => {
     try {
-      const cycle: Record<string, TodoStatus> = {
-        pending: 'in_progress',
-        in_progress: 'completed',
-        completed: 'pending',
-      };
-      const newStatus: TodoStatus = cycle[todo.status] || 'pending';
+      const newStatus: TodoStatus = NEXT_STATUS[todo.status] || 'pending';
       await updateTodoItem(todo.id, { status: newStatus });
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update todo';
@@ -215,6 +211,19 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     }
   };
 
+  watch(
+    selectedUserId,
+    (id) => {
+      if (id && id > 0) {
+        loadTodos();
+      } else {
+        todos.value = [];
+        searchQuery.value = '';
+      }
+    },
+    { immediate: true },
+  );
+
   if (domainFilter) {
     watch(domainFilter, () => {
       if (selectedUserId.value) loadTodos();
@@ -248,5 +257,6 @@ export function useTodos(selectedUserId: Ref<number | null>, domainFilter?: Ref<
     tags,
     sort,
     expandedTodoIds,
+    toggleExpanded,
   };
 }

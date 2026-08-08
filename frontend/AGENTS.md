@@ -38,8 +38,8 @@ frontend/src/
 ├── layouts/Layout.astro   # Shared shell: nav, theme, header widgets
 ├── components/       # Vue components
 │   ├── <Domain>Page.vue   # Top-level page component per domain (TodoPage, WalletPage, ChatPage, …)
-│   ├── todos/, bookmarks/, history/, wallet/   # Per-domain sub-components
-│   ├── chat/         # AI chat sub-components and composables (see below)
+│   ├── todos/, bookmarks/, history/, wallet/   # Per-domain sub-components (see below)
+│   ├── chat/, quiz/, calendar/   # AI chat, exam prep, and calendar modules (see below)
 │   ├── ui/           # Reusable presentational components (Button, Modal, ErrorBanner, InputField, …)
 │   ├── ServerStatus.vue, ThemeToggle.vue, ApiTokenSettings.vue   # Header widgets
 ├── composables/      # use<Domain>() — state + data-loading logic (Vue composition API)
@@ -83,6 +83,54 @@ new branch so the user can keep chatting from that point. The source conversatio
 untouched.
 
 `ChatPage.vue` composes these pieces and delegates business logic to the composables, keeping the top-level component focused on wiring.
+
+### Todos module (`components/todos/`)
+
+`TodoPage.vue` is thin wiring; all coordination lives in `components/todos/composables/useTodoPage.ts` (view mode, editor modal, screenshot lightbox, delete confirm, kanban/list reorder) on top of `useTodos.ts` (list, filters, sort, CRUD). Presentation constants (priority/status meta, due-date predicates, sort + recurrence options) are centralized in `todoFormat.ts` — never re-declare them per component. The todo editor modal (`todos/editor/`) is owned by the todos domain and reused by the Calendar page.
+
+```
+components/todos/
+├── todoFormat.ts              # PRIORITY_META, STATUS_META, due-date predicates, RRULE/SORT options
+├── composables/
+│   ├── useTodoPage.ts         # Page orchestration for TodoPage.vue
+│   ├── useTodos.ts            # List state + filters + CRUD (immediate load on user change)
+│   ├── useTodoPriority.ts, useTodoDueDate.ts, useTodoTags.ts  # Filter state only
+│   ├── useTodoSort.ts, useTodoSubtasks.ts, useTodoDisplay.ts  # Card-shared display logic
+│   └── useTodoListDrag.ts     # vuedraggable (mobile) + native HTML5 rows (desktop)
+├── TodoActionsBar.vue         # View toggle, status tabs, filter selects, active chips
+├── TodoViewToggle.vue, TodoSortBar.vue, TodoSearchBar.vue, TodoFilterSelect.vue
+├── TodoStatusToggle.vue       # Round status checkbox (pending → in_progress → completed)
+├── TodoPriorityBadge.vue, TodoDueDateBadge.vue, TodoTagBadges.vue, TodoMetaChips.vue
+├── TodoCardActions.vue        # Pin / archive-restore / edit / delete icon actions
+├── TodoSubtaskProgress.vue
+├── views/                     # TodoListView (table + mobile cards), TodoTableRow, TodoCard,
+│                              # TodoKanbanBoard, TodoKanbanCard, TodoGridView, TodoGridCard,
+│                              # TodoSubtaskList (inline edit + reorder)
+└── editor/                    # TodoEditorModal + TodoEditorForm (also used by CalendarPage)
+```
+
+### Calendar module (`components/calendar/`)
+
+`CalendarPage.vue` is thin wiring over `composables/useCalendarPage.ts` (editor + detail modals, drag-move rescheduling, view drill-down) composing `useCalendar.ts` (view/date navigation) and `useCalendarTodos.ts` (day buckets + header stats). Day-cell drop handlers are shared via `useCalendarDragDrop.ts → useCalendarDayDrop()`; month cells reuse `CalendarDayCell.vue` (priority dots on mobile, chips on desktop). Priority/status styling is sourced from `todos/todoFormat.ts`.
+
+```
+components/calendar/
+├── types.ts                   # CalendarView, CalendarDay, DateRange, CalendarStats
+├── composables/
+│   ├── useCalendarPage.ts     # Page orchestration for CalendarPage.vue
+│   ├── useCalendar.ts         # currentDate/view/dateRange + navigation
+│   ├── useCalendarTodos.ts    # Todos → visible range, per-day buckets, stats (immediate load)
+│   └── useCalendarDragDrop.ts # DnD MIME helpers + useCalendarDayDrop() cell handlers
+├── CalendarHeader.vue         # Prev/Today/Next + Day/Week/Month/Year switcher
+├── CalendarMonthView.vue      # Grid; delegates cells to CalendarDayCell.vue
+├── CalendarDayCell.vue        # One month cell (dots on mobile, chips + “+N more” on desktop)
+├── CalendarWeekView.vue       # 7 columns, horizontally scrollable on mobile
+├── CalendarDayView.vue        # All-day list for the selected date
+├── CalendarYearView.vue       # Click-to-edit year header + 12 mini calendars
+├── YearMonthCard.vue          # One mini month w/ heatmap days + count badges
+├── CalendarTodoChip.vue       # Draggable todo chip
+└── CalendarTodoDetail.vue     # Read-only detail modal (edit entry point)
+```
 
 ### Quiz module (`components/quiz/`)
 

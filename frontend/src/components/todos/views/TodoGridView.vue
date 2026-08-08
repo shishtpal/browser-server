@@ -17,14 +17,10 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types';
+import type { Todo } from '../../../types';
 import TodoGridCard from './TodoGridCard.vue';
 
-interface Props {
-  todos: Todo[];
-}
-
-defineProps<Props>();
+defineProps<{ todos: Todo[] }>();
 
 defineEmits<{
   toggle: [todo: Todo];

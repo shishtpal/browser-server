@@ -1,46 +1,38 @@
 <template>
   <span
-    v-if="dueDate"
-    :class="[
-      'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-black',
-      badgeClass,
-    ]"
+    v-if="label"
+    class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-black"
+    :class="badgeClass"
   >
+    <Clock
+      v-if="label === 'Overdue' || label === 'Today'"
+      class="h-2.5 w-2.5"
+      :stroke-width="2.5"
+      aria-hidden="true"
+    />
     {{ label }}
   </span>
 </template>
 
 <script setup lang="ts">
-import type { TodoStatus } from '../../types';
 import { computed } from 'vue';
-import { isOverdue, isDueToday, isDueThisWeek } from '../../composables/useTodoDueDate';
+import { Clock } from '@lucide/vue';
+import type { TodoStatus } from '../../types';
+import { dueDateBadgeClass, dueDateLabel } from './todoFormat';
 
-interface Props {
-  dueDate: string | null;
-  status?: TodoStatus;
-}
+const props = withDefaults(
+  defineProps<{
+    dueDate: string | null;
+    status?: TodoStatus;
+  }>(),
+  { status: 'pending' },
+);
 
-const props = withDefaults(defineProps<Props>(), { status: 'pending' });
+const partialTodo = computed(() => ({
+  start_date: props.dueDate,
+  status: props.status,
+}));
 
-const badgeClass = computed(() => {
-  const todo = { start_date: props.dueDate, status: props.status } as any;
-  if (props.status === 'completed' || props.status === 'archived')
-    return 'bg-gray-100 text-gray-500';
-  if (isOverdue(todo)) return 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400';
-  if (isDueToday(todo))
-    return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400';
-  if (isDueThisWeek(todo))
-    return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400';
-  return 'bg-gray-100 text-gray-600';
-});
-
-const label = computed(() => {
-  if (!props.dueDate) return '';
-  const todo = { start_date: props.dueDate, status: props.status } as any;
-  if (isOverdue(todo)) return 'Overdue';
-  if (isDueToday(todo)) return 'Today';
-  if (isDueThisWeek(todo)) return 'This week';
-  const d = new Date(props.dueDate);
-  return d.toLocaleDateString();
-});
+const badgeClass = computed(() => dueDateBadgeClass(partialTodo.value));
+const label = computed(() => dueDateLabel(partialTodo.value));
 </script>

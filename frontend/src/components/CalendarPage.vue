@@ -1,36 +1,16 @@
 <template>
-  <div class="mx-auto flex h-full max-w-full flex-col px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
+  <div class="mx-auto flex h-full max-w-full flex-col px-3 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Schedule" title="Calendar" color="violet">
       <template #stats>
-        <StatCard :value="todosStats.todayCount" label="Today" variant="dark" color="violet" />
-        <StatCard
-          :value="todosStats.overdueCount"
-          label="Overdue"
-          variant="primary"
-          color="amber"
-        />
-        <StatCard
-          :value="todosStats.completedCount"
-          label="Done"
-          variant="secondary"
-          color="violet"
-        />
+        <StatCard :value="stats.todayCount" label="Today" variant="dark" color="violet" />
+        <StatCard :value="stats.overdueCount" label="Overdue" variant="primary" color="amber" />
+        <StatCard :value="stats.completedCount" label="Done" variant="secondary" color="violet" />
       </template>
       <template #controls>
         <UserSelector id="calendar-user" v-model="selectedUserId" :users="users" color="violet" />
         <Button variant="gradient-violet" size="sm" @click="openCreateModal()">
-          <span class="flex items-center gap-1">
-            <svg
-              class="h-3.5 w-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+          <span class="flex items-center gap-1.5">
+            <Plus class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
             Add Todo
           </span>
         </Button>
@@ -46,7 +26,7 @@
     <LoadingSpinner v-if="isLoading" message="Loading calendar..." color="violet" />
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadTodos" />
 
-    <div v-else-if="selectedUserId" class="flex min-h-0 flex-1 flex-col gap-4">
+    <div v-else-if="selectedUserId" class="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
       <CalendarHeader
         :period-label="periodLabel"
         :current-view="view"
@@ -57,60 +37,60 @@
 
       <div
         v-if="view === 'month'"
-        class="flex-1 rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+        class="flex-1 rounded-2xl border border-gray-200/80 bg-white/90 p-2 shadow-sm sm:p-3 dark:border-slate-700/80 dark:bg-slate-800/90"
       >
         <CalendarMonthView
           class="h-full"
           :days="days"
           @click="openCreateModal"
           @show-more="showDayTodos"
-          @todo-click="openEditModal"
+          @todo-click="openDetail"
           @todo-move="handleTodoMove"
         />
       </div>
 
       <div
         v-else-if="view === 'week'"
-        class="rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+        class="rounded-2xl border border-gray-200/80 bg-white/90 p-2 shadow-sm sm:p-3 dark:border-slate-700/80 dark:bg-slate-800/90"
       >
         <CalendarWeekView
-          :days="weekDays"
+          :days="days"
           @click="openCreateModal"
-          @todo-click="openEditModal"
+          @todo-click="openDetail"
           @todo-move="handleTodoMove"
         />
       </div>
 
       <div
         v-else-if="view === 'day'"
-        class="rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+        class="rounded-2xl border border-gray-200/80 bg-white/90 p-2 shadow-sm sm:p-3 dark:border-slate-700/80 dark:bg-slate-800/90"
       >
-        <CalendarDayView :day="currentDayData" @todo-click="openEditModal" />
+        <CalendarDayView :day="currentDayData" @todo-click="openDetail" />
       </div>
 
       <div
         v-else-if="view === 'year'"
-        class="rounded-2xl border border-gray-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/90"
+        class="rounded-2xl border border-gray-200/80 bg-white/90 p-3 shadow-sm sm:p-4 dark:border-slate-700/80 dark:bg-slate-800/90"
       >
         <CalendarYearView
           :year="currentDate.getFullYear()"
           :todos="todos"
-          @month-click="onMonthClick"
-          @day-click="onYearDayClick"
-          @year-change="onYearChange"
+          @month-click="jumpToMonth"
+          @day-click="(date) => jumpToDate(date, 'day')"
+          @year-change="jumpToYear"
         />
       </div>
     </div>
 
-    <CalendarTodoModal
-      :open="modalOpen"
+    <TodoEditorModal
+      :open="editorOpen"
       :editing-todo="editingTodo"
-      :initial-due-date="modalDueDate"
-      :user-id="selectedUserId!"
-      @close="closeModal"
+      :initial-due-date="editorDueDate"
+      :user-id="selectedUserId ?? 0"
+      @close="closeEditor"
       @submit="handleCreate"
       @update="handleUpdate"
-      @delete="handleDelete"
+      @delete="handleEditorDelete"
     />
 
     <CalendarTodoDetail :todo="detailTodo" @close="closeDetail" @edit="editFromDetail" />
@@ -118,15 +98,15 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo, CreateTodoInput } from '../types';
-import { ref, watch, computed } from 'vue';
-import { format } from 'date-fns';
+import { ref, watch } from 'vue';
+import { Plus } from '@lucide/vue';
+import { useModal } from '@browser-server/shared-modal';
 import { useUser } from '../composables/useUser';
-import { useCalendar } from '../composables/useCalendar';
-import { useCalendarTodos } from '../composables/useCalendarTodos';
-import PageHeader from './ui/PageHeader.vue';
-import UserSelector from './ui/UserSelector.vue';
+import { useCalendarPage } from './calendar/composables/useCalendarPage';
 import Button from './ui/Button.vue';
+import UserSelector from './ui/UserSelector.vue';
+import PageHeader from './ui/PageHeader.vue';
+import StatCard from './ui/StatCard.vue';
 import LoadingSpinner from './ui/LoadingSpinner.vue';
 import ErrorBanner from './ui/ErrorBanner.vue';
 import SelectUserPrompt from './ui/SelectUserPrompt.vue';
@@ -135,112 +115,59 @@ import CalendarMonthView from './calendar/CalendarMonthView.vue';
 import CalendarWeekView from './calendar/CalendarWeekView.vue';
 import CalendarDayView from './calendar/CalendarDayView.vue';
 import CalendarYearView from './calendar/CalendarYearView.vue';
-import StatCard from './ui/StatCard.vue';
-import CalendarTodoModal from './calendar/CalendarTodoModal.vue';
 import CalendarTodoDetail from './calendar/CalendarTodoDetail.vue';
+import TodoEditorModal from './todos/editor/TodoEditorModal.vue';
 
 const { users, currentUserId, setUser, clearUser } = useUser();
 const selectedUserId = ref<number | null>(currentUserId.value);
 
-const { currentDate, view, dateRange, periodLabel, navigate, goToToday } = useCalendar();
-const { todos, isLoading, error, days, stats, loadTodos, addTodo, updateTodoItem, removeTodo } =
-  useCalendarTodos(selectedUserId, dateRange);
-
-const todosStats = computed(() => stats.value);
-const modalOpen = ref(false);
-const editingTodo = ref<Todo | null>(null);
-const modalDueDate = ref('');
-const detailTodo = ref<Todo | null>(null);
-
-// For week view, only pass the 7 days of the current week
-const weekDays = computed(() => {
-  if (view.value !== 'week') return [];
-  return days.value;
-});
-
-// For day view, find the current date's data
-const currentDayData = computed(() => {
-  if (view.value !== 'day') return undefined;
-  const dateStr = format(currentDate.value, 'yyyy-MM-dd');
-  return days.value.find((d) => d.date === dateStr) ?? days.value[0];
-});
+const {
+  calendar: {
+    currentDate,
+    view,
+    periodLabel,
+    navigate,
+    goToToday,
+    jumpToDate,
+    jumpToMonth,
+    jumpToYear,
+  },
+  todosApi: { todos, isLoading, error, days, stats, loadTodos },
+  editorOpen,
+  editingTodo,
+  editorDueDate,
+  openCreateModal,
+  closeEditor,
+  handleCreate,
+  handleUpdate,
+  handleDelete,
+  detailTodo,
+  openDetail,
+  closeDetail,
+  editFromDetail,
+  handleTodoMove,
+  currentDayData,
+} = useCalendarPage(selectedUserId);
 
 watch(selectedUserId, (id) => {
-  if (id) {
-    setUser(id);
-    loadTodos();
-  } else {
-    clearUser();
-    todos.value = [];
-  }
+  if (id) setUser(id);
+  else clearUser();
 });
 
-if (selectedUserId.value) {
-  setUser(selectedUserId.value);
-  loadTodos();
-}
+/* ---------------------- delete confirmation from editor --------------------- */
 
-function openCreateModal(date?: string) {
-  editingTodo.value = null;
-  modalDueDate.value = date || format(new Date(), 'yyyy-MM-dd');
-  modalOpen.value = true;
-}
+const { confirmDelete: confirmDeleteModal } = useModal();
 
-function openEditModal(todo: Todo) {
-  detailTodo.value = todo;
-}
-
-function closeDetail() {
-  detailTodo.value = null;
-}
-
-function editFromDetail(todo: Todo) {
-  detailTodo.value = null;
-  editingTodo.value = todo;
-  modalDueDate.value = todo.start_date || '';
-  modalOpen.value = true;
-}
-
-function closeModal() {
-  modalOpen.value = false;
-  editingTodo.value = null;
-}
-
-async function handleCreate(data: CreateTodoInput) {
-  await addTodo(data);
-}
-
-async function handleUpdate(id: number, data: Partial<Todo>) {
-  await updateTodoItem(id, data);
-}
-
-async function handleTodoMove(payload: { todo: Todo; date: string }) {
-  await updateTodoItem(payload.todo.id, { start_date: payload.date });
-}
-
-async function handleDelete() {
+async function handleEditorDelete() {
   if (!editingTodo.value) return;
-  await removeTodo(editingTodo.value.id);
-  closeModal();
+  const confirmed = await confirmDeleteModal(
+    `Delete "${editingTodo.value.title}"?`,
+    'This action cannot be undone.',
+  );
+  if (confirmed) await handleDelete();
 }
 
 function showDayTodos(date: string) {
-  // Navigate to day view for that date
-  currentDate.value = new Date(date + 'T00:00:00');
-  view.value = 'day';
-}
-
-function onMonthClick(month: number) {
-  currentDate.value = new Date(currentDate.value.getFullYear(), month, 1);
-  view.value = 'month';
-}
-
-function onYearDayClick(date: string) {
-  currentDate.value = new Date(date + 'T00:00:00');
-  view.value = 'day';
-}
-
-function onYearChange(year: number) {
-  currentDate.value = new Date(year, currentDate.value.getMonth(), 1);
+  jumpToDate(date, 'day');
 }
 </script>

@@ -1,6 +1,6 @@
-import type { Todo } from '../types';
+import type { Todo } from '../../../types';
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
-import { createSubtask, updateTodo, deleteTodo } from '../lib/api';
+import { createSubtask, deleteTodo, updateTodo } from '../../../lib/api';
 
 export function useTodoSubtasks(
   initialSubtasks: Todo[],
@@ -8,7 +8,6 @@ export function useTodoSubtasks(
   userId: Ref<number | null>,
 ) {
   const subtasks: Ref<Todo[]> = ref([...initialSubtasks]);
-
   const error: Ref<string | null> = ref(null);
 
   const progress: ComputedRef<{ done: number; total: number }> = computed(() => {
@@ -41,6 +40,15 @@ export function useTodoSubtasks(
     }
   }
 
+  async function saveSubtask(subtask: Todo, updates: Partial<Todo>) {
+    if (!Object.keys(updates).length) return null;
+    const updated = await updateTodo(subtask.id, updates);
+    subtasks.value = subtasks.value.map((t) =>
+      t.id === subtask.id ? { ...t, ...updated, subtasks: t.subtasks || [] } : t,
+    );
+    return subtasks.value.find((t) => t.id === subtask.id) || null;
+  }
+
   async function removeSubtask(id: number) {
     try {
       await deleteTodo(id);
@@ -56,6 +64,7 @@ export function useTodoSubtasks(
     progress,
     addSubtask,
     toggleSubtask,
+    saveSubtask,
     removeSubtask,
   };
 }

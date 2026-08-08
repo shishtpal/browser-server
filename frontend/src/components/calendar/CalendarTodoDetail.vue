@@ -1,242 +1,180 @@
 <template>
-  <Teleport to="body">
-    <Transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="todo"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
-        @click.self="emit('close')"
-      >
-        <Transition
-          enter-active-class="transition duration-200 ease-out"
-          enter-from-class="opacity-0 scale-95"
-          enter-to-class="opacity-100 scale-100"
-          leave-active-class="transition duration-150 ease-in"
-          leave-from-class="opacity-100 scale-100"
-          leave-to-class="opacity-0 scale-95"
-        >
-          <div
-            v-if="todo"
-            class="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl shadow-gray-900/30 dark:border-white/10 dark:bg-slate-800 dark:shadow-slate-950/30"
+  <Modal :open="!!todo" title="Todo details" @close="$emit('close')">
+    <div v-if="todo" class="max-h-[75vh] space-y-4 overflow-y-auto overscroll-contain pr-1">
+      <!-- Header: priority dot + title + badges -->
+      <div class="flex items-start gap-3">
+        <span
+          class="mt-1.5 h-3 w-3 shrink-0 rounded-full"
+          :class="todoDotClass(todo)"
+          aria-hidden="true"
+        />
+        <div class="min-w-0 flex-1">
+          <h2
+            class="text-base leading-tight font-black break-words text-slate-900 dark:text-white"
+            :class="{ 'line-through opacity-60': todo.status === 'completed' }"
           >
-            <!-- Close button -->
-            <button
-              type="button"
-              class="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-lg bg-gray-100 text-slate-500 transition hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
-              aria-label="Close"
-              @click="emit('close')"
+            {{ todo.title }}
+          </h2>
+          <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span
+              class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase"
+              :class="statusBadgeClass"
             >
-              &times;
-            </button>
-
-            <!-- Header: Priority dot + Title -->
-            <div class="flex items-start gap-3 pr-10">
-              <span class="mt-1.5 h-3 w-3 shrink-0 rounded-full" :class="priorityDotClass" />
-              <div class="min-w-0 flex-1">
-                <h2
-                  class="text-lg leading-tight font-black text-slate-900 dark:text-white"
-                  :class="{ 'line-through opacity-60': todo.status === 'completed' }"
-                >
-                  {{ todo.title }}
-                </h2>
-                <div class="mt-1 flex flex-wrap items-center gap-2">
-                  <span
-                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase"
-                    :class="statusBadgeClass"
-                  >
-                    {{ todo.status }}
-                  </span>
-                  <span
-                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase"
-                    :class="priorityBadgeClass"
-                  >
-                    {{ todo.priority }}
-                  </span>
-                  <span
-                    v-if="todo.pinned"
-                    class="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-amber-700 uppercase dark:bg-amber-900/30 dark:text-amber-400"
-                  >
-                    <svg class="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        d="M9.828.722a.5.5 0 01.354 0l.707.293a.5.5 0 01.293.354l.354 3.535 3.535.354a.5.5 0 01.354.293l.293.707a.5.5 0 010 .354l-2.828 2.828 1.06 5.303a.5.5 0 01-.146.457l-.5.5a.5.5 0 01-.561.085L10 13.414l-3.243 1.871a.5.5 0 01-.56-.085l-.5-.5a.5.5 0 01-.147-.457l1.06-5.303L3.783 6.112a.5.5 0 010-.354l.293-.707a.5.5 0 01.354-.293l3.535-.354.354-3.535a.5.5 0 01.293-.354l.707-.293z"
-                      />
-                    </svg>
-                    Pinned
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Color bar -->
-            <div
-              v-if="todo.color"
-              class="mt-3 h-1 w-full rounded-full"
-              :style="{ backgroundColor: todo.color }"
-            />
-
-            <!-- Screenshot -->
-            <a
-              v-if="todo.screenshot_path"
-              :href="screenshotUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="mt-4 block"
+              {{ statusText }}
+            </span>
+            <TodoPriorityBadge :priority="todo.priority" />
+            <span
+              v-if="todo.pinned"
+              class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-amber-700 uppercase dark:bg-amber-900/30 dark:text-amber-400"
             >
-              <img
-                :src="screenshotUrl"
-                alt="Todo screenshot"
-                class="block max-h-64 w-full rounded-lg border border-gray-200 object-contain transition hover:opacity-90 dark:border-slate-600"
-              />
-            </a>
-
-            <!-- Description -->
-            <div v-if="todo.description" class="mt-4">
-              <p
-                class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
-                v-html="linkifyDescription(todo.description)"
-              ></p>
-            </div>
-
-            <!-- Metadata grid -->
-            <div class="mt-5 grid grid-cols-2 gap-3">
-              <!-- Start Date -->
-              <div
-                v-if="todo.start_date"
-                class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-700/50"
-              >
-                <span
-                  class="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-                  >Start</span
-                >
-                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{
-                  formatDate(todo.start_date)
-                }}</span>
-              </div>
-
-              <!-- End Date -->
-              <div
-                v-if="todo.end_date"
-                class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-700/50"
-              >
-                <span
-                  class="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-                  >End</span
-                >
-                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{
-                  formatDate(todo.end_date)
-                }}</span>
-              </div>
-
-              <!-- Domain -->
-              <div v-if="todo.domain" class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-700/50">
-                <span
-                  class="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-                  >Domain</span
-                >
-                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{
-                  todo.domain
-                }}</span>
-              </div>
-
-              <!-- Recurrence -->
-              <div v-if="todo.rrule" class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-700/50">
-                <span
-                  class="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-                  >Recurrence</span
-                >
-                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{
-                  formatRrule(todo.rrule)
-                }}</span>
-              </div>
-
-              <!-- Created -->
-              <div class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-700/50">
-                <span
-                  class="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-                  >Created</span
-                >
-                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{
-                  formatDate(todo.created_at)
-                }}</span>
-              </div>
-
-              <!-- Updated -->
-              <div class="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-700/50">
-                <span
-                  class="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-                  >Updated</span
-                >
-                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{
-                  formatDate(todo.updated_at)
-                }}</span>
-              </div>
-            </div>
-
-            <!-- Tags -->
-            <div v-if="todo.tags && todo.tags.length > 0" class="mt-4">
-              <span
-                class="mb-1.5 block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-                >Tags</span
-              >
-              <div class="flex flex-wrap gap-1.5">
-                <span
-                  v-for="tag in todo.tags"
-                  :key="tag"
-                  class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="mt-6 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                class="rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                @click="emit('close')"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                class="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                @click="emit('edit', todo)"
-              >
-                Edit
-              </button>
-            </div>
+              <Pin class="h-2.5 w-2.5" :stroke-width="2.5" aria-hidden="true" />
+              Pinned
+            </span>
           </div>
-        </Transition>
+        </div>
       </div>
-    </Transition>
-  </Teleport>
+
+      <!-- Color bar -->
+      <div
+        v-if="todo.color"
+        class="h-1 w-full rounded-full"
+        :style="{ backgroundColor: todo.color }"
+        aria-hidden="true"
+      />
+
+      <!-- Screenshot -->
+      <a
+        v-if="screenshotUrl"
+        :href="screenshotUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="group block"
+        title="Open screenshot in a new tab"
+      >
+        <span
+          class="relative block overflow-hidden rounded-lg border border-gray-200 dark:border-slate-600"
+        >
+          <img
+            :src="screenshotUrl"
+            alt="Todo screenshot"
+            class="max-h-56 w-full object-contain transition group-hover:opacity-90 sm:max-h-64"
+          />
+          <ExternalLink
+            class="absolute top-2 right-2 h-4 w-4 rounded bg-slate-900/50 p-0.5 text-white opacity-70 transition group-hover:opacity-100"
+            aria-hidden="true"
+          />
+        </span>
+      </a>
+
+      <!-- Description -->
+      <p
+        v-if="todo.description"
+        class="text-sm leading-relaxed break-words text-slate-600 dark:text-slate-300"
+        v-html="linkifyDescription(todo.description)"
+      ></p>
+
+      <!-- Metadata grid -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div
+          v-for="item in metaItems"
+          :key="item.label"
+          class="flex items-start gap-2.5 rounded-lg bg-slate-50 px-3 py-2.5 dark:bg-slate-700/50"
+        >
+          <component
+            :is="item.icon"
+            class="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500"
+            :stroke-width="2.25"
+            aria-hidden="true"
+          />
+          <div class="min-w-0">
+            <span
+              class="block text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
+            >
+              {{ item.label }}
+            </span>
+            <span
+              class="block truncate text-xs font-semibold text-slate-700 dark:text-slate-200"
+              :title="item.value"
+            >
+              {{ item.value }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div v-if="todo.tags?.length">
+        <span
+          class="mb-1.5 flex items-center gap-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
+        >
+          <Tags class="h-3 w-3" :stroke-width="2.25" aria-hidden="true" />
+          Tags
+        </span>
+        <div class="flex flex-wrap gap-1.5">
+          <span
+            v-for="tag in todo.tags"
+            :key="tag"
+            class="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+          >
+            {{ tag }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <Button variant="secondary" size="sm" @click="$emit('close')">Close</Button>
+        <Button variant="gradient-violet" size="sm" @click="$emit('edit', todo)">
+          <span class="inline-flex items-center gap-1.5">
+            <Pencil class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
+            Edit
+          </span>
+        </Button>
+      </div>
+    </div>
+  </Modal>
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '../../types';
 import { computed } from 'vue';
 import { format } from 'date-fns';
+import {
+  Calendar,
+  CalendarClock,
+  Clock,
+  ExternalLink,
+  Globe,
+  Pencil,
+  Pin,
+  Repeat,
+  Tags,
+  type LucideIcon,
+} from '@lucide/vue';
+import type { Todo } from '../../types';
 import { linkifyDescription } from '../../lib/descriptionLinks';
 import { getScreenshotUrl } from '../../lib/api/todos';
+import Button from '../ui/Button.vue';
+import Modal from '../ui/Modal.vue';
+import TodoPriorityBadge from '../todos/TodoPriorityBadge.vue';
+import { formatRrule, statusLabel, STATUS_META, todoDotClass } from '../todos/todoFormat';
 
 const props = defineProps<{
   todo: Todo | null;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void;
   (e: 'edit', todo: Todo): void;
 }>();
 
 const screenshotUrl = computed(() =>
   props.todo?.screenshot_path ? getScreenshotUrl(props.todo.id) : '',
+);
+
+const statusText = computed(() => (props.todo ? statusLabel(props.todo.status) : ''));
+
+const statusBadgeClass = computed(
+  () => STATUS_META[props.todo?.status as keyof typeof STATUS_META]?.badgeClass ?? '',
 );
 
 function formatDate(raw: string | null | undefined): string {
@@ -249,48 +187,16 @@ function formatDate(raw: string | null | undefined): string {
   }
 }
 
-function formatRrule(rrule: string): string {
-  const map: Record<string, string> = {
-    'FREQ=DAILY': 'Daily',
-    'FREQ=WEEKLY': 'Weekly',
-    'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR': 'Every Weekday',
-    'FREQ=WEEKLY;INTERVAL=2': 'Every 2 Weeks',
-    'FREQ=MONTHLY': 'Monthly',
-    'FREQ=YEARLY': 'Yearly',
-  };
-  return map[rrule] || rrule;
-}
-
-const priorityDotClass = computed(() => {
-  if (!props.todo) return '';
-  if (props.todo.status === 'completed') return 'bg-slate-300 dark:bg-slate-600';
-  const map: Record<string, string> = {
-    low: 'bg-slate-400 dark:bg-slate-500',
-    medium: 'bg-blue-500 dark:bg-blue-400',
-    high: 'bg-amber-500 dark:bg-amber-400',
-    urgent: 'bg-red-500 dark:bg-red-400',
-  };
-  return map[props.todo.priority] || 'bg-slate-400';
-});
-
-const statusBadgeClass = computed(() => {
-  if (!props.todo) return '';
-  const map: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    archived: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
-  };
-  return map[props.todo.status] || '';
-});
-
-const priorityBadgeClass = computed(() => {
-  if (!props.todo) return '';
-  const map: Record<string, string> = {
-    low: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
-    medium: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    high: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    urgent: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  };
-  return map[props.todo.priority] || '';
+const metaItems = computed(() => {
+  const t = props.todo;
+  const items: { label: string; value: string; icon: LucideIcon }[] = [];
+  if (!t) return items;
+  if (t.start_date) items.push({ label: 'Start', value: formatDate(t.start_date), icon: Calendar });
+  if (t.end_date) items.push({ label: 'End', value: formatDate(t.end_date), icon: CalendarClock });
+  if (t.domain) items.push({ label: 'Domain', value: t.domain, icon: Globe });
+  if (t.rrule) items.push({ label: 'Recurrence', value: formatRrule(t.rrule), icon: Repeat });
+  items.push({ label: 'Created', value: formatDate(t.created_at), icon: Clock });
+  items.push({ label: 'Updated', value: formatDate(t.updated_at), icon: Clock });
+  return items;
 });
 </script>

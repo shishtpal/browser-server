@@ -162,6 +162,7 @@ import type {
   TagVocabulary,
 } from '../../../../types';
 import { API_BASE } from '../../../../lib/api';
+import { getToken } from '../../../../lib/auth';
 import FormField from '../../../ui/FormField.vue';
 import InputField from '../../../ui/InputField.vue';
 import SelectField from '../../../ui/SelectField.vue';
@@ -241,7 +242,9 @@ const taxonomyFields = [
 ] as const;
 
 const existingImageSrc = computed(() =>
-  props.question?.image_url ? questionImageSrc(props.question.image_url, API_BASE) : undefined,
+  props.question?.image_url
+    ? questionImageSrc(props.question.image_url, API_BASE, getToken())
+    : undefined,
 );
 
 /* ---------------------------- edit prefill ------------------------------ */

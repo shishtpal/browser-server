@@ -123,6 +123,7 @@ import { ChevronLeft, ChevronRight, Flag } from '@lucide/vue';
 import type { QuestionResponse } from '../../../../types';
 import type { UserAnswer } from '../../composables/usePaperAttempt';
 import { API_BASE } from '../../../../lib/api';
+import { getToken } from '../../../../lib/auth';
 import Button from '../../../ui/Button.vue';
 import TypeBadge from '../../ui/TypeBadge.vue';
 import DifficultyBadge from '../../ui/DifficultyBadge.vue';
@@ -150,7 +151,7 @@ defineEmits<{
   next: [];
 }>();
 
-const imageSrc = computed(() => questionImageSrc(props.question.image_url, API_BASE));
+const imageSrc = computed(() => questionImageSrc(props.question.image_url, API_BASE, getToken()));
 
 const chronologyOrder = computed(
   () =>

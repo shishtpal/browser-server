@@ -120,6 +120,7 @@ import { computed, ref } from 'vue';
 import { Check, ChevronDown, Pencil, Trash2 } from '@lucide/vue';
 import type { QuestionResponse } from '../../../types';
 import { API_BASE } from '../../../lib/api';
+import { getToken } from '../../../lib/auth';
 import TypeBadge from '../ui/TypeBadge.vue';
 import DifficultyBadge from '../ui/DifficultyBadge.vue';
 import { optionLetter, orderedChronology, questionImageSrc } from '../quizFormat';
@@ -138,7 +139,7 @@ const metaChips = computed(() =>
   ].filter((v): v is string => Boolean(v)),
 );
 
-const imageSrc = computed(() => questionImageSrc(props.question.image_url, API_BASE));
+const imageSrc = computed(() => questionImageSrc(props.question.image_url, API_BASE, getToken()));
 
 const orderedItems = computed(() => orderedChronology(props.question.chronology_items));
 </script>

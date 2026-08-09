@@ -218,6 +218,7 @@ import { useEventListener } from '@vueuse/core';
 import { ArrowRight, CircleCheck, CircleX, Eye, Keyboard } from '@lucide/vue';
 import type { QuestionResponse, ReviewRating } from '../../../types';
 import { API_BASE } from '../../../lib/api';
+import { getToken } from '../../../lib/auth';
 import Button from '../../ui/Button.vue';
 import TypeBadge from '../ui/TypeBadge.vue';
 import { optionLetter, orderedChronology, questionImageSrc } from '../quizFormat';
@@ -261,7 +262,7 @@ const chronology = computed(() =>
     : (props.question.chronology_items ?? []),
 );
 
-const imageSrc = computed(() => questionImageSrc(props.question.image_url, API_BASE));
+const imageSrc = computed(() => questionImageSrc(props.question.image_url, API_BASE, getToken()));
 
 const selectedOptionCorrect = computed(() => {
   if (selectedOptionIndex.value === null) return false;

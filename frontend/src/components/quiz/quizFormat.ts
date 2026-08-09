@@ -94,12 +94,19 @@ export const formatDateTime = (iso: string): string => new Date(iso).toLocaleStr
 /* Question helpers                                                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Resolve a question image URL. The image endpoint is token-protected and
+ * the <img> tag cannot send an Authorization header, so the token (when
+ * available) is appended as ?token=, mirroring the AI attachment URLs.
+ */
 export const questionImageSrc = (
   url: string | undefined | null,
   apiBase: string,
+  token?: string | null,
 ): string | undefined => {
   if (!url) return undefined;
-  return url.startsWith('http') ? url : `${apiBase}${url}`;
+  const full = url.startsWith('http') ? url : `${apiBase}${url}`;
+  return token ? `${full}?token=${encodeURIComponent(token)}` : full;
 };
 
 /** Option label: 0 -> "A", 1 -> "B"… */

@@ -12,6 +12,7 @@ import (
 
 	"browser-server/internal/ai/attachments"
 	aiconfig "browser-server/internal/ai/config"
+	"browser-server/internal/ai/memory"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/provider"
 	"browser-server/internal/ai/skills"
@@ -40,6 +41,7 @@ type Service struct {
 	appendMu          sync.Mutex
 	appendWindows     map[string]*appendWindow
 	tools             *tools.Registry
+	memory            *memory.Store
 	pendingMu         sync.Mutex
 	pending           map[string]pendingToolCall
 	toolRetryDelay    time.Duration
@@ -135,7 +137,7 @@ func NewServiceWithTools(cfg *aiconfig.Config, st *store.Store, profileReg *prof
 	}
 	return &Service{
 		cfg: cfg, store: st, attachmentsDir: attachments.Dir(cfg.ResolvePath(".data")), profiles: profileReg, skills: skillReg, clients: clients, active: map[string]context.CancelFunc{}, appendWindows: map[string]*appendWindow{},
-		tools: registry, pending: map[string]pendingToolCall{},
+		tools: registry, memory: memory.New(cfg.Memory), pending: map[string]pendingToolCall{},
 		toolRetryDelay:    time.Duration(cfg.Chat.ToolRetryDelaySeconds) * time.Second,
 		toolRetryAttempts: cfg.Chat.ToolRetryAttempts,
 	}, nil

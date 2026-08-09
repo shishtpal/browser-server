@@ -6,6 +6,7 @@ import (
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/images"
 	aimcp "browser-server/internal/ai/mcp"
+	"browser-server/internal/ai/memory"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
@@ -31,6 +32,7 @@ type Module struct {
 	mcp            *aimcp.Manager
 	voice          *voice.Config
 	tasks          *tasks.Runner
+	memory         *memory.Store
 	attachmentsDir string
 	images         *images.Service
 	stop           chan struct{}
@@ -53,6 +55,7 @@ func Init() (*Module, error) {
 		profiles:       rt.Profiles,
 		skills:         rt.Skills,
 		mcp:            rt.MCP,
+		memory:         rt.Memory,
 		attachmentsDir: rt.AttachmentsDir,
 		images:         rt.Images,
 	}
@@ -93,7 +96,50 @@ func Init() (*Module, error) {
 			}
 		}
 	}()
+	// Periodic memory maintenance (salience decay, archive, purge, verify,
+	// reindex, dedupe) at boot and then on memory.maintenance_interval.
+	if module.memory != nil && module.memory.Enabled() && rt.Config.Memory.AutoCleanup {
+		module.runMemoryMaintenance(rt.Config.Memory.MaintenanceInterval)
+	}
 	return module, nil
+}
+
+// runMemoryMaintenance runs one Maintain shortly after boot (async, so a
+// large fragment set does not delay startup), then periodically.
+func (m *Module) runMemoryMaintenance(interval string) {
+	run := func() {
+		rep, err := m.memory.Maintain(context.Background())
+		if err != nil {
+			log.Printf("AI memory maintenance failed: %v", err)
+			return
+		}
+		if len(rep.Archived) > 0 || rep.Purged > 0 || len(rep.DedupeHints) > 0 {
+			log.Printf("AI memory maintenance: archived=%d purged=%d dedupe_hints=%d", len(rep.Archived), rep.Purged, len(rep.DedupeHints))
+		}
+	}
+	d, err := time.ParseDuration(interval)
+	if err != nil || d <= 0 {
+		d = 6 * time.Hour
+	}
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		// Boot pass: delayed briefly so server startup is not blocked.
+		boot := time.NewTimer(30 * time.Second)
+		ticker := time.NewTicker(d)
+		defer boot.Stop()
+		defer ticker.Stop()
+		for {
+			select {
+			case <-boot.C:
+				run()
+			case <-ticker.C:
+				run()
+			case <-m.stop:
+				return
+			}
+		}
+	}()
 }
 
 func (m *Module) CORSEnabled() bool {
@@ -177,4 +223,12 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/tasks/{id}", m.requireTasks(m.GetTask)).Methods("GET")
 	r.HandleFunc("/ai/tasks/{id}", m.requireTasks(m.DeleteTask)).Methods("DELETE")
 	r.HandleFunc("/ai/tasks/{id}/cancel", m.requireTasks(m.CancelTask)).Methods("POST")
+	// Memory admin endpoints expose full fragment bodies and accept arbitrary
+	// batches (including delete); require the store to be explicitly enabled in
+	// addition to requireAI so a half-configured AI stack cannot reach them.
+	r.HandleFunc("/ai/memory/stats", m.requireAI(m.requireMemory(m.MemoryStats))).Methods("GET")
+	r.HandleFunc("/ai/memory/maintain", m.requireAI(m.requireMemory(m.MemoryMaintain))).Methods("POST")
+	r.HandleFunc("/ai/memory/graph", m.requireAI(m.requireMemory(m.MemoryGraph))).Methods("GET")
+	r.HandleFunc("/ai/memory/fragments/{id}", m.requireAI(m.requireMemory(m.MemoryFragment))).Methods("GET")
+	r.HandleFunc("/ai/memory/write", m.requireAI(m.requireMemory(m.MemoryWrite))).Methods("POST")
 }

@@ -9,5 +9,6 @@ export * from './wallet';
 export * from './users';
 export * from './analytics';
 export * from './ai';
+export * from './memory';
 export * from './prompts';
 export * from './quiz';

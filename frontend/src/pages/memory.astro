@@ -1,0 +1,11 @@
+---
+import MemoryPage from '../components/MemoryPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Memory">
+  <main>
+    <MemoryPage client:only="vue" />
+  </main>
+</Layout>
+

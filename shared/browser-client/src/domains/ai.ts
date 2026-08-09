@@ -25,6 +25,11 @@ import type {
   GeneratedImage,
   GenerateImageInput,
   GenerateImageResponse,
+  AIMemoryStats,
+  AIMemoryGraph,
+  AIMemoryFragment,
+  AIMemoryWriteResult,
+  AIMemoryWriteOp,
 } from "@browser-server/shared-types";
 import {
   type TokenProvider,
@@ -467,6 +472,39 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
         undefined,
         getToken,
       );
+    },
+
+    // ─── Memory graph (v2) ────────────────────────────────────────────────
+
+    /** Get memory store stats. */
+    getAIMemoryStats(): Promise<AIMemoryStats> {
+      return apiFetch<AIMemoryStats>(baseUrl, "GET", "/api/ai/memory/stats", undefined, getToken);
+    },
+
+    /** Get the full memory graph (nodes + edges from mem_root). */
+    getAIMemoryGraph(): Promise<AIMemoryGraph> {
+      return apiFetch<AIMemoryGraph>(baseUrl, "GET", "/api/ai/memory/graph", undefined, getToken);
+    },
+
+    /** Get a single fragment (with body) for editing. */
+    getAIMemoryFragment(id: string): Promise<AIMemoryFragment> {
+      return apiFetch<AIMemoryFragment>(
+        baseUrl,
+        "GET",
+        `/api/ai/memory/fragments/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
+    },
+
+    /** Apply a write_memory batch from the UI. */
+    writeAIMemory(ops: AIMemoryWriteOp[]): Promise<AIMemoryWriteResult> {
+      return apiFetch<AIMemoryWriteResult>(baseUrl, "POST", "/api/ai/memory/write", { ops }, getToken);
+    },
+
+    /** Run the maintenance job (salience decay, archive, purge, verify, reindex). */
+    maintainAIMemory(): Promise<Record<string, unknown>> {
+      return apiFetch<Record<string, unknown>>(baseUrl, "POST", "/api/ai/memory/maintain", {}, getToken);
     },
   };
 }

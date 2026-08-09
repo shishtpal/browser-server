@@ -6,8 +6,8 @@ category: Development
 tags: [review, security, performance]
 tools:
   - search_tool
-  - ai_search_memory
-  - ai_list_memories
+  - recall_memory
+  - write_memory
   - read_file
   - search_code
   - analyze_code

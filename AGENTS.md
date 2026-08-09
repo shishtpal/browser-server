@@ -548,15 +548,8 @@ known := map[string]bool{
 | `git_push` | `git_push.go` | Push to remote (uses --force-with-lease) |
 | `git_pull` | `git_pull.go` | Pull from remote |
 | `git_merge` | `git_merge.go` | Merge a branch |
-| `ai_remember` | `memory.go` | Store a memory |
-| `ai_recall` | `memory.go` | Recall a specific memory |
-| `ai_search_memory` | `memory.go` | Search stored memories |
-| `ai_list_memories` | `memory.go` | List all memories |
-| `ai_forget` | `memory.go` | Delete a memory |
-| `ai_update_memory` | `memory.go` | Update an existing memory |
-| `ai_resolve_references` | `memory.go` | Resolve memory cross-references |
-| `ai_lazy_memory` | `memory.go` | Lazy-load memory content |
-| `ai_manage_cache` | `memory.go` | Manage memory cache |
+| `recall_memory` | `internal/ai/memory` | Read/search/traverse the memory graph (optionally synthesize) |
+| `write_memory` | `internal/ai/memory` | Batched, atomic memory mutations (upsert/append/link/move/archive/delete) |
 | `list_skills` | `skills.go` | List available AI skills |
 | `activate_skill` | `skills.go` | Activate an AI skill |
 | `deactivate_skill` | `skills.go` | Deactivate an AI skill |

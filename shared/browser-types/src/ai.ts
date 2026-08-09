@@ -433,3 +433,89 @@ export interface AIMonitoring {
   max_latency_ms: number
   latest_activity?: string
 }
+
+// ─── Memory graph (v2) ────────────────────────────────────────────────
+
+export interface AIMemoryStats {
+  enabled: boolean
+  fragments: number
+  root: string
+  index_file: string
+}
+
+export interface AIMemoryGraphNode {
+  id: string
+  kind: string
+  title: string
+  summary: string
+}
+
+export interface AIMemoryGraphEdge {
+  from: string
+  rel: string
+  to: string
+}
+
+export interface AIMemoryGraph {
+  nodes: AIMemoryGraphNode[]
+  edges: AIMemoryGraphEdge[]
+}
+
+export interface AIMemoryLink {
+  rel: string
+  to: string
+  note?: string
+}
+
+export interface AIMemoryFragment {
+  id: string
+  kind: string
+  title: string
+  summary: string
+  body: string
+  tags: string[]
+  status: string
+  pinned: boolean
+  parent: string
+  links: AIMemoryLink[]
+}
+
+export interface AIMemoryWriteLink {
+  rel: string
+  to: string
+  note?: string
+}
+
+export interface AIMemoryWriteOp {
+  op: 'upsert' | 'append' | 'link' | 'unlink' | 'move' | 'archive' | 'delete'
+  id?: string
+  kind?: string
+  title?: string
+  summary?: string
+  body?: string
+  tags?: string[]
+  parent?: string
+  pinned?: boolean
+  status?: string
+  confidence?: number
+  links?: AIMemoryWriteLink[]
+  from?: string
+  rel?: string
+  to?: string
+  on_conflict?: 'merge' | 'new' | 'error'
+  superseded_by?: string
+  cascade?: boolean
+}
+
+export interface AIMemoryWriteResult {
+  applied: number
+  results: {
+    op: string
+    id: string
+    created?: boolean
+    merged_fields?: string[]
+    duplicate_of?: string
+    warning?: string
+  }[]
+  warnings?: string[]
+}

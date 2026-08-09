@@ -13,13 +13,16 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"browser-server/internal/ai/attachments"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/images"
 	aimcp "browser-server/internal/ai/mcp"
+	"browser-server/internal/ai/memory"
 	"browser-server/internal/ai/profiles"
+	"browser-server/internal/ai/provider"
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tools"
@@ -45,6 +48,7 @@ type Runtime struct {
 	Profiles       *profiles.Registry
 	Skills         *skills.Registry
 	MCP            *aimcp.Manager
+	Memory         *memory.Store
 	AttachmentsDir string
 	Images         *images.Service
 }
@@ -189,6 +193,40 @@ func Init(opts Options) (*Runtime, error) {
 			log.Printf("AI MCP: %d configured, %d connected, %d unavailable, %d usable tool(s)", len(statuses), connected, unavailable, len(discovered))
 		}
 	}
+	// Memory graph store (process singleton shared with tools, persona
+	// injection and the admin endpoint). Wire the "librarian" synthesizer to a
+	// cheap model referenced from bs-ai-models.json when enabled.
+	var memStore *memory.Store
+	if cfg.Memory.Enabled {
+		memStore = memory.New(cfg.Memory)
+		if cfg.Memory.Synthesizer.Enabled {
+			if pc, ok := cfg.Providers[cfg.Memory.Synthesizer.Provider]; ok {
+				client := provider.NewOpenAICompatibleClient(
+					pc.BaseURL, pc.APIKey,
+					time.Duration(pc.RequestTimeoutSeconds)*time.Second,
+					pc.RetryAttempts,
+					time.Duration(pc.RetryDelaySeconds)*time.Second,
+				)
+				model := cfg.Memory.Synthesizer.Model
+				memStore.SetCompleter(memory.CompleterFunc(func(ctx context.Context, req memory.CompletionRequest) (memory.CompletionResponse, error) {
+					resp, err := client.Complete(ctx, provider.ChatRequest{
+						Model:           model,
+						Messages:        []provider.Message{{Role: "system", Content: req.System}, {Role: "user", Content: req.User}},
+						Temperature:     req.Temperature,
+						MaxOutputTokens: req.MaxOutputTokens,
+					})
+					if err != nil {
+						return memory.CompletionResponse{}, err
+					}
+					return memory.CompletionResponse{Content: resp.Content}, nil
+				}))
+				log.Printf("AI memory synthesizer: provider=%s model=%s", cfg.Memory.Synthesizer.Provider, cfg.Memory.Synthesizer.Model)
+			} else {
+				log.Printf("WARN: memory.synthesizer.provider %q not found in models file; synthesis disabled", cfg.Memory.Synthesizer.Provider)
+			}
+		}
+	}
+
 	service, err := chat.NewServiceWithTools(cfg, st, profileReg, skillReg, externalTools)
 	if err != nil {
 		if mcpManager != nil {
@@ -206,6 +244,7 @@ func Init(opts Options) (*Runtime, error) {
 		Profiles:       profileReg,
 		Skills:         skillReg,
 		MCP:            mcpManager,
+		Memory:         memStore,
 		AttachmentsDir: attachmentsDir,
 		Images:         imageService,
 	}, nil

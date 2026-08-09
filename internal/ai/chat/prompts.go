@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +26,16 @@ func (s *Service) buildFullPrompt(basePrompt string, activeSkills []*skills.Skil
 
 	// Always include skills preamble so the agent knows what's available
 	b.WriteString(s.skillsPreamble())
+
+	// Inject the memory persona block (identity + profile + project index) so
+	// the agent always knows itself and the user, even after a profile switch.
+	if s.cfg.Memory.Enabled && s.cfg.Memory.InjectPersona && s.memory != nil {
+		if pb := s.memory.PersonaBlock(context.Background(), s.cfg.Memory.PersonaTokenBudget, s.cfg.Memory.InjectUsageGuide); pb != "" {
+			b.WriteString("\n\n<memory:persona>\n")
+			b.WriteString(pb)
+			b.WriteString("\n</memory:persona>\n")
+		}
+	}
 
 	// Append active skill instructions
 	if len(activeSkills) > 0 {

@@ -23,6 +23,7 @@ const primaryNav = [
   { href: '/image/', label: 'Image', icon: 'image' },
   { href: '/tasks/', label: 'Tasks', icon: 'bolt' },
   { href: '/ai-monitoring/', label: 'AI Monitor', icon: 'activity' },
+  { href: '/memory/', label: 'Memory', icon: 'git-branch' },
   { href: '/quiz/', label: 'Quiz', icon: 'help' },
 ]
 
@@ -106,6 +107,7 @@ const isActive = (href: string) => {
                   {item.icon === 'image' && <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></>}
                   {item.icon === 'bolt' && <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" />}
                   {item.icon === 'activity' && <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />}
+                  {item.icon === 'git-branch' && <><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 01-9 9" /></>}
                 </svg>
                 {item.label}
               </a>
@@ -183,6 +185,7 @@ const isActive = (href: string) => {
                   {item.icon === 'image' && <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></>}
                   {item.icon === 'bolt' && <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" />}
                   {item.icon === 'activity' && <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />}
+                  {item.icon === 'git-branch' && <><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 01-9 9" /></>}
                 </svg>
                 {item.label}
               </a>
@@ -236,3 +239,4 @@ const isActive = (href: string) => {
     menu.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu))
   }
 </script>
+

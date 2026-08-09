@@ -58,8 +58,17 @@
 </template>
 
 <script setup lang="ts">
-import { Calendar1, CalendarDays, CalendarRange, LayoutGrid, type LucideIcon } from '@lucide/vue';
 import type { CalendarView } from './types';
+import {
+  Calendar1,
+  ChevronLeft,
+  CalendarCheck,
+  ChevronRight,
+  CalendarDays,
+  CalendarRange,
+  LayoutGrid,
+  type LucideIcon,
+} from '@lucide/vue';
 
 defineProps<{
   periodLabel: string;
@@ -84,6 +93,7 @@ const options: { value: CalendarView; label: string; icon: LucideIcon }[] = [
 .scrollbar-none {
   scrollbar-width: none;
 }
+
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }

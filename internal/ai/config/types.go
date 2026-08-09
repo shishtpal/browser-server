@@ -194,17 +194,92 @@ type WebSearchSearxNGConfig struct {
 	BaseURL string `json:"base_url"`
 }
 
+// MemoryConfig configures the v2 graph fragment memory system
+// (internal/ai/memory). It supersedes the v1 flat-file store: the only unit is
+// a fragment, stored under fragments_dir, connected by typed edges into a tree
+// rooted at mem_root plus an associative web. Every field below is read by the
+// memory package (or validated in this file); the reflection test
+// TestAllMemoryFieldsUsed guards against dead configuration.
 type MemoryConfig struct {
-	Directory         string `json:"directory"`
-	PrimaryDir        string `json:"primary_dir"`
-	RefsDir           string `json:"refs_dir"`
-	CacheDir          string `json:"cache_dir"`
-	MaxFileSizeKB     int    `json:"max_file_size_kb"`
-	RetentionDays     int    `json:"retention_days"`
-	AutoCleanup       bool   `json:"auto_cleanup"`
-	MaxReferenceDepth int    `json:"max_reference_depth"`
-	LazyLoading       bool   `json:"lazy_loading"`
-	CacheSizeLimitMB  int    `json:"cache_size_limit_mb"`
+	// Enabled gates the whole subsystem. When false no fragments are created,
+	// no persona block is injected, and the memory tools return "disabled".
+	Enabled bool `json:"enabled"`
+
+	// Directory is the memory root, resolved relative to the executable dir
+	// (or absolute). Must be a safe relative path.
+	Directory    string `json:"directory"`
+	FragmentsDir string `json:"fragments_dir"`
+	ArchiveDir   string `json:"archive_dir"`
+
+	// MaxBodyKB bounds a fragment body; MaxLinksPerFragment bounds its edges;
+	// MaxOpsPerCall bounds a write_memory batch; MaxResultBytes caps a recall
+	// payload before the JSON envelope pushes it over the tool output limit.
+	MaxBodyKB            int `json:"max_body_kb"`
+	MaxLinksPerFragment int `json:"max_links_per_fragment"`
+	MaxOpsPerCall        int `json:"max_ops_per_call"`
+	MaxResultBytes       int `json:"max_result_bytes"`
+
+	// DefaultDepth is used when recall_memory omits depth; MaxDepth clamps the
+	// tool's depth argument and the spreading-activation hops.
+	DefaultDepth int     `json:"default_depth"`
+	MaxDepth     int     `json:"max_depth"`
+	SpreadFactor float64 `json:"spread_factor"`
+
+	// PersonaTokenBudget bounds the auto-injected <memory:persona> block.
+	// InjectPersona / InjectUsageGuide toggle that block and the usage guide.
+	PersonaTokenBudget int  `json:"persona_token_budget"`
+	InjectPersona      bool `json:"inject_persona"`
+	InjectUsageGuide   bool `json:"inject_usage_guide"`
+
+	// Maintenance: RetentionDays is how long soft-deleted fragments stay in
+	// .archive before purge; AutoCleanup gates the periodic Maintain job;
+	// MaintenanceInterval is its period; SalienceDecayPerWeek and
+	// ArchiveThreshold drive salience decay and archival.
+	RetentionDays        int     `json:"retention_days"`
+	AutoCleanup          bool    `json:"auto_cleanup"`
+	MaintenanceInterval  string  `json:"maintenance_interval"`
+	SalienceDecayPerWeek float64 `json:"salience_decay_per_week"`
+	ArchiveThreshold     float64 `json:"archive_threshold"`
+
+	// SecretScan rejects writes whose body contains credentials; writes with
+	// a similarity >= NearDuplicateThreshold to an existing fragment are
+	// merged (as duplicates) instead of creating a near-twin.
+	SecretScan            bool    `json:"secret_scan"`
+	NearDuplicateThreshold float64 `json:"near_duplicate_threshold"`
+
+	// Synthesizer is the optional "librarian" sub-agent: a cheap model that
+	// reads matched fragments and returns a concise answer. Provider and Model
+	// are names resolved from bs-ai-models.json (the file that actually holds
+	// provider base URLs, API keys, etc.). Set Synthesizer.Enabled false to
+	// return raw graph JSON instead.
+	Synthesizer SynthesizerConfig `json:"synthesizer"`
+
+	// Embeddings is an optional, drop-in semantic layer. When disabled the
+	// system is pure lexical BM25-lite; nothing else changes.
+	Embeddings EmbeddingsConfig `json:"embeddings"`
+}
+
+// SynthesizerConfig configures the recall_memory synthesize=true mode.
+type SynthesizerConfig struct {
+	Enabled bool `json:"enabled"`
+	// Provider and Model reference an entry in bs-ai-models.json. The actual
+	// base_url/api_key live there, so the operator can reuse an existing
+	// provider (e.g. "openrouter") with a cheap model.
+	Provider        string  `json:"provider"`
+	Model           string  `json:"model"`
+	Temperature     float64 `json:"temperature"`
+	MaxOutputTokens int     `json:"max_output_tokens"`
+	TimeoutMS       int     `json:"timeout_ms"`
+	// FallbackOnError returns the raw graph JSON if the cheap model call fails.
+	FallbackOnError bool `json:"fallback_on_error"`
+}
+
+// EmbeddingsConfig configures the optional semantic retrieval layer.
+type EmbeddingsConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Dims     int    `json:"dims"`
 }
 
 type LoggingConfig struct {

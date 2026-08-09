@@ -32,9 +32,7 @@ var knownToolNames = map[string]bool{
 	"git_status": true, "git_diff": true, "git_log": true,
 	"git_branch": true, "git_checkout": true, "git_commit": true,
 	"git_push": true, "git_pull": true, "git_merge": true,
-	"ai_remember": true, "ai_recall": true, "ai_search_memory": true,
-	"ai_list_memories": true, "ai_forget": true, "ai_update_memory": true,
-	"ai_resolve_references": true, "ai_lazy_memory": true, "ai_manage_cache": true,
+	"recall_memory": true, "write_memory": true,
 	"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
 	"generate_image": true,
 }
@@ -173,22 +171,55 @@ func validate(cfg *Config) error {
 	if filepath.IsAbs(cfg.Skills.Directory) || strings.Contains(cfg.Skills.Directory, "..") {
 		return fmt.Errorf("skills.directory must be a safe relative path")
 	}
-	for _, dir := range []string{cfg.Memory.PrimaryDir, cfg.Memory.RefsDir, cfg.Memory.CacheDir} {
+	for _, dir := range []string{cfg.Memory.FragmentsDir, cfg.Memory.ArchiveDir} {
 		if dir == "" || filepath.IsAbs(dir) || strings.Contains(dir, "..") || filepath.Base(dir) != dir {
 			return fmt.Errorf("memory subdirectories must be safe names")
 		}
 	}
-	if cfg.Memory.MaxFileSizeKB < 1 || cfg.Memory.MaxFileSizeKB > 10240 {
-		return fmt.Errorf("memory.max_file_size_kb must be between 1 and 10240")
+	if cfg.Memory.MaxBodyKB < 1 || cfg.Memory.MaxBodyKB > 10240 {
+		return fmt.Errorf("memory.max_body_kb must be between 1 and 10240")
 	}
-	if cfg.Memory.MaxReferenceDepth < 1 || cfg.Memory.MaxReferenceDepth > 20 {
-		return fmt.Errorf("memory.max_reference_depth must be between 1 and 20")
+	if cfg.Memory.MaxLinksPerFragment < 1 || cfg.Memory.MaxLinksPerFragment > 1024 {
+		return fmt.Errorf("memory.max_links_per_fragment must be between 1 and 1024")
+	}
+	if cfg.Memory.MaxOpsPerCall < 1 || cfg.Memory.MaxOpsPerCall > 100 {
+		return fmt.Errorf("memory.max_ops_per_call must be between 1 and 100")
+	}
+	if cfg.Memory.MaxResultBytes < 512 || cfg.Memory.MaxResultBytes > 1<<20 {
+		return fmt.Errorf("memory.max_result_bytes must be between 512 and 1048576")
+	}
+	if cfg.Memory.MaxDepth < 1 || cfg.Memory.MaxDepth > 10 {
+		return fmt.Errorf("memory.max_depth must be between 1 and 10")
+	}
+	if cfg.Memory.DefaultDepth < 0 || cfg.Memory.DefaultDepth > cfg.Memory.MaxDepth {
+		return fmt.Errorf("memory.default_depth must be between 0 and max_depth")
+	}
+	if cfg.Memory.SpreadFactor < 0 || cfg.Memory.SpreadFactor > 1 {
+		return fmt.Errorf("memory.spread_factor must be between 0 and 1")
+	}
+	if cfg.Memory.PersonaTokenBudget < 100 || cfg.Memory.PersonaTokenBudget > 20000 {
+		return fmt.Errorf("memory.persona_token_budget must be between 100 and 20000")
 	}
 	if cfg.Memory.RetentionDays < 1 || cfg.Memory.RetentionDays > 3650 {
 		return fmt.Errorf("memory.retention_days must be between 1 and 3650")
 	}
-	if cfg.Memory.CacheSizeLimitMB < 1 || cfg.Memory.CacheSizeLimitMB > 10240 {
-		return fmt.Errorf("memory.cache_size_limit_mb must be between 1 and 10240")
+	if cfg.Memory.SalienceDecayPerWeek <= 0 || cfg.Memory.SalienceDecayPerWeek > 1 {
+		return fmt.Errorf("memory.salience_decay_per_week must be between 0 and 1")
+	}
+	if cfg.Memory.ArchiveThreshold < 0 || cfg.Memory.ArchiveThreshold > 1 {
+		return fmt.Errorf("memory.archive_threshold must be between 0 and 1")
+	}
+	if cfg.Memory.NearDuplicateThreshold <= 0 || cfg.Memory.NearDuplicateThreshold > 1 {
+		return fmt.Errorf("memory.near_duplicate_threshold must be between 0 and 1")
+	}
+	if _, err := time.ParseDuration(cfg.Memory.MaintenanceInterval); err != nil || cfg.Memory.MaintenanceInterval == "" {
+		return fmt.Errorf("memory.maintenance_interval must be a valid duration")
+	}
+	if cfg.Memory.Synthesizer.Enabled && (cfg.Memory.Synthesizer.Provider == "" || cfg.Memory.Synthesizer.Model == "") {
+		return fmt.Errorf("memory.synthesizer.provider and memory.synthesizer.model are required when the synthesizer is enabled")
+	}
+	if cfg.Memory.Embeddings.Enabled && (cfg.Memory.Embeddings.Provider == "" || cfg.Memory.Embeddings.Model == "") {
+		return fmt.Errorf("memory.embeddings.provider and memory.embeddings.model are required when embeddings are enabled")
 	}
 	if cfg.Logging.RetentionDays < 1 || cfg.Logging.RetentionDays > 3650 {
 		return fmt.Errorf("logging.retention_days must be between 1 and 3650")

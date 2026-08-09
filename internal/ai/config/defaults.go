@@ -45,26 +45,79 @@ func applyDefaults(cfg *Config, mainRaw, modelsRaw map[string]json.RawMessage) {
 	if cfg.Skills.Directory == "" {
 		cfg.Skills.Directory = ".skills"
 	}
-	if cfg.Memory.PrimaryDir == "" {
-		cfg.Memory.PrimaryDir = "memories"
+	if cfg.Memory.FragmentsDir == "" {
+		cfg.Memory.FragmentsDir = "fragments"
 	}
-	if cfg.Memory.RefsDir == "" {
-		cfg.Memory.RefsDir = "refs"
+	if cfg.Memory.ArchiveDir == "" {
+		cfg.Memory.ArchiveDir = ".archive"
 	}
-	if cfg.Memory.CacheDir == "" {
-		cfg.Memory.CacheDir = "cache"
+	if !nestedPresent(mainRaw, "memory", "enabled") {
+		cfg.Memory.Enabled = true
 	}
-	if !nestedPresent(mainRaw, "memory", "max_file_size_kb") {
-		cfg.Memory.MaxFileSizeKB = 1024
+	if !nestedPresent(mainRaw, "memory", "max_body_kb") {
+		cfg.Memory.MaxBodyKB = 64
+	}
+	if !nestedPresent(mainRaw, "memory", "max_links_per_fragment") {
+		cfg.Memory.MaxLinksPerFragment = 64
+	}
+	if !nestedPresent(mainRaw, "memory", "max_ops_per_call") {
+		cfg.Memory.MaxOpsPerCall = 20
+	}
+	if !nestedPresent(mainRaw, "memory", "max_result_bytes") {
+		cfg.Memory.MaxResultBytes = 8192
+	}
+	if !nestedPresent(mainRaw, "memory", "default_depth") {
+		cfg.Memory.DefaultDepth = 1
+	}
+	if !nestedPresent(mainRaw, "memory", "max_depth") {
+		cfg.Memory.MaxDepth = 3
+	}
+	if cfg.Memory.SpreadFactor == 0 {
+		cfg.Memory.SpreadFactor = 0.45
+	}
+	if !nestedPresent(mainRaw, "memory", "persona_token_budget") {
+		cfg.Memory.PersonaTokenBudget = 900
+	}
+	if !nestedPresent(mainRaw, "memory", "inject_persona") {
+		cfg.Memory.InjectPersona = true
+	}
+	if !nestedPresent(mainRaw, "memory", "inject_usage_guide") {
+		cfg.Memory.InjectUsageGuide = true
 	}
 	if !nestedPresent(mainRaw, "memory", "retention_days") {
 		cfg.Memory.RetentionDays = 365
 	}
-	if !nestedPresent(mainRaw, "memory", "max_reference_depth") {
-		cfg.Memory.MaxReferenceDepth = 5
+	if !nestedPresent(mainRaw, "memory", "auto_cleanup") {
+		cfg.Memory.AutoCleanup = true
 	}
-	if !nestedPresent(mainRaw, "memory", "cache_size_limit_mb") {
-		cfg.Memory.CacheSizeLimitMB = 100
+	if cfg.Memory.MaintenanceInterval == "" {
+		cfg.Memory.MaintenanceInterval = "6h"
+	}
+	if cfg.Memory.SalienceDecayPerWeek == 0 {
+		cfg.Memory.SalienceDecayPerWeek = 0.985
+	}
+	if cfg.Memory.ArchiveThreshold == 0 {
+		cfg.Memory.ArchiveThreshold = 0.15
+	}
+	if !nestedPresent(mainRaw, "memory", "secret_scan") {
+		cfg.Memory.SecretScan = true
+	}
+	if cfg.Memory.NearDuplicateThreshold == 0 {
+		cfg.Memory.NearDuplicateThreshold = 0.82
+	}
+	// Synthesizer (librarian sub-agent) defaults.
+	if cfg.Memory.Synthesizer.MaxOutputTokens == 0 {
+		cfg.Memory.Synthesizer.MaxOutputTokens = 512
+	}
+	if cfg.Memory.Synthesizer.TimeoutMS == 0 {
+		cfg.Memory.Synthesizer.TimeoutMS = 8000
+	}
+	if cfg.Memory.Synthesizer.Temperature == 0 {
+		cfg.Memory.Synthesizer.Temperature = 0.2
+	}
+	// Embeddings defaults.
+	if cfg.Memory.Embeddings.Dims == 0 {
+		cfg.Memory.Embeddings.Dims = 384
 	}
 	if cfg.Logging.DBPath == "" {
 		cfg.Logging.DBPath = ".data/bs-ai.db"

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -241,7 +242,7 @@ func TestDefaultsPreserveExplicitValues(t *testing.T) {
 		"chat": {"temperature": 0.1, "stream": false, "max_history_messages": 5},
 		"logging": {"retention_days": 1, "max_payload_bytes": 1024},
 		"web_search": {"timeout_seconds": 1, "max_results": 2, "fallback": false, "cache_ttl_minutes": 1, "cache_max_entries": 1},
-		"memory": {"max_file_size_kb": 1, "retention_days": 1, "max_reference_depth": 1, "cache_size_limit_mb": 1},
+		"memory": {"max_body_kb": 64, "retention_days": 1, "max_depth": 3, "default_depth": 1},
 		"file_tools": {"max_read_bytes": 4096, "max_line_read_bytes": 4096, "max_line_count": 100, "max_file_size_warn_mb": 1}
 	}`, `{
 		"providers": {
@@ -618,4 +619,48 @@ func TestParseErrorReturnsWrapped(t *testing.T) {
 	if !errors.Is(err, err) { // sanity: errors package imported
 		t.Fatal("errors package should be in scope")
 	}
+}
+
+// memoryUsedFields is the set of MemoryConfig JSON field names that are read
+// by the memory package (or validated here). If a new field is added to
+// MemoryConfig without being consumed anywhere, this test fails so dead config
+// cannot accumulate silently.
+var memoryUsedFields = map[string]bool{
+	"enabled": true, "directory": true, "fragments_dir": true, "archive_dir": true,
+	"max_body_kb": true, "max_links_per_fragment": true, "max_ops_per_call": true,
+	"max_result_bytes": true, "default_depth": true, "max_depth": true, "spread_factor": true,
+	"persona_token_budget": true, "inject_persona": true, "inject_usage_guide": true,
+	"retention_days": true, "auto_cleanup": true, "maintenance_interval": true,
+	"salience_decay_per_week": true, "archive_threshold": true,
+	"secret_scan": true, "near_duplicate_threshold": true,
+	"synthesizer": true, "embeddings": true,
+}
+
+var synthesizerUsedFields = map[string]bool{
+	"enabled": true, "provider": true, "model": true, "temperature": true,
+	"max_output_tokens": true, "timeout_ms": true, "fallback_on_error": true,
+}
+
+var embeddingsUsedFields = map[string]bool{
+	"enabled": true, "provider": true, "model": true, "dims": true,
+}
+
+func TestAllMemoryFieldsUsed(t *testing.T) {
+	check := func(t *testing.T, typ reflect.Type, used map[string]bool, prefix string) {
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			key := field.Name
+			if tag, ok := field.Tag.Lookup("json"); ok {
+				if name := strings.Split(tag, ",")[0]; name != "" && name != "-" {
+					key = name
+				}
+			}
+			if !used[key] {
+				t.Errorf("config field %s.%s is not consumed anywhere", prefix, key)
+			}
+		}
+	}
+	check(t, reflect.TypeOf(MemoryConfig{}), memoryUsedFields, "memory")
+	check(t, reflect.TypeOf(SynthesizerConfig{}), synthesizerUsedFields, "memory.synthesizer")
+	check(t, reflect.TypeOf(EmbeddingsConfig{}), embeddingsUsedFields, "memory.embeddings")
 }

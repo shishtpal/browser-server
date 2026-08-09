@@ -13,7 +13,11 @@
         :style="{ width: `${sidebarWidth}px` }"
       >
         <div class="flex items-center justify-between gap-2">
-          <p class="text-[10px] font-black tracking-wider text-slate-400 uppercase dark:text-white/50">Prompt</p>
+          <p
+            class="text-[10px] font-black tracking-wider text-slate-400 uppercase dark:text-white/50"
+          >
+            Prompt
+          </p>
           <button
             type="button"
             :class="chipButton"
@@ -26,14 +30,22 @@
             </span>
           </button>
         </div>
-        <p class="text-xs font-semibold break-words whitespace-pre-wrap text-slate-800 dark:text-white/90">
+        <p
+          class="text-xs font-semibold break-words whitespace-pre-wrap text-slate-800 dark:text-white/90"
+        >
           {{ image.prompt }}
         </p>
         <div class="flex flex-wrap gap-1 text-[10px] font-bold text-slate-500 dark:text-white/60">
           <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ image.model }}</span>
-          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ image.image_size }}</span>
-          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ formatBytes(image.size_bytes) }}</span>
-          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ formatImageDate(image.created_at) }}</span>
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">
+            {{ image.image_size }}
+          </span>
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">
+            {{ formatBytes(image.size_bytes) }}
+          </span>
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">
+            {{ formatImageDate(image.created_at) }}
+          </span>
         </div>
         <div class="mt-auto grid gap-2">
           <Button variant="secondary" size="sm" @click="$emit('reuse', image)">Reuse prompt</Button>

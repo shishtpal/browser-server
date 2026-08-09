@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"browser-server/internal/ai/config"
+	"browser-server/internal/ai/memory"
 	"browser-server/internal/ai/provider"
 	"browser-server/internal/ai/skills"
 )
@@ -41,13 +42,18 @@ type Registry struct {
 // Options configures optional subsystems when constructing a Registry.
 type Options struct {
 	Memory    config.MemoryConfig
-	Skills    *skills.Registry
-	WebSearch config.WebSearchConfig
-	FileTools config.FileToolsConfig
-	Tools     config.ToolsConfig
-	Allowed   []string
-	Paths     config.PathsConfig
-	External  []Tool
+	// MemoryStore, when non-nil, is the shared memory.Store to expose tools
+	// over (the process singleton created in bootstrap). When nil the registry
+	// creates its own via memory.New, so tools, the chat persona injector and
+	// the admin endpoint always share one instance keyed by resolved root.
+	MemoryStore *memory.Store
+	Skills      *skills.Registry
+	WebSearch   config.WebSearchConfig
+	FileTools   config.FileToolsConfig
+	Tools       config.ToolsConfig
+	Allowed     []string
+	Paths       config.PathsConfig
+	External    []Tool
 }
 
 // New creates a Registry with all built-in tools registered.
@@ -87,15 +93,22 @@ func newRegistry(options ...Options) (*Registry, error) {
 		r.paths = o.Paths
 	}
 
-	var memory config.MemoryConfig
+	var memoryCfg config.MemoryConfig
 	var skillsReg *skills.Registry
+	var memStore *memory.Store
 	if len(options) > 0 {
-		memory = options[0].Memory
+		memoryCfg = options[0].Memory
+		memStore = options[0].MemoryStore
 		skillsReg = options[0].Skills
 	}
 
-	// Memory tools (self-registering)
-	registerMemoryTools(r, newMemoryStore(memory))
+	// Memory tools (self-registering). Prefer the shared singleton passed in
+	// by bootstrap; otherwise build the process singleton from config so the
+	// tools always target the same store as persona injection / admin.
+	if memStore == nil {
+		memStore = memory.New(memoryCfg)
+	}
+	registerMemoryTools(r, memStore)
 
 	// Skill tools (self-registering)
 	if skillsReg != nil {

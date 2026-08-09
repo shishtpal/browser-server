@@ -1,31 +1,37 @@
 <template>
   <li
-    class="rounded-xl border bg-white p-4 shadow-sm transition-colors dark:bg-slate-800/90"
+    class="rounded-xl border bg-white p-3.5 shadow-sm transition-colors sm:p-4 dark:bg-slate-800/90"
     :class="
-      stale ? 'border-amber-300 dark:border-amber-700/60' : 'border-gray-200 dark:border-slate-700'
+      task.stale
+        ? 'border-amber-300 dark:border-amber-700/60'
+        : 'border-gray-200 dark:border-slate-700'
     "
   >
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0 flex-1">
+        <!-- Badges -->
         <div class="mb-1.5 flex flex-wrap items-center gap-1.5">
           <span
-            class="rounded-md px-2 py-0.5 text-[10px] font-black tracking-wider uppercase"
-            :class="statusClass"
+            class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black tracking-wider uppercase"
+            :class="meta.badgeClass"
           >
-            {{ task.status }}
+            <component :is="meta.icon" class="h-3 w-3" :stroke-width="2.5" aria-hidden="true" />
+            {{ meta.label }}
           </span>
           <span
-            v-if="stale"
-            class="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-black tracking-wider text-amber-700 uppercase dark:bg-amber-900/30 dark:text-amber-400"
+            v-if="task.stale"
+            class="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-black tracking-wider text-amber-700 uppercase dark:bg-amber-900/30 dark:text-amber-400"
             title="The worker's lease expired. The watchdog will requeue this shortly."
           >
+            <TriangleAlert class="h-3 w-3" :stroke-width="2.5" aria-hidden="true" />
             Stale
           </span>
           <span
             v-if="task.has_checkpoint"
-            class="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-black tracking-wider text-slate-600 uppercase dark:bg-slate-700 dark:text-slate-300"
+            class="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-black tracking-wider text-slate-600 uppercase dark:bg-slate-700 dark:text-slate-300"
             title="Resumable state exists — a retry resumes rather than restarts."
           >
+            <BookmarkCheck class="h-3 w-3" :stroke-width="2.25" aria-hidden="true" />
             Checkpoint
           </span>
           <span
@@ -52,33 +58,54 @@
         </p>
       </div>
 
-      <div class="flex shrink-0 items-center gap-2">
-        <Button
+      <!-- Actions -->
+      <div class="flex shrink-0 items-center gap-1">
+        <button
           v-if="task.status === 'queued'"
-          variant="ghost"
-          size="sm"
-          @click="emit('cancel', task.id)"
-          >Cancel</Button
+          type="button"
+          class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/20 dark:hover:text-amber-400"
+          title="Cancel task"
+          aria-label="Cancel task"
+          @click="$emit('cancel', task.id)"
         >
-        <Button v-if="isTerminal" variant="danger" size="sm" @click="emit('delete', task.id)"
-          >Delete</Button
+          <Ban class="h-4 w-4" :stroke-width="2.25" aria-hidden="true" />
+        </button>
+        <button
+          v-if="isTerminal"
+          type="button"
+          class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+          title="Delete task"
+          aria-label="Delete task"
+          @click="$emit('delete', task.id)"
         >
+          <Trash2 class="h-4 w-4" :stroke-width="2.25" aria-hidden="true" />
+        </button>
       </div>
     </div>
 
     <p
       v-if="task.last_error"
-      class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:bg-red-900/20 dark:text-red-400"
+      class="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:bg-red-900/20 dark:text-red-400"
+      role="alert"
     >
+      <CircleAlert class="mt-0.5 h-3.5 w-3.5 shrink-0" :stroke-width="2.25" aria-hidden="true" />
       {{ task.last_error }}
     </p>
 
+    <!-- Expandable result -->
     <div v-if="task.result" class="mt-3">
       <button
         type="button"
-        class="text-[11px] font-black tracking-wider text-violet-600 uppercase transition hover:text-violet-500 dark:text-violet-400"
+        class="inline-flex min-h-8 items-center gap-1.5 text-[11px] font-black tracking-wider text-violet-600 uppercase transition hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
+        :aria-expanded="expanded"
         @click="expanded = !expanded"
       >
+        <ChevronDown
+          class="h-3.5 w-3.5 transition-transform"
+          :class="{ 'rotate-180': expanded }"
+          :stroke-width="2.5"
+          aria-hidden="true"
+        />
         {{ expanded ? 'Hide' : 'Show' }} result · {{ task.result.steps }} step{{
           task.result.steps === 1 ? '' : 's'
         }}
@@ -94,21 +121,23 @@
 </template>
 
 <script setup lang="ts">
-import type { AITask } from '@browser-server/shared-types';
 import { computed, ref } from 'vue';
-import Button from '../ui/Button.vue';
+import { Ban, BookmarkCheck, ChevronDown, CircleAlert, Trash2, TriangleAlert } from '@lucide/vue';
+import type { AITask } from '@browser-server/shared-types';
 import { timeAgo } from '../../lib/utils';
+import { TASK_STATUS_META } from './taskFormat';
 
 const props = defineProps<{ task: AITask }>();
 
-const emit = defineEmits<{
+defineEmits<{
   cancel: [id: string];
   delete: [id: string];
 }>();
 
 const expanded = ref(false);
 
-const stale = computed(() => props.task.stale);
+const meta = computed(() => TASK_STATUS_META[props.task.status]);
+
 const isTerminal = computed(
   () => props.task.status === 'completed' || props.task.status === 'failed',
 );
@@ -117,14 +146,4 @@ const isTerminal = computed(
 const queuedLater = computed(
   () => props.task.status === 'queued' && new Date(props.task.available_at).getTime() > Date.now(),
 );
-
-const statusClass = computed(() => {
-  const classes: Record<AITask['status'], string> = {
-    queued: 'bg-gray-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
-    running: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
-    completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  };
-  return classes[props.task.status];
-});
 </script>

@@ -1,6 +1,12 @@
 import type { AITask, AITaskStatus, AITaskStatusResponse } from '@browser-server/shared-types';
 import { computed, onUnmounted, ref } from 'vue';
-import { cancelAITask, createAITask, deleteAITask, getAITaskStatus, listAITasks } from '../lib/api';
+import {
+  cancelAITask,
+  createAITask,
+  deleteAITask,
+  getAITaskStatus,
+  listAITasks,
+} from '../../../lib/api';
 
 export type TaskFilter = AITaskStatus | 'all';
 

@@ -22,8 +22,22 @@
         v-if="formattedPayload"
         type="button"
         class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:cursor-not-allowed dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+        :title="copied ? 'Copied!' : copyFailed ? 'Copy failed' : 'Copy JSON'"
         @click="copy"
       >
+        <Check
+          v-if="copied"
+          class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+          :stroke-width="2.5"
+          aria-hidden="true"
+        />
+        <TriangleAlert
+          v-else-if="copyFailed"
+          class="h-3.5 w-3.5 text-rose-500"
+          :stroke-width="2.5"
+          aria-hidden="true"
+        />
+        <Copy v-else class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
         {{ copied ? 'Copied!' : copyFailed ? 'Copy failed' : 'Copy JSON' }}
       </button>
     </header>
@@ -53,6 +67,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { copyToClipboard } from '../../utils/copyToClipboard';
+import { Check, Copy, TriangleAlert } from '@lucide/vue';
 
 interface FormattedPayload {
   value: string;

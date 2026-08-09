@@ -1,6 +1,6 @@
-import { computed, ref } from 'vue';
 import type { AIMonitoring, AIRequestLog } from '@browser-server/shared-types';
-import { getAIMonitoring, getAIRequestLogs } from '../lib/api';
+import { computed, ref } from 'vue';
+import { getAIMonitoring, getAIRequestLogs } from '../../../lib/api';
 
 const PAGE_SIZE = 25;
 

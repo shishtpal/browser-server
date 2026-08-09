@@ -18,7 +18,8 @@
             :disabled="!canGoPrev"
             @click="$emit('prev')"
           >
-            ← Previous
+            <ChevronLeft class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
+            Previous
           </button>
           <button
             type="button"
@@ -26,7 +27,8 @@
             :disabled="!canGoNext"
             @click="$emit('next')"
           >
-            Next →
+            Next
+            <ChevronRight class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
           </button>
         </div>
         <span
@@ -50,7 +52,7 @@
           <div class="flex flex-wrap gap-2">
             <span
               class="rounded-full border px-2.5 py-1 text-xs font-bold"
-              :class="statusClass(request.status)"
+              :class="statusPillClass(request.status)"
             >
               {{ request.status }}
             </span>
@@ -65,7 +67,7 @@
             <span
               class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
             >
-              {{ formatDuration(request.latency_ms) }}
+              {{ formatMs(request.latency_ms) }}
             </span>
           </div>
         </div>
@@ -94,11 +96,11 @@
         class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/30"
       >
         <div class="flex items-start gap-3">
-          <div
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-black text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-          >
-            !
-          </div>
+          <TriangleAlert
+            class="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400"
+            :stroke-width="2.25"
+            aria-hidden="true"
+          />
           <div class="min-w-0">
             <h3 class="font-black text-rose-800 dark:text-rose-200">
               {{ request.error_code || 'Request error' }}
@@ -164,7 +166,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
-              <span class="rounded-full border px-2 py-1" :class="statusClass(tool.status)">
+              <span class="rounded-full border px-2 py-1" :class="statusPillClass(tool.status)">
                 {{ tool.status }}
               </span>
               <span
@@ -173,7 +175,7 @@
                 {{ tool.decision }}
               </span>
               <span class="text-slate-500">
-                {{ formatDuration(tool.duration_ms) }}
+                {{ formatMs(tool.duration_ms) }}
               </span>
             </div>
           </header>
@@ -210,6 +212,8 @@ import type { AIRequestLog } from '@browser-server/shared-types';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import PayloadBlock from './PayloadBlock.vue';
 import Modal from '../ui/Modal.vue';
+import { ChevronLeft, ChevronRight, TriangleAlert } from '@lucide/vue';
+import { formatMs, statusPillClass } from './monitoringFormat';
 
 const props = defineProps<{
   request: AIRequestLog | null;
@@ -236,29 +240,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown));
 
 const text = (value: unknown) => {
   return value === undefined || value === null || value === '' ? '—' : String(value);
-};
-
-const formatDuration = (ms?: number) => {
-  if (ms === undefined || ms === null) return '—';
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
-};
-
-const statusClass = (status?: string) => {
-  const value = status?.toLowerCase() ?? '';
-
-  if (['success', 'completed', 'complete', 'ok'].includes(value)) {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300';
-  }
-
-  if (['failed', 'error', 'cancelled'].includes(value)) {
-    return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300';
-  }
-
-  if (['pending', 'queued', 'running', 'processing'].includes(value)) {
-    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300';
-  }
-
-  return 'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300';
 };
 
 const details = computed(() => {

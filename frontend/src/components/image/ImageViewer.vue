@@ -9,28 +9,31 @@
       <!-- Prompt panel -->
       <aside
         v-if="panelOpen"
-        class="flex min-w-[200px] shrink-0 flex-col gap-3 overflow-y-auto rounded-l-xl bg-white/5 p-3 text-white"
+        class="flex min-w-[200px] shrink-0 flex-col gap-3 overflow-y-auto rounded-l-xl bg-slate-100 p-3 text-slate-900 dark:bg-white/5 dark:text-white"
         :style="{ width: `${sidebarWidth}px` }"
       >
         <div class="flex items-center justify-between gap-2">
-          <p class="text-[10px] font-black tracking-wider text-white/50 uppercase">Prompt</p>
+          <p class="text-[10px] font-black tracking-wider text-slate-400 uppercase dark:text-white/50">Prompt</p>
           <button
             type="button"
             :class="chipButton"
             aria-label="Collapse prompt panel"
             @click="panelOpen = false"
           >
-            Hide
+            <span class="inline-flex items-center gap-1">
+              <PanelLeftClose class="h-3 w-3" :stroke-width="2.5" aria-hidden="true" />
+              Hide
+            </span>
           </button>
         </div>
-        <p class="text-xs font-semibold break-words whitespace-pre-wrap text-white/90">
+        <p class="text-xs font-semibold break-words whitespace-pre-wrap text-slate-800 dark:text-white/90">
           {{ image.prompt }}
         </p>
-        <div class="flex flex-wrap gap-1 text-[10px] font-bold text-white/60">
-          <span class="rounded bg-white/10 px-2 py-1">{{ image.model }}</span>
-          <span class="rounded bg-white/10 px-2 py-1">{{ image.image_size }}</span>
-          <span class="rounded bg-white/10 px-2 py-1">{{ formatBytes(image.size_bytes) }}</span>
-          <span class="rounded bg-white/10 px-2 py-1">{{ formatImageDate(image.created_at) }}</span>
+        <div class="flex flex-wrap gap-1 text-[10px] font-bold text-slate-500 dark:text-white/60">
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ image.model }}</span>
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ image.image_size }}</span>
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ formatBytes(image.size_bytes) }}</span>
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ formatImageDate(image.created_at) }}</span>
         </div>
         <div class="mt-auto grid gap-2">
           <Button variant="secondary" size="sm" @click="$emit('reuse', image)">Reuse prompt</Button>
@@ -40,8 +43,9 @@
           <a
             :href="url"
             :download="image.filename"
-            class="rounded-lg bg-white/10 px-3 py-1.5 text-center text-xs font-black text-white transition hover:bg-white/20"
+            class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-200 px-3 py-1.5 text-center text-xs font-black text-slate-800 transition hover:bg-slate-300 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
           >
+            <Download class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
             Download
           </a>
         </div>
@@ -50,7 +54,7 @@
       <!-- Resizer -->
       <div
         v-if="panelOpen"
-        class="w-1 shrink-0 cursor-col-resize bg-white/10 transition hover:bg-violet-400"
+        class="w-1 shrink-0 cursor-col-resize bg-slate-300 transition hover:bg-violet-400 dark:bg-white/10"
         :class="{ '!bg-violet-500': isResizing }"
         @pointerdown="startResize"
         @pointermove="onResize"
@@ -61,7 +65,7 @@
       <button
         v-else
         type="button"
-        class="shrink-0 rounded-l-xl bg-white/5 px-2 text-[10px] font-black tracking-wider text-white/60 uppercase transition hover:bg-white/15"
+        class="shrink-0 rounded-l-xl bg-slate-100 px-2 text-[10px] font-black tracking-wider text-slate-400 uppercase transition hover:bg-slate-200 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/15"
         aria-label="Expand prompt panel"
         @click="panelOpen = true"
       >
@@ -71,7 +75,7 @@
       <!-- Image panel -->
       <div class="flex min-w-0 flex-1 flex-col gap-2 pl-3">
         <div
-          class="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-black/40"
+          class="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-slate-200 dark:bg-black/40"
           @wheel.prevent="onWheel"
           @pointerdown="startPan"
           @pointermove="onPan"
@@ -93,7 +97,7 @@
             :disabled="index <= 0"
             @click="$emit('step', -1)"
           >
-            &lsaquo;
+            <ChevronLeft class="h-5 w-5" :stroke-width="2.5" aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -102,21 +106,21 @@
             :disabled="index >= total - 1"
             @click="$emit('step', 1)"
           >
-            &rsaquo;
+            <ChevronRight class="h-5 w-5" :stroke-width="2.5" aria-hidden="true" />
           </button>
         </div>
-        <div class="flex items-center justify-center gap-2 text-white">
+        <div class="flex items-center justify-center gap-2 text-slate-700 dark:text-white">
           <button
             type="button"
             :class="zoomButton"
             aria-label="Zoom out"
             @click="setZoom(zoom - 0.25)"
           >
-            &minus;
+            <Minus class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
           </button>
           <button
             type="button"
-            class="min-w-16 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-black tabular-nums transition hover:bg-white/20"
+            class="min-w-16 rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-black tabular-nums transition hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20"
             @click="reset"
           >
             {{ Math.round(zoom * 100) }}%
@@ -127,7 +131,7 @@
             aria-label="Zoom in"
             @click="setZoom(zoom + 0.25)"
           >
-            +
+            <Plus class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -139,10 +143,11 @@
 import type { GeneratedImage } from '@browser-server/shared-types';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { getGeneratedImageUrl } from '../../lib/api/ai';
-import { useImageZoom } from '../../composables/useImageZoom';
+import { useImageZoom } from './composables/useImageZoom';
 import { useResizableSidebar } from '../../composables/useResizableSidebar';
 import Button from '../ui/Button.vue';
 import Modal from '../ui/Modal.vue';
+import { ChevronLeft, ChevronRight, Download, Minus, PanelLeftClose, Plus } from '@lucide/vue';
 import { formatBytes, formatImageDate } from './format';
 
 const props = defineProps<{
@@ -181,9 +186,9 @@ onMounted(() => window.addEventListener('keydown', onKeydown));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 const chipButton =
-  'rounded bg-white/10 px-2 py-1 text-[10px] font-black text-white transition hover:bg-white/20';
+  'rounded bg-slate-200 px-2 py-1 text-[10px] font-black text-slate-700 transition hover:bg-slate-300 dark:bg-white/10 dark:text-white dark:hover:bg-white/20';
 const navButton =
-  'absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/10 text-xl font-black text-white transition hover:bg-white/25 disabled:opacity-25';
+  'absolute top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-slate-200/80 text-xl font-black text-slate-700 transition hover:bg-slate-300 disabled:opacity-25 dark:bg-white/10 dark:text-white dark:hover:bg-white/25';
 const zoomButton =
-  'grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-lg font-black transition hover:bg-white/20';
+  'grid h-8 w-8 place-items-center rounded-lg bg-slate-200 text-lg font-black transition hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20';
 </script>

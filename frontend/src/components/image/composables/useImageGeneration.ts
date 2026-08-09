@@ -1,11 +1,11 @@
-import { computed, ref, watch } from 'vue';
 import type { AIImageConfig, GeneratedImage } from '@browser-server/shared-types';
+import { computed, ref, watch } from 'vue';
 import {
   deleteGeneratedImage,
   generateImage,
   getAIImageConfig,
   listGeneratedImages,
-} from '../lib/api/ai';
+} from '../../../lib/api/ai';
 
 /** Config, generation form state and gallery for the image workspace. */
 export function useImageGeneration() {

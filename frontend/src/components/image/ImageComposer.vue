@@ -55,11 +55,11 @@
       </div>
       <button
         type="button"
-        class="grid h-6 w-6 shrink-0 place-items-center rounded bg-violet-200 text-sm font-black text-violet-800 transition hover:bg-violet-300 dark:bg-violet-800 dark:text-violet-200 dark:hover:bg-violet-700"
+        class="grid h-6 w-6 shrink-0 place-items-center rounded bg-violet-200 text-violet-800 transition hover:bg-violet-300 dark:bg-violet-800 dark:text-violet-200 dark:hover:bg-violet-700"
         aria-label="Clear source image"
         @click="$emit('clear-source')"
       >
-        &times;
+        <X class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
       </button>
     </div>
 
@@ -153,6 +153,7 @@ import type { AIImageModel, GeneratedImage } from '@browser-server/shared-types'
 import { ref } from 'vue';
 import { getGeneratedImageUrl } from '../../lib/api/ai';
 import Button from '../ui/Button.vue';
+import { X } from '@lucide/vue';
 import FilterPill from '../ui/FilterPill.vue';
 
 defineProps<{

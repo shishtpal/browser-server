@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-full px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
+  <div class="mx-auto max-w-full px-3 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Generation" title="Image" color="violet">
       <template #stats>
         <StatCard :value="images.length" label="In gallery" variant="dark" color="violet" />
@@ -12,12 +12,22 @@
         />
       </template>
       <template #controls>
-        <Button variant="ghost" size="sm" @click="showPromptLibrary = true">Prompt Library</Button>
-        <Button variant="ghost" size="sm" :disabled="loading" @click="load">Refresh</Button>
+        <Button variant="ghost" size="sm" @click="showPromptLibrary = true">
+          <span class="inline-flex items-center gap-1.5">
+            <ListOrdered class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
+            Prompt Library
+          </span>
+        </Button>
+        <Button variant="ghost" size="sm" :disabled="loading" @click="gen.load">
+          <span class="inline-flex items-center gap-1.5">
+            <RefreshCw class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
+            Refresh
+          </span>
+        </Button>
       </template>
     </PageHeader>
 
-    <ErrorBanner v-if="error" :message="error" :on-retry="load" />
+    <ErrorBanner v-if="error" :message="error" :on-retry="gen.load" />
 
     <EmptyState
       v-if="!loading && !config"
@@ -50,7 +60,7 @@
         @submit="submit"
       />
 
-      <div>
+      <div class="min-w-0">
         <EmptyState
           v-if="!images.length && !busy"
           title="No images yet"
@@ -60,14 +70,15 @@
         />
 
         <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <!-- In-progress placeholder -->
           <article
             v-if="busy"
             class="overflow-hidden rounded-xl border border-violet-200 bg-white shadow-sm transition-colors dark:border-violet-900/30 dark:bg-slate-800/90"
+            role="status"
+            aria-label="Generating image"
           >
             <div class="grid aspect-square place-items-center bg-violet-50 dark:bg-violet-900/10">
-              <div
-                class="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent"
-              ></div>
+              <LoaderCircle class="h-8 w-8 animate-spin text-violet-500" aria-hidden="true" />
             </div>
             <div class="p-3">
               <p class="line-clamp-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -77,14 +88,14 @@
           </article>
 
           <ImageCard
-            v-for="i in images"
-            :key="i.id"
-            :image="i"
+            v-for="image in images"
+            :key="image.id"
+            :image="image"
             :can-edit="canEdit"
-            @open="preview = $event"
+            @open="openPreview"
             @edit="useAsSource"
             @reuse="reusePrompt"
-            @delete="confirming = $event"
+            @delete="confirmDeleteImage"
           />
         </div>
       </div>
@@ -95,23 +106,11 @@
       :index="previewIndex"
       :total="images.length"
       :can-edit="canEdit"
-      @close="preview = null"
+      @close="closePreview"
       @step="step"
       @reuse="reuseFromPreview"
       @edit="editFromPreview"
     />
-
-    <Modal
-      :open="!!confirming"
-      title="Delete this image?"
-      description="The image file and its gallery entry are removed permanently."
-      @close="confirming = null"
-    >
-      <div class="flex justify-end gap-2">
-        <Button variant="secondary" @click="confirming = null">Cancel</Button>
-        <Button variant="danger" @click="confirmRemove">Delete</Button>
-      </div>
-    </Modal>
 
     <PromptManager
       :open="showPromptLibrary"
@@ -123,11 +122,9 @@
 </template>
 
 <script setup lang="ts">
-import type { GeneratedImage } from '@browser-server/shared-types';
-import type { PromptResponse } from '../types';
-import { computed, nextTick, onMounted, ref } from 'vue';
-import { useImageGeneration } from '../composables/useImageGeneration';
+import { ListOrdered, LoaderCircle, RefreshCw } from '@lucide/vue';
 import { useUser } from '../composables/useUser';
+import { useImagePage } from './image/composables/useImagePage';
 import ImageCard from './image/ImageCard.vue';
 import ImageComposer from './image/ImageComposer.vue';
 import ImageViewer from './image/ImageViewer.vue';
@@ -136,11 +133,28 @@ import Button from './ui/Button.vue';
 import EmptyState from './ui/EmptyState.vue';
 import ErrorBanner from './ui/ErrorBanner.vue';
 import LoadingSpinner from './ui/LoadingSpinner.vue';
-import Modal from './ui/Modal.vue';
 import PageHeader from './ui/PageHeader.vue';
 import StatCard from './ui/StatCard.vue';
 
 const { currentUserId } = useUser();
+
+const {
+  gen,
+  composerRef,
+  preview,
+  previewIndex,
+  showPromptLibrary,
+  openPreview,
+  closePreview,
+  step,
+  useAsSource,
+  reusePrompt,
+  reuseFromPreview,
+  editFromPreview,
+  applyPrompt,
+  confirmDeleteImage,
+} = useImagePage();
+
 const {
   config,
   images,
@@ -162,63 +176,6 @@ const {
   canEdit,
   sourceImage,
   modelCount,
-  load,
   submit,
-  remove,
-} = useImageGeneration();
-
-const composerRef = ref<InstanceType<typeof ImageComposer> | null>(null);
-const preview = ref<GeneratedImage | null>(null);
-const confirming = ref<GeneratedImage | null>(null);
-const showPromptLibrary = ref(false);
-
-const previewIndex = computed(() =>
-  preview.value ? images.value.findIndex((i) => i.id === preview.value?.id) : -1,
-);
-
-function focusPrompt() {
-  nextTick(() => composerRef.value?.focus());
-}
-
-function useAsSource(image: GeneratedImage) {
-  source.value = image.id;
-  focusPrompt();
-}
-
-function reusePrompt(image: GeneratedImage) {
-  prompt.value = image.prompt;
-  focusPrompt();
-}
-
-function applyPrompt(p: PromptResponse) {
-  if (!p.content) return;
-  prompt.value = p.content;
-  showPromptLibrary.value = false;
-  focusPrompt();
-}
-
-function step(delta: number) {
-  const next = images.value[previewIndex.value + delta];
-  if (next) preview.value = next;
-}
-
-function reuseFromPreview(image: GeneratedImage) {
-  preview.value = null;
-  reusePrompt(image);
-}
-
-function editFromPreview(image: GeneratedImage) {
-  preview.value = null;
-  useAsSource(image);
-}
-
-async function confirmRemove() {
-  const target = confirming.value;
-  if (!target) return;
-  confirming.value = null;
-  await remove(target.id);
-  if (preview.value?.id === target.id) preview.value = null;
-}
-
-onMounted(load);
+} = gen;
 </script>

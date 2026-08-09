@@ -46,15 +46,17 @@
         <a
           :href="url"
           :download="image.filename"
-          class="text-xs font-black text-violet-600 underline decoration-violet-300 underline-offset-4 transition hover:text-violet-700 dark:text-violet-400 dark:decoration-violet-800"
+          class="inline-flex items-center gap-1 text-xs font-black text-violet-600 underline decoration-violet-300 underline-offset-4 transition hover:text-violet-700 dark:text-violet-400 dark:decoration-violet-800"
         >
+          <Download class="h-3 w-3" :stroke-width="2.5" aria-hidden="true" />
           Download
         </a>
         <button
           type="button"
-          class="ml-auto text-xs font-black text-red-600 transition hover:text-red-700 dark:text-red-400"
+          class="ml-auto inline-flex items-center gap-1 text-xs font-black text-red-600 transition hover:text-red-700 dark:text-red-400"
           @click="$emit('delete', image)"
         >
+          <Trash2 class="h-3 w-3" :stroke-width="2.5" aria-hidden="true" />
           Delete
         </button>
       </div>
@@ -66,6 +68,7 @@
 import type { GeneratedImage } from '@browser-server/shared-types';
 import { computed } from 'vue';
 import { getGeneratedImageUrl } from '../../lib/api/ai';
+import { Download, Trash2 } from '@lucide/vue';
 import { formatBytes, formatImageDate } from './format';
 
 const props = defineProps<{

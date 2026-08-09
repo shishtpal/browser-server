@@ -10,12 +10,23 @@
  *  Inline : bold, italic, bold-italic, strikethrough, highlight, inline code,
  *           links, reference links, images, autolinks, bare URLs & emails,
  *           footnote references, hard breaks, backslash escapes.
+ *  Math   : LaTeX math via MathJax 3 — $$…$$ display blocks, $…$ inline,
+ *           \[…\] display blocks, \(…\) inline. Math is extracted before
+ *           HTML-escaping so LaTeX syntax is preserved verbatim.
  *
  * Security
  * ────────
  *  The whole input is HTML-escaped up front, so raw HTML in the source is
  *  rendered as text (never executed). Every URL is passed through a scheme
  *  allow-list, so `javascript:` / `vbscript:` / non-image `data:` are dropped.
+ *
+ * Math rendering
+ * ──────────────
+ *  Math placeholders (<span data-math> / <div data-math-display>) are emitted
+ *  synchronously by renderMarkdown(). The caller is responsible for running
+ *  MathJax.typesetPromise() on the container element after inserting the HTML
+ *  into the DOM. Use the provided `typesetMath(el)` helper, which lazy-loads
+ *  MathJax 3 from CDN on first call and returns a Promise<void>.
  */
 
 /* ------------------------------------------------------------------ types */
@@ -765,6 +776,229 @@ function renderFootnotes(ctx: Ctx): string {
   );
 }
 
+/* --------- math helpers --------- */
+
+/**
+ * MathJax 3 global interface (minimal surface we need).
+ * MathJax is loaded lazily from CDN on first call to typesetMath().
+ */
+declare global {
+  interface Window {
+    MathJax?: {
+      typesetPromise(nodes?: Element[]): Promise<void>;
+      startup?: { promise?: Promise<unknown>; [key: string]: unknown };
+      [key: string]: unknown;
+    };
+  }
+}
+
+const MATHJAX_CDN = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
+
+let _mathJaxLoading: Promise<void> | null = null;
+
+/** Lazily load MathJax 3 from CDN (called once per page). */
+function loadMathJax(): Promise<void> {
+  if (_mathJaxLoading) return _mathJaxLoading;
+
+  _mathJaxLoading = new Promise<void>((resolve, reject) => {
+    if (window.MathJax?.typesetPromise) {
+      resolve();
+      return;
+    }
+
+    // Configure MathJax before the script loads.
+    // This is a config-only object; MathJax replaces it with the real
+    // instance after loading, so we bypass the type here intentionally.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).MathJax = {
+      tex: {
+        inlineMath: [
+          ['$', '$'],
+          ['\\(', '\\)'],
+        ],
+        displayMath: [
+          ['$$', '$$'],
+          ['\\[', '\\]'],
+        ],
+        processEscapes: true,
+      },
+      svg: { fontCache: 'global' },
+      startup: { typeset: false }, // we call typesetPromise manually
+    };
+
+    const script = document.createElement('script');
+    script.src = MATHJAX_CDN;
+    script.async = true;
+    script.onload = () =>
+      // MathJax signals readiness via startup.promise
+      (window.MathJax!.startup!.promise as Promise<unknown>).then(() => resolve()).catch(reject);
+    script.onerror = () => reject(new Error('Failed to load MathJax'));
+    document.head.appendChild(script);
+  });
+
+  // Allow a retry on the next call if loading failed (network hiccup etc.).
+  _mathJaxLoading.catch(() => {
+    _mathJaxLoading = null;
+  });
+
+  return _mathJaxLoading;
+}
+
+/**
+ * Typeset all math placeholders inside `el`.
+ * Safe to call before MathJax is loaded — will load it on demand.
+ * Returns a Promise that resolves when typesetting is complete.
+ */
+export async function typesetMath(el: Element): Promise<void> {
+  const placeholders = Array.from(
+    el.querySelectorAll('[data-math],[data-math-display]'),
+  ) as Element[];
+  if (!placeholders.length) return;
+
+  // Show the raw $…$ source immediately so content is never a blank gap if
+  // the CDN is slow/unreachable; MathJax replaces it once typeset.
+  for (const node of placeholders) {
+    const raw = node.getAttribute('data-math') ?? node.getAttribute('data-math-display') ?? '';
+    const isDisplay = node.hasAttribute('data-math-display');
+    const delim = isDisplay ? ['$$', '$$'] : ['$', '$'];
+    node.textContent = `${delim[0]}${decodeURIComponent(raw)}${delim[1]}`;
+    node.removeAttribute('data-math');
+    node.removeAttribute('data-math-display');
+  }
+
+  try {
+    await loadMathJax();
+    await window.MathJax!.typesetPromise(placeholders);
+  } catch {
+    // Leave the raw LaTeX source visible rather than a blank gap or an
+    // unhandled rejection; the next render will retry.
+  }
+}
+
+/* ------------------------------------------------ math pre-pass (pre-HTML) */
+
+interface MathStash {
+  token: string;
+  isDisplay: boolean;
+  latex: string;
+}
+
+/* ------------------------------------------------ math pre-pass (pre-HTML) */
+
+/** Placeholder tokens use \u0004 … \u0004 (EOT), which never appears in real
+ *  input (we strip it up front along with \u0000), so user text can never
+ *  collide with a generated token. */
+const MATH_TOKEN_PREFIX = '\u0004M';
+const MATH_TOKEN_SUFFIX = '\u0004';
+const CODE_TOKEN_PREFIX = '\u0004C';
+
+/**
+ * Mask regions where math must NOT be extracted (code spans, fenced code
+ * blocks, indented code) so $…$ inside code stays literal, and decode them
+ * back afterwards. Tokens survive HTML-escaping untouched.
+ */
+function maskCodeRegions(text: string): { text: string; restore: (s: string) => string } {
+  const stash: string[] = [];
+  const hold = (frag: string) => `${CODE_TOKEN_PREFIX}${stash.push(frag) - 1}${MATH_TOKEN_SUFFIX}`;
+
+  let s = text;
+
+  // 0 — link/image destinations: the (url "title") part is an attribute
+  //     context; $…$ there must never become math. (Link text stays
+  //     unmasked so math inside it still renders.)
+  s = s.replace(/(?<=\])\([^()\n]*\)/g, (m) => hold(m));
+
+  // 1 — fenced code blocks (``` / ~~~ …), must run before spans so multi-line
+  //     fences win over any backticks inside them.
+  s = s.replace(/^( {0,3})(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\2[ \t]*$|\n?(?![\s\S]))/gm, (m) =>
+    hold(m),
+  );
+
+  // 2 — indented code blocks (4+ spaces, at line start)
+  s = s.replace(/^(?: {4}[^\n]*(?:\n|$))+/gm, (m) => hold(m.replace(/\n+$/, '\n')));
+
+  // 3 — inline code spans (backtick runs: ``a ` b``)
+  s = s.replace(/(`+)([\s\S]*?)\1(?!`)/g, (m) => hold(m));
+
+  const restore = (out: string) => {
+    const re = new RegExp(`${CODE_TOKEN_PREFIX}(\\d+)${MATH_TOKEN_SUFFIX}`, 'g');
+    for (let pass = 0; pass < 4 && out.includes(CODE_TOKEN_PREFIX); pass++) {
+      out = out.replace(re, (_m, i: string) => stash[Number(i)] ?? '');
+    }
+    return out;
+  };
+
+  return { text: s, restore };
+}
+
+/**
+ * Extract math expressions from raw (un-escaped) Markdown text BEFORE HTML
+ * escaping, replacing them with unique tokens.  The stash is used later by
+ * `reinjectMath` to emit safe placeholder HTML.
+ *
+ * Supported delimiters (in priority order):
+ *   $$…$$  — display (may span multiple lines)
+ *   \[…\]  — display (may span multiple lines)
+ *   $…$    — inline  (single line, not empty, not starting/ending with space)
+ *   \(…\)  — inline
+ */
+function extractMath(text: string): { text: string; stash: MathStash[] } {
+  const stash: MathStash[] = [];
+  let counter = 0;
+
+  const token = (isDisplay: boolean, latex: string): string => {
+    const id = `${MATH_TOKEN_PREFIX}${counter++}${MATH_TOKEN_SUFFIX}`;
+    stash.push({ token: id, isDisplay, latex });
+    return id;
+  };
+
+  let s = text;
+
+  // Display: $$…$$  (skip $$ escaped with a backslash)
+  s = s.replace(
+    /(^|[^\\])\$\$([\s\S]*?)\$\$/g,
+    (_m, pre: string, inner: string) => pre + token(true, inner),
+  );
+
+  // Display: \[…\]  (skip \\[ escaped with an extra backslash)
+  s = s.replace(
+    /(^|[^\\])\\\[([\s\S]*?)\\\]/g,
+    (_m, pre: string, inner: string) => pre + token(true, inner),
+  );
+
+  // Inline: \(…\)  (same escape rule)
+  s = s.replace(
+    /(^|[^\\])\\\(([\s\S]*?)\\\)/g,
+    (_m, pre: string, inner: string) => pre + token(false, inner),
+  );
+
+  // Inline: $…$  (single line, non-empty, no leading/trailing space,
+  // not preceded/followed by a digit, and not escaped). This prevents
+  // currency text like "$5 and $10" from being treated as math.
+  s = s.replace(
+    /(^|[^\\$\d])\$(?!\$)([^\n$][^$\n]*?[^\s$]|[^\s$])\$(?!\$|\d)/g,
+    (_m, pre: string, inner: string) => pre + token(false, inner),
+  );
+
+  return { text: s, stash };
+}
+
+/**
+ * After HTML-escaping, replace math tokens with placeholder elements that
+ * carry the LaTeX in a `data-math` / `data-math-display` attribute.
+ * `typesetMath()` decodes these and hands them to MathJax.
+ */
+function reinjectMath(html: string, stash: MathStash[]): string {
+  for (const { token, isDisplay, latex } of stash) {
+    const encoded = encodeURIComponent(latex);
+    const placeholder = isDisplay
+      ? `<div data-math-display="${encoded}" class="math-display my-3 overflow-x-auto text-center"></div>`
+      : `<span data-math="${encoded}" class="math-inline"></span>`;
+    html = html.split(token).join(placeholder);
+  }
+  return html;
+}
+
 /* ----------------------------------------------------------------- public */
 
 export function renderMarkdown(text: string, options: MarkdownOptions = {}): string {
@@ -783,15 +1017,39 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
     slugs: new Map(),
   };
 
-  const normalized = escapeHtml(
-    String(text)
-      .replace(/\r\n?/g, '\n')
-      .replace(/\t/g, '    ')
-      .replace(/\u0000/g, ''),
-  );
+  // 1 — strip control chars that our placeholder tokens rely on, then mask
+  //     code regions (spans + fenced/indented blocks) so math inside code
+  //     stays literal.
+  const cleaned = String(text)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0008\u000b-\u001f]/g, '');
+  const { text: codeMasked, restore } = maskCodeRegions(cleaned);
+
+  // 2 — extract math BEFORE HTML-escaping so LaTeX syntax is preserved verbatim.
+  const { text: mathStripped, stash: mathStash } = extractMath(codeMasked);
+
+  const normalized = escapeHtml(mathStripped.replace(/\t/g, '    '));
 
   const lines = extractDefinitions(normalized.split('\n'), ctx);
-  return parseBlocks(lines, ctx) + renderFootnotes(ctx);
+
+  // 3 — link reference destinations end up inside href/title attributes; a
+  //     raw math token there would corrupt the attribute, so blank them out.
+  const attrSafe = (u: string) => u.replace(/\u0004M\d+\u0004/g, '');
+  ctx.links.forEach((def) => {
+    def.href = attrSafe(def.href);
+    if (def.title) def.title = attrSafe(def.title);
+  });
+
+  let html = parseBlocks(lines, ctx) + renderFootnotes(ctx);
+
+  // 4 — scrub any token that landed inside an attribute (href, title, id).
+  html = html.replace(/((?:href|title|id|src|alt)="[^"]*)\u0004M\d+\u0004([^"]*")/g, '$1$2');
+
+  // 5 — re-inject math placeholders into the final HTML.
+  html = reinjectMath(html, mathStash);
+
+  // 6 — restore masked code regions.
+  return restore(html);
 }
 
 /** Render a single line/fragment without block wrappers (labels, titles, …). */

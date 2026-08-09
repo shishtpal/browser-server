@@ -22,6 +22,7 @@
 
     <div
       v-else
+      ref="contentEl"
       class="prose prose-slate dark:prose-invert prose-p:text-[0.92em] prose-p:leading-[1.65] prose-li:text-[0.92em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[1.2em] prose-h2:text-[1.1em] prose-h3:text-[1em] prose-pre:my-2 prose-pre:rounded-lg max-w-none break-words"
       v-html="renderedContent"
       @click="copyCodeBlock"
@@ -48,12 +49,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { CircleAlert, LoaderCircle, StopCircle } from '@lucide/vue';
 import type { AIMessage } from '@browser-server/shared-types';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { CircleAlert, LoaderCircle, StopCircle } from '@lucide/vue';
 import BubbleActions, { type BubbleActionName } from './BubbleActions.vue';
 import ChatThinkingBlock from '../ChatThinkingBlock.vue';
-import { renderMarkdown } from '../markdown';
+import { renderMarkdown, typesetMath } from '../markdown';
 
 const props = withDefaults(
   defineProps<{
@@ -70,6 +71,39 @@ const emit = defineEmits<{
 }>();
 
 const renderedContent = computed(() => renderMarkdown(props.message.content));
+
+/** Reference to the content container for MathJax typesetting. */
+const contentEl = ref<HTMLElement | null>(null);
+
+/** Re-typeset math whenever the rendered HTML changes.
+ *  While the message is still streaming, updates are debounced (trailing
+ *  edge) so each chunk doesn't queue behind the MathJax CDN load. */
+let typesetTimer: ReturnType<typeof setTimeout> | undefined;
+let contentVersion = 0;
+
+async function runTypeset() {
+  await nextTick();
+  if (contentEl.value) await typesetMath(contentEl.value);
+}
+
+watch(
+  renderedContent,
+  () => {
+    contentVersion++;
+    if (props.message.status === 'pending') {
+      clearTimeout(typesetTimer);
+      const v = contentVersion;
+      typesetTimer = setTimeout(() => {
+        if (v === contentVersion) void runTypeset();
+      }, 350);
+    } else {
+      void runTypeset();
+    }
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => clearTimeout(typesetTimer));
 
 /** "Copy" buttons rendered by the markdown code blocks bubble up here. */
 function copyCodeBlock(event: MouseEvent) {

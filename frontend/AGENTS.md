@@ -159,9 +159,39 @@ components/history/
 └── HistoryImport.vue
 ```
 
+### Wallet module (`components/wallet/`) & Usage module (`components/analytics/`)
+
+`WalletPage.vue` wires `wallet/composables/useWalletPage.ts` (edit modal w/ on-demand password prefill + shared-modal delete confirm) over `useWallet.ts` (list + filter + CRUD; immediate load on user change). Password reveal/copy lives in `useWalletPassword.ts` behind the shared `WalletPasswordField.vue` — never cache passwords in list state.
+
+`AnalyticsPage.vue` (the "Usage" page) wires `analytics/composables/useAnalytics.ts` (summary fetch; preset/custom range; day/week/month grouping; immediate load) and renders `UsageToolbar.vue` + `DomainBreakdown.vue` + `UsageTrendChart.vue` built from `analyticsFormat.ts` constants (presets, group icons, bar palette).
+
+Both imports use the shared `ui/ImportCard.vue`.
+
+```
+components/wallet/
+├── walletFormat.ts              # Search columns, walletInitial, isPasswordless
+├── composables/useWalletPage.ts # Edit modal + reveal prefill + delete confirm
+├── composables/useWallet.ts     # List + filter + CRUD (immediate load)
+├── composables/useWalletPassword.ts # Per-entry reveal/copy state
+├── WalletAddForm.vue, WalletSearchBar.vue, WalletEditModal.vue, WalletImport.vue
+├── WalletPasswordField.vue      # •••••• mask + reveal + copy (eye/copy icons)
+└── views/                       # WalletTableRow (desktop) + WalletCard (mobile)
+
+components/analytics/
+├── analyticsFormat.ts           # Date presets, group options, bar palette, period labels
+├── composables/useAnalytics.ts  # Summary fetch + range/grouping (immediate load)
+├── UsageToolbar.vue             # Presets + custom range + day/week/month segmented control
+├── DomainBreakdown.vue          # Ranked top-domain bars (favicons, durations, %)
+└── UsageTrendChart.vue          # Accessible bar chart (a11y label summarizes the series)
+```
+
+### Shared modal package (`shared/browser-modal/`)
+
+`@browser-server/shared-modal` is a self-contained imperative dialog service: `ModalHost.vue` (mounted once via `AppModalHost.vue` in the layout) renders the module-level request queue from `store.ts`; `useModal()` exposes `confirm` / `confirmDelete` / `alert`, each returning a promise. Dialogs queue, trap focus, lock body scroll, honor `persistent`, and theme via the app's `.dark` class and `bsm-*` CSS in `src/modal.css` (self-imported by the host).
+
 ### Quiz module (`components/quiz/`)
 
-The exam-prep page (question bank, flashcards, paper generator, online exam runner) is fully modular. `QuizPage.vue` is thin wiring: it owns the user selector and delegates everything else to `composables/useQuizPage.ts`, which composes the domain composables and coordinates tabs, modals, and the exam runner. All icons come from `@lucide/vue` — never hand-write inline SVGs or use emoji glyphs here.
+The exam-prep page (question bank, flashcards, paper generator, online exam runner) is fully modular. `QuizPage.vue` is thin wiring: it owns the user selector and delegates everything else to the module-local `composables/useQuizPage.ts`, which composes the domain composables and coordinates tabs, modals, and the exam runner. All icons come from `@lucide/vue` — never hand-write inline SVGs or use emoji glyphs here.
 
 ```
 components/quiz/

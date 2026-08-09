@@ -1,16 +1,25 @@
 {
   "name": "@browser-server/shared-modal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
+  "description": "Imperative modal/confirm service for Browser Server frontends (ModalHost + useModal).",
+  "files": [
+    "src",
+    "package.json",
+    "README.md"
+  ],
   "type": "module",
-  "scripts": {
-    "type-check": "vue-tsc --noEmit"
-  },
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     ".": "./src/index.ts",
-    "./modal.css": "./src/modal.css"
+    "./index.ts": "./src/index.ts",
+    "./modal.css": "./src/modal.css",
+    "./style.css": "./src/modal.css"
   },
-  "dependencies": {
+  "peerDependencies": {
+    "@lucide/vue": "^1.27.0",
     "vue": "^3.5.40"
   },
   "devDependencies": {

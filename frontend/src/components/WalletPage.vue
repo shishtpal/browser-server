@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-full px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
+  <div class="mx-auto max-w-full px-3 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Password vault" title="Wallet" color="emerald">
       <template #stats>
         <StatCard :value="walletEntries.length" label="Entries" variant="dark" color="emerald" />
@@ -22,78 +22,22 @@
     />
 
     <LoadingSpinner v-if="isLoading" message="Loading wallet..." color="emerald" />
-
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadWallet" />
 
     <div v-else-if="selectedUserId">
-      <form
-        @submit.prevent="addEntry"
-        class="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors dark:border-white/10 dark:bg-slate-800/90"
-      >
-        <div class="flex items-center gap-2">
-          <InputField
-            v-model="newWebsite"
-            type="text"
-            placeholder="Website domain"
-            required
-            flex
-            color="emerald"
-          />
-          <InputField
-            v-model="newLoginProvider"
-            type="text"
-            placeholder="Provider (Google, GitHub, Password...)"
-            required
-            flex
-            color="emerald"
-          />
-          <InputField
-            v-model="newUsername"
-            type="text"
-            placeholder="Username"
-            required
-            flex
-            color="emerald"
-          />
-          <InputField
-            v-model="newPassword"
-            type="password"
-            placeholder="Password (optional for provider login)"
-            flex
-            color="emerald"
-          />
-          <InputField
-            v-model="newDescription"
-            type="text"
-            placeholder="Description"
-            class="hidden lg:block"
-            flex
-            color="emerald"
-          />
-          <Button type="submit" variant="gradient-emerald" size="sm">Add</Button>
-        </div>
-      </form>
-
-      <WalletImport
-        v-if="selectedUserId"
-        :selected-user-id="selectedUserId"
-        @imported="loadWallet"
-        class="mb-4"
-      />
-
-      <div class="mb-4 flex items-center gap-2">
-        <select
-          v-model="searchColumn"
-          class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-emerald-400 dark:focus:ring-emerald-900/30"
-        >
-          <option value="website">Website</option>
-          <option value="login_provider">Login provider</option>
-          <option value="username">Username</option>
-          <option value="description">Description</option>
-          <option value="all">All columns</option>
-        </select>
-        <InputField v-model="websiteFilter" :placeholder="searchPlaceholder" color="emerald" flex />
+      <div>
+        <WalletAddForm @submit="addEntry" />
       </div>
+
+      <WalletImport :selected-user-id="selectedUserId" class="mb-4" @imported="loadWallet" />
+
+      <WalletSearchBar
+        v-model:search-query="searchQuery"
+        v-model:search-column="searchColumn"
+        :placeholder="searchPlaceholder"
+        :filtered-count="filteredEntries.length"
+        :total-count="walletEntries.length"
+      />
 
       <EmptyState
         v-if="filteredEntries.length === 0"
@@ -105,7 +49,8 @@
         color="emerald"
       />
 
-      <div v-else>
+      <template v-else>
+        <!-- Desktop table -->
         <div
           class="hidden overflow-hidden rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors md:block dark:border-slate-700/80 dark:bg-slate-800/90"
         >
@@ -115,196 +60,110 @@
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
               <tr>
                 <th
+                  v-for="column in columns"
+                  :key="column.label"
                   class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                  :class="[column.align === 'right' ? 'text-right' : '', column.width ?? '']"
                 >
-                  Website
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Provider
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Username
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Password
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Description
-                </th>
-                <th
-                  class="w-28 px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Updated
-                </th>
-                <th
-                  class="w-24 px-3 py-3 text-right text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Actions
+                  {{ column.label }}
                 </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
               <WalletTableRow
-                v-for="e in filteredEntries"
-                :key="e.id"
-                :entry="e"
+                v-for="entry in filteredEntries"
+                :key="entry.id"
+                :entry="entry"
                 :user-id="selectedUserId"
                 @edit="openEdit"
-                @delete="removeEntry"
+                @delete="confirmDelete"
               />
             </tbody>
           </table>
         </div>
 
-        <div class="grid gap-3 md:hidden">
+        <!-- Mobile cards -->
+        <div class="grid gap-3 sm:grid-cols-2 md:hidden">
           <WalletCard
-            v-for="e in filteredEntries"
-            :key="e.id"
-            :entry="e"
+            v-for="entry in filteredEntries"
+            :key="entry.id"
+            :entry="entry"
             :user-id="selectedUserId"
             @edit="openEdit"
-            @delete="removeEntry"
+            @delete="confirmDelete"
           />
         </div>
-      </div>
+      </template>
     </div>
 
-    <Modal
-      :open="!!editing"
-      title="Edit wallet entry"
-      description="Update saved credentials."
-      @close="editing = null"
-    >
-      <div v-if="editing" class="grid gap-3">
-        <input
-          v-model="editForm.website"
-          type="text"
-          placeholder="Website"
-          required
-          class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30"
-        />
-        <input
-          v-model="editForm.login_provider"
-          type="text"
-          placeholder="Login provider"
-          required
-          class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30"
-        />
-        <input
-          v-model="editForm.username"
-          type="text"
-          placeholder="Username"
-          required
-          class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30"
-        />
-        <input
-          v-model="editForm.password"
-          type="text"
-          placeholder="Password (optional for provider login)"
-          class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30"
-        />
-        <input
-          v-model="editForm.description"
-          type="text"
-          placeholder="Description"
-          class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-emerald-900/30"
-        />
-      </div>
-      <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          @click="editing = null"
-          class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          @click="saveEdit"
-          class="rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-emerald-500/20"
-        >
-          Save changes
-        </button>
-      </div>
-    </Modal>
+    <WalletEditModal
+      :entry="editing"
+      :revealed-password="editingPassword"
+      :is-revealing="isRevealingPassword"
+      @close="closeEdit"
+      @save="saveEdit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
+import { Plus } from '@lucide/vue';
 import { useUser } from '../composables/useUser';
-import { useWallet } from '../composables/useWallet';
+import { useWalletPage } from './wallet/composables/useWalletPage';
+import Button from './ui/Button.vue';
+import UserSelector from './ui/UserSelector.vue';
 import PageHeader from './ui/PageHeader.vue';
 import StatCard from './ui/StatCard.vue';
-import UserSelector from './ui/UserSelector.vue';
 import LoadingSpinner from './ui/LoadingSpinner.vue';
 import ErrorBanner from './ui/ErrorBanner.vue';
 import EmptyState from './ui/EmptyState.vue';
-import InputField from './ui/InputField.vue';
-import Button from './ui/Button.vue';
 import SelectUserPrompt from './ui/SelectUserPrompt.vue';
-import Modal from './ui/Modal.vue';
-import WalletTableRow from './wallet/WalletTableRow.vue';
-import WalletCard from './wallet/WalletCard.vue';
+import WalletAddForm from './wallet/WalletAddForm.vue';
 import WalletImport from './wallet/WalletImport.vue';
+import WalletSearchBar from './wallet/WalletSearchBar.vue';
+import WalletTableRow from './wallet/views/WalletTableRow.vue';
+import WalletCard from './wallet/views/WalletCard.vue';
+import WalletEditModal from './wallet/WalletEditModal.vue';
 
 const { users, currentUserId, setUser, clearUser } = useUser();
-
 const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
-  walletEntries,
-  isLoading,
-  error,
-  websiteFilter,
-  searchColumn,
-  newWebsite,
-  newLoginProvider,
-  newUsername,
-  newPassword,
-  newDescription,
+  walletApi: {
+    walletEntries,
+    isLoading,
+    error,
+    searchQuery,
+    searchColumn,
+    filteredEntries,
+    loadWallet,
+    addEntry,
+  },
   editing,
-  editForm,
-  filteredEntries,
-  loadWallet,
-  addEntry,
+  editingPassword,
+  isRevealingPassword,
   openEdit,
+  closeEdit,
   saveEdit,
-  removeEntry,
-} = useWallet(selectedUserId);
-
-const searchPlaceholder = computed(() => {
-  const labels: Record<string, string> = {
-    website: 'Search by website URL...',
-    login_provider: 'Search by login provider...',
-    username: 'Search by username...',
-    description: 'Search description...',
-    all: 'Search all columns...',
-  };
-  return labels[searchColumn.value] || 'Search...';
-});
+  confirmDelete,
+  searchPlaceholder,
+} = useWalletPage(selectedUserId);
 
 watch(selectedUserId, (id) => {
-  if (id) {
-    setUser(id);
-    loadWallet();
-  } else {
-    clearUser();
-    walletEntries.value = [];
-    websiteFilter.value = '';
-  }
+  if (id) setUser(id);
+  else clearUser();
 });
 
-if (selectedUserId.value) {
-  setUser(selectedUserId.value);
-  loadWallet();
-}
+// Data loads automatically via the immediate watcher inside useWallet.
+
+const columns: { label: string; align?: 'right'; width?: string }[] = [
+  { label: 'Website' },
+  { label: 'Provider' },
+  { label: 'Username' },
+  { label: 'Password' },
+  { label: 'Description' },
+  { label: 'Updated', width: 'w-28' },
+  { label: 'Actions', align: 'right', width: 'w-24' },
+];
 </script>

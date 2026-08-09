@@ -96,7 +96,7 @@ const props = withDefaults(
     /** Result message nouns: "bookmark" → "bookmarks", "history entry" → "history entries". */
     noun: string;
     nounPlural?: string;
-    color?: 'amber' | 'violet' | 'cyan' | 'indigo';
+    color?: 'amber' | 'violet' | 'cyan' | 'indigo' | 'emerald';
     /** Performs the upload; must resolve with the import summary. */
     onImport: (file: File) => Promise<ImportSummary>;
   }>(),
@@ -137,6 +137,11 @@ const palettes = {
     iconBg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
     button: 'bg-gradient-to-r from-indigo-500 to-blue-600',
     filePicked: 'border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300',
+  },
+  emerald: {
+    iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+    button: 'bg-gradient-to-r from-emerald-500 to-teal-600',
+    filePicked: 'border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300',
   },
 } as const;
 

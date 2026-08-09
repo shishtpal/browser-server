@@ -1,58 +1,250 @@
-/* ─── Enter / leave animations ────────────────────────────────────── */
-.swal-enter-active .swal-backdrop { animation: swal-fade .22s ease-out both; }
-.swal-leave-active .swal-backdrop { animation: swal-fade .18s ease-in both reverse; }
+/* ---------------------------------------------------------------------------
+ * @browser-server/shared-modal — self-contained dialog styles.
+ *
+ * Loaded automatically by <ModalHost />; apps may also import
+ * `@browser-server/shared-modal/modal.css` explicitly (e.g. in global.css)
+ * to pre-bundle — the selectors are idempotent.
+ * Dark mode follows the app's `.dark` class.
+ * ------------------------------------------------------------------------- */
 
-.swal-enter-active .swal-panel { animation: swal-pop .32s cubic-bezier(.16, 1, .3, 1) both; }
-.swal-leave-active .swal-panel { animation: swal-out .18s ease-in both; }
-
-.swal-leave-active { pointer-events: none; }
-
-@keyframes swal-fade { from { opacity: 0 } to { opacity: 1 } }
-@keyframes swal-pop {
-  from { opacity: 0; transform: scale(.9) translateY(12px); }
-  to   { opacity: 1; transform: none; }
-}
-@keyframes swal-out {
-  from { opacity: 1; transform: none; }
-  to   { opacity: 0; transform: scale(.96) translateY(6px); }
+.bsm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(2 6 23 / 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-/* ─── Animated SVG icons ─────────────────────────────────────────── */
-.swal-ico-circle {
-  stroke-dasharray: 151;
-  stroke-dashoffset: 151;
-  animation: swal-draw .55s cubic-bezier(.65, 0, .35, 1) forwards;
+/* ---------------------------------- dialog ---------------------------------- */
+
+.bsm-panel {
+  --bsm-accent: #4f46e5;
+  --bsm-accent-soft: #eef2ff;
+  --bsm-accent-text: #4338ca;
+
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(15 23 42 / 0.08);
+  background: #ffffff;
+  box-shadow:
+    0 20px 50px -12px rgb(15 23 42 / 0.25),
+    0 0 0 1px rgb(15 23 42 / 0.02);
 }
-.swal-ico-draw {
-  stroke-dasharray: 70;
-  stroke-dashoffset: 70;
-  animation: swal-draw .4s cubic-bezier(.65, 0, .35, 1) forwards;
-  animation-delay: var(--swal-d, .28s);
+
+.bsm-panel--danger {
+  --bsm-accent: #e11d48;
+  --bsm-accent-soft: #fff1f2;
+  --bsm-accent-text: #be123c;
 }
-.swal-ico-dot {
+
+.bsm-panel--info {
+  --bsm-accent: #0284c7;
+  --bsm-accent-soft: #f0f9ff;
+  --bsm-accent-text: #0369a1;
+}
+
+.dark .bsm-panel {
+  background: #0f172a;
+  border-color: rgb(255 255 255 / 0.08);
+  box-shadow: 0 20px 50px -12px rgb(2 6 23 / 0.8);
+}
+
+.dark .bsm-panel--confirm {
+  --bsm-accent: #818cf8;
+  --bsm-accent-soft: rgb(99 102 241 / 0.15);
+  --bsm-accent-text: #a5b4fc;
+}
+
+.dark .bsm-panel--danger {
+  --bsm-accent: #fb7185;
+  --bsm-accent-soft: rgb(244 63 94 / 0.12);
+  --bsm-accent-text: #fda4af;
+}
+
+.dark .bsm-panel--info {
+  --bsm-accent: #38bdf8;
+  --bsm-accent-soft: rgb(14 165 233 / 0.12);
+  --bsm-accent-text: #7dd3fc;
+}
+
+/* --------------------------------- content --------------------------------- */
+
+.bsm-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.bsm-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: var(--bsm-accent-soft);
+  color: var(--bsm-accent-text);
+}
+
+.bsm-icon-svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.bsm-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.bsm-title {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #0f172a;
+  overflow-wrap: break-word;
+}
+
+.dark .bsm-title {
+  color: #f8fafc;
+}
+
+.bsm-message {
+  margin: 0.375rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #64748b;
+  overflow-wrap: break-word;
+}
+
+.dark .bsm-message {
+  color: #94a3b8;
+}
+
+/* --------------------------------- actions --------------------------------- */
+
+.bsm-actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.bsm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.bsm-button:focus-visible {
+  outline: 2px solid var(--bsm-accent);
+  outline-offset: 2px;
+}
+
+.bsm-button:active {
+  transform: translateY(1px);
+}
+
+.bsm-button--primary {
+  background: var(--bsm-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 14px -4px var(--bsm-accent);
+}
+
+.bsm-button--primary:hover {
+  filter: brightness(1.08);
+}
+
+.bsm-button--danger {
+  background: linear-gradient(to right, #f43f5e, #e11d48);
+  color: #ffffff;
+  box-shadow: 0 4px 14px -4px rgb(225 29 72 / 0.5);
+}
+
+.bsm-button--danger:hover {
+  filter: brightness(1.06);
+}
+
+.bsm-button--ghost {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.bsm-button--ghost:hover {
+  background: #e2e8f0;
+}
+
+.dark .bsm-button--ghost {
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+.dark .bsm-button--ghost:hover {
+  background: #334155;
+}
+
+@media (min-width: 480px) {
+  .bsm-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  .bsm-button {
+    width: auto;
+    min-width: 6.5rem;
+  }
+}
+
+/* -------------------------------- animations -------------------------------- */
+
+.bsm-backdrop-enter-active,
+.bsm-backdrop-leave-active {
+  transition: opacity 0.18s ease;
+}
+.bsm-backdrop-enter-from,
+.bsm-backdrop-leave-to {
   opacity: 0;
-  animation: swal-fade .28s ease forwards .5s;
 }
-@keyframes swal-draw { to { stroke-dashoffset: 0 } }
 
-/* ─── HTML slot styling ──────────────────────────────────────────── */
-.swal-html a { color: theme(colors.sky.600); text-decoration: underline; text-underline-offset: 2px; }
-.swal-html a:hover { color: theme(colors.sky.500); }
-.swal-html ul { list-style: disc; padding-left: 1.25rem; text-align: left; }
-.swal-html ul li + li { margin-top: 0.25rem; }
+.bsm-dialog-enter-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bsm-dialog-leave-active {
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
+}
+.bsm-dialog-enter-from,
+.bsm-dialog-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+}
 
-/* ─── Reduced motion ─────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .swal-root *,
-  .swal-root {
-    animation: none !important;
-    transition: none !important;
-  }
-  .swal-ico-circle,
-  .swal-ico-draw {
-    stroke-dashoffset: 0 !important;
-  }
-  .swal-ico-dot {
-    opacity: 1 !important;
+  .bsm-backdrop-enter-active,
+  .bsm-backdrop-leave-active,
+  .bsm-dialog-enter-active,
+  .bsm-dialog-leave-active,
+  .bsm-button {
+    transition: none;
   }
 }

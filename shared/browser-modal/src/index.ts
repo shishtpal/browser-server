@@ -1,25 +1,16 @@
-import type { App } from 'vue'
-import ModalHost from './ModalHost.vue'
-import { modal } from './service'
-
-export { modal, useModal, fire, close, closeAll, isVisible } from './service'
-export { default as ModalHost } from './ModalHost.vue'
-export { default as ModalDialog } from './ModalDialog.vue'
-export { default as ModalIcon } from './ModalIcon.vue'
-export * from './types'
-
-/** Vue plugin — registers ModalHost globally and adds $modal to all instances. */
-export const ModalPlugin = {
-  install(app: App) {
-    app.component('ModalHost', ModalHost)
-    app.config.globalProperties.$modal = modal
-  },
-}
-
-export default ModalPlugin
-
-declare module 'vue' {
-  interface ComponentCustomProperties {
-    $modal: typeof modal
-  }
-}
+/**
+ * @browser-server/shared-modal — imperative modal service.
+ *
+ * Mount <ModalHost /> once at the app root (the frontend does this via
+ * AppModalHost.vue inside the layout), then call `useModal()` anywhere:
+ *
+ * ```ts
+ * const { confirm, confirmDelete, alert } = useModal();
+ * if (await confirmDelete('Delete this bookmark?')) remove(id);
+ * ```
+ */
+export { default as ModalHost } from './ModalHost.vue';
+export { default as ConfirmDialog } from './ConfirmDialog.vue';
+export { useModal } from './useModal';
+export { activeModal, modalQueue, pendingModalCount, pushModal, settleModal } from './store';
+export type { ModalApi, ModalKind, ModalOptions, ModalRequest } from './types';

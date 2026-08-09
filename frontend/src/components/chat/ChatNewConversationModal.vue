@@ -43,7 +43,15 @@
           class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 dark:border-white/10 dark:bg-slate-900 dark:text-white"
         >
           <option v-for="m in currentModels" :key="m.id" :value="m.id">
-            {{ m.label || m.id }}{{ m.supports_tools ? ' 🔧' : '' }}
+            <span class="inline-flex items-center gap-1">
+              {{ m.label || m.id }}
+              <Wrench
+                v-if="m.supports_tools"
+                class="h-3 w-3 text-amber-500"
+                :stroke-width="2.25"
+                aria-label="Supports tools"
+              />
+            </span>
           </option>
         </select>
       </div>
@@ -93,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { Wrench } from '@lucide/vue';
 import type { AIProfile, AISkill, AIProviderConfig } from '@browser-server/shared-types';
 import { reactive, watch, computed } from 'vue';
 import Modal from '../ui/Modal.vue';

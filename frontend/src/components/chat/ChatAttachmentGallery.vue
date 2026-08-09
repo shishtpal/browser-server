@@ -10,19 +10,11 @@
       <!-- Toolbar -->
       <div class="mb-4 flex shrink-0 flex-wrap items-center gap-2.5">
         <div class="relative min-w-0 flex-1 sm:min-w-56">
-          <svg
+          <Search
             class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white/35"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
-            />
-          </svg>
+            :stroke-width="2"
+            aria-hidden="true"
+          />
           <input
             v-model="query"
             type="search"
@@ -44,20 +36,12 @@
           aria-label="Refresh attachments"
           @click="load"
         >
-          <svg
+          <RefreshCw
             class="h-3.5 w-3.5"
             :class="{ 'animate-spin': loading }"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.582m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
+            :stroke-width="2"
+            aria-hidden="true"
+          />
           Refresh
         </button>
       </div>
@@ -90,19 +74,7 @@
           <div
             class="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 ring-1 ring-red-500/25"
           >
-            <svg
-              class="h-7 w-7 text-red-400"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"
-              />
-            </svg>
+            <TriangleAlert class="h-7 w-7 text-red-400" :stroke-width="2" aria-hidden="true" />
           </div>
           <div class="space-y-1">
             <p class="text-sm font-semibold text-white/90">Couldn't load attachments</p>
@@ -125,19 +97,7 @@
           <div
             class="flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03]"
           >
-            <svg
-              class="h-8 w-8 text-white/25"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
+            <ImageOff class="h-8 w-8 text-white/25" :stroke-width="1.5" aria-hidden="true" />
           </div>
           <p class="text-sm font-semibold text-white/80">No attachments yet</p>
           <p class="max-w-xs text-xs leading-relaxed text-white/40">
@@ -153,19 +113,11 @@
           <div
             class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10"
           >
-            <svg
-              class="h-6 w-6 text-white/30"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
-              />
-            </svg>
+            <Search
+              class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white/35"
+              :stroke-width="2"
+              aria-hidden="true"
+            />
           </div>
           <p class="text-sm font-medium text-white/70">No matches for “{{ query }}”</p>
           <button
@@ -205,19 +157,7 @@
                 v-else
                 class="flex h-full w-full flex-col items-center justify-center gap-1.5 text-white/25"
               >
-                <svg
-                  class="h-8 w-8"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
+                <ImageOff class="h-8 w-8" :stroke-width="1.5" aria-hidden="true" />
                 <span class="text-[0.6rem] font-medium">Preview unavailable</span>
               </div>
             </button>
@@ -230,19 +170,7 @@
                 <span
                   class="flex h-7 w-7 items-center justify-center rounded-lg bg-black/50 text-white/80 ring-1 ring-white/15 backdrop-blur-sm"
                 >
-                  <svg
-                    class="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M4 8V6a2 2 0 012-2h2m8 0h2a2 2 0 012 2v2m0 8v2a2 2 0 01-2 2h-2m-8 0H6a2 2 0 01-2-2v-2"
-                    />
-                  </svg>
+                  <Maximize2 class="h-3.5 w-3.5" :stroke-width="2" aria-hidden="true" />
                 </span>
               </div>
               <div class="flex justify-center p-2.5">
@@ -251,15 +179,7 @@
                   class="pointer-events-auto inline-flex translate-y-1 items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-black/40 transition-all duration-200 group-hover:translate-y-0 hover:bg-indigo-400 active:scale-95"
                   @click="$emit('reuse', att)"
                 >
-                  <svg
-                    class="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
+                  <Plus class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
                   Reuse
                 </button>
               </div>
@@ -284,15 +204,7 @@
                   :disabled="savingId === att.id"
                   @click="saveRename(att)"
                 >
-                  <svg
-                    class="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <Check class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
@@ -301,15 +213,7 @@
                   :disabled="savingId === att.id"
                   @click="cancelRename"
                 >
-                  <svg
-                    class="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X class="h-3.5 w-3.5" :stroke-width="2" aria-hidden="true" />
                 </button>
               </div>
               <div v-else class="flex min-w-0 items-center gap-1">
@@ -322,19 +226,7 @@
                   title="Rename"
                   @click="startRename(att)"
                 >
-                  <svg
-                    class="h-3 w-3"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
+                  <Pencil class="h-3 w-3" :stroke-width="2" aria-hidden="true" />
                 </button>
               </div>
               <span class="text-[0.65rem] font-medium text-white/35 tabular-nums">
@@ -400,15 +292,7 @@
               aria-label="Close preview"
               @click="preview = null"
             >
-              <svg
-                class="h-4.5 h-[1.125rem] w-4.5 w-[1.125rem]"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X class="h-[1.125rem] w-[1.125rem]" :stroke-width="2" aria-hidden="true" />
             </button>
           </figure>
         </div>
@@ -421,6 +305,17 @@
 import type { AIAttachmentSummary } from '@browser-server/shared-types';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import Modal from '../ui/Modal.vue';
+import {
+  Check,
+  ImageOff,
+  Maximize2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  TriangleAlert,
+  X,
+} from '@lucide/vue';
 import { getAIImageAttachmentUrl, listAIAttachments, renameAIImageAttachment } from '../../lib/api';
 
 const props = defineProps<{ open: boolean }>();

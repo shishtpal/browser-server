@@ -5,15 +5,12 @@
       type="button"
       @click="$emit('toggle')"
     >
-      <svg
-        class="h-3.5 w-3.5 transition-transform"
+      <ChevronRight
+        class="h-3.5 w-3.5 shrink-0 transition-transform"
         :class="{ 'rotate-90': open }"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-      </svg>
+        :stroke-width="2.5"
+        aria-hidden="true"
+      />
       Archived
       <span
         v-if="items.length > 0"
@@ -52,14 +49,7 @@
             type="button"
             @click.stop="$emit('restore', conversation)"
           >
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
+            <ArchiveRestore class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -69,6 +59,8 @@
 
 <script setup lang="ts">
 import type { AIConversation } from '@browser-server/shared-types';
+import { ArchiveRestore, ChevronRight } from '@lucide/vue';
+import { formatRelativeTime } from './chatFormat';
 
 defineProps<{
   items: AIConversation[];
@@ -80,17 +72,4 @@ defineEmits<{
   select: [id: string];
   restore: [conversation: AIConversation];
 }>();
-
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
 </script>

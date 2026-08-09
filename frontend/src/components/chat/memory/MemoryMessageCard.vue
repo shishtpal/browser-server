@@ -25,7 +25,7 @@
       >
         {{ toolName }}
       </span>
-      <span class="text-[10px] text-slate-400">{{ formatTime(message.created_at) }}</span>
+      <span class="text-[10px] text-slate-400">{{ formatMessageTime(message.created_at) }}</span>
       <span v-if="message.status !== 'completed'" class="text-[10px] text-slate-400 italic">
         ({{ message.status }})
       </span>
@@ -72,14 +72,7 @@
         type="button"
         @click="$emit('edit')"
       >
-        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-          />
-        </svg>
+        <Pencil class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
       </button>
       <button
         v-if="!isDeleteTarget"
@@ -88,14 +81,7 @@
         type="button"
         @click="$emit('confirmDelete')"
       >
-        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-          />
-        </svg>
+        <Trash2 class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
       </button>
     </div>
 
@@ -127,12 +113,13 @@ import { computed } from 'vue';
 import Button from '../../ui/Button.vue';
 import MemoryToolContent from './MemoryToolContent.vue';
 import {
-  getToolName,
-  formatTime,
-  truncateContent,
-  roleBadgeClass,
+  formatMessageTime,
   messageBorderClass,
-} from './memoryUtils';
+  roleBadgeClass,
+  truncateContent,
+} from '../chatFormat';
+import { parseToolContent, toolLabel } from '../messages/messageTools';
+import { Pencil, Trash2 } from '@lucide/vue';
 
 const props = defineProps<{
   message: AIMessage;
@@ -154,5 +141,5 @@ defineEmits<{
   toggleSelect: [];
 }>();
 
-const toolName = computed(() => getToolName(props.message));
+const toolName = computed(() => toolLabel(parseToolContent(props.message).tool ?? ''));
 </script>

@@ -37,7 +37,12 @@
 <script setup lang="ts">
 import type { AIMessage } from '@browser-server/shared-types';
 import { computed } from 'vue';
-import { parseToolContent, getToolArgs, getToolResult, getToolDecision } from './memoryUtils';
+import {
+  parseToolContent,
+  getToolArgs,
+  getToolResult,
+  getToolDecision,
+} from '../messages/messageTools';
 
 const props = defineProps<{
   message: AIMessage;

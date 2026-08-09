@@ -132,6 +132,33 @@ components/calendar/
 └── CalendarTodoDetail.vue     # Read-only detail modal (edit entry point)
 ```
 
+### Bookmarks module (`components/bookmarks/`) & History module (`components/history/`)
+
+Both pages are thin wiring over their page composables. Shared helpers live next to the domain; the near-identical Chrome import cards both use `ui/ImportCard.vue`. Delete confirmations go through `@browser-server/shared-modal`'s `useModal().confirmDelete` (never bare `confirm()`).
+
+```
+components/bookmarks/
+├── bookmarkFormat.ts          # Search columns + parse/format helpers (host, initials, tag matching)
+├── composables/
+│   ├── useBookmarkPage.ts     # Page wiring: edit modal + delete confirm + tree view state
+│   ├── useBookmarks.ts        # List + tag filter + search + CRUD (immediate load on user change)
+│   └── useBookmarkTree.ts     # folder_path → tree edges + expansion
+├── BookmarkForm.vue           # Quick-add form (local state, emits payload)
+├── BookmarkSearchBar.vue      # Column select + query + flat/tree toggle + counts
+├── BookmarkTagFilter.vue      # Scrollable tag pills + active-filter banner
+├── BookmarkEditModal.vue, BookmarkTag.vue, BookmarkImport.vue
+├── BookmarkTreeView.vue / BookmarkTreeNode.vue
+└── views/                     # BookmarkFlatView = BookmarkTableRow (desktop) + BookmarkCard (mobile)
+
+components/history/
+├── composables/
+│   ├── useHistoryPage.ts      # Infinite scroll (vueuse IntersectionObserver) + delete confirm
+│   └── useHistory.ts          # Paged list + filter + add/delete (immediate load on user change)
+├── HistoryAddForm.vue, HistorySearchBar.vue
+├── HistoryTableRow.vue (desktop) / HistoryCard.vue (mobile timeline)
+└── HistoryImport.vue
+```
+
 ### Quiz module (`components/quiz/`)
 
 The exam-prep page (question bank, flashcards, paper generator, online exam runner) is fully modular. `QuizPage.vue` is thin wiring: it owns the user selector and delegates everything else to `composables/useQuizPage.ts`, which composes the domain composables and coordinates tabs, modals, and the exam runner. All icons come from `@lucide/vue` — never hand-write inline SVGs or use emoji glyphs here.

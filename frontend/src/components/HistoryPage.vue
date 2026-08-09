@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-full px-4 py-4 sm:px-6 lg:px-10 xl:px-12">
+  <div class="mx-auto max-w-full px-3 py-4 sm:px-6 lg:px-10 xl:px-12">
     <PageHeader badge="Browsing log" title="History" color="violet">
       <template #stats>
         <StatCard :value="historyEntries.length" label="Entries" variant="dark" color="violet" />
@@ -17,54 +17,22 @@
     />
 
     <LoadingSpinner v-if="isLoading" message="Loading history..." color="violet" />
-
     <ErrorBanner v-else-if="error" :message="error" :on-retry="loadHistory" />
 
     <div v-else-if="selectedUserId">
-      <HistoryImport
-        v-if="selectedUserId"
-        :selected-user-id="selectedUserId"
-        class="mb-4"
-        @imported="loadHistory"
+      <HistoryImport :selected-user-id="selectedUserId" class="mb-4" @imported="loadHistory" />
+
+      <HistoryAddForm @submit="handleAdd" />
+
+      <HistorySearchBar
+        v-model="urlFilter"
+        :filtered-count="filteredHistory.length"
+        :total-count="historyEntries.length"
       />
-
-      <form
-        @submit.prevent="addEntry"
-        class="mb-4 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-colors sm:flex-row sm:items-center sm:gap-3 dark:border-white/10 dark:bg-slate-800/90"
-      >
-        <InputField
-          v-model="newUrl"
-          type="url"
-          placeholder="https://example.com"
-          required
-          flex
-          color="violet"
-        />
-        <InputField
-          v-model="newTitle"
-          type="text"
-          placeholder="Page title"
-          required
-          flex
-          color="violet"
-        />
-        <InputField
-          v-model="newDuration"
-          type="number"
-          placeholder="Duration (s)"
-          class="w-28 shrink-0 sm:w-24"
-          color="violet"
-        />
-        <Button type="submit" variant="gradient-violet" size="sm">Add</Button>
-      </form>
-
-      <div class="mb-4">
-        <InputField v-model="urlFilter" placeholder="Search by URL or title..." color="violet" />
-      </div>
 
       <EmptyState
         v-if="filteredHistory.length === 0"
-        :title="historyEntries.length === 0 ? 'No history yet' : 'No matching entries'"
+        :title="emptyTitle"
         :description="
           historyEntries.length === 0 ? 'Add a browsing entry above.' : 'Try a different search.'
         "
@@ -72,7 +40,8 @@
         color="violet"
       />
 
-      <div v-else>
+      <template v-else>
+        <!-- Desktop table -->
         <div
           class="hidden overflow-x-auto rounded-xl border border-gray-200/80 bg-white/90 shadow-sm transition-colors md:block dark:border-slate-700/80 dark:bg-slate-800/90"
         >
@@ -89,64 +58,46 @@
             <thead class="bg-gray-50 transition-colors dark:bg-slate-800/80">
               <tr>
                 <th
+                  v-for="column in columns"
+                  :key="column.label"
                   class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
+                  :class="{ 'text-right': column.align === 'right' }"
                 >
-                  Title
-                </th>
-                <th
-                  class="px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  URL
-                </th>
-                <th
-                  class="w-28 px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Visited
-                </th>
-                <th
-                  class="w-20 px-3 py-3 text-left text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Duration
-                </th>
-                <th
-                  class="w-20 px-3 py-3 text-right text-[10px] font-black tracking-wide text-slate-500 uppercase transition-colors dark:text-slate-400"
-                >
-                  Actions
+                  {{ column.label }}
                 </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 transition-colors dark:divide-slate-700/50">
               <HistoryTableRow
-                v-for="h in filteredHistory"
-                :key="h.id"
-                :entry="h"
-                @delete="removeEntry"
+                v-for="entry in filteredHistory"
+                :key="entry.id"
+                :entry="entry"
+                @delete="confirmDelete"
               />
             </tbody>
           </table>
         </div>
 
+        <!-- Mobile timeline cards -->
         <div
           class="relative space-y-2 before:absolute before:top-3 before:left-5 before:h-[calc(100%-1.5rem)] before:w-px before:bg-gray-200 md:hidden dark:before:bg-slate-700"
         >
-          <HistoryCard v-for="h in filteredHistory" :key="h.id" :entry="h" @delete="removeEntry" />
+          <HistoryCard
+            v-for="entry in filteredHistory"
+            :key="entry.id"
+            :entry="entry"
+            @delete="confirmDelete"
+          />
         </div>
 
-        <!-- Scroll sentinel + loading more indicator -->
+        <!-- Scroll sentinel + loading-more indicator -->
         <div ref="scrollSentinel" class="flex items-center justify-center py-6">
           <div
             v-if="isLoadingMore"
             class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400"
+            role="status"
           >
-            <svg
-              class="h-4 w-4 animate-spin"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
+            <LoaderCircle class="h-4 w-4 animate-spin" aria-hidden="true" />
             Loading more…
           </div>
           <span
@@ -156,88 +107,69 @@
             All {{ historyEntries.length }} entries loaded
           </span>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount, useTemplateRef } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { LoaderCircle } from '@lucide/vue';
 import { useUser } from '../composables/useUser';
-import { useHistory } from '../composables/useHistory';
 import PageHeader from './ui/PageHeader.vue';
 import StatCard from './ui/StatCard.vue';
 import UserSelector from './ui/UserSelector.vue';
 import LoadingSpinner from './ui/LoadingSpinner.vue';
 import ErrorBanner from './ui/ErrorBanner.vue';
 import EmptyState from './ui/EmptyState.vue';
-import InputField from './ui/InputField.vue';
-import Button from './ui/Button.vue';
 import SelectUserPrompt from './ui/SelectUserPrompt.vue';
-import HistoryTableRow from './history/HistoryTableRow.vue';
+import { useHistoryPage, type HistoryCreateInput } from './history/composables/useHistoryPage';
 import HistoryCard from './history/HistoryCard.vue';
 import HistoryImport from './history/HistoryImport.vue';
+import HistoryAddForm from './history/HistoryAddForm.vue';
+import HistoryTableRow from './history/HistoryTableRow.vue';
+import HistorySearchBar from './history/HistorySearchBar.vue';
 
 const { users, currentUserId, setUser, clearUser } = useUser();
-
 const selectedUserId = ref<number | null>(currentUserId.value);
 
 const {
-  historyEntries,
-  isLoading,
-  isLoadingMore,
-  error,
-  urlFilter,
-  hasMore,
-  newUrl,
-  newTitle,
-  newDuration,
-  totalDuration,
-  filteredHistory,
-  loadHistory,
-  loadMore,
-  addEntry,
-  removeEntry,
-} = useHistory(selectedUserId);
-
-const scrollSentinel = useTemplateRef<HTMLDivElement>('scrollSentinel');
-let observer: IntersectionObserver | null = null;
-
-function setupObserver() {
-  observer?.disconnect();
-  if (!scrollSentinel.value) return;
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0]?.isIntersecting && hasMore.value && !isLoadingMore.value) {
-        loadMore();
-      }
-    },
-    { rootMargin: '200px' },
-  );
-  observer.observe(scrollSentinel.value);
-}
-
-watch(scrollSentinel, () => {
-  setupObserver();
-});
-
-onBeforeUnmount(() => {
-  observer?.disconnect();
-});
+  historyApi: {
+    historyEntries,
+    isLoading,
+    isLoadingMore,
+    error,
+    urlFilter,
+    hasMore,
+    totalDuration,
+    filteredHistory,
+    loadHistory,
+    addEntry,
+  },
+  scrollSentinel,
+  confirmDelete,
+} = useHistoryPage(selectedUserId);
 
 watch(selectedUserId, (id) => {
-  if (id) {
-    setUser(id);
-    loadHistory();
-  } else {
-    clearUser();
-    historyEntries.value = [];
-    urlFilter.value = '';
-  }
+  if (id) setUser(id);
+  else clearUser();
 });
 
-if (selectedUserId.value) {
-  setUser(selectedUserId.value);
-  loadHistory();
+// Data load + observer wiring happen inside useHistoryPage / useHistory.
+
+const columns: { label: string; align?: 'right' }[] = [
+  { label: 'Title' },
+  { label: 'URL' },
+  { label: 'Visited' },
+  { label: 'Duration' },
+  { label: 'Actions', align: 'right' },
+];
+
+const emptyTitle = computed(() =>
+  historyEntries.value.length === 0 ? 'No history yet' : 'No matching entries',
+);
+
+async function handleAdd(input: HistoryCreateInput) {
+  await addEntry(input);
 }
 </script>

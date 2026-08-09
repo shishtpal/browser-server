@@ -1,5 +1,5 @@
-import { ref, computed, type Ref } from 'vue';
-import type { BookmarkResponse } from '../types';
+import type { BookmarkResponse } from '../../../types';
+import { computed, ref, type Ref } from 'vue';
 
 export interface TreeFolder {
   name: string;
@@ -18,6 +18,8 @@ export interface FlatTreeEntry {
   bookmark: BookmarkResponse | null;
   count: number;
 }
+
+export type BookmarkViewMode = 'flat' | 'tree';
 
 function buildTree(bms: BookmarkResponse[]): Map<string, TreeFolder> {
   const root = new Map<string, TreeFolder>();
@@ -113,11 +115,12 @@ function makeBookmarkEntry(bm: BookmarkResponse, depth: number, visible: boolean
   };
 }
 
+/** Builds the folder tree from the (already filtered) bookmarks, tracks expansion. */
 export function useBookmarkTree(
   filteredBookmarks: Ref<BookmarkResponse[]>,
   searchQuery: Ref<string>,
 ) {
-  const viewMode = ref<'flat' | 'tree'>('flat');
+  const viewMode = ref<BookmarkViewMode>('flat');
   const expandedFolders = ref<Set<string>>(new Set());
 
   const treeNodes = computed(() => {

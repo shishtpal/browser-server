@@ -1,10 +1,22 @@
-import { ref, computed, type Ref } from 'vue';
-import { getHistory, createHistory, deleteHistory } from '../lib/api';
-import { formatDuration } from '../lib/utils';
-import type { History } from '../types';
+import type { History } from '@browser-server/shared-types';
+import { computed, ref, watch, type Ref } from 'vue';
+import { formatDuration } from '../../../lib/utils';
+import { createHistory, deleteHistory, getHistory } from '../../../lib/api';
 
 const PAGE_SIZE = 100;
 
+export interface HistoryCreateInput {
+  url: string;
+  title: string;
+  duration?: number;
+}
+
+/**
+ * Browsing history for the selected user: paged list (auto "load more"),
+ * client-side URL/title filter, add + delete actions.
+ *
+ * Loading starts automatically (immediate watcher) whenever the user changes.
+ */
 export function useHistory(selectedUserId: Ref<number | null>) {
   const historyEntries = ref<History[]>([]);
   const isLoading = ref(false);
@@ -13,17 +25,13 @@ export function useHistory(selectedUserId: Ref<number | null>) {
   const urlFilter = ref('');
   const hasMore = ref(false);
 
-  const newUrl = ref('');
-  const newTitle = ref('');
-  const newDuration = ref('');
-
   const totalDuration = computed(() =>
     formatDuration(historyEntries.value.reduce((sum, h) => sum + h.duration, 0)),
   );
 
   const filteredHistory = computed(() => {
-    if (!urlFilter.value.trim()) return historyEntries.value;
-    const q = urlFilter.value.toLowerCase();
+    const q = urlFilter.value.trim().toLowerCase();
+    if (!q) return historyEntries.value;
     return historyEntries.value.filter(
       (h) => h.url.toLowerCase().includes(q) || h.title.toLowerCase().includes(q),
     );
@@ -59,26 +67,25 @@ export function useHistory(selectedUserId: Ref<number | null>) {
     }
   };
 
-  const addEntry = async () => {
-    if (!selectedUserId.value || !newUrl.value.trim() || !newTitle.value.trim()) return;
+  const addEntry = async (input: HistoryCreateInput) => {
+    if (!selectedUserId.value || !input.url.trim() || !input.title.trim()) return undefined;
     try {
-      await createHistory({
+      const created = await createHistory({
         user_id: selectedUserId.value,
-        url: newUrl.value.trim(),
-        title: newTitle.value.trim(),
-        duration: newDuration.value ? Number(newDuration.value) : 0,
+        url: input.url.trim(),
+        title: input.title.trim(),
+        duration: input.duration ?? 0,
       });
-      newUrl.value = '';
-      newTitle.value = '';
-      newDuration.value = '';
       await loadHistory();
+      return created;
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to add history entry';
+      return undefined;
     }
   };
 
+  /** Delete without confirming — the page confirms via the shared modal first. */
   const removeEntry = async (id: number) => {
-    if (!confirm('Delete this history entry?')) return;
     try {
       await deleteHistory(id);
       historyEntries.value = historyEntries.value.filter((h) => h.id !== id);
@@ -87,6 +94,20 @@ export function useHistory(selectedUserId: Ref<number | null>) {
     }
   };
 
+  watch(
+    selectedUserId,
+    (id) => {
+      if (id && id > 0) {
+        loadHistory();
+      } else {
+        historyEntries.value = [];
+        urlFilter.value = '';
+        hasMore.value = false;
+      }
+    },
+    { immediate: true },
+  );
+
   return {
     historyEntries,
     isLoading,
@@ -94,9 +115,6 @@ export function useHistory(selectedUserId: Ref<number | null>) {
     error,
     urlFilter,
     hasMore,
-    newUrl,
-    newTitle,
-    newDuration,
     totalDuration,
     filteredHistory,
     loadHistory,

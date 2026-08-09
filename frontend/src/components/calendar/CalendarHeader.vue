@@ -58,15 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Calendar1,
-  CalendarDays,
-  CalendarRange,
-  LayoutGrid,
-  ChevronLeft,
-  ChevronRight,
-  type LucideIcon,
-} from '@lucide/vue';
+import { Calendar1, CalendarDays, CalendarRange, LayoutGrid, type LucideIcon } from '@lucide/vue';
 import type { CalendarView } from './types';
 
 defineProps<{

@@ -139,6 +139,65 @@ export const questionToMarkdown = (q: QuestionResponse): string => {
   return lines.join('\n');
 };
 
+/* ------------------------------------------------------------------ */
+/* "Ask AI" prompts                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Human-readable rendering of the official answer of a question, used as
+ * context for the flashcard "Ask AI" actions. The card must already be
+ * revealed — these helpers intentionally include the answer.
+ */
+export const questionOfficialAnswerText = (q: QuestionResponse): string => {
+  if (q.options?.length) {
+    const correct = q.options.filter((o) => o.correct);
+    if (!correct.length) return 'No option marked correct';
+    return correct.map((o) => `${optionLetter(o.index)}. ${o.text}`).join('\n');
+  }
+  if (q.chronology_items?.length) {
+    return orderedChronology(q.chronology_items)
+      .map((item) => `${item.correct_order}. ${item.text}`)
+      .join('\n');
+  }
+  return q.expected_text?.trim() || 'No expected answer recorded';
+};
+
+/** Shared context block for both Ask AI modes. */
+const questionAIContext = (q: QuestionResponse): string => {
+  const scope = [q.subject, q.topic, q.sub_topic].filter(Boolean).join(' › ');
+  const lines = [questionToMarkdown(q)];
+  lines.push('', `**Official answer:**\n${questionOfficialAnswerText(q)}`);
+  lines.push('', `**Explanation in the question bank:** ${q.explanation?.trim() || '(none provided)'}`);
+  if (scope) lines.push('', `Syllabus scope: ${scope} · difficulty: ${q.difficulty}`);
+  if (q.image_url) lines.push('', '_This question also has an attached image that you cannot see._');
+  return lines.join('\n');
+};
+
+export const questionExplainPrompt = (q: QuestionResponse): string =>
+  `You are an expert exam-prep tutor. Explain the following ${q.difficulty} ${formatQuestionType(
+    q.type,
+  )} question to a student preparing for competitive exams.
+
+${questionAIContext(q)}
+
+Structure your answer as:
+1. **Concept tested** — the core idea behind the question, one or two sentences.
+2. **Why the correct answer is right** — the reasoning step by step.
+3. **Why the alternatives fail** — briefly address the wrong options / common traps (skip for non-choice formats).
+4. **Remember it** — one short memory tip or related fact.
+
+Keep it concise and readable in a small card.`;
+
+export const questionCrosscheckPrompt = (q: QuestionResponse): string =>
+  `You are an expert examiner auditing a question-bank entry for correctness.
+
+${questionAIContext(q)}
+
+Instructions:
+1. First solve the question independently from scratch and state YOUR answer (ignore the official answer at this stage).
+2. Then compare your answer against the official answer and the provided explanation.
+3. Finish with a verdict line, exactly one of: **Verdict: Consistent**, **Verdict: Ambiguous**, or **Verdict: Likely error** — followed by the reason, quoting exact option/item text where relevant. Flag wrong official answers, explanations that contradict the official answer, multiple defensible correct options, or factual mistakes.`;
+
 /**
  * Human readable rendering of a stored exam answer, used on the
  * post-submission review list.

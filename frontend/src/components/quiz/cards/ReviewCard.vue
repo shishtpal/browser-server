@@ -164,6 +164,9 @@
           {{ question.expected_text }}
         </p>
 
+        <!-- Ask AI: explain / cross-check (self-hides when AI is disabled) -->
+        <CardAIAssistant :question="question" />
+
         <p
           class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm leading-relaxed whitespace-pre-wrap text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-slate-300"
         >
@@ -240,6 +243,7 @@ import { getToken } from '../../../lib/auth';
 import { copyToClipboard } from '../../../utils/copyToClipboard';
 import Button from '../../ui/Button.vue';
 import TypeBadge from '../ui/TypeBadge.vue';
+import CardAIAssistant from './CardAIAssistant.vue';
 import {
   optionLetter,
   orderedChronology,

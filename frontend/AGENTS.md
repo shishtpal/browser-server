@@ -220,6 +220,7 @@ components/quiz/
 ├── cards/                    # Spaced-repetition flashcard session
 │   ├── QuestionCards.vue     # Phase controller (idle/loading/reviewing/complete)
 │   ├── ReviewSetupPanel.vue, ReviewHeader.vue, ReviewCard.vue, ReviewComplete.vue, TagSelector.vue
+│   ├── CardAIAssistant.vue   # "Ask AI" panel: explain / cross-check once the answer is revealed
 ├── papers/
 │   ├── PaperList.vue, PaperCard.vue, PaperDeleteDialog.vue, PaperDetail.vue
 │   ├── PaperRunnerModal.vue  # Hosts the attempt; delegates to runner/*
@@ -232,9 +233,12 @@ components/quiz/
     ├── useQuestions.ts       # Question bank CRUD + filters + stats + vocabulary (immediate load)
     ├── useQuizPapers.ts      # Papers CRUD + detail viewer (immediate load)
     ├── useQuestionCards.ts   # Flashcard session queue
+    ├── useQuestionAI.ts      # Flashcard "Ask AI" runs (ephemeral conversations, own provider/model)
     ├── usePaperAttempt.ts    # Exam state machine (answers, flags, timer, scoring)
     └── attempts.ts           # Attempt records: localStorage persistence + shared types
 ```
+
+**Ask AI on flashcards** — after an answer is revealed, `ReviewCard.vue` shows `CardAIAssistant.vue`, which offers *Explain* and *Cross-check answer* actions backed by `useQuestionAI.ts`. Prompts include the official answer/explanation (`questionExplainPrompt` / `questionCrosscheckPrompt` in `quizFormat.ts`, safe because the card is already revealed). Each run streams over an **ephemeral** AI conversation that is deleted once the answer settles, so the Chat sidebar is never polluted. The provider/model are set via a gear popover on the panel and persisted in localStorage (`bs.quiz.aiProvider` / `bs.quiz.aiModel`), independently of the Chat page's selection; the panel hides itself entirely when AI is disabled.
 
 ## Conventions
 

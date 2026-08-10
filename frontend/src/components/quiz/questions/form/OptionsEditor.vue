@@ -42,9 +42,12 @@
           <span v-else>{{ optionLetter(i) }}</span>
         </button>
 
-        <div class="min-w-0 flex-1">
-          <InputField v-model="opt.text" :placeholder="`Option ${optionLetter(i)}`" flex />
-        </div>
+        <InputField
+          v-model="opt.text"
+          class="min-w-0 flex-1"
+          :placeholder="`Option ${optionLetter(i)}`"
+          flex
+        />
 
         <button
           type="button"

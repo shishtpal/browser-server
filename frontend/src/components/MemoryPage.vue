@@ -240,7 +240,7 @@
                   <option value="contradicts">contradicts</option>
                   <option value="source">source</option>
                 </SelectField>
-                <InputField v-model="newLinkTo" placeholder="target id (e.g. mem_x)" color="violet" flex />
+                <InputField v-model="newLinkTo" class="min-w-0 flex-1" placeholder="target id (e.g. mem_x)" color="violet" flex />
                 <Button variant="secondary" size="sm" @click="addLink">Add</Button>
               </div>
             </div>

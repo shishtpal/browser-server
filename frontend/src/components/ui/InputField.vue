@@ -55,7 +55,7 @@ const inputClass = computed(() => {
     amber: 'focus:border-amber-400 focus:ring-amber-100 dark:focus:ring-amber-900/30',
   };
 
-  const flexClass = props.flex ? 'min-w-0 flex-1' : 'w-full';
+  const flexClass = props.flex ? 'w-full min-w-0 flex-1' : 'w-full';
 
   return `${base} ${colors[props.color]} ${flexClass}`;
 });

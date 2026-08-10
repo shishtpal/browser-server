@@ -31,16 +31,18 @@
         >
           #{{ i + 1 }}
         </span>
-        <div class="w-16 shrink-0 sm:w-20">
-          <InputField
-            v-model.number="item.correct_order"
-            type="number"
-            aria-label="Correct order"
-          />
-        </div>
-        <div class="min-w-0 flex-1">
-          <InputField v-model="item.text" :placeholder="`Item ${i + 1}`" flex />
-        </div>
+        <InputField
+          v-model.number="item.correct_order"
+          class="w-16 shrink-0 sm:w-20"
+          type="number"
+          aria-label="Correct order"
+        />
+        <InputField
+          v-model="item.text"
+          class="min-w-0 flex-1"
+          :placeholder="`Item ${i + 1}`"
+          flex
+        />
         <button
           type="button"
           class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:hover:bg-rose-900/20"

@@ -15,21 +15,39 @@
           {{ chip }}
         </span>
 
-        <label
-          class="ml-auto flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
-        >
-          Difficulty
-          <select
-            :value="question.difficulty"
-            :disabled="isSavingDifficulty"
-            class="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700 transition outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-violet-500/20"
-            @change="$emit('difficulty-change', ($event.target as HTMLSelectElement).value)"
+        <div class="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            class="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400"
+            :title="copied ? 'Copied!' : 'Copy question as Markdown'"
+            :aria-label="copied ? 'Copied' : 'Copy question as Markdown'"
+            @click="copyMarkdown"
           >
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </label>
+            <Check
+              v-if="copied"
+              class="h-3.5 w-3.5 text-emerald-500"
+              :stroke-width="2.5"
+              aria-hidden="true"
+            />
+            <Copy v-else class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
+          </button>
+
+          <label
+            class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
+          >
+            Difficulty
+            <select
+              :value="question.difficulty"
+              :disabled="isSavingDifficulty"
+              class="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700 transition outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-violet-500/20"
+              @change="$emit('difficulty-change', ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
+        </div>
       </header>
 
       <!-- Question -->
@@ -215,13 +233,19 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { ArrowRight, CircleCheck, CircleX, Eye, Keyboard } from '@lucide/vue';
+import { ArrowRight, Check, CircleCheck, CircleX, Copy, Eye, Keyboard } from '@lucide/vue';
 import type { QuestionResponse, ReviewRating } from '../../../types';
 import { API_BASE } from '../../../lib/api';
 import { getToken } from '../../../lib/auth';
+import { copyToClipboard } from '../../../utils/copyToClipboard';
 import Button from '../../ui/Button.vue';
 import TypeBadge from '../ui/TypeBadge.vue';
-import { optionLetter, orderedChronology, questionImageSrc } from '../quizFormat';
+import {
+  optionLetter,
+  orderedChronology,
+  questionImageSrc,
+  questionToMarkdown,
+} from '../quizFormat';
 
 const props = defineProps<{
   question: QuestionResponse;
@@ -239,6 +263,24 @@ const emit = defineEmits<{
 }>();
 
 const selectedOptionIndex = ref<number | null>(null);
+
+/* --------------------------- copy as Markdown --------------------------- */
+
+const copied = ref(false);
+let copyTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function copyMarkdown() {
+  try {
+    await copyToClipboard(questionToMarkdown(props.question));
+  } catch {
+    return; // clipboard unavailable
+  }
+  copied.value = true;
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(() => {
+    copied.value = false;
+  }, 2000);
+}
 
 const ratings: Array<{ name: ReviewRating; label: string; shortcut: string; code: string }> = [
   { name: 'again', label: 'Again', shortcut: '0', code: 'Numpad0' },

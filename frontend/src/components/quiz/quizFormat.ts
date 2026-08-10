@@ -119,6 +119,27 @@ export const orderedChronology = (items: ChronologyItem[] | undefined | null): C
   [...(items ?? [])].sort((a, b) => a.correct_order - b.correct_order);
 
 /**
+ * Markdown rendering of a question for sharing — the question text followed by
+ * its options (choices as a lettered bullet list, chronology as an ordered
+ * list). Answers are intentionally omitted so the copy stays spoiler-free.
+ */
+export const questionToMarkdown = (q: QuestionResponse): string => {
+  const lines: string[] = [`##### ${q.question.trim()}`];
+
+  if (q.options?.length) {
+    lines.push('');
+    for (const o of q.options) lines.push(`- **${optionLetter(o.index)}.** ${o.text}`);
+  } else if (q.chronology_items?.length) {
+    lines.push('', '_Arrange in the correct order:_', '');
+    orderedChronology(q.chronology_items).forEach((item, seq) =>
+      lines.push(`${seq + 1}. ${item.text}`),
+    );
+  }
+
+  return lines.join('\n');
+};
+
+/**
  * Human readable rendering of a stored exam answer, used on the
  * post-submission review list.
  */

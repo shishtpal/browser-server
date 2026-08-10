@@ -7,9 +7,10 @@
       v-for="action in actions"
       :key="action.name"
       class="rounded-md p-1.5 text-slate-400 transition dark:hover:bg-white/10"
-      :class="action.className"
+      :class="[action.className, active.includes(action.name) ? action.activeClassName : '']"
       :title="action.title"
       :aria-label="action.title"
+      :aria-pressed="active.includes(action.name) ? true : undefined"
       type="button"
       @click="$emit('action', action.name)"
     >
@@ -20,23 +21,31 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Copy, GitBranch, Trash2, type LucideIcon } from '@lucide/vue';
+import { Copy, GitBranch, Sigma, Trash2, type LucideIcon } from '@lucide/vue';
 
-export type BubbleActionName = 'copy' | 'branch' | 'delete';
+export type BubbleActionName = 'copy' | 'branch' | 'math' | 'delete';
 
 const props = withDefaults(
   defineProps<{
     /** Which actions to show, in order. */
     include?: BubbleActionName[];
+    /** Actions currently toggled on (shown pressed). */
+    active?: BubbleActionName[];
   }>(),
-  { include: () => ['copy', 'branch', 'delete'] },
+  { include: () => ['copy', 'branch', 'delete'], active: () => [] },
 );
 
 defineEmits<{ action: [name: BubbleActionName] }>();
 
 const ALL: Record<
   BubbleActionName,
-  { name: BubbleActionName; title: string; icon: LucideIcon; className: string }
+  {
+    name: BubbleActionName;
+    title: string;
+    icon: LucideIcon;
+    className: string;
+    activeClassName?: string;
+  }
 > = {
   copy: {
     name: 'copy',
@@ -51,6 +60,14 @@ const ALL: Record<
     icon: GitBranch,
     className:
       'hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400',
+  },
+  math: {
+    name: 'math',
+    title: 'Toggle math rendering (MathJax)',
+    icon: Sigma,
+    className:
+      'hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-500/10 dark:hover:text-violet-400',
+    activeClassName: 'text-violet-600 dark:text-violet-400',
   },
   delete: {
     name: 'delete',

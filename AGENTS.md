@@ -37,7 +37,7 @@ This root `AGENTS.md` covers the Go backend and cross-cutting concerns. Each fro
 - **Backend**: Go 1.25, gorilla/mux, mattn/go-sqlite3 (CGO required)
 - **Frontend (web)**: Astro 6, Vue 3, TailwindCSS 4
 - **Extensions**: Vite 8, Vue 3, TailwindCSS 4, Manifest V3 (Chromium and Firefox wrappers)
-- **Shared packages**: framework-free API types/client/utilities plus shared Vue extension code in `shared/browser-extension-core`
+- **Shared packages**: framework-free API types/client/utilities, the shared markdown renderer (`shared/browser-markdown`), plus shared Vue extension code in `shared/browser-extension-core`
 - **Package manager**: pnpm 11 (workspace defined in `pnpm-workspace.yaml`)
 - **Build**: PowerShell script (`scripts/build.ps1`), `CGO_ENABLED=1` required
 - **Auth**: opaque operator-level API token (Bearer header), generated via `server token generate`

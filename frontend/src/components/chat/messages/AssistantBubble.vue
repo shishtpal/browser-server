@@ -44,7 +44,11 @@
       Stopped
     </div>
 
-    <BubbleActions @action="onAction" />
+    <BubbleActions
+      :include="['copy', 'branch', 'math', 'delete']"
+      :active="mathEnabled ? ['math'] : []"
+      @action="onAction"
+    />
   </article>
 </template>
 
@@ -54,7 +58,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { CircleAlert, LoaderCircle, StopCircle } from '@lucide/vue';
 import BubbleActions, { type BubbleActionName } from './BubbleActions.vue';
 import ChatThinkingBlock from '../ChatThinkingBlock.vue';
-import { renderMarkdown, typesetMath } from '../markdown';
+import { renderMarkdown, typesetMath } from '@browser-server/shared-markdown';
 
 const props = withDefaults(
   defineProps<{
@@ -70,7 +74,12 @@ const emit = defineEmits<{
   branch: [messageId: string];
 }>();
 
-const renderedContent = computed(() => renderMarkdown(props.message.content));
+/** Math rendering is opt-in per message (MathJax loads from CDN on demand). */
+const mathEnabled = ref(false);
+
+const renderedContent = computed(() =>
+  renderMarkdown(props.message.content, { math: mathEnabled.value }),
+);
 
 /** Reference to the content container for MathJax typesetting. */
 const contentEl = ref<HTMLElement | null>(null);
@@ -87,8 +96,9 @@ async function runTypeset() {
 }
 
 watch(
-  renderedContent,
+  [renderedContent, mathEnabled],
   () => {
+    if (!mathEnabled.value) return;
     contentVersion++;
     if (props.message.status === 'pending') {
       clearTimeout(typesetTimer);
@@ -115,7 +125,8 @@ function copyCodeBlock(event: MouseEvent) {
 }
 
 function onAction(name: BubbleActionName) {
-  if (name === 'copy') emit('copy', props.message.content);
+  if (name === 'math') mathEnabled.value = !mathEnabled.value;
+  else if (name === 'copy') emit('copy', props.message.content);
   else if (name === 'branch') emit('branch', props.message.id);
   else emit('delete', props.message.id);
 }

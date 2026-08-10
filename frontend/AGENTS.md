@@ -7,7 +7,7 @@ Astro + Vue + TailwindCSS web app for Browser Server. This file covers `frontend
 - **Astro 6** — routing via file-based pages in `src/pages/`, ships zero JS by default
 - **Vue 3** (`<script setup lang="ts">`) — all interactivity lives in Vue islands
 - **TailwindCSS 4** — via `@tailwindcss/vite`; global styles in `src/styles/global.css`
-- **Shared workspace packages** — `@browser-server/shared-client`, `@browser-server/shared-types`, `@browser-server/shared-utils` (linked from `../shared/*`)
+- **Shared workspace packages** — `@browser-server/shared-client`, `@browser-server/shared-types`, `@browser-server/shared-utils`, `@browser-server/shared-markdown` (linked from `../shared/*`)
 
 > Note: the package is named `docs-spi` in `package.json` for historical reasons; it is the web frontend.
 
@@ -65,7 +65,6 @@ components/chat/
 ├── ChatRegenerateButton.vue# Regenerate the last assistant response
 ├── ChatDisabledState.vue   # Placeholder when bs-ai-config.json or bs-ai-models.json is missing
 ├── ChatCopyToast.vue       # Clipboard feedback toast
-├── markdown.ts             # Markdown rendering utility
 └── composables/
     ├── useChatConfig.ts        # AI config, provider/model state, YOLO mode persistence
     ├── useChatConversations.ts # Conversation CRUD, fork/branch, search/filter, rename/delete modals
@@ -81,6 +80,8 @@ settled message up to **and including** the selected one into a brand-new conver
 that inherits the source provider / model / profile / skills, then the UI activates the
 new branch so the user can keep chatting from that point. The source conversation is left
 untouched.
+
+Markdown rendering lives in the shared package `@browser-server/shared-markdown` (`shared/browser-markdown`), consumed via `renderMarkdown` / `typesetMath` in `messages/AssistantBubble.vue`. MathJax typesetting is opt-in per assistant message (Sigma toggle in the bubble actions, off by default); `renderMarkdown` accepts `{ math: false }` to render `$…$` literally. Because the renderer's Tailwind class strings live outside the frontend root, `src/styles/global.css` includes an explicit `@source '../../../shared/browser-markdown/src'` — keep it if the package moves.
 
 `ChatPage.vue` composes these pieces and delegates business logic to the composables, keeping the top-level component focused on wiring.
 

@@ -78,6 +78,12 @@ export interface MarkdownOptions {
   headingIds?: boolean;
   /** `target` for external links, e.g. `'_blank'`. Default: `'_blank'`. */
   linkTarget?: string | null;
+  /**
+   * Extract LaTeX math ($…$, $$…$$, \(…\), \[…\]) into placeholder elements
+   * for later `typesetMath()`. When `false`, math delimiters render as
+   * literal text. Default: `true`.
+   */
+  math?: boolean;
   /** Override any of the default Tailwind class strings. */
   classes?: Partial<Record<StyleKey, string>>;
 }
@@ -207,7 +213,7 @@ function slugify(text: string, taken: Map<string, number>): string {
 /* -------------------------------------------------------------- structure */
 
 interface Ctx {
-  opts: Required<Omit<MarkdownOptions, 'classes'>>;
+  opts: Required<Omit<MarkdownOptions, 'classes' | 'math'>>;
   cls: Record<StyleKey, string>;
   links: Map<string, { href: string; title?: string }>;
   footnoteDefs: Map<string, string[]>;
@@ -1017,18 +1023,27 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
     slugs: new Map(),
   };
 
-  // 1 — strip control chars that our placeholder tokens rely on, then mask
-  //     code regions (spans + fenced/indented blocks) so math inside code
-  //     stays literal.
+  // 1 — strip control chars that our placeholder tokens rely on.
   const cleaned = String(text)
     .replace(/\r\n?/g, '\n')
     .replace(/[\u0000-\u0008\u000b-\u001f]/g, '');
-  const { text: codeMasked, restore } = maskCodeRegions(cleaned);
 
-  // 2 — extract math BEFORE HTML-escaping so LaTeX syntax is preserved verbatim.
-  const { text: mathStripped, stash: mathStash } = extractMath(codeMasked);
+  // 2 — extract math BEFORE HTML-escaping so LaTeX syntax is preserved
+  //     verbatim. Code regions are masked only for the duration of the math
+  //     extraction (so $…$ inside code stays literal) and restored right
+  //     after, BEFORE escaping/parsing — otherwise code blocks would never
+  //     reach the block parser and raw unescaped source would leak into the
+  //     final HTML.
+  let mathStash: MathStash[] = [];
+  let source = cleaned;
+  if (options.math ?? true) {
+    const { text: codeMasked, restore } = maskCodeRegions(cleaned);
+    const extracted = extractMath(codeMasked);
+    mathStash = extracted.stash;
+    source = restore(extracted.text);
+  }
 
-  const normalized = escapeHtml(mathStripped.replace(/\t/g, '    '));
+  const normalized = escapeHtml(source.replace(/\t/g, '    '));
 
   const lines = extractDefinitions(normalized.split('\n'), ctx);
 
@@ -1046,10 +1061,7 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
   html = html.replace(/((?:href|title|id|src|alt)="[^"]*)\u0004M\d+\u0004([^"]*")/g, '$1$2');
 
   // 5 — re-inject math placeholders into the final HTML.
-  html = reinjectMath(html, mathStash);
-
-  // 6 — restore masked code regions.
-  return restore(html);
+  return reinjectMath(html, mathStash);
 }
 
 /** Render a single line/fragment without block wrappers (labels, titles, …). */

@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import '@browser-server/shared-modal/modal.css';
 
+/* Tailwind v4 only auto-scans the frontend root; pick up the class strings
+   embedded in the shared markdown renderer. */
+@source '../../../shared/browser-markdown/src';
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {

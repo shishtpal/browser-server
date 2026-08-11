@@ -34,6 +34,13 @@
           <Sparkles class="h-3 w-3" :stroke-width="2.5" aria-hidden="true" />
           {{ newCount }} new
         </span>
+        <span
+          v-if="skippedCount > 0"
+          class="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-950/50 dark:text-violet-300"
+        >
+          <SkipForward class="h-3 w-3" :stroke-width="2.5" aria-hidden="true" />
+          {{ skippedCount }} skipped
+        </span>
         <Button
           size="sm"
           variant="ghost"
@@ -87,7 +94,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Clock, LogOut, Sparkles } from '@lucide/vue';
+import { Clock, LogOut, SkipForward, Sparkles } from '@lucide/vue';
 import Button from '../../ui/Button.vue';
 
 const props = defineProps<{
@@ -98,6 +105,7 @@ const props = defineProps<{
   newCount: number;
   allQuestions: boolean;
   selectedTags: string[];
+  skippedCount: number;
 }>();
 
 const emit = defineEmits<{

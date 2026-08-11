@@ -32,6 +32,17 @@
             <Copy v-else class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
           </button>
 
+          <button
+            type="button"
+            :disabled="!canSkip || isRating"
+            class="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition hover:bg-violet-50 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-violet-900/30 dark:hover:text-violet-400"
+            title="Skip for later (S)"
+            aria-label="Skip this question and attempt it later"
+            @click="$emit('skip')"
+          >
+            <SkipForward class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
+          </button>
+
           <label
             class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400"
           >
@@ -236,7 +247,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { ArrowRight, Check, CircleCheck, CircleX, Copy, Eye, Keyboard } from '@lucide/vue';
+import {
+  ArrowRight,
+  Check,
+  CircleCheck,
+  CircleX,
+  Copy,
+  Eye,
+  Keyboard,
+  SkipForward,
+} from '@lucide/vue';
 import type { QuestionResponse, ReviewRating } from '../../../types';
 import { API_BASE } from '../../../lib/api';
 import { getToken } from '../../../lib/auth';
@@ -257,12 +277,14 @@ const props = defineProps<{
   isRating: boolean;
   isSavingDifficulty: boolean;
   practiceMode: boolean;
+  canSkip: boolean;
 }>();
 
 const emit = defineEmits<{
   reveal: [];
   rate: [rating: ReviewRating];
   next: [];
+  skip: [];
   'difficulty-change': [difficulty: string];
 }>();
 
@@ -363,7 +385,13 @@ function isTypingTarget(target: EventTarget | null) {
 }
 
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
-  if (!props.revealed || props.isRating || isTypingTarget(event.target) || event.repeat) return;
+  if (props.isRating || isTypingTarget(event.target) || event.repeat) return;
+  if (event.code === 'KeyS' && props.canSkip) {
+    event.preventDefault();
+    emit('skip');
+    return;
+  }
+  if (!props.revealed) return;
   const rating = ratings.find((item) => item.code === event.code);
   if (!rating) return;
   event.preventDefault();

@@ -36,6 +36,7 @@
         :new-count="newCount"
         :all-questions="allQuestions"
         :selected-tags="selectedTags"
+        :skipped-count="skippedCount"
         @end="end"
       />
 
@@ -45,10 +46,12 @@
         :is-rating="isRating"
         :is-saving-difficulty="isSavingDifficulty"
         :practice-mode="practiceMode"
+        :can-skip="!!current"
         @reveal="reveal"
         @rate="submitRating"
         @difficulty-change="changeDifficulty($event as QuestionDifficulty)"
         @next="nextPractice"
+        @skip="skip"
       />
     </template>
 
@@ -58,6 +61,7 @@
       :practice-mode="practiceMode"
       :reviewed="reviewed"
       :rating-counts="ratingCounts"
+      :skipped-count="skippedCount"
       @again="() => start(practiceMode)"
       @change-tags="end"
     />
@@ -118,8 +122,10 @@ const {
   answerRevealed,
   isRating,
   isSavingDifficulty,
+  skippedCount,
   reveal,
   submitRating,
+  skip,
   changeDifficulty,
   ratingCounts,
 } = cards;

@@ -19,6 +19,13 @@
     <p v-else class="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
       Great job! You reviewed <span class="font-bold">{{ reviewed }}</span> cards in this session.
     </p>
+    <p
+      v-if="skippedCount > 0"
+      class="mt-1 text-sm font-medium text-violet-700 dark:text-violet-300"
+    >
+      You skipped <span class="font-bold">{{ skippedCount }}</span>
+      {{ skippedCount === 1 ? 'question' : 'questions' }}.
+    </p>
 
     <!-- Rating breakdown -->
     <div
@@ -80,6 +87,7 @@ const props = defineProps<{
   practiceMode: boolean;
   reviewed: number;
   ratingCounts: Record<ReviewRating, number>;
+  skippedCount: number;
 }>();
 
 const emit = defineEmits<{

@@ -25,6 +25,8 @@ export function useQuestionCards(
   const practiceMode = ref(false);
   const isRating = ref(false);
   const isSavingDifficulty = ref(false);
+  const skippedCount = ref(0);
+  const skippedQuestionIDs = new Set<number>();
   const ratingCounts = ref<Record<ReviewRating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
   let session = 0;
 
@@ -49,6 +51,8 @@ export function useQuestionCards(
     practiceMode.value = false;
     isRating.value = false;
     isSavingDifficulty.value = false;
+    skippedCount.value = 0;
+    skippedQuestionIDs.clear();
     ratingCounts.value = { again: 0, hard: 0, good: 0, easy: 0 };
   };
 
@@ -70,6 +74,8 @@ export function useQuestionCards(
       newCount.value = queue.new_count;
       answerRevealed.value = false;
       nothingDue.value = queue.items.length === 0;
+      skippedCount.value = 0;
+      skippedQuestionIDs.clear();
       ratingCounts.value = { again: 0, hard: 0, good: 0, easy: 0 };
       phase.value = queue.items.length ? 'reviewing' : 'idle';
     } catch (e) {
@@ -86,13 +92,32 @@ export function useQuestionCards(
     answerRevealed.value = false;
     nothingDue.value = false;
     practiceMode.value = false;
+    skippedCount.value = 0;
+    skippedQuestionIDs.clear();
     error.value = null;
     phase.value = 'idle';
   };
   const nextPractice = () => {
+    if (current.value) skippedQuestionIDs.delete(current.value.question.id);
     items.value.shift();
     answerRevealed.value = false;
     if (!items.value.length) phase.value = 'complete';
+  };
+
+  /** Move the current card to the back of the queue to attempt it later.
+   *  Complete once every remaining card has been skipped. */
+  const skip = () => {
+    if (!current.value || isRating.value) return;
+    skippedQuestionIDs.add(current.value.question.id);
+    if (items.value.length > 1) {
+      items.value.push(items.value.shift()!);
+    } else {
+      items.value.shift();
+      phase.value = 'complete';
+    }
+    answerRevealed.value = false;
+    skippedCount.value++;
+    if (skippedQuestionIDs.size >= items.value.length) phase.value = 'complete';
   };
   const reveal = () => {
     answerRevealed.value = true;
@@ -104,6 +129,7 @@ export function useQuestionCards(
     error.value = null;
     try {
       await reviewQuestion(current.value.question.id, { user_id: userId.value, rating });
+      skippedQuestionIDs.delete(current.value.question.id);
       items.value.shift();
       ratingCounts.value[rating]++;
       answerRevealed.value = false;
@@ -146,6 +172,7 @@ export function useQuestionCards(
     practiceMode,
     isRating,
     isSavingDifficulty,
+    skippedCount,
     ratingCounts,
     current,
     reviewed,
@@ -155,6 +182,7 @@ export function useQuestionCards(
     start,
     end,
     nextPractice,
+    skip,
     reveal,
     submitRating,
     changeDifficulty,

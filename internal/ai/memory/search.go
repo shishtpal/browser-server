@@ -149,15 +149,21 @@ func (s *Store) Recall(ctx context.Context, a RecallArgs) (RecallResult, error) 
 	if len(nodes) > 0 && total > len(nodes) {
 		result.Hint = fmt.Sprintf("%d matches; narrow with tags/kind or raise limit", total)
 	}
-	if a.Synthesize && s.cfg.Synthesizer.Enabled && s.completer != nil {
-		syn, err := s.synthesize(ctx, a.Query, nodes, edges)
-		if err == nil {
-			result.Synthesized = &syn
-			result.Nodes = nil
-			result.Edges = nil
-			result.Hint = ""
-		} else if !s.cfg.Synthesizer.FallbackOnError {
-			return RecallResult{}, fmt.Errorf("synthesize: %w", err)
+	if a.Synthesize && s.cfg.Synthesizer.Enabled {
+		if s.completer == nil {
+			if !s.cfg.Synthesizer.FallbackOnError {
+				return RecallResult{}, fmt.Errorf("synthesize: librarian is not configured")
+			}
+		} else {
+			syn, err := s.synthesize(ctx, a.Query, nodes, edges)
+			if err == nil {
+				result.Synthesized = &syn
+				result.Nodes = nil
+				result.Edges = nil
+				result.Hint = ""
+			} else if !s.cfg.Synthesizer.FallbackOnError {
+				return RecallResult{}, fmt.Errorf("synthesize: %w", err)
+			}
 		}
 	}
 	return result, nil

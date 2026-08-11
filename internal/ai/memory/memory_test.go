@@ -83,6 +83,52 @@ func TestUpsertCreateAndRecall(t *testing.T) {
 	}
 }
 
+func TestRecallSynthesize(t *testing.T) {
+	s := testStore(t)
+	s.cfg.Synthesizer.Enabled = true
+	s.cfg.Synthesizer.FallbackOnError = false
+	s.SetCompleter(CompleterFunc(func(_ context.Context, req CompletionRequest) (CompletionResponse, error) {
+		if !strings.Contains(req.User, "browser-server project working directory") {
+			t.Fatalf("synthesis prompt did not contain query: %q", req.User)
+		}
+		return CompletionResponse{Content: `{"answer":"The project working directory is D:/Codings/lang-Go/browser-server.","confidence":1,"sources":["mem_project_dir"],"gaps":[]}`}, nil
+	}))
+	_, err := s.Write(context.Background(), WriteArgs{Ops: []WriteOp{{
+		Op: "upsert", ID: "mem_project_dir", Kind: KindFact, Title: "Browser Server working directory",
+		Summary: "The browser-server project working directory is D:/Codings/lang-Go/browser-server.", Parent: "mem_projects",
+	}}})
+	if err != nil {
+		t.Fatalf("setup memory: %v", err)
+	}
+
+	result, err := s.Recall(context.Background(), RecallArgs{
+		Query: "browser-server project working directory", Synthesize: true,
+	})
+	if err != nil {
+		t.Fatalf("synthesized recall: %v", err)
+	}
+	if result.Synthesized == nil || !result.Synthesized.Synthesized {
+		t.Fatalf("expected synthesis result, got %+v", result)
+	}
+	if result.Synthesized.Answer != "The project working directory is D:/Codings/lang-Go/browser-server." {
+		t.Fatalf("unexpected synthesis answer: %q", result.Synthesized.Answer)
+	}
+	if len(result.Nodes) != 0 || len(result.Edges) != 0 {
+		t.Fatalf("synthesis should replace raw graph data: %+v", result)
+	}
+}
+
+func TestRecallSynthesizeWithoutLibrarianReturnsErrorWhenFallbackDisabled(t *testing.T) {
+	s := testStore(t)
+	s.cfg.Synthesizer.Enabled = true
+	s.cfg.Synthesizer.FallbackOnError = false
+
+	_, err := s.Recall(context.Background(), RecallArgs{Query: "anything", Synthesize: true})
+	if err == nil || !strings.Contains(err.Error(), "librarian is not configured") {
+		t.Fatalf("expected missing librarian error, got %v", err)
+	}
+}
+
 func TestRecallByIDsPreservesOrder(t *testing.T) {
 	s := testStore(t)
 	_, err := s.Write(context.Background(), WriteArgs{Ops: []WriteOp{

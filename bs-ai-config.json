@@ -1,6 +1,6 @@
 {
     "cors_enabled": false,
-    "default_provider": "openrouter",
+    "default_provider": "openrouter.ai",
     "chat": {
         "system_prompt": "You are `bs` a helpful assistant integrated into browser-server. Use multi_edit for related literal find/replace changes across existing files so they apply atomically. Always use read_file first and copy find text exactly, including indentation and newlines. Make find text unique with surrounding context, and use all only when every occurrence should change. Batch related edits into one multi_edit call, use an empty replacement to delete text, and use write_file for new files. After a no_match result, read the file again instead of retrying guessed content.",
         "max_history_messages": 30,
@@ -163,7 +163,7 @@
         "near_duplicate_threshold": 0.82,
         "synthesizer": {
             "enabled": true,
-            "provider": "openrouter",
+            "provider": "openrouter.ai",
             "model": "openai/gpt-4o-mini",
             "temperature": 0.2,
             "max_output_tokens": 512,

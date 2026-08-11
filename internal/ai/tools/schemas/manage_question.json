@@ -9,8 +9,8 @@
         },
         "action": {
             "type": "string",
-            "enum": ["add", "edit", "remove", "get", "list"],
-            "description": "Action to perform on a question"
+            "enum": ["add", "edit", "remove", "get", "list", "list_tags"],
+            "description": "Action to perform on a question; list_tags returns the user's existing tag vocabulary {tags, subjects, topics, sub_topics} so add/edit reuse existing tags instead of creating near-duplicates"
         },
         "id": {
             "type": "integer",

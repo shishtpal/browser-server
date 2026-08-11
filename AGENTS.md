@@ -519,7 +519,7 @@ known := map[string]bool{
 | `search_calendar` | `search_calendar.go` | Search calendar events (todos with scheduled dates, date range filtering) |
 | `manage_calendar` | `manage_calendar.go` | Manage calendar events: add, edit, remove, get (todos with start_date/end_date/rrule) |
 | `search_questions` | `search_questions.go` | Search the question bank (filter by type, difficulty, tags (any-of array), subject/topic/sub_topic, text); `random: true` draws a random sample of `page_size` matches instead of ranking |
-| `manage_question` | `manage_question.go` | Add, edit, remove, get, or list questions in the question bank (single_choice, multiple_choice, input, chronology); accepts a `tags` array on create/edit |
+| `manage_question` | `manage_question.go` | Add, edit, remove, get, or list questions in the question bank (single_choice, multiple_choice, input, chronology); accepts a `tags` array on create/edit; `list_tags` returns the user's distinct tags/subjects/topics/sub_topics vocabulary from `quiz.TagVocabulary` |
 | `search_prompts` | `search_prompts.go` | Search the prompt database (filter by user, text query) |
 | `manage_prompt` | `manage_prompt.go` | Add, edit, or remove a prompt |
 | `search_bookmarks` | `search_bookmarks.go` | Search bookmark database |

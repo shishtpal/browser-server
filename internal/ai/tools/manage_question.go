@@ -17,7 +17,7 @@ func registerManageQuestion(r *Registry) {
 	r.add(Tool{
 		Name:        "manage_question",
 		Category:    "General",
-		Description: "Add, edit, remove, get, or list questions in the question bank. Requires user_id and action. For add: type and question are required; options (with correct flags) for single_choice/multiple_choice, chronology_items for chronology, expected_text for input. For edit/remove/get: id is required. List accepts the same filters as search without the query.",
+		Description: "Add, edit, remove, get, list, or list_tags for questions in the question bank. Requires user_id and action. For add: type and question are required; options (with correct flags) for single_choice/multiple_choice, chronology_items for chronology, expected_text for input. For edit/remove/get: id is required. List accepts the same filters as search without the query. list_tags returns the distinct tags, subjects, topics, and sub-topics already used by the user so add/edit can reuse them instead of inventing duplicates.",
 		Schema:      json.RawMessage(manageQuestionSchema),
 		Execute:     manageQuestion,
 	})
@@ -65,8 +65,10 @@ func manageQuestion(ctx context.Context, raw json.RawMessage) (any, error) {
 		return manageQuestionGet(ctx, a)
 	case "list":
 		return manageQuestionList(ctx, a)
+	case "list_tags":
+		return quiz.TagVocabulary(ctx, a.UserID)
 	default:
-		return nil, fmt.Errorf("action must be one of: add, edit, remove, get, list")
+		return nil, fmt.Errorf("action must be one of: add, edit, remove, get, list, list_tags")
 	}
 }
 

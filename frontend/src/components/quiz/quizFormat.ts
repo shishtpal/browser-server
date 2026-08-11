@@ -167,9 +167,13 @@ const questionAIContext = (q: QuestionResponse): string => {
   const scope = [q.subject, q.topic, q.sub_topic].filter(Boolean).join(' › ');
   const lines = [questionToMarkdown(q)];
   lines.push('', `**Official answer:**\n${questionOfficialAnswerText(q)}`);
-  lines.push('', `**Explanation in the question bank:** ${q.explanation?.trim() || '(none provided)'}`);
+  lines.push(
+    '',
+    `**Explanation in the question bank:** ${q.explanation?.trim() || '(none provided)'}`,
+  );
   if (scope) lines.push('', `Syllabus scope: ${scope} · difficulty: ${q.difficulty}`);
-  if (q.image_url) lines.push('', '_This question also has an attached image that you cannot see._');
+  if (q.image_url)
+    lines.push('', '_This question also has an attached image that you cannot see._');
   return lines.join('\n');
 };
 

@@ -114,15 +114,6 @@ export function useChatConfig() {
     disabledTools.value = next;
   }
 
-  function toggleSkill(name: string) {
-    const idx = activeSkills.value.indexOf(name);
-    if (idx >= 0) {
-      activeSkills.value = activeSkills.value.filter((s) => s !== name);
-    } else {
-      activeSkills.value = [...activeSkills.value, name];
-    }
-  }
-
   function setActiveSkills(names: string[]) {
     activeSkills.value = names;
   }
@@ -162,7 +153,6 @@ export function useChatConfig() {
     toolsByCategory,
     activeTools,
     toggleTool,
-    toggleSkill,
     setActiveSkills,
     initFromConfig,
   };

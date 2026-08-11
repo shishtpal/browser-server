@@ -70,6 +70,43 @@
       </template>
     </SearchableSelect>
 
+    <!-- Skills dropdown (multi-select) -->
+    <MultiSelectDropdown
+      v-if="skills.length > 0"
+      :model-value="activeSkills"
+      :items="skillItems"
+      :disabled="disabled"
+      title="Select skills to activate"
+      align="right"
+      class="w-36"
+      @update:model-value="$emit('update:activeSkills', $event)"
+    >
+      <template #trigger="{ label }">
+        <div class="flex min-w-0 flex-1 items-center gap-1.5">
+          <Sparkles
+            class="h-3.5 w-3.5 shrink-0"
+            :class="activeSkills.length > 0 ? 'text-emerald-500' : 'text-slate-400'"
+            :stroke-width="2.25"
+            aria-hidden="true"
+          />
+          <span
+            v-if="activeSkills.length === 0"
+            class="overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-500"
+          >
+            Skills
+          </span>
+          <span v-else class="inline-flex min-w-0 items-center gap-1">
+            <span
+              class="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-100 px-1 text-[0.65rem] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+            >
+              {{ activeSkills.length }}
+            </span>
+            <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ label }}</span>
+          </span>
+        </div>
+      </template>
+    </MultiSelectDropdown>
+
     <!-- Tools badge -->
     <span
       v-if="supportsTools"
@@ -99,27 +136,6 @@
       />
       YOLO
     </label>
-
-    <!-- Skills toggles -->
-    <div v-if="skills.length > 0" class="flex flex-wrap items-center gap-1">
-      <button
-        v-for="skill in skills"
-        :key="skill.name"
-        type="button"
-        class="rounded-full border px-2.5 py-0.5 text-[0.68rem] font-medium transition-all active:scale-95"
-        :class="
-          activeSkills.includes(skill.name)
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 ring-inset dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50'
-            : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-white/20 dark:hover:text-slate-300'
-        "
-        :title="skill.description || skill.label"
-        :aria-pressed="activeSkills.includes(skill.name)"
-        :disabled="disabled"
-        @click="$emit('toggle-skill', skill.name)"
-      >
-        {{ skill.label }}
-      </button>
-    </div>
 
     <!-- Conversation title -->
     <span
@@ -173,10 +189,12 @@ import {
   Lock,
   PanelLeft,
   PanelRight,
+  Sparkles,
   Wrench,
   type LucideIcon,
 } from '@lucide/vue';
 import SearchableSelect from '../ui/SearchableSelect.vue';
+import MultiSelectDropdown from '../ui/MultiSelectDropdown.vue';
 
 interface ModelInfo {
   id: string;
@@ -213,7 +231,7 @@ const emit = defineEmits<{
   'update:selectedProvider': [value: string];
   'update:selectedModel': [value: string];
   'update:yoloMode': [value: boolean];
-  'toggle-skill': [name: string];
+  'update:activeSkills': [names: string[]];
   download: [];
   'toggle-tools-panel': [];
   'toggle-memory-explorer': [];
@@ -237,6 +255,14 @@ const modelItems = computed<SelectItem[]>(() =>
     value: m.id,
     label: m.label || m.id,
     supports_tools: m.supports_tools,
+  })),
+);
+
+const skillItems = computed<SelectItem[]>(() =>
+  props.skills.map((s) => ({
+    value: s.name,
+    label: s.label,
+    description: s.description,
   })),
 );
 

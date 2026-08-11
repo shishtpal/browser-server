@@ -58,26 +58,18 @@
 
       <!-- Skills -->
       <div v-if="skills.length > 0">
-        <label class="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+        <label class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
           Skills
         </label>
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            v-for="skill in skills"
-            :key="skill.name"
-            type="button"
-            class="rounded-full border px-2.5 py-1 text-[11px] font-medium transition"
-            :class="
-              form.skills.includes(skill.name)
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-white/20 dark:hover:text-slate-300'
-            "
-            :title="skill.description || skill.label"
-            @click="toggleSkill(skill.name)"
-          >
-            {{ skill.label }}
-          </button>
-        </div>
+        <MultiSelectDropdown
+          :model-value="form.skills"
+          :items="skillItems"
+          placeholder="Select skills..."
+          :searchable="true"
+          search-placeholder="Search skills..."
+          class="w-full"
+          @update:model-value="form.skills = $event"
+        />
       </div>
 
       <!-- Actions -->
@@ -101,10 +93,11 @@
 </template>
 
 <script setup lang="ts">
-import { Wrench } from '@lucide/vue';
 import type { AIProfile, AISkill, AIProviderConfig } from '@browser-server/shared-types';
 import { reactive, watch, computed } from 'vue';
+import { Wrench } from '@lucide/vue';
 import Modal from '../ui/Modal.vue';
+import MultiSelectDropdown, { type SelectItem } from '../ui/MultiSelectDropdown.vue';
 
 export interface NewConversationResult {
   provider: string;
@@ -167,14 +160,13 @@ watch(
   },
 );
 
-function toggleSkill(name: string) {
-  const idx = form.skills.indexOf(name);
-  if (idx >= 0) {
-    form.skills.splice(idx, 1);
-  } else {
-    form.skills.push(name);
-  }
-}
+const skillItems = computed<SelectItem[]>(() =>
+  props.skills.map((s) => ({
+    value: s.name,
+    label: s.label,
+    description: s.description,
+  })),
+);
 
 function handleCreate() {
   emit('create', {

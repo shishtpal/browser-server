@@ -51,7 +51,7 @@
         @update:selected-provider="selectedProvider = $event"
         @update:selected-model="selectedModel = $event"
         @update:yolo-mode="yoloMode = $event"
-        @toggle-skill="toggleSkill($event)"
+        @update:active-skills="setActiveSkills($event)"
         @download="downloadConversation"
         @toggle-tools-panel="showToolsPanel = !showToolsPanel"
         @toggle-memory-explorer="showMemoryExplorer = !showMemoryExplorer"
@@ -273,7 +273,7 @@ const {
   selectedProfile,
   attachmentsConfig,
   toggleTool,
-  toggleSkill,
+  setActiveSkills,
 } = page.chats;
 
 // Conversations passthroughs

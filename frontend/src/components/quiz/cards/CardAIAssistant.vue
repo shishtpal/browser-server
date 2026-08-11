@@ -28,7 +28,10 @@
       />
     </button>
 
-    <div v-if="isOpen" class="border-t border-violet-200/60 px-3.5 pt-3 pb-3.5 dark:border-violet-800/50">
+    <div
+      v-if="isOpen"
+      class="border-t border-violet-200/60 px-3.5 pt-3 pb-3.5 dark:border-violet-800/50"
+    >
       <!-- Actions + settings -->
       <div class="relative flex flex-wrap items-center gap-2">
         <Button
@@ -73,7 +76,10 @@
         <button
           type="button"
           class="ml-auto grid h-7 w-7 place-items-center rounded-lg text-violet-400 transition hover:bg-violet-100 hover:text-violet-600 dark:text-violet-400 dark:hover:bg-violet-900/40 dark:hover:text-violet-300"
-          :class="{ 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-300': showSettings }"
+          :class="{
+            'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-300':
+              showSettings,
+          }"
           title="Choose provider and model"
           aria-label="Choose provider and model"
           :aria-expanded="showSettings"
@@ -93,14 +99,26 @@
         >
           <div
             v-if="showSettings"
-            class="absolute bottom-full right-0 z-50 mb-1 w-64 space-y-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-lg dark:border-white/10 dark:bg-slate-900"
+            class="absolute right-0 bottom-full z-50 mb-1 w-64 space-y-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-lg dark:border-white/10 dark:bg-slate-900"
           >
             <label class="block space-y-1">
-              <span class="text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Provider</span>
-              <SearchableSelect v-model="ai.provider.value" :items="ai.providerItems.value" class="w-full" />
+              <span
+                class="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400"
+              >
+                Provider
+              </span>
+              <SearchableSelect
+                v-model="ai.provider.value"
+                :items="ai.providerItems.value"
+                class="w-full"
+              />
             </label>
             <label class="block space-y-1">
-              <span class="text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Model</span>
+              <span
+                class="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400"
+              >
+                Model
+              </span>
               <SearchableSelect
                 v-model="ai.model.value"
                 :items="ai.modelItems.value"
@@ -131,7 +149,9 @@
         v-if="ai.content.value"
         class="mt-3 rounded-lg border border-violet-200/60 bg-white/80 p-3 dark:border-violet-800/50 dark:bg-slate-900/60"
       >
-        <p class="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-violet-500 dark:text-violet-300">
+        <p
+          class="mb-1.5 text-[10px] font-bold tracking-wide text-violet-500 uppercase dark:text-violet-300"
+        >
           {{ ai.mode.value === 'crosscheck' ? 'Cross-check result' : 'AI explanation' }}
         </p>
         <!-- AI-generated markdown; renderMarkdown HTML-escapes input -->

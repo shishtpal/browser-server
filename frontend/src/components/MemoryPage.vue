@@ -35,12 +35,7 @@
     </PageHeader>
 
     <div class="mt-4 flex flex-wrap items-center gap-3">
-      <InputField
-        v-model="searchQuery"
-        placeholder="Filter fragments…"
-        color="violet"
-        flex
-      />
+      <InputField v-model="searchQuery" placeholder="Filter fragments…" color="violet" flex />
       <SelectField v-model="kindFilter" class="w-44">
         <option value="">All kinds</option>
         <option v-for="k in kindOptions" :key="k" :value="k">{{ k }}</option>
@@ -48,8 +43,12 @@
       <span v-if="selectedId" class="text-xs font-semibold text-slate-500 dark:text-slate-400">
         Selected: <code class="text-violet-600 dark:text-violet-400">{{ selectedId }}</code>
       </span>
-      <span v-else-if="isNewFragment" class="text-xs font-semibold text-slate-500 dark:text-slate-400">
-        Editing: <code class="text-violet-600 dark:text-violet-400">new fragment</code> (id assigned on save)
+      <span
+        v-else-if="isNewFragment"
+        class="text-xs font-semibold text-slate-500 dark:text-slate-400"
+      >
+        Editing: <code class="text-violet-600 dark:text-violet-400">new fragment</code> (id assigned
+        on save)
       </span>
     </div>
 
@@ -68,12 +67,28 @@
     <div v-else class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
       <!-- Graph pane -->
       <div class="lg:col-span-3">
-        <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div class="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-800">
-            <span class="text-xs font-bold uppercase tracking-wide text-slate-400">Graph view</span>
+        <div
+          class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+        >
+          <div
+            class="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-800"
+          >
+            <span class="text-xs font-bold tracking-wide text-slate-400 uppercase">Graph view</span>
             <div class="flex items-center gap-1">
-              <button class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" type="button" @click="zoomOut">−</button>
-              <button class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" type="button" @click="zoomIn">+</button>
+              <button
+                class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                type="button"
+                @click="zoomOut"
+              >
+                −
+              </button>
+              <button
+                class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                type="button"
+                @click="zoomIn"
+              >
+                +
+              </button>
             </div>
           </div>
           <div
@@ -130,11 +145,13 @@
               </svg>
             </div>
           </div>
-          <div class="flex flex-wrap gap-1.5 border-t border-slate-100 px-3 py-2 dark:border-slate-800">
+          <div
+            class="flex flex-wrap gap-1.5 border-t border-slate-100 px-3 py-2 dark:border-slate-800"
+          >
             <span
               v-for="k in presentKinds"
               :key="k"
-              class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+              class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase"
               :style="{ background: nodeFill(k) }"
             >
               {{ k }}
@@ -145,19 +162,27 @@
 
       <!-- Detail / edit pane -->
       <div class="lg:col-span-2">
-        <div v-if="!editingFragment" class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700">
+        <div
+          v-if="!editingFragment"
+          class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700"
+        >
           <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">
             Select a fragment to view or edit it.
           </p>
         </div>
-        <div v-else class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div
+          v-else
+          class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+        >
           <div class="mb-3 flex items-start justify-between gap-2">
             <div>
               <h3 class="text-sm font-extrabold text-slate-800 dark:text-slate-100">
                 {{ isNewFragment ? 'new fragment' : editingFragment.id }}
               </h3>
               <p class="text-xs text-slate-400">
-                {{ isNewFragment ? 'The id is derived from the title on save.' : 'Editing fragment' }}
+                {{
+                  isNewFragment ? 'The id is derived from the title on save.' : 'Editing fragment'
+                }}
               </p>
             </div>
             <div class="flex items-center gap-1">
@@ -193,20 +218,33 @@
               <InputField v-model="form.parent" color="violet" placeholder="mem_inbox" />
             </div>
             <div>
-              <label class="mb-1 block text-xs font-bold text-slate-500">Tags (comma separated)</label>
-              <InputField v-model="form.tagsText" color="violet" placeholder="memory, architecture" />
+              <label class="mb-1 block text-xs font-bold text-slate-500"
+                >Tags (comma separated)</label
+              >
+              <InputField
+                v-model="form.tagsText"
+                color="violet"
+                placeholder="memory, architecture"
+              />
             </div>
             <div>
               <label class="mb-1 block text-xs font-bold text-slate-500">Summary</label>
-              <TextAreaField v-model="form.summary" :rows="2" placeholder="Short summary (≤280 chars)" />
+              <TextAreaField
+                v-model="form.summary"
+                :rows="2"
+                placeholder="Short summary (≤280 chars)"
+              />
             </div>
             <div>
               <label class="mb-1 block text-xs font-bold text-slate-500">Body (markdown)</label>
               <TextAreaField v-model="form.body" :rows="8" placeholder="Full markdown body" />
             </div>
 
-            <div v-if="!isNewFragment && editingFragment.links.length" class="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-              <p class="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Links</p>
+            <div
+              v-if="!isNewFragment && editingFragment.links.length"
+              class="rounded-xl border border-slate-100 p-3 dark:border-slate-800"
+            >
+              <p class="mb-2 text-xs font-bold tracking-wide text-slate-400 uppercase">Links</p>
               <div class="space-y-1">
                 <div
                   v-for="(l, i) in editingFragment.links"
@@ -229,8 +267,11 @@
               </div>
             </div>
 
-            <div v-if="!isNewFragment" class="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-              <p class="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Add link</p>
+            <div
+              v-if="!isNewFragment"
+              class="rounded-xl border border-slate-100 p-3 dark:border-slate-800"
+            >
+              <p class="mb-2 text-xs font-bold tracking-wide text-slate-400 uppercase">Add link</p>
               <div class="flex items-center gap-1.5">
                 <SelectField v-model="newLinkRel" class="w-28">
                   <option value="relates">relates</option>
@@ -240,17 +281,31 @@
                   <option value="contradicts">contradicts</option>
                   <option value="source">source</option>
                 </SelectField>
-                <InputField v-model="newLinkTo" class="min-w-0 flex-1" placeholder="target id (e.g. mem_x)" color="violet" flex />
+                <InputField
+                  v-model="newLinkTo"
+                  class="min-w-0 flex-1"
+                  placeholder="target id (e.g. mem_x)"
+                  color="violet"
+                  flex
+                />
                 <Button variant="secondary" size="sm" @click="addLink">Add</Button>
               </div>
             </div>
 
             <ErrorBanner v-if="formError" :message="formError" @retry="clearFormError" />
             <div class="flex items-center gap-2 pt-1">
-              <Button variant="primary" size="sm" :loading="saving" :disabled="saving" @click="save">
+              <Button
+                variant="primary"
+                size="sm"
+                :loading="saving"
+                :disabled="saving"
+                @click="save"
+              >
                 Save changes
               </Button>
-              <span v-if="savedMsg" class="text-xs font-semibold text-emerald-600">{{ savedMsg }}</span>
+              <span v-if="savedMsg" class="text-xs font-semibold text-emerald-600">{{
+                savedMsg
+              }}</span>
             </div>
           </div>
         </div>
@@ -278,7 +333,12 @@ import {
   writeAIMemory,
   maintainAIMemory,
 } from '../lib/api/memory';
-import type { AIMemoryGraphNode, AIMemoryGraphEdge, AIMemoryFragment, AIMemoryLink } from '@browser-server/shared-types';
+import type {
+  AIMemoryGraphNode,
+  AIMemoryGraphEdge,
+  AIMemoryFragment,
+  AIMemoryLink,
+} from '@browser-server/shared-types';
 
 const W = 1200;
 const H = 900;
@@ -286,8 +346,19 @@ const COL_W = 220;
 const ROW_H = 64;
 
 const kindOptions = [
-  'persona', 'project', 'component', 'decision', 'task', 'preference',
-  'fact', 'person', 'event', 'glossary', 'index', 'note', 'stub',
+  'persona',
+  'project',
+  'component',
+  'decision',
+  'task',
+  'preference',
+  'fact',
+  'person',
+  'event',
+  'glossary',
+  'index',
+  'note',
+  'stub',
 ];
 
 const nodes = ref<AIMemoryGraphNode[]>([]);
@@ -359,9 +430,19 @@ const radius = (kind: string) => (kind === 'persona' || kind === 'index' ? 16 : 
 
 function nodeFill(kind: string): string {
   const map: Record<string, string> = {
-    persona: '#8b5cf6', project: '#6366f1', component: '#0ea5e9', decision: '#f59e0b',
-    task: '#10b981', preference: '#ec4899', fact: '#14b8a6', person: '#f97316',
-    event: '#f43f5e', glossary: '#94a3b8', index: '#64748b', note: '#22d3ee', stub: '#cbd5e1',
+    persona: '#8b5cf6',
+    project: '#6366f1',
+    component: '#0ea5e9',
+    decision: '#f59e0b',
+    task: '#10b981',
+    preference: '#ec4899',
+    fact: '#14b8a6',
+    person: '#f97316',
+    event: '#f43f5e',
+    glossary: '#94a3b8',
+    index: '#64748b',
+    note: '#22d3ee',
+    stub: '#cbd5e1',
   };
   return map[kind] || '#22d3ee';
 }
@@ -370,8 +451,13 @@ function nodeStroke(kind: string): string {
 }
 function edgeColor(rel: string): string {
   const map: Record<string, string> = {
-    child_of: '#94a3b8', relates: '#818cf8', depends_on: '#f59e0b', supersedes: '#10b981',
-    about: '#0ea5e9', contradicts: '#f43f5e', source: '#a78bfa',
+    child_of: '#94a3b8',
+    relates: '#818cf8',
+    depends_on: '#f59e0b',
+    supersedes: '#10b981',
+    about: '#0ea5e9',
+    contradicts: '#f43f5e',
+    source: '#a78bfa',
   };
   return map[rel] || '#94a3b8';
 }
@@ -422,7 +508,10 @@ function layout() {
   colOrder.forEach((col, d) => {
     const offset = (col.length * ROW_H) / 2;
     col.forEach((id, idx) => {
-      p[id] = { x: d * COL_W + COL_W / 2, y: offset - (col.length - 1) * (ROW_H / 2) + idx * ROW_H + ROW_H / 2 };
+      p[id] = {
+        x: d * COL_W + COL_W / 2,
+        y: offset - (col.length - 1) * (ROW_H / 2) + idx * ROW_H + ROW_H / 2,
+      };
     });
   });
   // orphans column to the right
@@ -476,11 +565,26 @@ async function select(id: string) {
 
 function createNew() {
   editingFragment.value = {
-    id: '', kind: 'note', title: '',
-    summary: '', body: '', tags: [], status: 'active', pinned: false,
-    parent: 'mem_inbox', links: [],
+    id: '',
+    kind: 'note',
+    title: '',
+    summary: '',
+    body: '',
+    tags: [],
+    status: 'active',
+    pinned: false,
+    parent: 'mem_inbox',
+    links: [],
   };
-  form.value = { title: '', kind: 'note', status: 'active', parent: 'mem_inbox', tagsText: '', summary: '', body: '' };
+  form.value = {
+    title: '',
+    kind: 'note',
+    status: 'active',
+    parent: 'mem_inbox',
+    tagsText: '',
+    summary: '',
+    body: '',
+  };
   selectedId.value = null;
   isNewFragment.value = true;
 }
@@ -488,7 +592,9 @@ function createNew() {
 function flashSaved(msg: string) {
   savedMsg.value = msg;
   if (savedMsgTimer) clearTimeout(savedMsgTimer);
-  savedMsgTimer = setTimeout(() => { savedMsg.value = ''; }, 3000);
+  savedMsgTimer = setTimeout(() => {
+    savedMsg.value = '';
+  }, 3000);
 }
 
 async function save() {
@@ -501,7 +607,10 @@ async function save() {
     kind: form.value.kind,
     summary: form.value.summary,
     body: form.value.body,
-    tags: form.value.tagsText.split(',').map((s) => s.trim()).filter(Boolean),
+    tags: form.value.tagsText
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
     parent: form.value.parent || 'mem_inbox',
     status: form.value.status,
   };
@@ -521,7 +630,8 @@ async function save() {
 async function deleteFragment() {
   if (!editingFragment.value) return;
   const id = editingFragment.value.id;
-  if (!window.confirm(`Delete fragment ${id}? This moves it to the archive (keeps history).`)) return;
+  if (!window.confirm(`Delete fragment ${id}? This moves it to the archive (keeps history).`))
+    return;
   saving.value = true;
   formError.value = null;
   try {
@@ -561,9 +671,7 @@ async function removeLink(l: AIMemoryLink) {
   saving.value = true;
   formError.value = null;
   try {
-    await writeAIMemory([
-      { op: 'unlink', from: editingFragment.value.id, rel: l.rel, to: l.to },
-    ]);
+    await writeAIMemory([{ op: 'unlink', from: editingFragment.value.id, rel: l.rel, to: l.to }]);
     await reload();
     await select(editingFragment.value.id);
   } catch (e) {
@@ -590,8 +698,12 @@ function clearFormError() {
 }
 
 // pan / zoom
-function zoomIn() { scale.value = Math.min(2.5, scale.value + 0.25); }
-function zoomOut() { scale.value = Math.max(0.3, scale.value - 0.25); }
+function zoomIn() {
+  scale.value = Math.min(2.5, scale.value + 0.25);
+}
+function zoomOut() {
+  scale.value = Math.max(0.3, scale.value - 0.25);
+}
 function onPanStart(e: MouseEvent) {
   panning.value = true;
   panStart.value = { x: e.clientX, y: e.clientY, px: pan.value.x, py: pan.value.y };
@@ -603,7 +715,9 @@ function onPanMove(e: MouseEvent) {
     y: panStart.value.py + (e.clientY - panStart.value.y),
   };
 }
-function onPanEnd() { panning.value = false; }
+function onPanEnd() {
+  panning.value = false;
+}
 
 // node drag (offset within the scaled group)
 function startDrag(id: string, e: MouseEvent) {
@@ -626,4 +740,3 @@ function startDrag(id: string, e: MouseEvent) {
 
 onMounted(reload);
 </script>
-

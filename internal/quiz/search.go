@@ -63,7 +63,8 @@ func SampleRandom(ctx context.Context, filter Filter, count int) ([]Record, erro
 }
 
 // SearchHitMap renders a scored question record as the map the
-// search_questions tool returns.
+// search_questions tool returns. Input questions include expected_answer so
+// the answer survives both JSON and raw output modes.
 func SearchHitMap(rec Record, score float64) map[string]any {
 	q := rec.Question
 	out := map[string]any{
@@ -81,6 +82,8 @@ func SearchHitMap(rec Record, score float64) map[string]any {
 	case "single_choice", "multiple_choice":
 		out["options"] = rec.Options()
 		out["correct_answers"] = rec.CorrectAnswers()
+	case "input":
+		out["expected_answer"] = rec.ExpectedText()
 	case "chronology":
 		out["chronology_items"] = rec.ChronologyItems()
 	}

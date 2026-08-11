@@ -49,6 +49,7 @@
             "web_search",
             "web_fetch",
             "search_code",
+            "search_questions",
             "execute_python"
         ],
         "allowed": [

@@ -5,13 +5,23 @@ import { useQuizPapers } from './useQuizPapers';
 
 export type QuizTab = 'dashboard' | 'questions' | 'cards' | 'generate' | 'papers';
 
+/** Optional hooks for cross-tab coordination (e.g. syncing the Cards queue
+ *  when a question is edited from the Questions tab modal). */
+export interface UseQuizPageOptions {
+  /** Fired after a question is successfully edited via the modal. */
+  onQuestionEdited?: (question: QuestionResponse) => void;
+}
+
 /**
  * Orchestrates the whole Quiz page: the active tab, the question editor
  * modal, the exam runner modal and the post-generation navigation flow.
  * Domain state lives in useQuestions / useQuizPapers; this composable only
  * owns cross-tab UI coordination so QuizPage.vue stays pure wiring.
  */
-export function useQuizPage(userId: Ref<number | null>) {
+export function useQuizPage(
+  userId: Ref<number | null>,
+  options?: UseQuizPageOptions,
+) {
   const questions = useQuestions(userId);
   const papers = useQuizPapers(userId);
 
@@ -48,7 +58,10 @@ export function useQuizPage(userId: Ref<number | null>) {
       const saved = id
         ? await questions.editQuestion(id, payload as never, image)
         : await questions.addQuestion(payload as never, image);
-      if (saved) closeQuestionModal();
+      if (saved) {
+        if (id) options?.onQuestionEdited?.(saved);
+        closeQuestionModal();
+      }
     } finally {
       isSavingQuestion.value = false;
     }

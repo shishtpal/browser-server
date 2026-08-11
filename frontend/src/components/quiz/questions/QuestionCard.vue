@@ -107,10 +107,12 @@
         />
         {{ showExplanation ? 'Hide explanation' : 'Show explanation' }}
       </button>
-      <pre
+      <RichExplanation
         v-if="showExplanation"
-        class="mt-1 rounded-lg bg-slate-50 p-2 text-xs whitespace-pre-wrap text-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
-        >{{ question.explanation }}</pre>
+        :markdown="question.explanation"
+        size="sm"
+        class="mt-1 rounded-lg bg-slate-50 p-2 dark:bg-slate-900/60"
+      />
     </div>
   </article>
 </template>
@@ -123,6 +125,7 @@ import { API_BASE } from '../../../lib/api';
 import { getToken } from '../../../lib/auth';
 import TypeBadge from '../ui/TypeBadge.vue';
 import DifficultyBadge from '../ui/DifficultyBadge.vue';
+import RichExplanation from '../ui/RichExplanation.vue';
 import { optionLetter, orderedChronology, questionImageSrc } from '../quizFormat';
 
 const props = defineProps<{ question: QuestionResponse }>();

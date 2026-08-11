@@ -52,6 +52,7 @@
         @difficulty-change="changeDifficulty($event as QuestionDifficulty)"
         @next="nextPractice"
         @skip="skip"
+        @edit="emit('edit', $event)"
       />
     </template>
 
@@ -79,7 +80,7 @@
 
 <script setup lang="ts">
 import { toRef } from 'vue';
-import type { QuestionDifficulty, TagVocabulary } from '../../../types';
+import type { QuestionDifficulty, QuestionResponse, TagVocabulary } from '../../../types';
 import EmptyState from '../../ui/EmptyState.vue';
 import ErrorBanner from '../../ui/ErrorBanner.vue';
 import LoadingSpinner from '../../ui/LoadingSpinner.vue';
@@ -94,6 +95,8 @@ const props = defineProps<{
   vocabulary: TagVocabulary | null;
   onDifficultyChanged: () => void;
 }>();
+
+const emit = defineEmits<{ edit: [question: QuestionResponse] }>();
 
 const cards = useQuestionCards(
   toRef(props, 'userId'),
@@ -130,5 +133,8 @@ const {
   ratingCounts,
 } = cards;
 
-defineExpose({ reset: cards.reset });
+defineExpose({
+  reset: cards.reset,
+  syncUpdatedQuestion: cards.syncUpdatedQuestion,
+});
 </script>

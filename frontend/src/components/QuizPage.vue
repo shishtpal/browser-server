@@ -62,6 +62,7 @@
           :user-id="selectedUserId"
           :vocabulary="vocabulary"
           :on-difficulty-changed="loadStats"
+          @edit="openEditQuestion"
         />
 
         <PaperGenerator
@@ -102,6 +103,7 @@
 import { computed, ref, watch } from 'vue';
 import { useUser } from '../composables/useUser';
 import { useQuizPage } from './quiz/composables/useQuizPage';
+import type { QuestionResponse } from '../types';
 import PageHeader from './ui/PageHeader.vue';
 import StatCard from './ui/StatCard.vue';
 import UserSelector from './ui/UserSelector.vue';
@@ -164,10 +166,15 @@ const {
   closeRunner,
   generatePaperFlow,
   openPaperFromDashboard,
-} = useQuizPage(selectedUserId);
+} = useQuizPage(selectedUserId, {
+  onQuestionEdited: (q) => questionCards.value?.syncUpdatedQuestion?.(q),
+});
 
-/** Flashcard session reset handle (exposed by QuestionCards). */
-const questionCards = ref<{ reset: () => void } | null>(null);
+/** Flashcard session handle (exposed by QuestionCards). */
+const questionCards = ref<{
+  reset: () => void;
+  syncUpdatedQuestion?: (q: QuestionResponse) => void;
+} | null>(null);
 
 watch(selectedUserId, (id) => {
   questionCards.value?.reset();

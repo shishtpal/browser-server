@@ -3,6 +3,7 @@ import { getQuestionCards, reviewQuestion, updateQuestion } from '../../../lib/a
 import type {
   QuestionCardItem,
   QuestionDifficulty,
+  QuestionResponse,
   ReviewRating,
   TagVocabulary,
 } from '../../../types';
@@ -158,6 +159,13 @@ export function useQuestionCards(
     }
   };
 
+  /** Replace any queued copy of an externally-edited question (e.g. Quick Edit
+   *  from the modal). No-ops when the id is not in the queue. */
+  const syncUpdatedQuestion = (updated: QuestionResponse) => {
+    const hit = items.value.find((i) => i.question.id === updated.id);
+    if (hit) hit.question = updated;
+  };
+
   return {
     selectedTags,
     allQuestions,
@@ -186,5 +194,6 @@ export function useQuestionCards(
     reveal,
     submitRating,
     changeDifficulty,
+    syncUpdatedQuestion,
   };
 }

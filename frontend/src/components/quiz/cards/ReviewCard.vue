@@ -19,6 +19,16 @@
           <button
             type="button"
             class="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400"
+            title="Edit question (E)"
+            aria-label="Edit question"
+            @click="$emit('edit', question)"
+          >
+            <Pencil class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            class="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400"
             :title="copied ? 'Copied!' : 'Copy question as Markdown'"
             :aria-label="copied ? 'Copied' : 'Copy question as Markdown'"
             @click="copyMarkdown"
@@ -178,15 +188,20 @@
         <!-- Ask AI: explain / cross-check (self-hides when AI is disabled) -->
         <CardAIAssistant :question="question" />
 
-        <p
-          class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm leading-relaxed whitespace-pre-wrap text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-slate-300"
+        <div
+          class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 dark:border-slate-700/70 dark:bg-slate-900/50"
         >
-          <strong class="text-slate-800 dark:text-slate-100">Explanation:</strong>
-          <span v-if="question.explanation?.trim()">{{ question.explanation }}</span>
-          <span v-else class="text-slate-400 italic dark:text-slate-500">
+          <strong class="text-sm text-slate-800 dark:text-slate-100">Explanation:</strong>
+          <RichExplanation
+            v-if="question.explanation?.trim()"
+            :markdown="question.explanation"
+            size="md"
+            class="mt-1"
+          />
+          <p v-else class="mt-1 text-sm text-slate-400 italic dark:text-slate-500">
             No explanation provided.
-          </span>
-        </p>
+          </p>
+        </div>
 
         <!-- Recall rating -->
         <section
@@ -255,6 +270,7 @@ import {
   Copy,
   Eye,
   Keyboard,
+  Pencil,
   SkipForward,
 } from '@lucide/vue';
 import type { QuestionResponse, ReviewRating } from '../../../types';
@@ -263,6 +279,7 @@ import { getToken } from '../../../lib/auth';
 import { copyToClipboard } from '../../../utils/copyToClipboard';
 import Button from '../../ui/Button.vue';
 import TypeBadge from '../ui/TypeBadge.vue';
+import RichExplanation from '../ui/RichExplanation.vue';
 import CardAIAssistant from './CardAIAssistant.vue';
 import {
   optionLetter,
@@ -285,6 +302,7 @@ const emit = defineEmits<{
   rate: [rating: ReviewRating];
   next: [];
   skip: [];
+  edit: [question: QuestionResponse];
   'difficulty-change': [difficulty: string];
 }>();
 
@@ -385,7 +403,13 @@ function isTypingTarget(target: EventTarget | null) {
 }
 
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
-  if (props.isRating || isTypingTarget(event.target) || event.repeat) return;
+  if (props.isRating || event.repeat) return;
+  if (event.code === 'KeyE' && !isTypingTarget(event.target)) {
+    event.preventDefault();
+    emit('edit', props.question);
+    return;
+  }
+  if (isTypingTarget(event.target)) return;
   if (event.code === 'KeyS' && props.canSkip) {
     event.preventDefault();
     emit('skip');

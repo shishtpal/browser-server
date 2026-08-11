@@ -51,6 +51,7 @@
             clearFilters();
             loadQuestions();
           "
+          @refresh="loadQuestions"
           @add="openAddQuestion"
           @edit="openEditQuestion"
           @delete="removeQuestion"

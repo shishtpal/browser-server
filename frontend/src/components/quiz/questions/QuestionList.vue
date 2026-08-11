@@ -10,12 +10,36 @@
           {{ questions.length }}
         </span>
       </h2>
-      <Button variant="gradient-violet" size="sm" class="w-full sm:w-auto" @click="$emit('add')">
-        <span class="inline-flex items-center gap-1.5">
-          <Plus class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
-          Add question
-        </span>
-      </Button>
+      <div class="flex w-full items-center gap-2 sm:w-auto">
+        <Button
+          variant="ghost"
+          size="sm"
+          class="flex-1 sm:flex-none"
+          :disabled="isRefreshing"
+          @click="handleRefresh"
+        >
+          <span class="inline-flex items-center gap-1.5">
+            <RefreshCw
+              class="h-4 w-4"
+              :class="{ 'animate-spin': isRefreshing }"
+              :stroke-width="2.5"
+              aria-hidden="true"
+            />
+            Refresh
+          </span>
+        </Button>
+        <Button
+          variant="gradient-violet"
+          size="sm"
+          class="flex-1 sm:flex-none"
+          @click="$emit('add')"
+        >
+          <span class="inline-flex items-center gap-1.5">
+            <Plus class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
+            Add question
+          </span>
+        </Button>
+      </div>
     </div>
 
     <QuestionFilters
@@ -64,7 +88,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Plus } from '@lucide/vue';
+import { Plus, RefreshCw } from '@lucide/vue';
 import type { QuestionResponse, TagVocabulary } from '../../../types';
 import Button from '../../ui/Button.vue';
 import EmptyState from '../../ui/EmptyState.vue';
@@ -94,7 +118,22 @@ const emit = defineEmits<{
   add: [];
   edit: [question: QuestionResponse];
   delete: [id: number];
+  refresh: [];
 }>();
+
+/** Refresh with brief spinner feedback ---------------------------------- */
+
+const isRefreshing = ref(false);
+
+async function handleRefresh() {
+  if (isRefreshing.value) return;
+  isRefreshing.value = true;
+  emit('refresh');
+  // Keep the spinner visible for at least 600 ms so the animation is readable.
+  setTimeout(() => {
+    isRefreshing.value = false;
+  }, 600);
+}
 
 /** v-model proxies ----------------------------------------------------- */
 

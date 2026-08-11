@@ -218,6 +218,47 @@ func TestSymmetricEdgeMirror(t *testing.T) {
 	}
 }
 
+func TestGraphIncludesAllFragmentsBeyondRecallDepthAndOrphans(t *testing.T) {
+	s := testStore(t)
+	_, err := s.Write(context.Background(), WriteArgs{Ops: []WriteOp{
+		{Op: "upsert", ID: "mem_level_1", Title: "level 1", Parent: "mem_inbox"},
+		{Op: "upsert", ID: "mem_level_2", Title: "level 2", Parent: "mem_level_1"},
+		{Op: "upsert", ID: "mem_level_3", Title: "level 3", Parent: "mem_level_2"},
+		{Op: "upsert", ID: "mem_level_4", Title: "level 4", Parent: "mem_level_3"},
+	}})
+	if err != nil {
+		t.Fatalf("setup graph: %v", err)
+	}
+	// Simulate a legacy/corrupt disconnected record. Graph is an admin view and
+	// must expose it so the record can be repaired rather than hiding it.
+	s.mu.Lock()
+	s.idx.add(&Fragment{ID: "mem_orphan", Kind: KindNote, Title: "orphan", Status: StatusActive})
+	s.mu.Unlock()
+
+	g, ok := s.Graph()
+	if !ok {
+		t.Fatal("expected graph")
+	}
+	if len(g.Nodes) != 11 { // six bootstrap fragments, four levels, and the orphan
+		t.Fatalf("expected all 11 fragments, got %d", len(g.Nodes))
+	}
+	if got, want := g.Nodes[0].ID, "mem_glossary"; got != want {
+		t.Fatalf("expected deterministic node order starting with %q, got %q", want, got)
+	}
+	foundLevel4 := false
+	for _, e := range g.Edges {
+		if e.Rel == RelChildOf && e.To == "mem_level_4" {
+			foundLevel4 = true
+			if e.From != "mem_level_3" {
+				t.Fatalf("expected parent-to-child graph edge, got %+v", e)
+			}
+		}
+	}
+	if !foundLevel4 {
+		t.Fatal("expected graph to include the deepest child edge")
+	}
+}
+
 func TestPersonaInjectionBudget(t *testing.T) {
 	s := testStore(t)
 	small := s.PersonaBlock(context.Background(), 200, false)

@@ -18,10 +18,7 @@ export interface UseQuizPageOptions {
  * Domain state lives in useQuestions / useQuizPapers; this composable only
  * owns cross-tab UI coordination so QuizPage.vue stays pure wiring.
  */
-export function useQuizPage(
-  userId: Ref<number | null>,
-  options?: UseQuizPageOptions,
-) {
+export function useQuizPage(userId: Ref<number | null>, options?: UseQuizPageOptions) {
   const questions = useQuestions(userId);
   const papers = useQuizPapers(userId);
 

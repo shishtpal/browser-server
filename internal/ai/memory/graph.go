@@ -1,5 +1,7 @@
 package memory
 
+import "sort"
+
 // graph.go holds tree/graph invariants shared by writes and maintenance:
 // ancestry, reachability, and cycle guarding. These read only the in-memory
 // index and are called with s.mu held (R or W) by the caller.
@@ -147,19 +149,50 @@ type GraphView struct {
 	Edges []Edge      `json:"edges"`
 }
 
-// Graph returns the visible graph rooted at mem_root for the admin viewer.
+// Graph returns every stored fragment and every non-dangling relationship for
+// the admin viewer. It intentionally does not use MaxDepth: that limit belongs
+// to recall, whereas an administrator needs to be able to inspect disconnected
+// fragments as well as the tree rooted at mem_root.
 func (s *Store) Graph() (GraphView, bool) {
 	if !s.enabled {
 		return GraphView{}, false
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	nodes, edges := s.traverse("mem_root", s.cfg.MaxDepth, nil)
-	g := GraphView{}
-	for _, f := range nodes {
+	ids := make([]string, 0, len(s.idx.byID))
+	for id := range s.idx.byID {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	g := GraphView{Nodes: make([]GraphNode, 0, len(ids))}
+	for _, id := range ids {
+		f := s.idx.byID[id]
 		g.Nodes = append(g.Nodes, GraphNode{ID: f.ID, Kind: f.Kind, Title: f.Title, Summary: f.Summary})
 	}
-	g.Edges = edges
+
+	// child_of is stored on the child, but emitted parent -> child to match the
+	// layout direction used by the graph UI. Other relationships retain their
+	// stored direction.
+	seenE := map[string]bool{}
+	for _, id := range ids {
+		parent := s.idx.byID[id]
+		for _, l := range parent.Links {
+			if _, ok := s.idx.byID[l.To]; !ok || l.To == parent.ID {
+				continue
+			}
+			edge := Edge{From: parent.ID, Rel: l.Rel, To: l.To, Note: l.Note, Weight: l.Weight}
+			if l.Rel == RelChildOf {
+				edge.From, edge.To = l.To, parent.ID
+			}
+			key := edge.From + "\x00" + string(edge.Rel) + "\x00" + edge.To
+			if seenE[key] {
+				continue
+			}
+			seenE[key] = true
+			g.Edges = append(g.Edges, edge)
+		}
+	}
 	return g, true
 }
 
@@ -180,40 +213,4 @@ func (s *Store) Get(id string) (*Fragment, bool) {
 		meta.Body = body
 	}
 	return meta, true
-}
-
-// traverse walks the graph outward from an anchor, returning visible nodes and
-// edges (used by the admin graph endpoint and tests).
-func (s *Store) traverse(anchor string, depth int, relSet map[Rel]bool) ([]*Fragment, []Edge) {
-	f, ok := s.idx.byID[anchor]
-	if !ok {
-		return nil, nil
-	}
-	seen := map[string]bool{anchor: true}
-	var nodes []*Fragment
-	nodes = append(nodes, f)
-	var edges []Edge
-	seenE := map[string]bool{}
-	var visit func(cur *Fragment, d int)
-	visit = func(cur *Fragment, d int) {
-		if d <= 0 {
-			return
-		}
-		for _, nb := range s.neighborsWithEdges(cur, relSet, "", nil) {
-			e := nb.edge
-			key := e.From + "\x00" + string(e.Rel) + "\x00" + e.To
-			if !seenE[key] {
-				seenE[key] = true
-				edges = append(edges, e)
-			}
-			if seen[nb.frag.ID] {
-				continue
-			}
-			seen[nb.frag.ID] = true
-			nodes = append(nodes, nb.frag)
-			visit(nb.frag, d-1)
-		}
-	}
-	visit(f, depth)
-	return nodes, edges
 }

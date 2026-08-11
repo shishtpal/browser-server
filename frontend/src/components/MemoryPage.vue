@@ -73,7 +73,9 @@
           <div
             class="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-800"
           >
-            <span class="text-xs font-bold tracking-wide text-slate-400 uppercase">Graph view</span>
+            <span class="text-xs font-bold tracking-wide text-slate-400 uppercase">
+              Graph view ({{ nodes.length }} nodes)
+            </span>
             <div class="flex items-center gap-1">
               <button
                 class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -89,6 +91,14 @@
               >
                 +
               </button>
+              <button
+                class="rounded-md px-1.5 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                type="button"
+                title="Fit all graph nodes in view"
+                @click="fitGraph"
+              >
+                Fit
+              </button>
             </div>
           </div>
           <div
@@ -103,7 +113,7 @@
               class="absolute inset-0 origin-top-left"
               :style="{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }"
             >
-              <svg :width="W" :height="H" class="select-none">
+              <svg :width="graphSize.width" :height="graphSize.height" class="select-none">
                 <!-- edges -->
                 <line
                   v-for="(e, i) in edges"
@@ -315,7 +325,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { Plus, RefreshCw, X } from '@lucide/vue';
 import PageHeader from './ui/PageHeader.vue';
 import StatCard from './ui/StatCard.vue';
@@ -344,6 +354,7 @@ const W = 1200;
 const H = 900;
 const COL_W = 220;
 const ROW_H = 64;
+const ORPHAN_ROW_H = 48;
 
 const kindOptions = [
   'persona',
@@ -399,6 +410,16 @@ const panning = ref(false);
 const panStart = ref({ x: 0, y: 0, px: 0, py: 0 });
 
 const edgeCount = computed(() => edges.value.length);
+
+// The graph can grow beyond the original design-time SVG dimensions. Keep the
+// SVG large enough for every laid-out node (and its label) so overflow never
+// silently hides a fragment before pan/zoom gets a chance to reveal it.
+const graphSize = computed(() => {
+  const positionsList = Object.values(positions.value);
+  const maxX = Math.max(0, ...positionsList.map((p) => p.x));
+  const maxY = Math.max(0, ...positionsList.map((p) => p.y));
+  return { width: Math.max(W, maxX + 180), height: Math.max(H, maxY + ROW_H) };
+});
 
 const presentKinds = computed(() => {
   const set = new Set(nodes.value.map((n) => n.kind));
@@ -463,64 +484,54 @@ function edgeColor(rel: string): string {
 }
 
 // Layered layout: BFS from mem_root assigning columns by depth, rows by index.
+// The backend now returns the full child_of closure regardless of depth, so
+// orphans should be rare; anything unreachable is still shown in its own
+// column so the viewer never silently drops fragments.
 function layout() {
   const byId = new Map(nodes.value.map((n) => [n.id, n]));
   const childMap = new Map<string, string[]>();
   for (const e of edges.value) {
     if (e.rel !== 'child_of') continue;
-    if (!childMap.has(e.to)) childMap.set(e.to, []);
-    childMap.get(e.to)!.push(e.from);
+    if (!childMap.has(e.from)) childMap.set(e.from, []);
+    childMap.get(e.from)!.push(e.to);
   }
   const depth = new Map<string, number>();
   const queue: string[] = ['mem_root'];
-  const visited = new Set<string>();
   if (byId.has('mem_root')) {
     depth.set('mem_root', 0);
-    visited.add('mem_root');
     while (queue.length) {
       const cur = queue.shift()!;
       const d = depth.get(cur)!;
       for (const child of childMap.get(cur) || []) {
-        if (!visited.has(child) && byId.has(child)) {
-          visited.add(child);
-          depth.set(child, d + 1);
-          queue.push(child);
-        }
+        if (!byId.has(child) || depth.has(child)) continue;
+        depth.set(child, d + 1);
+        queue.push(child);
       }
     }
   }
-  // collect orphans (unvisited)
-  const orphans: string[] = [];
+  // Orphans are every node we could not reach from mem_root.
+  const orphanCol: string[] = [];
   for (const n of nodes.value) {
-    if (!visited.has(n.id)) orphans.push(n.id);
+    if (!depth.has(n.id)) orphanCol.push(n.id);
   }
-  // assign positions: columns by depth; within a column, rows by visit order
-  const colOrder: string[][] = [];
+  const cols: string[][] = [];
   for (const n of nodes.value) {
-    const d = depth.get(n.id) ?? (orphans.includes(n.id) ? 99 : 0);
-    if (d === 99) continue; // handle orphans after
-    if (!colOrder[d]) colOrder[d] = [];
-    colOrder[d].push(n.id);
+    const d = depth.get(n.id);
+    if (d === undefined) continue;
+    while (cols.length <= d) cols.push([]);
+    cols[d]!.push(n.id);
   }
+  if (orphanCol.length) cols.push(orphanCol);
+
   const p: Record<string, { x: number; y: number }> = {};
-  const maxCols = Math.max(colOrder.length, 1) + (orphans.length ? 1 : 0);
-  const width = maxCols * COL_W;
-  colOrder.forEach((col, d) => {
-    const offset = (col.length * ROW_H) / 2;
+  cols.forEach((col, c) => {
+    const x = c * COL_W + COL_W / 2;
+    const rowH = c === cols.length - 1 && orphanCol.length ? ORPHAN_ROW_H : ROW_H;
+    const offsetY = ROW_H;
     col.forEach((id, idx) => {
-      p[id] = {
-        x: d * COL_W + COL_W / 2,
-        y: offset - (col.length - 1) * (ROW_H / 2) + idx * ROW_H + ROW_H / 2,
-      };
+      p[id] = { x, y: offsetY + idx * rowH };
     });
   });
-  // orphans column to the right
-  if (orphans.length) {
-    const ox = colOrder.length * COL_W + COL_W / 2;
-    orphans.forEach((id, idx) => {
-      p[id] = { x: ox, y: ROW_H / 2 + idx * ROW_H };
-    });
-  }
   positions.value = p;
 }
 
@@ -533,6 +544,8 @@ async function reload() {
     edges.value = g.edges;
     fragments.value = st.fragments;
     layout();
+    await nextTick();
+    fitGraph();
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load memory graph';
   } finally {
@@ -702,7 +715,22 @@ function zoomIn() {
   scale.value = Math.min(2.5, scale.value + 0.25);
 }
 function zoomOut() {
-  scale.value = Math.max(0.3, scale.value - 0.25);
+  scale.value = Math.max(0.1, scale.value - 0.25);
+}
+function fitGraph() {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const padding = 24;
+  const fit = Math.min(
+    1,
+    (canvas.clientWidth - padding * 2) / graphSize.value.width,
+    (canvas.clientHeight - padding * 2) / graphSize.value.height,
+  );
+  scale.value = Math.max(0.1, fit);
+  pan.value = {
+    x: Math.max(padding, (canvas.clientWidth - graphSize.value.width * scale.value) / 2),
+    y: Math.max(padding, (canvas.clientHeight - graphSize.value.height * scale.value) / 2),
+  };
 }
 function onPanStart(e: MouseEvent) {
   panning.value = true;

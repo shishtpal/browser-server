@@ -9,8 +9,8 @@
         },
         "action": {
             "type": "string",
-            "enum": ["add", "edit", "remove"],
-            "description": "Action to perform: add, edit, or remove a prompt"
+            "enum": ["add", "edit", "remove", "list_tags"],
+            "description": "Action to perform: add, edit, or remove a prompt; or list_tags to get distinct existing tags for reuse"
         },
         "id": {
             "type": "integer",
@@ -39,7 +39,7 @@
                 "type": "string",
                 "maxLength": 100
             },
-            "description": "Each tag must be 100 characters or fewer"
+            "description": "Tags to apply (each max 100 chars). Call manage_prompt with action=list_tags first to see existing tags and reuse them where possible."
         },
         "pinned": {
             "type": "boolean",

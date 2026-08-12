@@ -18,7 +18,7 @@ func registerManagePrompt(r *Registry) {
 	r.add(Tool{
 		Name:        "manage_prompt",
 		Category:    "General",
-		Description: "Add, edit, or remove a prompt. Requires user_id and action. For add: title and content are required. For edit/remove: id is required.",
+		Description: "Add, edit, remove, or list tags of prompts. Requires user_id and action. For add: title and content are required. For edit/remove: id is required. For list_tags: returns distinct existing tags so agents can reuse them instead of inventing near-duplicates.",
 		Schema:      json.RawMessage(managePromptSchema),
 		Execute:     managePrompt,
 	})
@@ -48,9 +48,9 @@ func managePrompt(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 
 	switch a.Action {
-	case "add", "edit", "remove":
+	case "add", "edit", "remove", "list_tags":
 	default:
-		return nil, fmt.Errorf("action must be one of: add, edit, remove")
+		return nil, fmt.Errorf("action must be one of: add, edit, remove, list_tags")
 	}
 
 	if a.Action == "add" {
@@ -106,6 +106,12 @@ func managePrompt(ctx context.Context, raw json.RawMessage) (any, error) {
 		return managePromptEdit(ctx, a.UserID, a.ID, a.Title, a.Content, a.Description, a.Tags, a.Pinned)
 	case "remove":
 		return managePromptRemove(ctx, a.UserID, a.ID)
+	case "list_tags":
+		tags, err := prompt.GetDistinctTags(ctx, a.UserID)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"tags": tags}, nil
 	default:
 		return nil, fmt.Errorf("unknown action: %s", a.Action)
 	}

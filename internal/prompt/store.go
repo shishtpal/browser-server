@@ -210,3 +210,30 @@ func Delete(ctx context.Context, id int) (bool, error) {
 	rows, _ := result.RowsAffected()
 	return rows > 0, nil
 }
+
+// GetDistinctTags returns the distinct tag values for a user's prompts.
+func GetDistinctTags(ctx context.Context, userID int) ([]string, error) {
+	const query = `SELECT DISTINCT json_each.value
+		FROM prompts, json_each(prompts.tags)
+		WHERE prompts.user_id = ?
+		  AND json_each.value IS NOT NULL
+		  AND json_each.value != ''
+		ORDER BY json_each.value
+		LIMIT 500`
+
+	rows, err := db.PromptDB.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []string{}
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}

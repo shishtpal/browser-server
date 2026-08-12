@@ -21,6 +21,7 @@ type SanitizedTasks struct {
 
 type SanitizedProvider struct {
 	Type    string           `json:"type"`
+	URL     string           `json:"url,omitempty"`
 	Models  []SanitizedModel `json:"models"`
 	Default string           `json:"default_model"`
 }
@@ -95,7 +96,7 @@ func (cfg *Config) Sanitized(categories map[string]string) SanitizedConfig {
 		out.Tools.Categories = map[string]string{}
 	}
 	for name, provider := range cfg.Providers {
-		sanitized := SanitizedProvider{Type: provider.Type}
+		sanitized := SanitizedProvider{Type: provider.Type, URL: provider.URL}
 		for _, model := range provider.Models {
 			label := model.Label
 			if label == "" {

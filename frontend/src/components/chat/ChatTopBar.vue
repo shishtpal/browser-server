@@ -46,6 +46,18 @@
       @update:model-value="$emit('update:selectedProvider', $event)"
     />
 
+    <!-- Provider console link button -->
+    <button
+      v-if="providerUrl"
+      :class="iconButtonClass(false)"
+      type="button"
+      title="Open provider console"
+      aria-label="Open provider console"
+      @click="openProviderUrl"
+    >
+      <ExternalLink class="h-4 w-4" :stroke-width="2" aria-hidden="true" />
+    </button>
+
     <!-- Model selector (searchable) -->
     <SearchableSelect
       :model-value="selectedModel"
@@ -184,6 +196,7 @@ import { computed } from 'vue';
 import {
   Brain,
   Download,
+  ExternalLink,
   Images,
   ListOrdered,
   Lock,
@@ -216,6 +229,7 @@ const props = defineProps<{
   supportsTools: boolean;
   toolsEnabled: boolean;
   yoloMode: boolean;
+  providerUrl: string;
   disabled: boolean;
   title?: string;
   downloadDisabled?: boolean;
@@ -319,4 +333,9 @@ const iconButtonClass = computed(() => (active: boolean) => [
     ? 'border-violet-200 bg-violet-50 text-violet-700 ring-1 ring-violet-200 ring-inset dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300 dark:ring-violet-800/50'
     : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200',
 ]);
+
+function openProviderUrl() {
+  if (!/^https?:\/\//i.test(props.providerUrl)) return;
+  window.open(props.providerUrl, '_blank', 'noopener,noreferrer');
+}
 </script>

@@ -45,6 +45,7 @@ export function useChatPage() {
     attachmentsConfig,
     selectedModelSupportsTools,
     selectedModelSupportsVision,
+    selectedProviderURL,
     setActiveSkills,
     initFromConfig,
   } = chatConfig;

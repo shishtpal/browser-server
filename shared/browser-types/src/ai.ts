@@ -59,6 +59,7 @@ export interface AITasksConfig {
 
 export interface AIProviderConfig {
   type: string
+  url?: string
   default_model: string
   models: AIModelConfig[]
 }

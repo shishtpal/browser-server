@@ -98,6 +98,15 @@ func validate(cfg *Config) error {
 		if strings.TrimSpace(provider.APIKey) == "" {
 			return fmt.Errorf("provider %q api_key is required", name)
 		}
+		if raw := strings.TrimSpace(provider.URL); raw != "" {
+			consoleURL, err := url.Parse(raw)
+			if err != nil || consoleURL.Scheme == "" || consoleURL.Host == "" {
+				return fmt.Errorf("provider %q url is invalid", name)
+			}
+			if consoleURL.Scheme != "https" && !isLocalHost(consoleURL.Hostname()) {
+				return fmt.Errorf("provider %q url must use https unless it is local", name)
+			}
+		}
 		if provider.RequestTimeoutSeconds <= 0 || provider.RequestTimeoutSeconds > maxRequestTimeoutSeconds {
 			return fmt.Errorf("provider %q request_timeout_seconds must be between 1 and %d", name, maxRequestTimeoutSeconds)
 		}

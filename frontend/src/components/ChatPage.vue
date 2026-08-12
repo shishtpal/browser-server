@@ -39,6 +39,7 @@
         :supports-tools="selectedModelSupportsTools"
         :tools-enabled="toolsEnabled"
         :yolo-mode="yoloMode"
+        :provider-url="selectedProviderURL"
         :disabled="!config?.enabled || isBusy"
         :title="activeConversation?.title"
         :download-disabled="!activeConversation"
@@ -271,6 +272,7 @@ const {
   selectedProvider,
   selectedModel,
   selectedProfile,
+  selectedProviderURL,
   attachmentsConfig,
   toggleTool,
   setActiveSkills,

@@ -52,6 +52,15 @@ export function useChatConfig() {
     return config.value.providers[selectedProvider.value]?.models ?? [];
   });
 
+  const selectedProviderInfo = computed(() => {
+    if (!config.value || !selectedProvider.value) return null;
+    return config.value.providers[selectedProvider.value] ?? null;
+  });
+
+  const selectedProviderURL = computed(() => {
+    return selectedProviderInfo.value?.url ?? '';
+  });
+
   const selectedModelSupportsTools = computed(() => {
     const current = providerModels.value.find((m) => m.id === selectedModel.value);
     return current?.supports_tools ?? false;
@@ -144,6 +153,7 @@ export function useChatConfig() {
     disabledTools,
     configLabel,
     providerModels,
+    selectedProviderURL,
     selectedModelSupportsTools,
     selectedModelSupportsVision,
     attachmentsConfig,

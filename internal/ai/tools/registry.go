@@ -54,6 +54,13 @@ type Options struct {
 	Allowed     []string
 	Paths       config.PathsConfig
 	External    []Tool
+	// ConfigPath is the resolved path of bs-ai-config.json; OCR uses it to
+	// anchor relative ocr.output_dir values.
+	ConfigPath string
+	// OCR gates the built-in ocr_image tool (vision OCR + Poppler PDF
+	// rasterization). Providers must be set when OCR.Enabled is true.
+	OCR       config.OCRConfig
+	Providers map[string]config.ProviderConfig
 }
 
 // New creates a Registry with all built-in tools registered.
@@ -133,6 +140,9 @@ func newRegistry(options ...Options) (*Registry, error) {
 	registerExecutePython(r, r.paths)
 	if len(options) > 0 && options[0].WebSearch.Enabled {
 		registerWebTools(r, options[0].WebSearch)
+	}
+	if len(options) > 0 && options[0].OCR.Enabled {
+		registerOCRImage(r, options[0].OCR, options[0].ConfigPath, options[0].Providers, options[0].Paths.AdditionalDirs)
 	}
 
 	// File operation tools

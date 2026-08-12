@@ -72,6 +72,7 @@
             "execute_command",
             "execute_python",
             "generate_image",
+            "ocr_image",
             "read_file",
             "read_files",
             "write_file",
@@ -196,5 +197,19 @@
     "skills": {
         "enabled": true,
         "directory": ".skills"
+    },
+    "ocr": {
+        "enabled": true,
+        "default_provider": "openrouter.ai",
+        "default_model": "openai/gpt-4o-mini",
+        "max_input_bytes": 20971520,
+        "output_dir": "",
+        "poppler": {
+            "dir": "",
+            "dpi": 150,
+            "format": "png",
+            "max_pages": 32,
+            "timeout_seconds": 120
+        }
     }
 }

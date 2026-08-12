@@ -348,6 +348,29 @@ $env:SARVAM_API_KEY = "your-key"
 
 The browser sends mono PCM audio to the token-protected `/api/ai/voice/transcribe` WebSocket. Browser Server validates the configured provider/model/language and adds the Sarvam API-key header upstream, so the secret is never exposed to the web app. Set `"enabled": false` in `bs-ai-voice.json` to disable voice typing, or remove the optional file. Use `BS_AI_VOICE_PATH` to load it from another location.
 
+### OCR (`ocr_image` tool)
+
+The built-in `ocr_image` tool extracts text from local images and PDFs through the configured vision provider. It is gated on the `ocr` section of `bs-ai-config.json`:
+
+```jsonc
+"ocr": {
+  "enabled": true,
+  "default_provider": "openrouter.ai",  // provider name from bs-ai-models.json
+  "default_model": "openai/gpt-4o-mini", // must have supports_vision: true
+  "max_input_bytes": 20971520,            // per-image guard (default 20 MiB)
+  "output_dir": ".data/ocr",             // optional shared root; empty = write next to each image
+  "poppler": {
+    "dir": "",                            // e.g. D:/Tools/cli.poppler/Library/bin; empty = search PATH
+    "dpi": 150,
+    "format": "png",
+    "max_pages": 32,                      // hard page cap per pdf_to_images call
+    "timeout_seconds": 120
+  }
+}
+```
+
+Two actions exist. `image_to_text` (default) OCRs ONE image (png/jpg/webp/gif/tiff/bmp) and writes the extracted text to `<image>.txt` — next to the image by default, or under `ocr.output_dir` when set — returning only a compact status JSON (`{ok, output, chars, provider, model, latency_ms}`). `pdf_to_images` rasterizes a local PDF into page images via the Poppler CLI (`pdftoppm`) into a sibling folder (`report.pdf` → `report-pdf-images/`) and returns the page list plus a next-step hint. Passing a PDF to `image_to_text` returns a structured hint instead of OCR-ing it directly, teaching the two-step flow to smaller models. Add `ocr_image` to `tools.allowed` to expose it; image bytes are sent to the configured vision provider.
+
 ### Provider retries
 
 Retry behavior is configured independently for each provider in `bs-ai-models.json`:

@@ -1,0 +1,48 @@
+{
+    "type": "object",
+    "properties": {
+        "action": {
+            "type": "string",
+            "enum": ["image_to_text", "pdf_to_images"],
+            "description": "Action to perform. 'image_to_text' OCRs a single image. 'pdf_to_images' rasterizes a PDF into pages using Poppler CLI."
+        },
+        "path": {
+            "type": "string",
+            "description": "Absolute local path to the image file (png/jpg/webp/gif/tiff/bmp) or PDF. For image_to_text with a PDF, the tool returns a structured hint instead of OCR-ing it."
+        },
+        "provider": {
+            "type": "string",
+            "description": "Vision model provider (e.g. 'sarvam.ai/v2'). Must exist in bs-ai-models.json providers and support vision."
+        },
+        "model": {
+            "type": "string",
+            "description": "Vision model name (e.g. 'gemma4'). Must exist under the chosen provider with supports_vision: true."
+        },
+        "prompt": {
+            "type": "string",
+            "description": "Optional custom extraction instruction. Defaults to the built-in OCR prompt."
+        },
+        "output_dir": {
+            "type": "string",
+            "description": "Optional output directory. For image_to_text: where the .txt file goes. For pdf_to_images: where page images are written. Defaults to smart conventions per action."
+        },
+        "dpi": {
+            "type": "integer",
+            "description": "Rasterization DPI for pdf_to_images. Forwarded to pdftoppm -r. Ignored for image_to_text."
+        },
+        "first_page": {
+            "type": "integer",
+            "description": "First page number (1-indexed) for pdf_to_images. Defaults to 1."
+        },
+        "last_page": {
+            "type": "integer",
+            "description": "Last page number for pdf_to_images. Defaults to all pages, capped by poppler.max_pages."
+        },
+        "max_output_tokens": {
+            "type": "integer",
+            "description": "Maximum output tokens for image_to_text vision call. Defaults to model's max."
+        }
+    },
+    "required": ["path"],
+    "additionalProperties": false
+}

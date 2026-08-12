@@ -35,6 +35,7 @@ var knownToolNames = map[string]bool{
 	"recall_memory": true, "write_memory": true,
 	"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
 	"generate_image": true,
+	"ocr_image":      true,
 }
 
 // supportedAttachmentTypes is the closed set of image MIME types the feature
@@ -252,6 +253,9 @@ func validate(cfg *Config) error {
 		return err
 	}
 	if err := validateTasks(cfg.Tasks); err != nil {
+		return err
+	}
+	if err := validateOCR(cfg); err != nil {
 		return err
 	}
 	parent := filepath.Dir(cfg.ResolvePath(cfg.Logging.DBPath))

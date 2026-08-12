@@ -22,6 +22,7 @@ type Config struct {
 	Chat            ChatConfig                `json:"chat"`
 	Tasks           TasksConfig               `json:"tasks"`
 	Paths           PathsConfig               `json:"paths"`
+	OCR             OCRConfig                 `json:"ocr"`
 }
 
 // TasksConfig controls the durable background task runner. The runner survives

@@ -131,7 +131,7 @@ func NewServiceWithTools(cfg *aiconfig.Config, st *store.Store, profileReg *prof
 			time.Duration(item.RetryDelaySeconds)*time.Second,
 		)
 	}
-	registry, err := tools.NewWithExternal(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths, External: external})
+	registry, err := tools.NewWithExternal(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths, External: external, ConfigPath: cfg.Path, OCR: cfg.OCR, Providers: cfg.Providers})
 	if err != nil {
 		return nil, err
 	}

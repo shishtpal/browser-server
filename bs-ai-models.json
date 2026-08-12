@@ -1,6 +1,7 @@
 {
     "providers": {
         "openrouter.ai": {
+            "url": "https://openrouter.ai/models",
             "type": "openai_compatible",
             "base_url": "https://openrouter.ai/api/v1",
             "api_key": "env:OPENROUTER_API_KEY",

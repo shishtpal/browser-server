@@ -94,6 +94,7 @@ type SkillsConfig struct {
 type ProviderConfig struct {
 	Type                  string        `json:"type"`
 	BaseURL               string        `json:"base_url"`
+	URL                   string        `json:"url,omitempty"`
 	APIKey                string        `json:"api_key"`
 	RequestTimeoutSeconds int           `json:"request_timeout_seconds"`
 	RetryAttempts         int           `json:"retry_attempts"`

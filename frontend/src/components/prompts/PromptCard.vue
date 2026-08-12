@@ -1,7 +1,10 @@
 <template>
   <article
     class="group relative flex cursor-pointer flex-col rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-white/10 dark:bg-slate-900/60 dark:hover:border-indigo-500/40 dark:hover:bg-slate-900"
-    :class="dense ? 'sm:flex-row sm:items-start sm:gap-4' : ''"
+    :class="[
+      dense ? 'sm:flex-row sm:items-start sm:gap-4' : '',
+      prompt.pinned ? 'border-amber-200 dark:border-amber-500/40' : '',
+    ]"
     role="button"
     tabindex="0"
     @click="$emit('open', prompt)"
@@ -16,15 +19,7 @@
         title="Use this prompt"
         @click.stop="$emit('use', prompt)"
       >
-        <svg
-          class="h-3.5 w-3.5"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
-        </svg>
+        <ArrowRight class="h-3.5 w-3.5" />
       </button>
       <button
         class="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white/90 text-slate-500 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 dark:border-white/10 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:text-indigo-300"
@@ -32,30 +27,17 @@
         title="Copy content"
         @click.stop="$emit('copy', prompt)"
       >
-        <svg
-          v-if="copied"
-          class="h-3.5 w-3.5 text-emerald-500"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.4"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7" />
-        </svg>
-        <svg
-          v-else
-          class="h-3.5 w-3.5"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M8 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2m-6 12h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2Z"
-          />
-        </svg>
+        <Check v-if="copied" class="h-3.5 w-3.5 text-emerald-500" :stroke-width="2.4" />
+        <Copy v-else class="h-3.5 w-3.5" />
+      </button>
+      <button
+        class="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white/90 text-slate-500 shadow-sm transition hover:border-amber-300 hover:text-amber-600 dark:border-white/10 dark:bg-slate-950/80 dark:text-slate-300 dark:hover:text-amber-300"
+        type="button"
+        :title="prompt.pinned ? 'Unpin prompt' : 'Pin prompt'"
+        @click.stop="prompt.pinned ? $emit('unpin', prompt) : $emit('pin', prompt)"
+      >
+        <PinOff v-if="prompt.pinned" class="h-3.5 w-3.5" />
+        <Pin v-else class="h-3.5 w-3.5" />
       </button>
       <button
         class="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white/90 text-red-400 shadow-sm transition hover:border-red-300 hover:text-red-600 dark:border-white/10 dark:bg-slate-950/80 dark:hover:text-red-400"
@@ -63,19 +45,7 @@
         title="Delete prompt"
         @click.stop="$emit('delete', prompt)"
       >
-        <svg
-          class="h-3.5 w-3.5"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"
-          />
-        </svg>
+        <Trash2 class="h-3.5 w-3.5" />
       </button>
     </div>
 
@@ -114,19 +84,7 @@
       <div
         class="mt-2 flex items-center justify-end gap-1 border-t border-slate-100 pt-2 text-[0.62rem] text-slate-400 dark:border-white/5 dark:text-slate-500"
       >
-        <svg
-          class="h-3 w-3"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-          />
-        </svg>
+        <Clock class="h-3 w-3" />
         <span>{{ formatShortDate(prompt.updated_at || prompt.created_at) }}</span>
       </div>
     </div>
@@ -136,6 +94,7 @@
 <script setup lang="ts">
 import type { PromptResponse } from '../../types';
 import { formatShortDate } from './format';
+import { ArrowRight, Check, Clock, Copy, Pin, PinOff, Trash2 } from '@lucide/vue';
 
 defineProps<{
   prompt: PromptResponse;
@@ -148,6 +107,8 @@ defineEmits<{
   open: [prompt: PromptResponse];
   use: [prompt: PromptResponse];
   copy: [prompt: PromptResponse];
+  pin: [prompt: PromptResponse];
+  unpin: [prompt: PromptResponse];
   delete: [prompt: PromptResponse];
 }>();
 </script>

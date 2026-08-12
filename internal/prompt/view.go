@@ -28,6 +28,7 @@ func Map(rec Record) map[string]any {
 		"content":     rec.Prompt.Content,
 		"description": rec.Prompt.Description,
 		"tags":        rec.Tags(),
+		"pinned":      rec.Prompt.Pinned,
 		"created_at":  rec.Prompt.CreatedAt,
 		"updated_at":  rec.Prompt.UpdatedAt,
 	}
@@ -40,5 +41,6 @@ func SearchMap(rec Record) map[string]any {
 		"title":       rec.Prompt.Title,
 		"content":     rec.Prompt.Content,
 		"description": rec.Prompt.Description,
+		"pinned":      rec.Prompt.Pinned,
 	}
 }

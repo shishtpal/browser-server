@@ -12,19 +12,9 @@
     <div class="flex shrink-0 items-center gap-2">
       <!-- Mobile search (header search is hidden on small screens) -->
       <div class="relative sm:hidden">
-        <svg
+        <Search
           class="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="m21 21-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"
-          />
-        </svg>
+        />
         <input
           :value="search"
           type="search"
@@ -42,6 +32,7 @@
         <option value="updated">Recently updated</option>
         <option value="created">Recently created</option>
         <option value="title">Title A→Z</option>
+        <option value="pinned">Pinned first</option>
       </select>
 
       <div class="flex overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
@@ -52,19 +43,7 @@
           title="Grid view"
           @click="$emit('update:layout', 'grid')"
         >
-          <svg
-            class="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 13h6v6h-6z"
-            />
-          </svg>
+          <LayoutGrid class="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -73,19 +52,7 @@
           title="List view"
           @click="$emit('update:layout', 'list')"
         >
-          <svg
-            class="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
-            />
-          </svg>
+          <List class="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -94,6 +61,7 @@
 
 <script setup lang="ts">
 import type { PromptSort, PromptLayout } from '../../composables/usePromptManager';
+import { LayoutGrid, List, Search } from '@lucide/vue';
 
 defineProps<{
   activeTagLabel: string;

@@ -14,7 +14,7 @@ import (
 )
 
 // Columns is the canonical column list for prompt SELECT queries.
-const Columns = "id, user_id, title, content, description, tags, created_at, updated_at"
+const Columns = "id, user_id, title, content, description, tags, pinned, created_at, updated_at"
 
 var (
 	// ErrNotFound is returned when a prompt does not exist.
@@ -42,7 +42,7 @@ func Scan(scanner rowScanner) (Record, error) {
 	err := scanner.Scan(
 		&rec.Prompt.ID, &rec.Prompt.UserID, &rec.Prompt.Title,
 		&rec.Prompt.Content, &rec.Prompt.Description, &rec.Prompt.Tags,
-		&rec.Prompt.CreatedAt, &rec.Prompt.UpdatedAt,
+		&rec.Prompt.Pinned, &rec.Prompt.CreatedAt, &rec.Prompt.UpdatedAt,
 	)
 	return rec, err
 }
@@ -141,6 +141,7 @@ type CreateInput struct {
 	Content     string
 	Description string
 	Tags        []string
+	Pinned      bool
 
 	// CreatedAt sets the creation timestamp. It defaults to time.Now().
 	// Listings order by created_at, so this is deliberately stored with
@@ -159,9 +160,9 @@ func Create(ctx context.Context, in CreateInput) (int64, string, error) {
 	}
 
 	result, err := db.PromptDB.ExecContext(ctx, `
-		INSERT INTO prompts (user_id, title, content, description, tags, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		in.UserID, in.Title, in.Content, in.Description, tagsJSON, createdAt, createdAt)
+		INSERT INTO prompts (user_id, title, content, description, tags, pinned, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		in.UserID, in.Title, in.Content, in.Description, tagsJSON, in.Pinned, createdAt, createdAt)
 	if err != nil {
 		return 0, tagsJSON, err
 	}

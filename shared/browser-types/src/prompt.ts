@@ -5,6 +5,7 @@ export interface Prompt {
   content: string
   description: string
   tags: string[]
+  pinned: boolean
   created_at: string
   updated_at: string
 }
@@ -17,6 +18,7 @@ export interface CreatePromptInput {
   content: string
   description?: string
   tags?: string[]
+  pinned?: boolean
 }
 
 export interface UpdatePromptInput {
@@ -24,4 +26,5 @@ export interface UpdatePromptInput {
   content?: string
   description?: string
   tags?: string[]
+  pinned?: boolean
 }

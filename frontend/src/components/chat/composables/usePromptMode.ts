@@ -130,7 +130,7 @@ export function usePromptMode(
       clearPromptMode();
       return true;
     }
-    return true; // swallow other keys? No — only consuming navigation keys; fall through.
+    return false; // let printable keys reach the textarea so the /query can be typed
   }
 
   return {

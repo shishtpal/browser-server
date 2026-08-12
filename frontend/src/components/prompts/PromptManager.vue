@@ -56,6 +56,8 @@
             @open="openEditor"
             @use="usePrompt"
             @copy="copyPrompt"
+            @pin="pinPrompt"
+            @unpin="unpinPrompt"
             @delete="confirmDeletePrompt"
             @create="createPrompt"
           />
@@ -141,6 +143,8 @@ const {
   savePrompt,
   confirmDeletePrompt,
   copyPrompt,
+  pinPrompt,
+  unpinPrompt,
   selectTag,
 } = usePromptManager({ prompts, activeTag, addPrompt, editPrompt, removePrompt, loadPrompts });
 

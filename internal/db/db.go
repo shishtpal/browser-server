@@ -206,6 +206,9 @@ func backfillHistoryDomains() {
 			}
 		}
 	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Failed to read history rows during domain backfill: %v", err)
+	}
 	rows.Close()
 	tx, err := HistoryDB.Begin()
 	if err != nil {
@@ -281,10 +284,14 @@ func InitPromptDB(dataPath string) {
 			content TEXT NOT NULL,
 			description TEXT DEFAULT '',
 			tags TEXT DEFAULT '[]',
+			pinned BOOLEAN DEFAULT FALSE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
+	// Migration for prompts.db files created before pinned existed:
+	// CREATE TABLE IF NOT EXISTS is a no-op for them, so add the column.
+	ensureColumn(PromptDB, "prompts", "pinned", "pinned BOOLEAN DEFAULT FALSE")
 	Exec(PromptDB, `CREATE INDEX IF NOT EXISTS idx_prompts_user ON prompts(user_id)`)
 }
 

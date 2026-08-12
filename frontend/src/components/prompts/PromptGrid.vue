@@ -17,19 +17,7 @@
       <div
         class="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25"
       >
-        <svg
-          class="h-7 w-7"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"
-          />
-        </svg>
+        <Sparkles class="h-7 w-7" />
       </div>
       <p class="text-[0.85rem] font-medium text-slate-600 dark:text-slate-300">
         {{ search ? 'No prompts match your search.' : 'No prompts match this tag yet.' }}
@@ -54,6 +42,8 @@
         @open="$emit('open', $event)"
         @use="$emit('use', $event)"
         @copy="$emit('copy', $event)"
+        @pin="$emit('pin', $event)"
+        @unpin="$emit('unpin', $event)"
         @delete="$emit('delete', $event)"
       />
     </div>
@@ -65,6 +55,7 @@ import type { PromptResponse } from '../../types';
 import type { PromptLayout } from '../../composables/usePromptManager';
 import { computed } from 'vue';
 import PromptCard from './PromptCard.vue';
+import { Sparkles } from '@lucide/vue';
 
 const props = defineProps<{
   prompts: PromptResponse[];
@@ -78,6 +69,8 @@ defineEmits<{
   open: [prompt: PromptResponse];
   use: [prompt: PromptResponse];
   copy: [prompt: PromptResponse];
+  pin: [prompt: PromptResponse];
+  unpin: [prompt: PromptResponse];
   delete: [prompt: PromptResponse];
   create: [];
 }>();

@@ -156,6 +156,7 @@ type Prompt struct {
 	Content     string    `json:"content"`
 	Description string    `json:"description"`
 	Tags        string    `json:"tags"`
+	Pinned      bool      `json:"pinned"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

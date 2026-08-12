@@ -59,6 +59,7 @@ func SearchHitMap(rec Record, score float64) map[string]any {
 		"title":       rec.Prompt.Title,
 		"content":     rec.Prompt.Content,
 		"description": rec.Prompt.Description,
+		"pinned":      rec.Prompt.Pinned,
 		"score":       score,
 	}
 }

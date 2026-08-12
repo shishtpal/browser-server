@@ -40,6 +40,10 @@
                 "maxLength": 100
             },
             "description": "Each tag must be 100 characters or fewer"
+        },
+        "pinned": {
+            "type": "boolean",
+            "description": "Whether the prompt is pinned (pinned prompts sort first)"
         }
     },
     "required": ["user_id", "action"],

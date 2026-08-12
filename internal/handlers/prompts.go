@@ -40,6 +40,7 @@ func CreatePrompt(w http.ResponseWriter, r *http.Request) {
 		Content     string   `json:"content"`
 		Description string   `json:"description"`
 		Tags        []string `json:"tags"`
+		Pinned      bool     `json:"pinned"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
@@ -63,6 +64,7 @@ func CreatePrompt(w http.ResponseWriter, r *http.Request) {
 		Content:     input.Content,
 		Description: input.Description,
 		Tags:        input.Tags,
+		Pinned:      input.Pinned,
 	})
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
@@ -124,6 +126,7 @@ func UpdatePrompt(w http.ResponseWriter, r *http.Request) {
 		Content     *string  `json:"content"`
 		Description *string  `json:"description"`
 		Tags        []string `json:"tags"`
+		Pinned      *bool    `json:"pinned"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
@@ -156,6 +159,9 @@ func UpdatePrompt(w http.ResponseWriter, r *http.Request) {
 	}
 	if input.Tags != nil {
 		builder.Set("tags", helpers.TagsToJSON(input.Tags))
+	}
+	if input.Pinned != nil {
+		builder.Set("pinned", *input.Pinned)
 	}
 
 	if builder.Empty() {

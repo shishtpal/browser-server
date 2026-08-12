@@ -33,11 +33,12 @@ func managePrompt(ctx context.Context, raw json.RawMessage) (any, error) {
 		Content     *string         `json:"content"`
 		Description *string         `json:"description"`
 		Tags        *[]string       `json:"tags"`
+		Pinned      *bool           `json:"pinned"`
 	}
 	if err := strict(raw, &a, map[string]bool{
 		"user_id": true, "action": true,
 		"id": true, "title": true, "content": true,
-		"description": true, "tags": true,
+		"description": true, "tags": true, "pinned": true,
 	}); err != nil {
 		return nil, err
 	}
@@ -100,9 +101,9 @@ func managePrompt(ctx context.Context, raw json.RawMessage) (any, error) {
 
 	switch a.Action {
 	case "add":
-		return managePromptAdd(ctx, a.UserID, a.Title, a.Content, a.Description, a.Tags)
+		return managePromptAdd(ctx, a.UserID, a.Title, a.Content, a.Description, a.Tags, a.Pinned)
 	case "edit":
-		return managePromptEdit(ctx, a.UserID, a.ID, a.Title, a.Content, a.Description, a.Tags)
+		return managePromptEdit(ctx, a.UserID, a.ID, a.Title, a.Content, a.Description, a.Tags, a.Pinned)
 	case "remove":
 		return managePromptRemove(ctx, a.UserID, a.ID)
 	default:
@@ -110,7 +111,7 @@ func managePrompt(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 }
 
-func managePromptAdd(ctx context.Context, userID int, title, content, description *string, tags *[]string) (any, error) {
+func managePromptAdd(ctx context.Context, userID int, title, content, description *string, tags *[]string, pinned *bool) (any, error) {
 	titleStr := strings.TrimSpace(*title)
 	descriptionStr := ""
 	if description != nil {
@@ -122,12 +123,18 @@ func managePromptAdd(ctx context.Context, userID int, title, content, descriptio
 		tagList = *tags
 	}
 
+	pinnedVal := false
+	if pinned != nil {
+		pinnedVal = *pinned
+	}
+
 	id, _, err := prompt.Create(ctx, prompt.CreateInput{
 		UserID:      userID,
 		Title:       titleStr,
 		Content:     *content,
 		Description: descriptionStr,
 		Tags:        tagList,
+		Pinned:      pinnedVal,
 	})
 	if err != nil {
 		return nil, err
@@ -140,7 +147,7 @@ func managePromptAdd(ctx context.Context, userID int, title, content, descriptio
 	return prompt.Map(rec), nil
 }
 
-func managePromptEdit(ctx context.Context, userID int, idRaw json.RawMessage, title, content, description *string, tags *[]string) (any, error) {
+func managePromptEdit(ctx context.Context, userID int, idRaw json.RawMessage, title, content, description *string, tags *[]string, pinned *bool) (any, error) {
 	id, err := promptIDFromRaw(idRaw, "edit")
 	if err != nil {
 		return nil, err
@@ -173,6 +180,9 @@ func managePromptEdit(ctx context.Context, userID int, idRaw json.RawMessage, ti
 			tagsJSON = helpers.TagsToJSON(*tags)
 		}
 		builder.Set("tags", tagsJSON)
+	}
+	if pinned != nil {
+		builder.Set("pinned", *pinned)
 	}
 
 	if builder.Empty() {

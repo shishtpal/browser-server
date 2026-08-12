@@ -3,7 +3,7 @@ import { computed, ref, type Ref } from 'vue';
 import { UNTAGGED_FILTER, type TagFilter } from './usePrompts';
 
 export type PromptView = 'grid' | 'editor';
-export type PromptSort = 'updated' | 'created' | 'title';
+export type PromptSort = 'updated' | 'created' | 'title' | 'pinned';
 export type PromptLayout = 'grid' | 'list';
 
 export interface PromptDraft {
@@ -90,6 +90,15 @@ export function usePromptManager(deps: PromptManagerDeps) {
 
     return list.sort((a, b) => {
       if (sortBy.value === 'title') return (a.title || '').localeCompare(b.title || '');
+      if (sortBy.value === 'pinned') {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        const key = 'updated_at';
+        return (
+          new Date(b[key] || b.created_at || 0).getTime() -
+          new Date(a[key] || a.created_at || 0).getTime()
+        );
+      }
       const key = sortBy.value === 'created' ? 'created_at' : 'updated_at';
       return (
         new Date(b[key] || b.created_at || 0).getTime() -
@@ -192,6 +201,23 @@ export function usePromptManager(deps: PromptManagerDeps) {
     }
   }
 
+  async function pinPrompt(prompt: PromptResponse) {
+    await editPrompt(prompt.id, { pinned: true });
+    if (!draft.value || draft.value.id !== prompt.id) return;
+    // While this prompt is open in the editor the grid list is hidden, so the
+    // in-memory prompts[] update from editPrompt is enough; refresh only the
+    // "last saved" timestamp shown by PromptEditor, not the field contents.
+    const resp = prompts.value.find((p) => p.id === prompt.id);
+    if (resp) draft.value = { ...draft.value, updated_at: resp.updated_at };
+  }
+
+  async function unpinPrompt(prompt: PromptResponse) {
+    await editPrompt(prompt.id, { pinned: false });
+    if (!draft.value || draft.value.id !== prompt.id) return;
+    const resp = prompts.value.find((p) => p.id === prompt.id);
+    if (resp) draft.value = { ...draft.value, updated_at: resp.updated_at };
+  }
+
   function selectTag(tag: TagFilter) {
     if (view.value === 'editor' && !confirmDiscard()) return;
     activeTag.value = tag;
@@ -225,6 +251,8 @@ export function usePromptManager(deps: PromptManagerDeps) {
     savePrompt,
     confirmDeletePrompt,
     copyPrompt,
+    pinPrompt,
+    unpinPrompt,
     selectTag,
   };
 }

@@ -135,6 +135,9 @@ export interface QuestionReviewState {
   due_at: string
   last_rating: ReviewRating
   last_reviewed_at: string
+  skip_count: number
+  /** Null when the card has never been skipped. */
+  last_skipped_at: string | null
 }
 
 export interface QuestionCardItem {
@@ -155,9 +158,19 @@ export interface ListQuestionCardsOptions {
   tags?: string[]
   limit?: number
   practice?: boolean
+  /** Practice mode: mix in a specific bucket. "new" shows only unrated cards;
+   *  "skipped" returns ones the user punted at least once; "hard" filters by
+   *  question difficulty. Omitting mode keeps the due-then-new default. */
+  mode?: CardFilterMode
 }
+
+export type CardFilterMode = 'new' | 'skipped' | 'hard'
 
 export interface ReviewQuestionInput {
   user_id: number
   rating: ReviewRating
+}
+
+export interface SkipQuestionCardInput {
+  user_id: number
 }

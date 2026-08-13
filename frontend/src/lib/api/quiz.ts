@@ -9,6 +9,7 @@ import type {
   QuestionReviewState,
   QuizStats,
   ReviewQuestionInput,
+  SkipQuestionCardInput,
   TagVocabulary,
   UpdateQuestionInput,
 } from '@browser-server/shared-types';
@@ -61,3 +62,8 @@ export const reviewQuestion = (
   id: number,
   input: ReviewQuestionInput,
 ): Promise<QuestionReviewState> => client.reviewQuestion(id, input);
+
+export const skipQuestionCard = (
+  id: number,
+  input: SkipQuestionCardInput,
+): Promise<QuestionReviewState> => client.skipQuestionCard(id, input);

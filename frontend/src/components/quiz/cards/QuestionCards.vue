@@ -12,6 +12,7 @@
       v-model:all-questions="allQuestions"
       v-model:limit="limit"
       v-model:selected-tags="selectedTags"
+      v-model:mode="mode"
       :tag-options="tagOptions"
       :can-start="canStart"
       :nothing-due="nothingDue"
@@ -53,6 +54,7 @@
         @next="nextPractice"
         @skip="skip"
         @edit="emit('edit', $event)"
+        @ignore-tag="ignoreTag"
       />
     </template>
 
@@ -126,9 +128,11 @@ const {
   isRating,
   isSavingDifficulty,
   skippedCount,
+  mode,
   reveal,
   submitRating,
   skip,
+  ignoreTag,
   changeDifficulty,
   ratingCounts,
 } = cards;

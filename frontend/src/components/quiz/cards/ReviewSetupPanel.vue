@@ -105,6 +105,41 @@
       <!-- Tags -->
       <TagSelector v-model="selectedTagsProxy" :options="tagOptions" :disabled="allQuestions" />
 
+      <!-- Practice mode -->
+      <div
+        class="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900/40"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+          >
+            <Filter class="h-4 w-4" :stroke-width="2.25" aria-hidden="true" />
+          </span>
+          <div>
+            <span class="block text-xs font-bold text-slate-800 dark:text-slate-200">Mode</span>
+            <span class="block text-[11px] text-slate-500 dark:text-slate-400">
+              Pick a focused bucket; default keeps due→new ordering.
+            </span>
+          </div>
+        </div>
+        <div class="flex flex-1 flex-wrap items-center justify-end gap-1.5">
+          <button
+            v-for="option in modes"
+            :key="option.value"
+            type="button"
+            class="rounded-full px-3 py-1.5 text-xs font-semibold transition"
+            :class="
+              modeProxy === option.value
+                ? 'bg-violet-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+            "
+            @click="modeProxy = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
         <Button
@@ -139,7 +174,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Dumbbell, Infinity as InfinityIcon, Info, Layers, ListOrdered, Play } from '@lucide/vue';
+import {
+  Dumbbell,
+  Infinity as InfinityIcon,
+  Info,
+  Layers,
+  ListOrdered,
+  Play,
+  Filter,
+} from '@lucide/vue';
+import type { CardFilterMode } from '../../../types';
 import Button from '../../ui/Button.vue';
 import TagSelector from './TagSelector.vue';
 
@@ -147,6 +191,7 @@ const props = defineProps<{
   allQuestions: boolean;
   limit: number;
   selectedTags: string[];
+  mode: CardFilterMode | '';
   tagOptions: string[];
   canStart: boolean;
   nothingDue: boolean;
@@ -156,6 +201,7 @@ const emit = defineEmits<{
   'update:allQuestions': [value: boolean];
   'update:limit': [value: number];
   'update:selectedTags': [value: string[]];
+  'update:mode': [value: CardFilterMode | ''];
   start: [];
   'start-practice': [];
 }>();
@@ -164,4 +210,16 @@ const selectedTagsProxy = computed({
   get: () => props.selectedTags,
   set: (value: string[]) => emit('update:selectedTags', value),
 });
+
+const modeProxy = computed({
+  get: () => props.mode,
+  set: (value: CardFilterMode | '') => emit('update:mode', value),
+});
+
+const modes: Array<{ value: CardFilterMode | ''; label: string }> = [
+  { value: '', label: 'Due + new' },
+  { value: 'new', label: 'Only new' },
+  { value: 'skipped', label: 'Only skipped' },
+  { value: 'hard', label: 'Only hard' },
+];
 </script>

@@ -390,6 +390,11 @@ func InitQuizDB(dataPath string) {
 			FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 		)
 	`)
+
+	// Skip telemetry (idempotent): skipped cards still count as "new" for SM-2,
+	// but power the "Only skipped" practice mode.
+	ensureColumn(QuizDB, "question_review_state", "skip_count", "skip_count INTEGER NOT NULL DEFAULT 0")
+	ensureColumn(QuizDB, "question_review_state", "last_skipped_at", "last_skipped_at DATETIME NULL")
 }
 
 func CloseQuizDB() {

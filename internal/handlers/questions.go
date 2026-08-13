@@ -280,7 +280,12 @@ func GetQuestionCards(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 	practice := r.URL.Query().Get("practice") == "true"
-	queue, err := quiz.ListCards(r.Context(), userID, r.URL.Query()["tag"], limit, time.Now(), practice)
+	mode := r.URL.Query().Get("mode")
+	if err := quiz.ValidateCardMode(mode); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	queue, err := quiz.ListCards(r.Context(), userID, r.URL.Query()["tag"], limit, time.Now(), practice, mode)
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
@@ -315,6 +320,39 @@ func ReviewQuestionCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state, err := quiz.ReviewQuestion(r.Context(), questionID, input.UserID, input.Rating, time.Now())
+	if errors.Is(err, quiz.ErrQuestionNotFound) || errors.Is(err, quiz.ErrQuestionNotOwned) {
+		helpers.WriteError(w, http.StatusNotFound, "Question not found")
+		return
+	}
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
+		return
+	}
+	json.NewEncoder(w).Encode(state)
+}
+
+func SkipQuestionCard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if !quizEnabled(w) {
+		return
+	}
+	questionID := helpers.GetIDFromPath(r)
+	if questionID <= 0 {
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid question id")
+		return
+	}
+	var input struct {
+		UserID int `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	if input.UserID <= 0 {
+		helpers.WriteError(w, http.StatusBadRequest, "user_id is required")
+		return
+	}
+	state, err := quiz.RecordSkip(r.Context(), questionID, input.UserID, time.Now())
 	if errors.Is(err, quiz.ErrQuestionNotFound) || errors.Is(err, quiz.ErrQuestionNotOwned) {
 		helpers.WriteError(w, http.StatusNotFound, "Question not found")
 		return

@@ -11,6 +11,7 @@ import type {
   QuestionCardQueue,
   QuestionReviewState,
   ReviewQuestionInput,
+  SkipQuestionCardInput,
 } from '@browser-server/shared-types'
 import { type TokenProvider, apiFetch, buildQuery } from '../internals'
 
@@ -96,12 +97,18 @@ export function createQuestionMethods(baseUrl: string, getToken?: TokenProvider)
     },
 
     listQuestionCards(userId: number, options: ListQuestionCardsOptions = {}): Promise<QuestionCardQueue> {
-      const qs = buildQuery({ user_id: userId, tag: options.tags, limit: options.limit, practice: options.practice ? 'true' : undefined })
+      const qs = buildQuery({ user_id: userId, tag: options.tags, limit: options.limit, practice: options.practice ? 'true' : undefined, mode: options.mode })
       return apiFetch<QuestionCardQueue>(baseUrl, 'GET', `/api/quiz/cards${qs}`, undefined, getToken)
     },
 
     reviewQuestion(questionId: number, input: ReviewQuestionInput): Promise<QuestionReviewState> {
       return apiFetch<QuestionReviewState>(baseUrl, 'POST', `/api/quiz/cards/${questionId}/review`, input, getToken)
+    },
+
+    /** Persists a skip without scheduling a review, so the card stays eligible
+     *  for Only Skipped mode. Returns the review row for the queue UI. */
+    skipQuestionCard(questionId: number, input: SkipQuestionCardInput): Promise<QuestionReviewState> {
+      return apiFetch<QuestionReviewState>(baseUrl, 'POST', `/api/quiz/cards/${questionId}/skip`, input, getToken)
     },
   }
 }

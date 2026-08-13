@@ -1,6 +1,12 @@
 import { computed, ref, type Ref } from 'vue';
-import { getQuestionCards, reviewQuestion, updateQuestion } from '../../../lib/api';
+import {
+  getQuestionCards,
+  reviewQuestion,
+  skipQuestionCard,
+  updateQuestion,
+} from '../../../lib/api';
 import type {
+  CardFilterMode,
   QuestionCardItem,
   QuestionDifficulty,
   QuestionResponse,
@@ -16,6 +22,8 @@ export function useQuestionCards(
   const selectedTags = ref<string[]>([]);
   const allQuestions = ref(false);
   const limit = ref(20);
+  const mode = ref<CardFilterMode | ''>('');
+  const skippedTagIDs = ref<Set<string>>(new Set());
   const items = ref<QuestionCardItem[]>([]);
   const dueCount = ref(0);
   const newCount = ref(0);
@@ -42,6 +50,8 @@ export function useQuestionCards(
     session++;
     selectedTags.value = [];
     allQuestions.value = false;
+    mode.value = '';
+    skippedTagIDs.value = new Set();
     items.value = [];
     dueCount.value = 0;
     newCount.value = 0;
@@ -68,17 +78,19 @@ export function useQuestionCards(
         tags: allQuestions.value ? undefined : selectedTags.value,
         limit: limit.value,
         practice,
+        mode: mode.value || undefined,
       });
       if (activeSession !== session || userId.value === null) return;
-      items.value = queue.items;
+      items.value = filterIgnoredTags(queue.items);
       dueCount.value = queue.due_count;
       newCount.value = queue.new_count;
       answerRevealed.value = false;
-      nothingDue.value = queue.items.length === 0;
+      const visibleCount = items.value.length;
+      nothingDue.value = visibleCount === 0;
       skippedCount.value = 0;
       skippedQuestionIDs.clear();
       ratingCounts.value = { again: 0, hard: 0, good: 0, easy: 0 };
-      phase.value = queue.items.length ? 'reviewing' : 'idle';
+      phase.value = visibleCount ? 'reviewing' : 'idle';
     } catch (e) {
       if (activeSession === session) {
         phase.value = 'idle';
@@ -105,11 +117,32 @@ export function useQuestionCards(
     if (!items.value.length) phase.value = 'complete';
   };
 
-  /** Move the current card to the back of the queue to attempt it later.
-   *  Complete once every remaining card has been skipped. */
-  const skip = () => {
-    if (!current.value || isRating.value) return;
-    skippedQuestionIDs.add(current.value.question.id);
+  /** Tags the user chose to ignore surface here; dropping an item from the
+   *  queue does not cancel practice mode. */
+  const ignoreTag = (tag: string) => {
+    if (!tag) return;
+    skippedTagIDs.value = new Set([...skippedTagIDs.value, tag]);
+    items.value = items.value.filter((i) => !i.question.tags?.includes(tag));
+    if (!items.value.length) phase.value = 'complete';
+  };
+
+  const clearIgnoredTags = () => {
+    skippedTagIDs.value = new Set();
+  };
+
+  const filterIgnoredTags = (list: QuestionCardItem[]) => {
+    const ignored = skippedTagIDs.value;
+    if (!ignored.size) return list;
+    return list.filter((i) => !i.question.tags?.some((t) => ignored.has(t)));
+  };
+
+  /** Persist the skip so tomorrow's Only Skipped can collect these. Still
+   *  rotates to the back of the session queue for local fairness. */
+  const skip = async () => {
+    if (!current.value || !userId.value || isRating.value) return;
+    const currentId = current.value.question.id;
+    skippedQuestionIDs.add(currentId);
+    skippedCount.value++;
     if (items.value.length > 1) {
       items.value.push(items.value.shift()!);
     } else {
@@ -117,8 +150,12 @@ export function useQuestionCards(
       phase.value = 'complete';
     }
     answerRevealed.value = false;
-    skippedCount.value++;
     if (skippedQuestionIDs.size >= items.value.length) phase.value = 'complete';
+    try {
+      await skipQuestionCard(currentId, { user_id: userId.value });
+    } catch (e) {
+      console.warn('skip persist failed; continuing session', e);
+    }
   };
   const reveal = () => {
     answerRevealed.value = true;
@@ -170,6 +207,8 @@ export function useQuestionCards(
     selectedTags,
     allQuestions,
     limit,
+    mode,
+    skippedTagIDs,
     items,
     dueCount,
     newCount,
@@ -191,6 +230,8 @@ export function useQuestionCards(
     end,
     nextPractice,
     skip,
+    ignoreTag,
+    clearIgnoredTags,
     reveal,
     submitRating,
     changeDifficulty,

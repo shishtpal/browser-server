@@ -10,9 +10,18 @@
         <span
           v-for="chip in metaChips"
           :key="chip"
-          class="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700/70 dark:text-slate-300"
+          class="group flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700/70 dark:text-slate-300"
         >
           {{ chip }}
+          <button
+            v-if="(question.tags ?? []).includes(chip)"
+            type="button"
+            class="-mr-1 rounded-full p-0.5 text-slate-300 transition hover:bg-slate-200 hover:text-slate-500 dark:text-slate-500 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+            :aria-label="`Ignore tag ${chip} for this session`"
+            @click="$emit('ignore-tag', chip)"
+          >
+            <X class="h-2.5 w-2.5" :stroke-width="2.5" aria-hidden="true" />
+          </button>
         </span>
 
         <div class="ml-auto flex items-center gap-2">
@@ -272,6 +281,7 @@ import {
   Keyboard,
   Pencil,
   SkipForward,
+  X,
 } from '@lucide/vue';
 import type { QuestionResponse, ReviewRating } from '../../../types';
 import { API_BASE } from '../../../lib/api';
@@ -304,6 +314,7 @@ const emit = defineEmits<{
   skip: [];
   edit: [question: QuestionResponse];
   'difficulty-change': [difficulty: string];
+  'ignore-tag': [tag: string];
 }>();
 
 const selectedOptionIndex = ref<number | null>(null);

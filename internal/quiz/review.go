@@ -39,6 +39,8 @@ type ReviewState struct {
 	DueAt           time.Time
 	LastRating      string
 	LastReviewedAt  time.Time
+	SkipCount       int
+	LastSkippedAt   *time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -117,15 +119,15 @@ func ScheduleReview(previous *ReviewState, rating string, now time.Time) ReviewS
 
 func scanReview(scanner interface{ Scan(...any) error }) (ReviewState, error) {
 	var s ReviewState
-	err := scanner.Scan(&s.QuestionID, &s.UserID, &s.Repetitions, &s.IntervalSeconds, &s.EaseFactor, &s.DueAt, &s.LastRating, &s.LastReviewedAt, &s.CreatedAt, &s.UpdatedAt)
+	err := scanner.Scan(&s.QuestionID, &s.UserID, &s.Repetitions, &s.IntervalSeconds, &s.EaseFactor, &s.DueAt, &s.LastRating, &s.LastReviewedAt, &s.SkipCount, &s.LastSkippedAt, &s.CreatedAt, &s.UpdatedAt)
 	return s, err
 }
 
 func reviewResponse(s ReviewState) models.QuestionReviewState {
-	return models.QuestionReviewState{QuestionID: s.QuestionID, Repetitions: s.Repetitions, IntervalSeconds: s.IntervalSeconds, EaseFactor: s.EaseFactor, DueAt: s.DueAt, LastRating: s.LastRating, LastReviewedAt: s.LastReviewedAt}
+	return models.QuestionReviewState{QuestionID: s.QuestionID, Repetitions: s.Repetitions, IntervalSeconds: s.IntervalSeconds, EaseFactor: s.EaseFactor, DueAt: s.DueAt, LastRating: s.LastRating, LastReviewedAt: s.LastReviewedAt, SkipCount: s.SkipCount, LastSkippedAt: s.LastSkippedAt}
 }
 
-const reviewColumns = "question_id, user_id, repetitions, interval_seconds, ease_factor, due_at, last_rating, last_reviewed_at, created_at, updated_at"
+const reviewColumns = "question_id, user_id, repetitions, interval_seconds, ease_factor, due_at, last_rating, last_reviewed_at, skip_count, last_skipped_at, created_at, updated_at"
 
 // qualifiedQuestionColumns prefixes each Columns entry with a table alias.
 // Columns must stay a plain comma-separated identifier list; a column holding
@@ -141,8 +143,40 @@ func qualifiedQuestionColumns(alias string) string {
 	return strings.Join(parts, ", ")
 }
 
+// Practice queue modes. An empty mode selects the default "due first, then new" behavior.
+const (
+	CardModeNew     = "new"
+	CardModeSkipped = "skipped"
+	CardModeHard    = "hard"
+)
+
+func ValidateCardMode(mode string) error {
+	switch mode {
+	case "", CardModeNew, CardModeSkipped, CardModeHard:
+		return nil
+	default:
+		return errors.New("mode must be one of: new, skipped, hard")
+	}
+}
+
+// modeFilter returns the extra WHERE fragment selecting only the requested
+// practice bucket. Hard cards come straight from the questions table; the
+// skipped bucket is any persisted review row with skip history.
+func modeFilter(mode string) string {
+	switch mode {
+	case CardModeNew:
+		return " AND r.question_id IS NULL"
+	case CardModeSkipped:
+		return " AND r.skip_count > 0"
+	case CardModeHard:
+		return " AND q.difficulty = 'hard'"
+	default:
+		return ""
+	}
+}
+
 // ListCards returns due reviews followed by never-reviewed questions. Tags reuse Filter.Where via a matching-ID subquery.
-func ListCards(ctx context.Context, userID int, tags []string, limit int, now time.Time, practice bool) (models.QuestionCardQueue, error) {
+func ListCards(ctx context.Context, userID int, tags []string, limit int, now time.Time, practice bool, mode string) (models.QuestionCardQueue, error) {
 	var out models.QuestionCardQueue
 	predicate, args := (Filter{UserID: userID, Tags: tags}).Where()
 	base := "q.id IN (SELECT id FROM questions WHERE " + predicate + ")"
@@ -151,32 +185,36 @@ func ListCards(ctx context.Context, userID int, tags []string, limit int, now ti
 	countSQL := "SELECT " +
 		"COALESCE(SUM(CASE WHEN r.question_id IS NOT NULL AND r.due_at <= ? THEN 1 ELSE 0 END), 0), " +
 		"COALESCE(SUM(CASE WHEN r.question_id IS NULL THEN 1 ELSE 0 END), 0) " +
-		"FROM questions q " + joinClause + " WHERE " + base
+		"FROM questions q " + joinClause + " WHERE " + base + modeFilter(mode)
 	// Bound in SQL text order: the `due_at <= ?` in the SELECT list precedes
-	// the join's user scope, which precedes the filter predicate.
+	// the join's user scope, which precedes the filter predicate. Mode queries
+	// append their own ? below, after the default because SQLite binds in text order.
 	countArgs := append([]any{now.UTC(), userID}, args...)
+	if mode == CardModeHard {
+		countArgs = append(countArgs, now.UTC())
+	}
 	if err := db.QuizDB.QueryRowContext(ctx, countSQL, countArgs...).Scan(&out.DueCount, &out.NewCount); err != nil {
 		return out, err
 	}
 	out.AvailableCount = out.DueCount + out.NewCount
-	// A practice queue may consist entirely of reviewed cards whose due date is
-	// still in the future, so the normal due/new count cannot short-circuit it.
-	if limit <= 0 || (!practice && out.AvailableCount == 0) {
+	// A practice or mode-filtered queue may consist entirely of cards whose due
+	// date is still in the future, so the default due/new count cannot short-circuit it.
+	if limit <= 0 || (!practice && mode == "" && out.AvailableCount == 0) {
 		out.Items = []models.QuestionCardItem{}
 		return out, nil
 	}
 	cardFilter := "(r.question_id IS NULL OR r.due_at <= ?)"
-	if practice {
+	if practice || mode != "" {
 		cardFilter = "1=1"
 	}
 	query := "SELECT " + qualifiedQuestionColumns("q") + ", " +
-		"r.question_id, r.user_id, r.repetitions, r.interval_seconds, r.ease_factor, r.due_at, r.last_rating, r.last_reviewed_at, r.created_at, r.updated_at " +
-		"FROM questions q " + joinClause + " WHERE " + base +
+		"r.question_id, r.user_id, r.repetitions, r.interval_seconds, r.ease_factor, r.due_at, r.last_rating, r.last_reviewed_at, r.skip_count, r.last_skipped_at, r.created_at, r.updated_at " +
+		"FROM questions q " + joinClause + " WHERE " + base + modeFilter(mode) +
 		" AND " + cardFilter + " " +
 		"ORDER BY CASE WHEN r.question_id IS NULL THEN 1 ELSE 0 END, r.due_at ASC, q.id DESC LIMIT ?"
 	// userID for the join, then filter args, then now + limit.
 	queryArgs := append(append([]any{userID}, args...), now.UTC(), limit)
-	if practice {
+	if practice || mode != "" {
 		queryArgs = append(append([]any{userID}, args...), limit)
 	}
 	rows, err := db.QuizDB.QueryContext(ctx, query, queryArgs...)
@@ -187,9 +225,9 @@ func ListCards(ctx context.Context, userID int, tags []string, limit int, now ti
 	out.Items = []models.QuestionCardItem{}
 	for rows.Next() {
 		var rec Record
-		var reviewID, reviewUserID, repetitions, intervalSeconds sql.NullInt64
+		var reviewID, reviewUserID, repetitions, intervalSeconds, skipCount sql.NullInt64
 		var ease sql.NullFloat64
-		var dueAt, lastReviewedAt, createdAt, updatedAt sql.NullTime
+		var dueAt, lastReviewedAt, lastSkippedAt, createdAt, updatedAt sql.NullTime
 		var lastRating sql.NullString
 		err := rows.Scan(
 			&rec.Question.ID, &rec.Question.UserID, &rec.Question.Type, &rec.Question.Difficulty,
@@ -197,18 +235,22 @@ func ListCards(ctx context.Context, userID int, tags []string, limit int, now ti
 			&rec.Question.ImageFilename, &rec.Question.Tags, &rec.Question.Subject, &rec.Question.Topic,
 			&rec.Question.SubTopic, &rec.Question.Source, &rec.Question.CreatedAt, &rec.Question.UpdatedAt,
 			&reviewID, &reviewUserID, &repetitions, &intervalSeconds, &ease, &dueAt, &lastRating,
-			&lastReviewedAt, &createdAt, &updatedAt,
+			&lastReviewedAt, &skipCount, &lastSkippedAt, &createdAt, &updatedAt,
 		)
 		if err != nil {
 			return out, err
 		}
 		item := models.QuestionCardItem{Question: Response(rec), Status: CardStatusNew}
 		if reviewID.Valid {
-			s := ReviewState{QuestionID: int(reviewID.Int64), UserID: int(reviewUserID.Int64), Repetitions: int(repetitions.Int64), IntervalSeconds: intervalSeconds.Int64, EaseFactor: ease.Float64, DueAt: dueAt.Time, LastRating: lastRating.String, LastReviewedAt: lastReviewedAt.Time, CreatedAt: createdAt.Time, UpdatedAt: updatedAt.Time}
+			s := ReviewState{QuestionID: int(reviewID.Int64), UserID: int(reviewUserID.Int64), Repetitions: int(repetitions.Int64), IntervalSeconds: intervalSeconds.Int64, EaseFactor: ease.Float64, DueAt: dueAt.Time, LastRating: lastRating.String, LastReviewedAt: lastReviewedAt.Time, SkipCount: int(skipCount.Int64), CreatedAt: createdAt.Time, UpdatedAt: updatedAt.Time}
+			if lastSkippedAt.Valid {
+				t := lastSkippedAt.Time
+				s.LastSkippedAt = &t
+			}
 			state := reviewResponse(s)
 			item.Review = &state
 			item.Status = CardStatusDue
-			if practice && dueAt.Time.After(now.UTC()) {
+			if (practice || mode != "") && dueAt.Time.After(now.UTC()) {
 				item.Status = CardStatusScheduled
 			}
 		}
@@ -254,6 +296,60 @@ func ReviewQuestion(ctx context.Context, questionID, userID int, rating string, 
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(question_id) DO UPDATE SET user_id=excluded.user_id, repetitions=excluded.repetitions, interval_seconds=excluded.interval_seconds, ease_factor=excluded.ease_factor, due_at=excluded.due_at, last_rating=excluded.last_rating, last_reviewed_at=excluded.last_reviewed_at, updated_at=excluded.updated_at`,
 		next.QuestionID, next.UserID, next.Repetitions, next.IntervalSeconds, next.EaseFactor, next.DueAt, next.LastRating, next.LastReviewedAt, next.CreatedAt, next.UpdatedAt)
+	if err != nil {
+		return out, err
+	}
+	if err := tx.Commit(); err != nil {
+		return out, err
+	}
+	return reviewResponse(next), nil
+}
+
+// RecordSkip logs that the user punted a card without treating it as a
+// scheduling failure. Pure-zero review-state values mean the card still
+// presents as "new" to the SM-2 engine, while the skip metrics feed the
+// "Only skipped" practice mode.
+func RecordSkip(ctx context.Context, questionID, userID int, now time.Time) (models.QuestionReviewState, error) {
+	var out models.QuestionReviewState
+	tx, err := db.QuizDB.BeginTx(ctx, nil)
+	if err != nil {
+		return out, err
+	}
+	defer tx.Rollback()
+	var owner int
+	if err := tx.QueryRowContext(ctx, "SELECT user_id FROM questions WHERE id = ?", questionID).Scan(&owner); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return out, ErrQuestionNotFound
+		}
+		return out, err
+	}
+	if owner != userID {
+		return out, ErrQuestionNotOwned
+	}
+	prior, err := scanReview(tx.QueryRowContext(ctx,
+		"SELECT "+reviewColumns+" FROM question_review_state WHERE question_id = ? AND user_id = ?", questionID, userID))
+	next := prior
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return out, err
+		}
+		next = ReviewState{
+			QuestionID: questionID,
+			UserID:     userID,
+			EaseFactor: 2.5,
+			DueAt:      now.UTC(),
+			CreatedAt:  now.UTC(),
+		}
+	}
+	next.SkipCount++
+	skipped := now.UTC()
+	next.LastSkippedAt = &skipped
+	next.UpdatedAt = now.UTC()
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO question_review_state (question_id, user_id, repetitions, interval_seconds, ease_factor, due_at, last_rating, last_reviewed_at, skip_count, last_skipped_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(question_id) DO UPDATE SET skip_count = skip_count + 1, last_skipped_at = excluded.last_skipped_at, updated_at = excluded.updated_at`,
+		next.QuestionID, next.UserID, next.Repetitions, next.IntervalSeconds, next.EaseFactor, next.DueAt, next.LastRating, next.LastReviewedAt, next.SkipCount, next.LastSkippedAt, next.CreatedAt, next.UpdatedAt)
 	if err != nil {
 		return out, err
 	}

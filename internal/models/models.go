@@ -246,13 +246,15 @@ type QuizStats struct {
 }
 
 type QuestionReviewState struct {
-	QuestionID      int       `json:"question_id"`
-	Repetitions     int       `json:"repetitions"`
-	IntervalSeconds int64     `json:"interval_seconds"`
-	EaseFactor      float64   `json:"ease_factor"`
-	DueAt           time.Time `json:"due_at"`
-	LastRating      string    `json:"last_rating"`
-	LastReviewedAt  time.Time `json:"last_reviewed_at"`
+	QuestionID      int        `json:"question_id"`
+	Repetitions     int        `json:"repetitions"`
+	IntervalSeconds int64      `json:"interval_seconds"`
+	EaseFactor      float64    `json:"ease_factor"`
+	DueAt           time.Time  `json:"due_at"`
+	LastRating      string     `json:"last_rating"`
+	LastReviewedAt  time.Time  `json:"last_reviewed_at"`
+	SkipCount       int        `json:"skip_count"`
+	LastSkippedAt   *time.Time `json:"last_skipped_at"`
 }
 
 type QuestionCardItem struct {

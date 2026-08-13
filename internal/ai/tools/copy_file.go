@@ -16,11 +16,11 @@ var copyFileSchema []byte
 
 func registerCopyFile(r *Registry) {
 	r.add(Tool{
-		Name:        "copy_file",
-		Category:    "File Operations",
-		Description: "Copy a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
-		Schema:      json.RawMessage(copyFileSchema),
-		Execute:     copyFile,
+		Name:           "copy_file",
+		Category:       "File Operations",
+		Description:    "Copy a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
+		Schema:         json.RawMessage(copyFileSchema),
+		Execute:        copyFile,
 		RawContentFunc: rawTrue,
 	})
 }

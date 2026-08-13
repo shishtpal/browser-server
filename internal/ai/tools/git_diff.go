@@ -14,11 +14,11 @@ var gitDiffSchema []byte
 
 func registerGitDiff(r *Registry, paths config.PathsConfig) {
 	r.add(Tool{
-		Name:        "git_diff",
-		Category:    "Git Operations",
-		Description: "View git diff output (working tree, staged, or between commits)",
-		Schema:      json.RawMessage(gitDiffSchema),
-		Execute:     gitDiff(paths),
+		Name:           "git_diff",
+		Category:       "Git Operations",
+		Description:    "View git diff output (working tree, staged, or between commits)",
+		Schema:         json.RawMessage(gitDiffSchema),
+		Execute:        gitDiff(paths),
 		RawContentFunc: rawMapField("diff"),
 	})
 }

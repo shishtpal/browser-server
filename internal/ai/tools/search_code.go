@@ -16,11 +16,11 @@ var searchCodeSchema []byte
 
 func registerSearchCode(r *Registry) {
 	r.add(Tool{
-		Name:        "search_code",
-		Category:    "Code Intelligence",
-		Description: "Search source files using regex, literal, or fixed-string matching. Results include a relevance score and are paginated with one-based page/page_size. The legacy `max_results` argument is deprecated and maps to `page_size` when `page_size` is omitted. When raw output is enabled for this tool, results are rendered as compact plain text instead of JSON.",
-		Schema:      json.RawMessage(searchCodeSchema),
-		Execute:     searchCode,
+		Name:           "search_code",
+		Category:       "Code Intelligence",
+		Description:    "Search source files using regex, literal, or fixed-string matching. Results include a relevance score and are paginated with one-based page/page_size. The legacy `max_results` argument is deprecated and maps to `page_size` when `page_size` is omitted. When raw output is enabled for this tool, results are rendered as compact plain text instead of JSON.",
+		Schema:         json.RawMessage(searchCodeSchema),
+		Execute:        searchCode,
 		RawContentFunc: rawSearchCodeFormatter,
 	})
 }

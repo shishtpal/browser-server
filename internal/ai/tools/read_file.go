@@ -53,10 +53,10 @@ func registerReadFile(r *Registry, cfg config.FileToolsConfig) {
 	}
 
 	r.add(Tool{
-		Name:        "read_file",
-		Category:    "File Operations",
-		Description: "Read a UTF-8 text file from the server filesystem (maximum " + formatBytes(int64(ft.maxReadBytes)) + " for full reads, configurable in the AI configuration). Supports reading specific line ranges and prefixing lines with their line numbers.",
-		Schema:      json.RawMessage(readFileSchema),
+		Name:           "read_file",
+		Category:       "File Operations",
+		Description:    "Read a UTF-8 text file from the server filesystem (maximum " + formatBytes(int64(ft.maxReadBytes)) + " for full reads, configurable in the AI configuration). Supports reading specific line ranges and prefixing lines with their line numbers.",
+		Schema:         json.RawMessage(readFileSchema),
 		Execute:        ft.readFile,
 		RawContentFunc: rawMapField("content"),
 	})

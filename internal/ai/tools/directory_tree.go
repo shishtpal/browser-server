@@ -15,11 +15,11 @@ var directoryTreeSchema []byte
 
 func registerDirectoryTree(r *Registry) {
 	r.add(Tool{
-		Name:        "directory_tree",
-		Category:    "File Operations",
-		Description: "Generate a tree-style directory listing showing the hierarchical structure of files and folders. Ignores .git and node_modules by default.",
-		Schema:      json.RawMessage(directoryTreeSchema),
-		Execute:     directoryTree,
+		Name:           "directory_tree",
+		Category:       "File Operations",
+		Description:    "Generate a tree-style directory listing showing the hierarchical structure of files and folders. Ignores .git and node_modules by default.",
+		Schema:         json.RawMessage(directoryTreeSchema),
+		Execute:        directoryTree,
 		RawContentFunc: rawMapField("tree"),
 	})
 }

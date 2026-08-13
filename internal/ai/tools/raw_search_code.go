@@ -106,16 +106,16 @@ func rawSearchCodeFormatter(v any) ([]byte, bool) {
 // typed lets the raw formatter avoid re-decoding JSON. It still marshals to
 // the same JSON shape the original search_code used.
 type searchCodeEnvelope struct {
-	Query         string
-	Page          int
-	PageSize      int
-	Total         int
-	TotalMatches  int
-	HasMore       bool
-	Truncated     bool
-	SearchTimeMs  int64
-	Results       []searchCodeHit
-	Files         []searchCodeFile
+	Query        string
+	Page         int
+	PageSize     int
+	Total        int
+	TotalMatches int
+	HasMore      bool
+	Truncated    bool
+	SearchTimeMs int64
+	Results      []searchCodeHit
+	Files        []searchCodeFile
 }
 
 type searchCodeHit struct {
@@ -163,16 +163,16 @@ func makeSearchCodeEnvelope(query string, page, pageSize, total, totalMatches in
 	}
 
 	return searchCodeEnvelope{
-		Query:         query,
-		Page:          page,
-		PageSize:      pageSize,
-		Total:         total,
-		TotalMatches:  totalMatches,
-		HasMore:       hasMore,
-		Truncated:     truncated,
-		SearchTimeMs:  searchTimeMs,
-		Results:       hits,
-		Files:         files,
+		Query:        query,
+		Page:         page,
+		PageSize:     pageSize,
+		Total:        total,
+		TotalMatches: totalMatches,
+		HasMore:      hasMore,
+		Truncated:    truncated,
+		SearchTimeMs: searchTimeMs,
+		Results:      hits,
+		Files:        files,
 	}
 }
 

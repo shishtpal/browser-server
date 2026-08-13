@@ -17,9 +17,9 @@ var searchQuestionsSchema []byte
 
 func registerSearchQuestions(r *Registry) {
 	r.add(Tool{
-		Name:        "search_questions",
-		Category:    "General",
-		Description: "Search the local question bank. Can filter by user, question type, difficulty, and exam/subject/topic/sub_topic tags. The `tags` filter accepts one or more tag strings; a question matches if its `tags` array contains any of them. Results include a relevance score. Supports one-based pagination (page, page_size). Set `random: true` to draw a random sample of up to `page_size` matching questions instead of ranking by relevance. The legacy `limit` argument is deprecated and maps to `page_size` when `page_size` is omitted. When Tool Output Mode is RAW the result is plain text: a QUERY header line (query/mode/page/size/total plus has_more/truncated flags), then per question a `Q #<id> [type/difficulty] ...` line followed by indented QUESTION, OPTION (correct options prefixed with [*]), ANSWER, or CHRONO lines; an empty search reads `no matches`; use the #<id> to reference a question in manage_question.",
+		Name:           "search_questions",
+		Category:       "General",
+		Description:    "Search the local question bank. Can filter by user, question type, difficulty, and exam/subject/topic/sub_topic tags. The `tags` filter accepts one or more tag strings; a question matches if its `tags` array contains any of them. Results include a relevance score. Supports one-based pagination (page, page_size). Set `random: true` to draw a random sample of up to `page_size` matching questions instead of ranking by relevance. The legacy `limit` argument is deprecated and maps to `page_size` when `page_size` is omitted. When Tool Output Mode is RAW the result is plain text: a QUERY header line (query/mode/page/size/total plus has_more/truncated flags), then per question a `Q #<id> [type/difficulty] ...` line followed by indented QUESTION, OPTION (correct options prefixed with [*]), ANSWER, or CHRONO lines; an empty search reads `no matches`; use the #<id> to reference a question in manage_question.",
 		Schema:         json.RawMessage(searchQuestionsSchema),
 		Execute:        searchQuestions,
 		RawContentFunc: rawSearchQuestionsFormatter,
@@ -80,7 +80,7 @@ func searchQuestions(ctx context.Context, raw json.RawMessage) (any, error) {
 
 	filter := quiz.Filter{
 		UserID: a.UserID,
-		Type: a.Type, Difficulty: a.Difficulty,
+		Type:   a.Type, Difficulty: a.Difficulty,
 		Tags: a.Tags, Subject: a.Subject, Topic: a.Topic, SubTopic: a.SubTopic,
 	}
 

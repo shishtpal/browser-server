@@ -17,11 +17,11 @@ var editFileSchema []byte
 
 func registerEditFile(r *Registry) {
 	r.add(Tool{
-		Name:        "edit_file",
-		Category:    "File Operations",
-		Description: "Apply a unified diff patch to an existing file. The patch must contain --- and +++ file headers and at least one @@ hunk. Context lines must match exactly; use read_file first to inspect the file. Use write_file for new files.",
-		Schema:      json.RawMessage(editFileSchema),
-		Execute:     editFile,
+		Name:           "edit_file",
+		Category:       "File Operations",
+		Description:    "Apply a unified diff patch to an existing file. The patch must contain --- and +++ file headers and at least one @@ hunk. Context lines must match exactly; use read_file first to inspect the file. Use write_file for new files.",
+		Schema:         json.RawMessage(editFileSchema),
+		Execute:        editFile,
 		RawContentFunc: rawEditFileResult,
 	})
 }

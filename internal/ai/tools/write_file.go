@@ -15,11 +15,11 @@ var writeFileSchema []byte
 
 func registerWriteFile(r *Registry) {
 	r.add(Tool{
-		Name:        "write_file",
-		Category:    "File Operations",
-		Description: "Create or overwrite a UTF-8 text file on the server filesystem, creating parent directories as needed",
-		Schema:      json.RawMessage(writeFileSchema),
-		Execute:     writeFile,
+		Name:           "write_file",
+		Category:       "File Operations",
+		Description:    "Create or overwrite a UTF-8 text file on the server filesystem, creating parent directories as needed",
+		Schema:         json.RawMessage(writeFileSchema),
+		Execute:        writeFile,
 		RawContentFunc: rawTrue,
 	})
 }

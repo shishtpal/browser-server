@@ -15,11 +15,11 @@ var moveFileSchema []byte
 
 func registerMoveFile(r *Registry) {
 	r.add(Tool{
-		Name:        "move_file",
-		Category:    "File Operations",
-		Description: "Move or rename a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
-		Schema:      json.RawMessage(moveFileSchema),
-		Execute:     moveFile,
+		Name:           "move_file",
+		Category:       "File Operations",
+		Description:    "Move or rename a file on the server filesystem without overwriting an existing destination, creating parent directories as needed",
+		Schema:         json.RawMessage(moveFileSchema),
+		Execute:        moveFile,
 		RawContentFunc: rawTrue,
 	})
 }

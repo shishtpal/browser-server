@@ -41,7 +41,7 @@ type Registry struct {
 
 // Options configures optional subsystems when constructing a Registry.
 type Options struct {
-	Memory    config.MemoryConfig
+	Memory config.MemoryConfig
 	// MemoryStore, when non-nil, is the shared memory.Store to expose tools
 	// over (the process singleton created in bootstrap). When nil the registry
 	// creates its own via memory.New, so tools, the chat persona injector and

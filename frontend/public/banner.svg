@@ -1,0 +1,93 @@
+<svg width="850" height="250" viewBox="0 0 850 250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients & Glows -->
+    <linearGradient id="backGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    
+    <filter id="glow-teal" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <style>
+      .text-main { fill: #ffffff; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+      .text-sub { fill: #94a3b8; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; }
+      
+      /* Data travel animation */
+      @keyframes float-right {
+        0% { transform: translateX(0); opacity: 0; }
+        20% { opacity: 0.8; }
+        80% { opacity: 0.8; }
+        100% { transform: translateX(350px); opacity: 0; }
+      }
+      
+      .particle {
+        fill: #4fd1c5;
+        filter: url(#glow-teal);
+        animation: float-right 4s infinite linear;
+      }
+      
+      .p-delay-1 { animation-delay: 1.3s; }
+      .p-delay-2 { animation-delay: 2.6s; }
+
+      /* Pulse for the SQLite DB */
+      @keyframes db-pulse {
+        0% { filter: drop-shadow(0 0 2px #3182ce); }
+        50% { filter: drop-shadow(0 0 8px #63b3ed); }
+        100% { filter: drop-shadow(0 0 2px #3182ce); }
+      }
+      .db-group { animation: db-pulse 3s infinite ease-in-out; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="850" height="250" rx="12" fill="url(#backGrad)" />
+
+  <!-- Left Side: Browser/Extensions -->
+  <g transform="translate(80, 70)">
+    <!-- Browser Window Shape -->
+    <rect width="180" height="110" rx="8" fill="#2d3748" stroke="#4a5568" stroke-width="2" />
+    <rect width="180" height="20" rx="4" fill="#4a5568" />
+    <circle cx="15" cy="10" r="3" fill="#ff5f56" />
+    <circle cx="30" cy="10" r="3" fill="#ffbd2e" />
+    <circle cx="45" cy="10" r="3" fill="#27c93f" />
+    
+    <!-- Representing Extensions/Data types -->
+    <rect x="20" y="40" width="40" height="6" rx="3" fill="#718096" opacity="0.6" />
+    <rect x="20" y="55" width="60" height="6" rx="3" fill="#718096" opacity="0.6" />
+    <rect x="20" y="70" width="30" height="6" rx="3" fill="#718096" opacity="0.6" />
+    
+    <text x="0" y="135" class="text-main" font-size="16" font-weight="bold">Browser Extension</text>
+    <text x="0" y="155" class="text-sub">History • Bookmarks • Usage</text>
+  </g>
+
+  <!-- Connection Line -->
+  <line x1="260" y1="125" x2="590" y2="125" stroke="#2d3748" stroke-width="2" stroke-dasharray="8 4" />
+
+  <!-- Animated Particles -->
+  <circle class="particle" cx="260" cy="115" r="3" />
+  <circle class="particle p-delay-1" cx="260" cy="125" r="4" />
+  <circle class="particle p-delay-2" cx="260" cy="135" r="3" />
+
+  <!-- Right Side: Server / SQLite -->
+  <g transform="translate(600, 70)">
+    <rect width="160" height="110" rx="8" fill="#1e293b" stroke="#3182ce" stroke-width="2" />
+    
+    <!-- SQLite Cylinder Icon -->
+    <g class="db-group" transform="translate(55, 25)">
+      <ellipse cx="25" cy="15" rx="25" ry="10" fill="#3182ce" />
+      <rect x="0" y="15" width="50" height="30" fill="#3182ce" />
+      <ellipse cx="25" cy="45" rx="25" ry="10" fill="#3182ce" />
+      <ellipse cx="25" cy="15" rx="25" ry="10" fill="#63b3ed" />
+      <text x="12" y="36" font-family="Arial" font-weight="bold" font-size="9" fill="white">SQLite</text>
+    </g>
+
+    <text x="80" y="135" text-anchor="middle" class="text-main" font-size="16" font-weight="bold">Self-Hosted Server</text>
+    <text x="80" y="155" text-anchor="middle" class="text-sub">Local SQLite Storage</text>
+  </g>
+
+  <!-- Project Title -->
+  <text x="425" y="45" text-anchor="middle" class="text-main" font-size="28" font-weight="900" letter-spacing="2">BROWSER SERVER</text>
+</svg>

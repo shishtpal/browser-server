@@ -57,19 +57,19 @@ func registerWebTools(r *Registry, cfg config.WebSearchConfig) {
 		maxResults:      cfg.MaxResults,
 	}
 	r.add(Tool{
-		Name:        "web_search",
-		Category:    "Web",
-		Description: "Search the web for current information. Returns titles, URLs, and snippets. Use for up-to-date documentation, news, releases, or other time-sensitive facts.",
-		Schema:      json.RawMessage(webSearchSchema),
-		Execute:     w.search,
+		Name:           "web_search",
+		Category:       "Web",
+		Description:    "Search the web for current information. Returns titles, URLs, and snippets. Use for up-to-date documentation, news, releases, or other time-sensitive facts.",
+		Schema:         json.RawMessage(webSearchSchema),
+		Execute:        w.search,
 		RawContentFunc: rawString,
 	})
 	r.add(Tool{
-		Name:        "web_fetch",
-		Category:    "Web",
-		Description: "Fetch and extract readable content from a public URL. Use after web_search to read a specific article or documentation page.",
-		Schema:      json.RawMessage(webFetchSchema),
-		Execute:     w.fetch,
+		Name:           "web_fetch",
+		Category:       "Web",
+		Description:    "Fetch and extract readable content from a public URL. Use after web_search to read a specific article or documentation page.",
+		Schema:         json.RawMessage(webFetchSchema),
+		Execute:        w.fetch,
 		RawContentFunc: rawString,
 	})
 }

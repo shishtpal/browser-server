@@ -14,11 +14,11 @@ var deleteFileSchemaFS []byte
 
 func registerDeleteFile(r *Registry) {
 	r.add(Tool{
-		Name:        "delete_file",
-		Category:    "File Operations",
-		Description: "Delete a file from the server filesystem",
-		Schema:      json.RawMessage(deleteFileSchemaFS),
-		Execute:     deleteFile,
+		Name:           "delete_file",
+		Category:       "File Operations",
+		Description:    "Delete a file from the server filesystem",
+		Schema:         json.RawMessage(deleteFileSchemaFS),
+		Execute:        deleteFile,
 		RawContentFunc: rawTrue,
 	})
 }

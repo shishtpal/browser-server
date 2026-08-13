@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "prompt": {
+            "type": "string"
+        },
+        "provider": {
+            "type": "string"
+        },
+        "model": {
+            "type": "string"
+        },
+        "image_size": {
+            "type": "string"
+        },
+        "source_image_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "required": [
+        "prompt"
+    ],
+    "additionalProperties": false
+}

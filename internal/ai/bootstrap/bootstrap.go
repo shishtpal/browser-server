@@ -7,6 +7,7 @@ package bootstrap
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,6 +53,9 @@ type Runtime struct {
 	AttachmentsDir string
 	Images         *images.Service
 }
+
+//go:embed generate_image.json
+var generateImageSchema []byte
 
 // Init loads the AI config and builds the full runtime. When AI is disabled
 // (missing config or models file, or "enabled": false), it returns a Runtime
@@ -120,28 +124,33 @@ func Init(opts Options) (*Runtime, error) {
 
 	var externalTools []tools.Tool
 	if imageService != nil {
-		externalTools = append(externalTools, tools.Tool{Name: "generate_image", Category: "Images", Description: "Generate or edit an image from a prompt. Optionally pass existing gallery image IDs as source_image_ids.", Schema: json.RawMessage(`{"type":"object","properties":{"prompt":{"type":"string"},"provider":{"type":"string"},"model":{"type":"string"},"image_size":{"type":"string"},"source_image_ids":{"type":"array","items":{"type":"string"}}},"required":["prompt"],"additionalProperties":false}`), Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
-			var a struct {
-				Prompt, Provider, Model, ImageSize string
-				SourceImageIDs                     []string `json:"source_image_ids"`
-			}
-			if err := json.Unmarshal(raw, &a); err != nil {
-				return nil, err
-			}
-			sources := make([][]byte, 0, len(a.SourceImageIDs))
-			for _, id := range a.SourceImageIDs {
-				_, b, err := imageService.Read(ctx, id)
-				if err != nil {
-					return nil, fmt.Errorf("read source image: %w", err)
+		externalTools = append(externalTools, tools.Tool{
+			Name:        "generate_image",
+			Category:    "Images",
+			Description: "Generate or edit an image from a prompt. Optionally pass existing gallery image IDs as source_image_ids.",
+			Schema:      json.RawMessage(generateImageSchema),
+			Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				var a struct {
+					Prompt, Provider, Model, ImageSize string
+					SourceImageIDs                     []string `json:"source_image_ids"`
 				}
-				sources = append(sources, b)
-			}
-			x, err := imageService.Generate(ctx, images.GenerateRequest{Prompt: a.Prompt, Provider: a.Provider, Model: a.Model, ImageSize: a.ImageSize, Sources: sources})
-			if err != nil {
-				return nil, err
-			}
-			return map[string]any{"image": x, "url": "/api/ai/images/" + x.ID + "/file"}, nil
-		}})
+				if err := json.Unmarshal(raw, &a); err != nil {
+					return nil, err
+				}
+				sources := make([][]byte, 0, len(a.SourceImageIDs))
+				for _, id := range a.SourceImageIDs {
+					_, b, err := imageService.Read(ctx, id)
+					if err != nil {
+						return nil, fmt.Errorf("read source image: %w", err)
+					}
+					sources = append(sources, b)
+				}
+				x, err := imageService.Generate(ctx, images.GenerateRequest{Prompt: a.Prompt, Provider: a.Provider, Model: a.Model, ImageSize: a.ImageSize, Sources: sources})
+				if err != nil {
+					return nil, err
+				}
+				return map[string]any{"image": x, "url": "/api/ai/images/" + x.ID + "/file"}, nil
+			}})
 	}
 	var mcpManager *aimcp.Manager
 	if cfg.Tools.Enabled {

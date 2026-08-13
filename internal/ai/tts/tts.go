@@ -1,6 +1,9 @@
 // Package tts provides provider-neutral text-to-speech generation, a local
 // gallery of generated MP3 files under .data/ai-voices, and SQLite metadata.
 // It mirrors the internal/ai/images architecture (see Decisions.md).
+// providerSpec endpoint note: for fish.audio, defaultFishBaseURL already
+// includes the /v1 prefix, so endpoint "/tts" resolves to
+// "https://api.fish.audio/v1/tts" (the upstream fish.audio contract).
 package tts
 
 import (
@@ -26,7 +29,9 @@ import (
 const (
 	modelsFile             = "bs-ai-tts.json"
 	providerTypeOpenRouter = "openrouter_speech"
+	providerTypeFishAudio  = "fish_audio"
 	defaultBaseURL         = "https://openrouter.ai/api/v1"
+	defaultFishBaseURL     = "https://api.fish.audio/v1"
 	defaultTimeoutSeconds  = 120
 	maxTextChars           = 4096
 	maxAudioBytes          = 20 << 20
@@ -39,15 +44,47 @@ const (
 // caller's request, so handlers can answer 502 instead of 400.
 var ErrProvider = errors.New("tts provider request failed")
 
-// payloadKeys returns the provider's request-body field names for the text,
-// voice, and audio-format parameters, keyed by provider type so future
-// providers with different field names plug in at a single point.
-func payloadKeys(providerType string) (inputKey, voiceKey, formatKey string) {
-	switch providerType {
-	case providerTypeOpenRouter:
-		return "input", "voice", "response_format"
+// providerSpec captures the per-provider request shape so adding a new TTS
+// provider is a single switch case: field names, endpoint path, extra
+// headers, and whether the model travels in the header vs the body. The
+// shared Generate loop then assembles the request uniformly.
+type providerSpec struct {
+	endpoint      string
+	inputKey      string
+	voiceKey      string
+	formatKey     string
+	modelInHeader bool
+	extraHeaders  func(model string) map[string]string
+}
+
+// providerSpecFor returns the request shape for a known provider type. Unknown
+// types are rejected at Load time, so this lookup is total in practice.
+func providerSpecFor(t string) providerSpec {
+	switch t {
+	case providerTypeFishAudio:
+		return providerSpec{
+			endpoint:      "/tts",
+			inputKey:      "text",
+			voiceKey:      "reference_id",
+			formatKey:     "format",
+			modelInHeader: true,
+			extraHeaders:  func(model string) map[string]string { return map[string]string{"model": model} },
+		}
 	default:
-		return "input", "voice", "response_format"
+		// openrouter_speech and any future OpenAI-compatible provider.
+		return providerSpec{
+			endpoint:  "/audio/speech",
+			inputKey:  "input",
+			voiceKey:  "voice",
+			formatKey: "response_format",
+			extraHeaders: func(model string) map[string]string {
+				return map[string]string{
+					"HTTP-Referer":       refererURL,
+					"Referer":            refererURL,
+					"X-OpenRouter-Title": openRouterTitle,
+				}
+			},
+		}
 	}
 }
 
@@ -133,7 +170,10 @@ func Load(base string) (Config, error) {
 		return c, errors.New("tts default_provider is not configured")
 	}
 	for n, p := range c.Providers {
-		if p.Type != providerTypeOpenRouter {
+		switch p.Type {
+		case providerTypeOpenRouter, providerTypeFishAudio:
+			// supported
+		default:
 			return c, fmt.Errorf("tts provider %q has unsupported type", n)
 		}
 		if p.APIKey == "" {
@@ -146,7 +186,11 @@ func Load(base string) (Config, error) {
 			}
 		}
 		if p.BaseURL == "" {
-			p.BaseURL = defaultBaseURL
+			if p.Type == providerTypeFishAudio {
+				p.BaseURL = defaultFishBaseURL
+			} else {
+				p.BaseURL = defaultBaseURL
+			}
 		}
 		if p.RequestTimeoutSeconds == 0 {
 			p.RequestTimeoutSeconds = defaultTimeoutSeconds
@@ -313,36 +357,44 @@ func (s *Service) Generate(ctx context.Context, r GenerateRequest) (Speech, erro
 				return Speech{}, fmt.Errorf("unknown voice %q for model %s", voice, mc.ID)
 			}
 		}
+	} else if voice != "" {
+		// Voiceless models (e.g. fish.audio free tier) cannot honor a
+		// caller-provided voice: we have no ids to validate against and the
+		// provider would synthesize in its default voice, so fail loudly
+		// instead of silently downgrading.
+		return Speech{}, fmt.Errorf("model %s has no configured voices", mc.ID)
 	}
-	inputKey, voiceKey, formatKey := payloadKeys(p.Type)
-	payload := map[string]any{"model": m, inputKey: r.Text}
+	spec := providerSpecFor(p.Type)
+	payload := map[string]any{spec.inputKey: r.Text}
+	if !spec.modelInHeader {
+		payload["model"] = m
+	}
 	// Providers reject a present-but-empty voice ("too_small") instead of
 	// defaulting it, so drop the key entirely when no voice is configured
 	// for the model and none was requested.
 	if voice != "" {
-		payload[voiceKey] = voice
+		payload[spec.voiceKey] = voice
 	}
 	// Don't hardcode the format: send it only when the model's config says
 	// to (some providers reject unknown params with a 400), matching how
 	// files are still saved as .mp3 regardless.
 	if mc.ResponseFormat != "" {
-		payload[formatKey] = mc.ResponseFormat
+		payload[spec.formatKey] = mc.ResponseFormat
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return Speech{}, err
 	}
-	u := strings.TrimRight(p.BaseURL, "/") + "/audio/speech"
+	u := strings.TrimRight(p.BaseURL, "/") + spec.endpoint
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return Speech{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
-	req.Header.Set("HTTP-Referer", refererURL)
-	// Send the standard spelling too; some proxies only forward one.
-	req.Header.Set("Referer", refererURL)
-	req.Header.Set("X-OpenRouter-Title", openRouterTitle)
+	for hk, hv := range spec.extraHeaders(m) {
+		req.Header.Set(hk, hv)
+	}
 	c := *s.client
 	c.Timeout = time.Duration(p.RequestTimeoutSeconds) * time.Second
 	resp, err := c.Do(req)

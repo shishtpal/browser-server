@@ -214,22 +214,178 @@ func TestGenerateOmitsVoiceForVoicelessModel(t *testing.T) {
 	}
 }
 
-func TestGeneratePassesThroughUnlistedVoice(t *testing.T) {
-	var gotVoice string
+func TestGenerateRejectsVoiceForVoicelessModel(t *testing.T) {
+	// A model with no configured voices cannot honor an explicit Voice:
+	// we have no id to validate against and the provider would use its
+	// own default, so Generate must fail loudly instead of silently
+	// sending an unexpected key or downgrading.
 	svc := testService(t, func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		if strings.Contains(string(body), `"voice":"custom-voice"`) {
-			gotVoice = "custom-voice"
-		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("mp3"))
 	}, nil)
-	x, err := svc.Generate(context.Background(), GenerateRequest{Text: "Hi", Voice: "custom-voice"})
+	_, err := svc.Generate(context.Background(), GenerateRequest{Text: "Hi", Voice: "custom-voice"})
+	if err == nil || !strings.Contains(err.Error(), "no configured voices") {
+		t.Fatalf("Generate error = %v, want unconfigurable-voice rejection", err)
+	}
+}
+
+// fishService spins up a fake fish.audio endpoint so Fish Audio provider
+// tests don't share the OpenRouter-shaped testService helper.
+func fishService(t *testing.T, handler http.HandlerFunc) *Service {
+	t.Helper()
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+	cfg := Config{
+		Enabled:         true,
+		DefaultProvider: "fish.audio",
+		Providers: map[string]Provider{
+			"fish.audio": {
+				Type:                  providerTypeFishAudio,
+				BaseURL:               srv.URL,
+				APIKey:                "fish-key",
+				RequestTimeoutSeconds: 5,
+				Models: []Model{
+					{ID: "s2.1-pro", Label: "Pro"},
+					{ID: "s2.1-pro-free", Label: "Pro (free)", Default: true, ResponseFormat: "mp3"},
+				},
+			},
+		},
+	}
+	svc, err := New(cfg, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gotVoice != "custom-voice" || x.Voice != "custom-voice" {
-		t.Fatalf("passthrough voice not honored: got %q speech=%+v", gotVoice, x)
+	t.Cleanup(func() { _ = svc.Close() })
+	return svc
+}
+
+func TestGenerateFishAudioSendsModelInHeaderAndFishFields(t *testing.T) {
+	// Fish Audio's contract differs from OpenRouter: model travels in the
+	// `model` header, the body uses `text`/`reference_id`/`format`, and the
+	// endpoint is /v1/tts (here served at /tts because the test server URL
+	// already includes /v1).
+	var gotMethod, gotPath, gotAuth, gotModel, gotContentType string
+	var payload string
+	svc := fishService(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		gotAuth = r.Header.Get("Authorization")
+		gotModel = r.Header.Get("model")
+		gotContentType = r.Header.Get("Content-Type")
+		body, _ := io.ReadAll(r.Body)
+		payload = string(body)
+		w.Header().Set("X-Generation-Id", "gen_fish")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ID3fish-mp3"))
+	})
+
+	x, err := svc.Generate(context.Background(), GenerateRequest{Text: "Hello fish"})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/tts" {
+		t.Fatalf("request = %s %s, want POST /tts", gotMethod, gotPath)
+	}
+	if gotAuth != "Bearer fish-key" {
+		t.Fatalf("Authorization = %q, want Bearer fish-key", gotAuth)
+	}
+	if gotModel != "s2.1-pro-free" {
+		t.Fatalf("model header = %q, want s2.1-pro-free", gotModel)
+	}
+	if gotContentType != "application/json" {
+		t.Fatalf("Content-Type = %q", gotContentType)
+	}
+	if strings.Contains(payload, `"model"`) {
+		t.Fatalf("payload must not include model key when model travels in header: %s", payload)
+	}
+	if !strings.Contains(payload, `"text":"Hello fish"`) {
+		t.Fatalf("payload missing text: %s", payload)
+	}
+	if strings.Contains(payload, `"reference_id"`) {
+		t.Fatalf("payload should omit reference_id when no voice configured: %s", payload)
+	}
+	if !strings.Contains(payload, `"format":"mp3"`) {
+		t.Fatalf("payload missing format from model.response_format: %s", payload)
+	}
+	if x.Provider != "fish.audio" || x.Model != "s2.1-pro-free" || x.Voice != "" {
+		t.Fatalf("speech = %+v", x)
+	}
+	if x.GenerationID != "gen_fish" {
+		t.Fatalf("generation_id = %q, want gen_fish", x.GenerationID)
+	}
+}
+
+func TestGenerateFishAudioAcceptsVoiceAsReferenceID(t *testing.T) {
+	// When the caller passes a voice id, Fish Audio expects it as
+	// `reference_id` in the body (not `voice`).
+	var payload string
+	svc := fishService(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		payload = string(body)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("mp3"))
+	})
+	// Register a voice on the default model so the unknown-voice check passes.
+	for i := range svc.cfg.Providers["fish.audio"].Models {
+		if svc.cfg.Providers["fish.audio"].Models[i].Default {
+			svc.cfg.Providers["fish.audio"].Models[i].Voices = []Voice{{ID: "ann", Label: "Ann"}}
+		}
+	}
+	x, err := svc.Generate(context.Background(), GenerateRequest{Text: "Hi", Voice: "ann"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(payload, `"reference_id":"ann"`) {
+		t.Fatalf("payload missing reference_id:ann: %s", payload)
+	}
+	if strings.Contains(payload, `"voice"`) {
+		t.Fatalf("payload must use reference_id, not voice: %s", payload)
+	}
+	if x.Voice != "ann" {
+		t.Fatalf("voice = %q, want ann", x.Voice)
+	}
+}
+
+func TestLoadAcceptsFishAudioProvider(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, modelsFile, `{
+  "enabled": true,
+  "default_provider": "fish.audio",
+  "providers": {
+    "fish.audio": {
+      "type": "fish_audio",
+      "api_key": "env:TTS_FISH_KEY",
+      "models": [
+        {"id": "s2.1-pro", "label": "Pro"},
+        {"id": "s2.1-pro-free", "label": "Pro free", "default": true, "response_format": "mp3"}
+      ]
+    }
+  }
+}`)
+	t.Setenv("TTS_FISH_KEY", "fish-secret")
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	p := cfg.Providers["fish.audio"]
+	if p.APIKey != "fish-secret" {
+		t.Fatalf("api_key = %q, want resolved secret", p.APIKey)
+	}
+	if p.BaseURL != defaultFishBaseURL {
+		t.Fatalf("base_url = %q, want %q", p.BaseURL, defaultFishBaseURL)
+	}
+}
+
+func TestLoadStillRejectsUnknownType(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, modelsFile, `{
+  "enabled": true,
+  "default_provider": "x",
+  "providers": {
+    "x": {"type": "nope", "api_key": "k", "models": [{"id": "m", "label": "M"}]}
+  }
+}`)
+	if _, err := Load(dir); err == nil {
+		t.Fatal("unknown provider type was accepted")
 	}
 }
 

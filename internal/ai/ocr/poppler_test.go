@@ -48,14 +48,24 @@ func TestResolveMissing(t *testing.T) {
 }
 
 func TestConvertPageCapEnforced(t *testing.T) {
-	_, err := Convert(context.Background(), testPopplerConfig(""), "in.pdf", t.TempDir(), 1, 20, nil)
+	dir := t.TempDir()
+	exe := filepath.Join(dir, pdftoppmName())
+	if err := os.WriteFile(exe, []byte("x"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Convert(context.Background(), testPopplerConfig(dir), "in.pdf", t.TempDir(), 1, 20, nil)
 	if err == nil || !strings.Contains(err.Error(), "max_pages") {
 		t.Fatalf("Convert error = %v, want max_pages mention", err)
 	}
 }
 
 func TestConvertPageRangeInverted(t *testing.T) {
-	_, err := Convert(context.Background(), testPopplerConfig(""), "in.pdf", t.TempDir(), 5, 2, nil)
+	dir := t.TempDir()
+	exe := filepath.Join(dir, pdftoppmName())
+	if err := os.WriteFile(exe, []byte("x"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Convert(context.Background(), testPopplerConfig(dir), "in.pdf", t.TempDir(), 5, 2, nil)
 	if err == nil || !strings.Contains(err.Error(), "before first_page") {
 		t.Fatalf("Convert error = %v", err)
 	}

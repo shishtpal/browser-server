@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "default_provider": "openrouter.ai",
+  "default_provider": "fish.audio",
   "providers": {
     "openrouter.ai": {
       "type": "openrouter_speech",
@@ -18,12 +18,37 @@
               "label": "Gemma (EN)"
             }
           ]
+        }
+      ]
+    },
+    "fish.audio": {
+      "type": "fish_audio",
+      "api_key": "env:FISH_API_KEY",
+      "request_timeout_seconds": 120,
+      "models": [
+        {
+          "id": "s2.1-pro",
+          "label": "Fish Audio S2.1 Pro",
+          "default": false,
+          "response_format": "mp3",
+          "voices": [
+            {
+              "id": "REPLACE_WITH_FISH_REFERENCE_ID",
+              "label": "Primary fish.audio voice"
+            }
+          ]
         },
         {
-          "id": "fish-audio/s2.1-pro-free:free",
-          "label": "fish-audio/s2.1-pro-free:free",
-          "default": false,
-          "response_format": "mp3"
+          "id": "s2.1-pro-free",
+          "label": "Fish Audio S2.1 Pro (free)",
+          "default": true,
+          "response_format": "mp3",
+          "voices": [
+            {
+              "id": "REPLACE_WITH_FISH_REFERENCE_ID",
+              "label": "Primary fish.audio voice"
+            }
+          ]
         }
       ]
     }

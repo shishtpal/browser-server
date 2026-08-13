@@ -77,10 +77,14 @@
           :messages="visibleMessages"
           :loading="isBusy"
           :show-thinking="showThinking"
+          :tts-available="ttsAvailable"
+          :speaking-message-id="speakingMessageId"
+          :speaking-busy-id="speakingBusyId"
           @suggestion="useSuggestion"
           @copy="copyMessage"
           @delete="deleteMessage"
           @branch="handleBranch"
+          @speak="handleSpeak"
           @tool-decision="handleToolDecision"
         />
 
@@ -329,8 +333,12 @@ const {
   handleToolDecision,
   handleRegenerate,
   handleStop,
+  ttsAvailable,
+  speakingMessageId,
+  speakingBusyId,
   copyMessage,
   deleteMessage,
+  handleSpeak,
   handleBranch,
   useSuggestion,
   useVoiceTranscript,

@@ -24,6 +24,10 @@ import type {
   GeneratedImage,
   GenerateImageInput,
   GenerateImageResponse,
+  AITTSConfig,
+  GeneratedSpeech,
+  GenerateSpeechInput,
+  GenerateSpeechResponse,
   UpdateAIConversationInput,
 } from '@browser-server/shared-types';
 import { API_BASE, authHeaders, client } from './client';
@@ -47,6 +51,22 @@ export function deleteGeneratedImage(id: string): Promise<void> {
 }
 export function getGeneratedImageUrl(id: string): string {
   return client.getGeneratedImageUrl(id);
+}
+
+export function getAITTSConfig(): Promise<AITTSConfig> {
+  return client.getAITTSConfig();
+}
+export function listGeneratedSpeeches(limit?: number): Promise<GeneratedSpeech[]> {
+  return client.listGeneratedSpeeches(limit);
+}
+export function generateSpeech(data: GenerateSpeechInput): Promise<GenerateSpeechResponse> {
+  return client.generateSpeech(data);
+}
+export function deleteGeneratedSpeech(id: string): Promise<void> {
+  return client.deleteGeneratedSpeech(id);
+}
+export function getGeneratedSpeechUrl(id: string, withToken = true): string {
+  return client.getGeneratedSpeechUrl(id, withToken);
 }
 
 export function getAIVoiceConfig(): Promise<AIVoiceConfig> {

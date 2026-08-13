@@ -11,6 +11,7 @@ import (
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tasks"
+	"browser-server/internal/ai/tts"
 	"browser-server/internal/ai/voice"
 	"context"
 	"errors"
@@ -35,6 +36,7 @@ type Module struct {
 	memory         *memory.Store
 	attachmentsDir string
 	images         *images.Service
+	tts            *tts.Service
 	stop           chan struct{}
 	wg             sync.WaitGroup
 }
@@ -58,6 +60,7 @@ func Init() (*Module, error) {
 		memory:         rt.Memory,
 		attachmentsDir: rt.AttachmentsDir,
 		images:         rt.Images,
+		tts:            rt.TTS,
 	}
 	if !rt.Config.Enabled {
 		return module, nil
@@ -165,6 +168,9 @@ func (m *Module) Close() error {
 	if m.images != nil {
 		_ = m.images.Close()
 	}
+	if m.tts != nil {
+		_ = m.tts.Close()
+	}
 	m.wg.Wait()
 	var mcpErr error
 	if m.mcp != nil {
@@ -209,6 +215,11 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/images", m.requireImages(m.GenerateImage)).Methods("POST")
 	r.HandleFunc("/ai/images/{id}", m.requireImages(m.DeleteImage)).Methods("DELETE")
 	r.HandleFunc("/ai/images/{id}/file", m.requireImages(m.GetImageFile)).Methods("GET")
+	r.HandleFunc("/ai/voices/config", m.requireTTS(m.VoiceGalleryConfig)).Methods("GET")
+	r.HandleFunc("/ai/voices", m.requireTTS(m.ListVoices)).Methods("GET")
+	r.HandleFunc("/ai/voices", m.requireTTS(m.GenerateSpeech)).Methods("POST")
+	r.HandleFunc("/ai/voices/{id}", m.requireTTS(m.DeleteSpeech)).Methods("DELETE")
+	r.HandleFunc("/ai/voices/{id}/file", m.requireTTS(m.GetSpeechFile)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}/messages/append", m.requireAI(m.AppendMessage)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.UpdateMessage)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.DeleteMessage)).Methods("DELETE")

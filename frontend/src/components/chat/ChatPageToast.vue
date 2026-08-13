@@ -8,7 +8,9 @@
         :class="
           toast.kind === 'branch'
             ? 'bg-indigo-600 text-white shadow-indigo-600/30'
-            : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+            : toast.kind === 'error'
+              ? 'bg-red-600 text-white shadow-red-600/30'
+              : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
         "
         role="status"
       >
@@ -19,8 +21,14 @@
             :stroke-width="2.25"
             aria-hidden="true"
           />
+          <CircleAlert
+            v-else-if="toast.kind === 'error'"
+            class="h-4 w-4"
+            :stroke-width="2.25"
+            aria-hidden="true"
+          />
           <Check v-else class="h-4 w-4" :stroke-width="2.5" aria-hidden="true" />
-          {{ toast.kind === 'branch' ? 'Branched into a new conversation' : 'Copied to clipboard' }}
+          {{ toastMessage }}
         </span>
       </div>
     </Transition>
@@ -28,11 +36,21 @@
 </template>
 
 <script setup lang="ts">
-import { Check, GitBranch } from '@lucide/vue';
+import { computed } from 'vue';
+import { Check, CircleAlert, GitBranch } from '@lucide/vue';
 
-defineProps<{
-  toast: { kind: 'copy' | 'branch'; id: number } | null;
+export type ChatToast = { kind: 'copy' | 'branch' | 'error'; id: number; message?: string };
+
+const props = defineProps<{
+  toast: ChatToast | null;
 }>();
+
+const toastMessage = computed(() => {
+  if (!props.toast) return '';
+  if (props.toast.kind === 'branch') return 'Branched into a new conversation';
+  if (props.toast.kind === 'error') return props.toast.message || 'Something went wrong';
+  return 'Copied to clipboard';
+});
 </script>
 
 <style scoped>

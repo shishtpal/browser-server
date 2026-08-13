@@ -8,7 +8,7 @@ It is a **pnpm workspace monorepo**: the Go backend lives at the root, while `fr
 
 ## Current repo notes
 
-- AI configuration uses sibling files: `bs-ai-config.json` for behavior toggles, `bs-ai-models.json` for the provider/model catalog, and optional `bs-ai-mcp.json` for external MCP tool servers. Keep config examples and documentation aligned with `internal/ai/config` and `internal/ai/mcp`.
+- AI configuration uses sibling files: `bs-ai-config.json` for behavior toggles, `bs-ai-models.json` for the provider/model catalog, optional `bs-ai-mcp.json` for external MCP tool servers, `bs-ai-image-models.json` for image generation, and `bs-ai-tts.json` for text-to-speech. Keep config examples and documentation aligned with `internal/ai/config`, `internal/ai/mcp`, `internal/ai/images`, and `internal/ai/tts`.
 - Quiz / Question Bank configuration uses `bs-quiz-config.json` next to the binary. See the "Quiz Configuration" section below and `internal/quiz/config/config.go`.
 - Prompt management and prompt folders are part of the shared domain model under `internal/prompt/`; they should remain the single source of truth for prompt validation and storage.
 - When changing shared domain code, keep HTTP concerns in handlers and tool-argument validation in AI tools rather than duplicating logic in both layers.
@@ -96,6 +96,8 @@ Each domain has its own SQLite database file in `.data/`:
 - `screenshots.db` — todo_id, filename, created_at (image files live in `.data/screenshots/`)
 - `usage.db` — user_id, domain, date, total_seconds (unique per user/domain/date)
 - `bs-ai.db` — AI conversations, messages, and tool-call logs (managed by `internal/ai/store`)
+- `ai-images.db` + `ai-images/` — generated image gallery (`internal/ai/images`)
+- `ai-voices.db` + `ai-voices/` — generated speech gallery (`internal/ai/tts`)
 
 Bookmark tags are stored as JSON strings in SQLite and parsed/presented as `[]string` in API responses.
 
@@ -554,6 +556,8 @@ known := map[string]bool{
 | `activate_skill` | `skills.go` | Activate an AI skill |
 | `deactivate_skill` | `skills.go` | Deactivate an AI skill |
 | `get_active_skills` | `skills.go` | Get currently active skills |
+| `generate_image` | `internal/ai/bootstrap` | Generate or edit an image from a prompt |
+| `text_to_speech` | `internal/ai/bootstrap` | Convert text to speech and save an MP3 under `.data/ai-voices/` |
 
 ## Key Conventions
 

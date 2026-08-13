@@ -27,6 +27,7 @@ import (
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tools"
+	"browser-server/internal/ai/tts"
 )
 
 // Options controls bootstrap behavior.
@@ -52,10 +53,14 @@ type Runtime struct {
 	Memory         *memory.Store
 	AttachmentsDir string
 	Images         *images.Service
+	TTS            *tts.Service
 }
 
 //go:embed generate_image.json
 var generateImageSchema []byte
+
+//go:embed text_to_speech.json
+var textToSpeechSchema []byte
 
 // Init loads the AI config and builds the full runtime. When AI is disabled
 // (missing config or models file, or "enabled": false), it returns a Runtime
@@ -121,6 +126,18 @@ func Init(opts Options) (*Runtime, error) {
 		st.Close()
 		return nil, fmt.Errorf("initialize AI image service: %w", err)
 	}
+	ttsCfg, err := tts.Load(baseDir)
+	if err != nil {
+		_ = imageService.Close()
+		st.Close()
+		return nil, fmt.Errorf("load AI tts models: %w", err)
+	}
+	ttsService, err := tts.New(ttsCfg, cfg.ResolvePath(".data"))
+	if err != nil {
+		_ = imageService.Close()
+		st.Close()
+		return nil, fmt.Errorf("initialize AI tts service: %w", err)
+	}
 
 	var externalTools []tools.Tool
 	if imageService != nil {
@@ -152,16 +169,42 @@ func Init(opts Options) (*Runtime, error) {
 				return map[string]any{"image": x, "url": "/api/ai/images/" + x.ID + "/file"}, nil
 			}})
 	}
+	if ttsService != nil {
+		externalTools = append(externalTools, tools.Tool{
+			Name:        "text_to_speech",
+			Category:    "Audio",
+			Description: "Convert text to speech and save an MP3 in the local gallery. Optionally pass provider, model, and voice; omitted fields use the configured defaults.",
+			Schema:      json.RawMessage(textToSpeechSchema),
+			Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				var a struct {
+					Text, Provider, Model, Voice string
+				}
+				if err := json.Unmarshal(raw, &a); err != nil {
+					return nil, err
+				}
+				x, err := ttsService.Generate(ctx, tts.GenerateRequest{Text: a.Text, Provider: a.Provider, Model: a.Model, Voice: a.Voice})
+				if err != nil {
+					return nil, err
+				}
+				return map[string]any{
+					"speech": x,
+					"url":    "/api/ai/voices/" + x.ID + "/file",
+					"path":   ttsService.FilePath(x.Filename),
+				}, nil
+			}})
+	}
 	var mcpManager *aimcp.Manager
 	if cfg.Tools.Enabled {
 		mcpCfg, loadErr := aimcp.Load(baseDir)
 		if loadErr != nil {
+			_ = ttsService.Close()
 			_ = imageService.Close()
 			st.Close()
 			return nil, fmt.Errorf("load AI MCP config: %w", loadErr)
 		}
 		mcpManager, err = aimcp.NewManager(context.Background(), mcpCfg)
 		if err != nil {
+			_ = ttsService.Close()
 			_ = imageService.Close()
 			st.Close()
 			return nil, fmt.Errorf("initialize AI MCP servers: %w", err)
@@ -241,6 +284,7 @@ func Init(opts Options) (*Runtime, error) {
 		if mcpManager != nil {
 			mcpManager.Close()
 		}
+		_ = ttsService.Close()
 		_ = imageService.Close()
 		st.Close()
 		return nil, fmt.Errorf("initialize AI tools: %w", err)
@@ -256,6 +300,7 @@ func Init(opts Options) (*Runtime, error) {
 		Memory:         memStore,
 		AttachmentsDir: attachmentsDir,
 		Images:         imageService,
+		TTS:            ttsService,
 	}, nil
 }
 
@@ -277,5 +322,9 @@ func (r *Runtime) Close() error {
 	if r.Images != nil {
 		imageErr = r.Images.Close()
 	}
-	return errors.Join(mcpErr, imageErr, r.Store.Close())
+	var ttsErr error
+	if r.TTS != nil {
+		ttsErr = r.TTS.Close()
+	}
+	return errors.Join(mcpErr, imageErr, ttsErr, r.Store.Close())
 }

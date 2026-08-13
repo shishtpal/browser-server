@@ -216,10 +216,10 @@ type MemoryConfig struct {
 	// MaxBodyKB bounds a fragment body; MaxLinksPerFragment bounds its edges;
 	// MaxOpsPerCall bounds a write_memory batch; MaxResultBytes caps a recall
 	// payload before the JSON envelope pushes it over the tool output limit.
-	MaxBodyKB            int `json:"max_body_kb"`
+	MaxBodyKB           int `json:"max_body_kb"`
 	MaxLinksPerFragment int `json:"max_links_per_fragment"`
-	MaxOpsPerCall        int `json:"max_ops_per_call"`
-	MaxResultBytes       int `json:"max_result_bytes"`
+	MaxOpsPerCall       int `json:"max_ops_per_call"`
+	MaxResultBytes      int `json:"max_result_bytes"`
 
 	// DefaultDepth is used when recall_memory omits depth; MaxDepth clamps the
 	// tool's depth argument and the spreading-activation hops.
@@ -246,7 +246,7 @@ type MemoryConfig struct {
 	// SecretScan rejects writes whose body contains credentials; writes with
 	// a similarity >= NearDuplicateThreshold to an existing fragment are
 	// merged (as duplicates) instead of creating a near-twin.
-	SecretScan            bool    `json:"secret_scan"`
+	SecretScan             bool    `json:"secret_scan"`
 	NearDuplicateThreshold float64 `json:"near_duplicate_threshold"`
 
 	// Synthesizer is the optional "librarian" sub-agent: a cheap model that

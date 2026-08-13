@@ -116,13 +116,13 @@ func TestWriteReadRemoveRoundTrip(t *testing.T) {
 
 func TestSanitizeSegmentNeutralizesTraversal(t *testing.T) {
 	cases := map[string]string{
-		"..":      "_",
-		"../etc":  "__etc",
-		"a/b":     "a_b",
-		`a\b`:     "a_b",
-		"":        "_",
-		".":       "_",
-		"normal":  "normal",
+		"..":     "_",
+		"../etc": "__etc",
+		"a/b":    "a_b",
+		`a\b`:    "a_b",
+		"":       "_",
+		".":      "_",
+		"normal": "normal",
 	}
 	for in, want := range cases {
 		if got := sanitizeSegment(in); got != want {

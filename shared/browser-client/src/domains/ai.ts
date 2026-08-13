@@ -25,6 +25,10 @@ import type {
   GeneratedImage,
   GenerateImageInput,
   GenerateImageResponse,
+  AITTSConfig,
+  GeneratedSpeech,
+  GenerateSpeechInput,
+  GenerateSpeechResponse,
   AIMemoryStats,
   AIMemoryGraph,
   AIMemoryFragment,
@@ -73,6 +77,36 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
       const token = getToken?.();
       const q = token ? `?token=${encodeURIComponent(token)}` : "";
       return `${baseUrl}/api/ai/images/${encodeURIComponent(id)}/file${q}`;
+    },
+
+    getAITTSConfig(): Promise<AITTSConfig> {
+      return apiFetch<AITTSConfig>(baseUrl, "GET", "/api/ai/voices/config", undefined, getToken);
+    },
+    listGeneratedSpeeches(limit?: number): Promise<GeneratedSpeech[]> {
+      return apiFetch<GeneratedSpeech[]>(
+        baseUrl,
+        "GET",
+        `/api/ai/voices${buildQuery({ limit })}`,
+        undefined,
+        getToken,
+      );
+    },
+    generateSpeech(data: GenerateSpeechInput): Promise<GenerateSpeechResponse> {
+      return apiFetch<GenerateSpeechResponse>(baseUrl, "POST", "/api/ai/voices", data, getToken);
+    },
+    deleteGeneratedSpeech(id: string): Promise<void> {
+      return apiFetch<void>(
+        baseUrl,
+        "DELETE",
+        `/api/ai/voices/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
+    },
+    getGeneratedSpeechUrl(id: string, withToken = true): string {
+      const token = withToken ? getToken?.() : null;
+      const q = token ? `?token=${encodeURIComponent(token)}` : "";
+      return `${baseUrl}/api/ai/voices/${encodeURIComponent(id)}/file${q}`;
     },
 
     getAIVoiceConfig(): Promise<AIVoiceConfig> {

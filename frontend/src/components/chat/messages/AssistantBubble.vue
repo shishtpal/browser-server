@@ -45,8 +45,13 @@
     </div>
 
     <BubbleActions
-      :include="['copy', 'branch', 'math', 'delete']"
-      :active="mathEnabled ? ['math'] : []"
+      :include="
+        ttsAvailable
+          ? ['copy', 'speak', 'branch', 'math', 'delete']
+          : ['copy', 'branch', 'math', 'delete']
+      "
+      :active="activeActions"
+      :busy="busyActions"
       @action="onAction"
     />
   </article>
@@ -64,15 +69,28 @@ const props = withDefaults(
   defineProps<{
     message: AIMessage;
     showThinking?: boolean;
+    ttsAvailable?: boolean;
+    speakBusy?: boolean;
+    speakActive?: boolean;
   }>(),
-  { showThinking: true },
+  { showThinking: true, ttsAvailable: true, speakBusy: false, speakActive: false },
 );
 
 const emit = defineEmits<{
   copy: [content: string];
   delete: [messageId: string];
   branch: [messageId: string];
+  speak: [payload: { messageId: string; content: string }];
 }>();
+
+const activeActions = computed(() => {
+  const names: BubbleActionName[] = [];
+  if (mathEnabled.value) names.push('math');
+  if (props.speakActive) names.push('speak');
+  return names;
+});
+
+const busyActions = computed<BubbleActionName[]>(() => (props.speakBusy ? ['speak'] : []));
 
 /** Math rendering is opt-in per message (MathJax loads from CDN on demand). */
 const mathEnabled = ref(false);
@@ -128,6 +146,8 @@ function onAction(name: BubbleActionName) {
   if (name === 'math') mathEnabled.value = !mathEnabled.value;
   else if (name === 'copy') emit('copy', props.message.content);
   else if (name === 'branch') emit('branch', props.message.id);
+  else if (name === 'speak')
+    emit('speak', { messageId: props.message.id, content: props.message.content });
   else emit('delete', props.message.id);
 }
 </script>

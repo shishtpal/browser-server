@@ -1,0 +1,31 @@
+{
+  "enabled": true,
+  "default_provider": "openrouter.ai",
+  "providers": {
+    "openrouter.ai": {
+      "type": "openrouter_speech",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key": "env:OPENROUTER_API_KEY",
+      "request_timeout_seconds": 120,
+      "models": [
+        {
+          "id": "deepgram/flux-tts:free",
+          "label": "Deepgram Flux TTS (free)",
+          "default": true,
+          "voices": [
+            {
+              "id": "flux-gemma-en",
+              "label": "Gemma (EN)"
+            }
+          ]
+        },
+        {
+          "id": "fish-audio/s2.1-pro-free:free",
+          "label": "fish-audio/s2.1-pro-free:free",
+          "default": false,
+          "response_format": "mp3"
+        }
+      ]
+    }
+  }
+}

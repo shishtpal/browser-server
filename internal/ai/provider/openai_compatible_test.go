@@ -178,7 +178,6 @@ func TestCompleteReturnsToolCalls(t *testing.T) {
 	}
 }
 
-
 func TestCompleteRetriesTransientFailures(t *testing.T) {
 	var attempts atomic.Int32
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

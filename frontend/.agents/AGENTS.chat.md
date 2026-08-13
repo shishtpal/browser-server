@@ -33,7 +33,7 @@ The AI chat UI is fully modular, split into focused sub-components and composabl
 ├── messages/
 │   ├── ChatMessageItem.vue   # One message row (user/assistant/tool)
 │   ├── UserBubble.vue, AssistantBubble.vue, ToolMessageCard.vue, ToolApprovalCard.vue
-│   ├── BubbleActions.vue     # Copy, branch, export, delete actions on a bubble
+│   ├── BubbleActions.vue     # Copy, speak, branch, math, delete actions on a bubble
 │   ├── ImageAttachmentStrip.vue
 │   └── messageTools.ts       # Tool-call entry derivation helpers
 └── panel/
@@ -50,6 +50,7 @@ composables/
 ├── useChatConversations.ts   # Conversation CRUD, fork/branch, search/filter, archive, rename/delete modals
 ├── useChatMessaging.ts       # Send, stream (SSE), tool decisions, regenerate, stop
 ├── useChatRouting.ts         # /chat/<id> routing + deep links
+├── useSpeechPlayback.ts      # Chat bubble TTS: config probe, generate, singleton <audio>
 ├── useMemoryExplorer.ts      # Memory graph explorer state
 ├── usePromptMode.ts          # Prompt-library mode (see AGENTS.prompts.md)
 └── useVoiceTyping.ts         # Voice typing modal + Web Speech plumbing
@@ -58,6 +59,21 @@ composables/
 ## Prompt library integration
 
 The prompt manager (`components/prompts/`, app-wide composables `usePrompts` + `usePromptManager`) is embedded in both `ChatPage.vue` and `ImagePage.vue`; `ChatTopBar.vue` exposes the toggle. See [`AGENTS.prompts.md`](./AGENTS.prompts.md).
+
+## Read a message aloud
+
+Every user and assistant bubble exposes a **Speak** action (volume icon) next
+to Copy when `bs-ai-tts.json` is enabled. It POSTs the message text to
+`/api/ai/voices` (defaults resolve provider/model/voice) and plays the returned
+MP3 through a single page-scoped `HTMLAudioElement`. A second click on the
+same message stops playback; clicking another message switches. The action is
+hidden when `GET /api/ai/voices/config` reports TTS disabled (or the request
+fails). Playback is one provider call per click; there is no text-hash cache
+in v1.
+
+`useSpeechPlayback.ts` owns availability, the in-flight/playing ids, and the
+audio element. `useChatPage` wires `@speak` from `ChatMessageList` and surfaces
+errors through `ChatPageToast`.
 
 ## Branch a conversation from any message
 

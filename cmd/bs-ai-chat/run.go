@@ -91,6 +91,7 @@ func runCLI(opts options) int {
 			printConfigPath("AI models", rt.Config.ModelsPath)
 			baseDir := filepath.Dir(rt.Config.Path)
 			printConfigPath("AI image models", filepath.Join(baseDir, "bs-ai-image-models.json"))
+			printConfigPath("AI TTS models", filepath.Join(baseDir, "bs-ai-tts.json"))
 			if rt.Config.Tools.Enabled {
 				mcpPath := os.Getenv("BS_AI_MCP_PATH")
 				if mcpPath == "" {

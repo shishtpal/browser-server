@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "text": {
+            "type": "string"
+        },
+        "provider": {
+            "type": "string"
+        },
+        "model": {
+            "type": "string"
+        },
+        "voice": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "text"
+    ],
+    "additionalProperties": false
+}

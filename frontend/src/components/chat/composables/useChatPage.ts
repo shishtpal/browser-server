@@ -12,7 +12,9 @@ import { useChatConfig } from './useChatConfig';
 import { useChatConversations } from './useChatConversations';
 import { useChatMessaging } from './useChatMessaging';
 import { useChatRouting } from './useChatRouting';
+import { useSpeechPlayback } from './useSpeechPlayback';
 import { deriveToolCallEntries } from '../messages/messageTools';
+import type { ChatToast } from '../ChatPageToast.vue';
 
 export type PendingConversationAction = {
   kind: 'rename' | 'archive' | 'restore' | 'delete';
@@ -94,6 +96,16 @@ export function useChatPage() {
     cleanup,
   } = messaging;
 
+  const speech = useSpeechPlayback();
+  const {
+    ttsAvailable,
+    speakingMessageId,
+    speakingBusyId,
+    loadTTSAvailability,
+    speak,
+    cleanup: cleanupSpeech,
+  } = speech;
+
   /* --------------------------- local page state ----------------------------- */
 
   const draft = ref('');
@@ -118,11 +130,11 @@ export function useChatPage() {
   });
 
   // Toast notifications (auto-dismiss)
-  const toast = ref<{ kind: 'copy' | 'branch'; id: number } | null>(null);
+  const toast = ref<ChatToast | null>(null);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
-  function flashToast(kind: 'copy' | 'branch', ms = 2000) {
+  function flashToast(kind: ChatToast['kind'], ms = 2000, message?: string) {
     if (toastTimer) clearTimeout(toastTimer);
-    toast.value = { kind, id: Date.now() };
+    toast.value = { kind, id: Date.now(), message };
     toastTimer = setTimeout(() => (toast.value = null), ms);
   }
 
@@ -163,6 +175,7 @@ export function useChatPage() {
     try {
       const cfg = await getAIConfig();
       initFromConfig(cfg);
+      void loadTTSAvailability();
       if (!cfg.enabled) return;
       await loadConversations();
       const requestedID = conversationIdFromLocation();
@@ -194,6 +207,7 @@ export function useChatPage() {
   onUnmounted(() => {
     window.removeEventListener('api-token-changed', onTokenChanged);
     cleanup();
+    cleanupSpeech();
   });
 
   /* --------------------------- conversation actions -------------------------- */
@@ -404,6 +418,11 @@ export function useChatPage() {
     }
   }
 
+  async function handleSpeak(payload: { messageId: string; content: string }) {
+    const err = await speak(payload.messageId, payload.content);
+    if (err) flashToast('error', 3200, err);
+  }
+
   async function handleBranch(messageId: string) {
     if (!activeConversation.value || isBusy.value || messageId.startsWith('temp-')) return;
     error.value = '';
@@ -556,8 +575,12 @@ export function useChatPage() {
     handleToolDecision,
     handleRegenerate,
     handleStop,
+    ttsAvailable,
+    speakingMessageId,
+    speakingBusyId,
     copyMessage,
     deleteMessage,
+    handleSpeak,
     handleBranch,
     useSuggestion,
     useVoiceTranscript,

@@ -105,6 +105,8 @@ The token and data directories are created when their corresponding commands run
 | `bs-ai-models.json` | beside the executable | AI provider/model catalog |
 | `bs-ai-mcp.json` | beside `bs-ai-config.json` | Optional local or remote MCP tool servers |
 | `bs-ai-voice.json` | beside `bs-ai-config.json` | Optional voice typing providers, models, languages, and recording limits |
+| `bs-ai-image-models.json` | beside `bs-ai-config.json` | Optional AI image-generation providers and models |
+| `bs-ai-tts.json` | beside `bs-ai-config.json` | Optional AI text-to-speech providers, models, and voices |
 | `BS_AI_CONFIG_PATH` | — | Override path to `bs-ai-config.json` |
 | `BS_AI_MODELS_PATH` | — | Override path to `bs-ai-models.json` |
 | `BS_AI_MCP_PATH` | — | Override path to `bs-ai-mcp.json` |
@@ -337,6 +339,16 @@ stdout and all trace output goes to stderr, so
 `./bin/bs-ai-chat.exe --yolo --verbose "..." > answer.txt` captures exactly the
 answer. See `bs-ai-chat --help` for the full flag list and config path
 resolution chain.
+
+### Text-to-speech
+
+AI text-to-speech is configured independently in `bs-ai-tts.json` and stored under `.data/ai-voices/` (SQLite metadata in `ai-voices.db`, MP3 files beside it). The supplied file registers OpenRouter's `/audio/speech` endpoint with Deepgram Flux TTS. Set `OPENROUTER_API_KEY` and keep `"enabled": true` to expose:
+
+- REST gallery endpoints under `/api/ai/voices*`
+- the `text_to_speech` tool (add it to `tools.allowed`)
+- a Speak action on chat message bubbles next to Copy
+
+Set `"enabled": false` or remove the file to hide the button and return `503 tts_disabled`. v1 persists the provider body as `audio/mpeg` and does not cache identical texts.
 
 ### Voice typing
 

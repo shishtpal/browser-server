@@ -3,18 +3,26 @@
   <UserBubble
     v-if="message.role === 'user'"
     :message="message"
+    :tts-available="ttsAvailable"
+    :speak-busy="speakBusy"
+    :speak-active="speakActive"
     @copy="$emit('copy', $event)"
     @delete="$emit('delete', $event)"
     @branch="$emit('branch', $event)"
+    @speak="$emit('speak', $event)"
   />
 
   <AssistantBubble
     v-else-if="message.role === 'assistant'"
     :message="message"
     :show-thinking="showThinking"
+    :tts-available="ttsAvailable"
+    :speak-busy="speakBusy"
+    :speak-active="speakActive"
     @copy="$emit('copy', $event)"
     @delete="$emit('delete', $event)"
     @branch="$emit('branch', $event)"
+    @speak="$emit('speak', $event)"
   />
 
   <ToolMessageCard
@@ -46,14 +54,18 @@ withDefaults(
   defineProps<{
     message: AIMessage;
     showThinking?: boolean;
+    ttsAvailable?: boolean;
+    speakBusy?: boolean;
+    speakActive?: boolean;
   }>(),
-  { showThinking: true },
+  { showThinking: true, ttsAvailable: true, speakBusy: false, speakActive: false },
 );
 
 defineEmits<{
   copy: [content: string];
   delete: [messageId: string];
   branch: [messageId: string];
+  speak: [payload: { messageId: string; content: string }];
   'tool-decision': [callId: string, approved: boolean, comment: string];
 }>();
 </script>

@@ -37,9 +37,13 @@
         <ChatMessageItem
           :message="message"
           :show-thinking="showThinking"
+          :tts-available="ttsAvailable"
+          :speak-busy="speakingBusyId === message.id"
+          :speak-active="speakingMessageId === message.id"
           @copy="$emit('copy', $event)"
           @delete="$emit('delete', $event)"
           @branch="$emit('branch', $event)"
+          @speak="$emit('speak', $event)"
           @tool-decision="
             (callId, approved, comment) => $emit('tool-decision', callId, approved, comment)
           "
@@ -77,8 +81,11 @@ const props = withDefaults(
     messages: AIMessage[];
     loading: boolean;
     showThinking?: boolean;
+    ttsAvailable?: boolean;
+    speakingMessageId?: string | null;
+    speakingBusyId?: string | null;
   }>(),
-  { showThinking: true },
+  { showThinking: true, ttsAvailable: true, speakingMessageId: null, speakingBusyId: null },
 );
 
 defineEmits<{
@@ -86,6 +93,7 @@ defineEmits<{
   copy: [content: string];
   delete: [messageId: string];
   branch: [messageId: string];
+  speak: [payload: { messageId: string; content: string }];
   'tool-decision': [callId: string, approved: boolean, comment: string];
 }>();
 

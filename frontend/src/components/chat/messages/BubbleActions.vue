@@ -11,19 +11,41 @@
       :title="action.title"
       :aria-label="action.title"
       :aria-pressed="active.includes(action.name) ? true : undefined"
+      :aria-busy="busy.includes(action.name) ? true : undefined"
+      :disabled="busy.includes(action.name)"
       type="button"
       @click="$emit('action', action.name)"
     >
-      <component :is="action.icon" class="h-3.5 w-3.5" :stroke-width="2.25" aria-hidden="true" />
+      <LoaderCircle
+        v-if="busy.includes(action.name)"
+        class="h-3.5 w-3.5 animate-spin"
+        :stroke-width="2.25"
+        aria-hidden="true"
+      />
+      <component
+        :is="action.icon"
+        v-else
+        class="h-3.5 w-3.5"
+        :stroke-width="2.25"
+        aria-hidden="true"
+      />
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Copy, GitBranch, Sigma, Trash2, type LucideIcon } from '@lucide/vue';
+import {
+  Copy,
+  GitBranch,
+  LoaderCircle,
+  Sigma,
+  Trash2,
+  Volume2,
+  type LucideIcon,
+} from '@lucide/vue';
 
-export type BubbleActionName = 'copy' | 'branch' | 'math' | 'delete';
+export type BubbleActionName = 'copy' | 'speak' | 'branch' | 'math' | 'delete';
 
 const props = withDefaults(
   defineProps<{
@@ -31,8 +53,10 @@ const props = withDefaults(
     include?: BubbleActionName[];
     /** Actions currently toggled on (shown pressed). */
     active?: BubbleActionName[];
+    /** Actions currently in-flight (shown as a spinner). */
+    busy?: BubbleActionName[];
   }>(),
-  { include: () => ['copy', 'branch', 'delete'], active: () => [] },
+  { include: () => ['copy', 'speak', 'branch', 'delete'], active: () => [], busy: () => [] },
 );
 
 defineEmits<{ action: [name: BubbleActionName] }>();
@@ -53,6 +77,14 @@ const ALL: Record<
     icon: Copy,
     className:
       'hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-200',
+  },
+  speak: {
+    name: 'speak',
+    title: 'Read aloud (text-to-speech)',
+    icon: Volume2,
+    className:
+      'hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400',
+    activeClassName: 'text-indigo-600 dark:text-indigo-400',
   },
   branch: {
     name: 'branch',

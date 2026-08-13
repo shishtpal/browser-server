@@ -11,26 +11,47 @@
       message.content
     }}</pre>
 
-    <BubbleActions @action="onAction" />
+    <BubbleActions
+      :include="includeActions"
+      :active="speakActive ? ['speak'] : []"
+      :busy="speakBusy ? ['speak'] : []"
+      @action="onAction"
+    />
   </article>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { AIMessage } from '@browser-server/shared-types';
 import BubbleActions, { type BubbleActionName } from './BubbleActions.vue';
 import ImageAttachmentStrip from './ImageAttachmentStrip.vue';
 
-const props = defineProps<{ message: AIMessage }>();
+const props = withDefaults(
+  defineProps<{
+    message: AIMessage;
+    ttsAvailable?: boolean;
+    speakBusy?: boolean;
+    speakActive?: boolean;
+  }>(),
+  { ttsAvailable: true, speakBusy: false, speakActive: false },
+);
+
+const includeActions = computed<BubbleActionName[]>(() =>
+  props.ttsAvailable ? ['copy', 'speak', 'branch', 'delete'] : ['copy', 'branch', 'delete'],
+);
 
 const emit = defineEmits<{
   copy: [content: string];
   delete: [messageId: string];
   branch: [messageId: string];
+  speak: [payload: { messageId: string; content: string }];
 }>();
 
 function onAction(name: BubbleActionName) {
   if (name === 'copy') emit('copy', props.message.content);
   else if (name === 'branch') emit('branch', props.message.id);
+  else if (name === 'speak')
+    emit('speak', { messageId: props.message.id, content: props.message.content });
   else emit('delete', props.message.id);
 }
 </script>

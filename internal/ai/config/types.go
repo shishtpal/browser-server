@@ -7,7 +7,7 @@ const defaultConfigFile = "bs-ai-config.json"
 const defaultModelsFile = "bs-ai-models.json"
 
 type Config struct {
-	Enabled         bool                      `json:"-"`
+	Enabled         bool                      `json:"enabled"`
 	Path            string                    `json:"-"`
 	ModelsPath      string                    `json:"-"`
 	CORSEnabled     bool                      `json:"cors_enabled"`

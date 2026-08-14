@@ -61,7 +61,7 @@ frontend/src/
 │   │   ├── ai.ts         # AI chat, image, monitoring, tasks endpoints
 │   │   ├── health.ts, todos.ts, bookmarks.ts, history.ts, wallet.ts,
 │   │   │   users.ts, analytics.ts, memory.ts, prompts.ts, quiz.ts
-│   ├── auth.ts       # API token storage (localStorage) + authHeaders()
+│   ├── auth.ts       # Disjoint operator/admin token storage + header helpers
 │   ├── descriptionLinks.ts  # linkifyDescription / hasLink helpers
 │   └── utils.ts      # Re-exports from @browser-server/shared-utils
 ├── utils/

@@ -12,3 +12,4 @@ export * from './ai';
 export * from './memory';
 export * from './prompts';
 export * from './quiz';
+export * from './admin';

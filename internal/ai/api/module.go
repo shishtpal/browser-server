@@ -4,14 +4,12 @@ import (
 	"browser-server/internal/ai/bootstrap"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
-	"browser-server/internal/ai/images"
 	aimcp "browser-server/internal/ai/mcp"
 	"browser-server/internal/ai/memory"
 	"browser-server/internal/ai/profiles"
 	"browser-server/internal/ai/skills"
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tasks"
-	"browser-server/internal/ai/tts"
 	"browser-server/internal/ai/voice"
 	"context"
 	"errors"
@@ -19,6 +17,7 @@ import (
 	"log"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -31,14 +30,17 @@ type Module struct {
 	profiles       *profiles.Registry
 	skills         *skills.Registry
 	mcp            *aimcp.Manager
-	voice          *voice.Config
+	voice          atomic.Pointer[voice.Config]
 	tasks          *tasks.Runner
 	memory         *memory.Store
 	attachmentsDir string
-	images         *images.Service
-	tts            *tts.Service
+	holders        *bootstrap.ServiceHolders
+	configDir      string
+	configMu       sync.RWMutex
 	stop           chan struct{}
 	wg             sync.WaitGroup
+	closeOnce      sync.Once
+	closeErr       error
 }
 
 // The Module struct keeps the same field names as the provider-agnostic runtime
@@ -50,6 +52,11 @@ func Init() (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
+	configDir, err := aiconfig.ExecutableDir()
+	if err != nil {
+		_ = rt.Close()
+		return nil, fmt.Errorf("resolve config directory: %w", err)
+	}
 	module := &Module{
 		cfg:            rt.Config,
 		store:          rt.Store,
@@ -59,8 +66,8 @@ func Init() (*Module, error) {
 		mcp:            rt.MCP,
 		memory:         rt.Memory,
 		attachmentsDir: rt.AttachmentsDir,
-		images:         rt.Images,
-		tts:            rt.TTS,
+		holders:        rt.Holders,
+		configDir:      configDir,
 	}
 	if !rt.Config.Enabled {
 		return module, nil
@@ -71,7 +78,7 @@ func Init() (*Module, error) {
 		_ = rt.Close()
 		return nil, fmt.Errorf("load AI voice config: %w", err)
 	}
-	module.voice = voiceCfg
+	module.voice.Store(voiceCfg)
 	module.stop = make(chan struct{})
 	// The durable task runner is started after the store and chat service exist,
 	// because it resumes checkpoints written by a previous process on startup.
@@ -150,33 +157,55 @@ func (m *Module) CORSEnabled() bool {
 }
 
 func (m *Module) Close() error {
-	if m == nil || m.store == nil {
+	if m == nil {
 		return nil
 	}
-	if m.stop != nil {
-		close(m.stop)
-		m.stop = nil
+	m.closeOnce.Do(func() {
+		if m.stop != nil {
+			close(m.stop)
+		}
+		// Stop the task runner before the chat service so in-flight steps unwind
+		// through their own cancellation path and checkpoint state stays coherent.
+		if m.tasks != nil {
+			m.tasks.Stop()
+		}
+		if m.service != nil {
+			m.service.Close()
+		}
+		m.wg.Wait()
+
+		var holdersErr, mcpErr, storeErr error
+		// Close MCP sessions before leaf holders: a long-running image or TTS
+		// request may delay holder draining, while managed restart has a short
+		// shutdown budget and must not orphan MCP child processes.
+		if m.mcp != nil {
+			mcpErr = m.mcp.Close()
+		}
+		if m.holders != nil {
+			holdersErr = m.holders.Close()
+		}
+		if m.store != nil {
+			storeErr = m.store.Close()
+		}
+		m.closeErr = errors.Join(mcpErr, holdersErr, storeErr)
+	})
+	return m.closeErr
+}
+
+// PrepareRestart closes MCP sessions first so managed shutdown cannot orphan
+// child processes, then performs the ordinary idempotent module close. The field
+// is nulled after the early close so a deferred Close cannot double-close the
+// manager (Close can legitimately run after PrepareRestart). The module is only
+// shut down on restart concurrency, so no concurrent Close callers race here.
+func (m *Module) PrepareRestart() {
+	if m == nil {
+		return
 	}
-	// Stop the task runner before the chat service so in-flight steps unwind
-	// through their own cancellation path and checkpoint state stays coherent.
-	if m.tasks != nil {
-		m.tasks.Stop()
-	}
-	if m.service != nil {
-		m.service.Close()
-	}
-	if m.images != nil {
-		_ = m.images.Close()
-	}
-	if m.tts != nil {
-		_ = m.tts.Close()
-	}
-	m.wg.Wait()
-	var mcpErr error
 	if m.mcp != nil {
-		mcpErr = m.mcp.Close()
+		_ = m.mcp.Close()
+		m.mcp = nil
 	}
-	return errors.Join(mcpErr, m.store.Close())
+	_ = m.Close()
 }
 
 // Profiles returns the loaded profile registry for use by other components.
@@ -189,10 +218,10 @@ func (m *Module) Profiles() *profiles.Registry {
 
 func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/config", m.Config).Methods("GET")
-	if m.voice != nil {
-		r.HandleFunc("/ai/voice/config", m.VoiceConfig).Methods("GET")
-		r.Handle("/ai/voice/transcribe", &voice.Proxy{Config: m.voice}).Methods("GET")
-	}
+	// Voice routes stay registered across enabled/disabled reloads. Handlers
+	// resolve the current immutable config for each request.
+	r.HandleFunc("/ai/voice/config", m.VoiceConfig).Methods("GET")
+	r.HandleFunc("/ai/voice/transcribe", m.VoiceTranscribe).Methods("GET")
 	r.HandleFunc("/ai/skills", m.requireAI(m.ListSkills)).Methods("GET")
 	r.HandleFunc("/ai/skills/{name}", m.requireAI(m.GetSkill)).Methods("GET")
 	r.HandleFunc("/ai/logs", m.requireAI(m.Logs)).Methods("GET")
@@ -210,16 +239,16 @@ func (m *Module) Register(r *mux.Router) {
 	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.GetAttachment)).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}/attachments/{attachmentId}", m.requireAI(m.RenameAttachment)).Methods("PATCH")
 	r.HandleFunc("/ai/attachments", m.requireAI(m.ListAttachments)).Methods("GET")
-	r.HandleFunc("/ai/images/config", m.requireImages(m.ImageConfig)).Methods("GET")
-	r.HandleFunc("/ai/images", m.requireImages(m.ListImages)).Methods("GET")
-	r.HandleFunc("/ai/images", m.requireImages(m.GenerateImage)).Methods("POST")
-	r.HandleFunc("/ai/images/{id}", m.requireImages(m.DeleteImage)).Methods("DELETE")
-	r.HandleFunc("/ai/images/{id}/file", m.requireImages(m.GetImageFile)).Methods("GET")
-	r.HandleFunc("/ai/voices/config", m.requireTTS(m.VoiceGalleryConfig)).Methods("GET")
-	r.HandleFunc("/ai/voices", m.requireTTS(m.ListVoices)).Methods("GET")
-	r.HandleFunc("/ai/voices", m.requireTTS(m.GenerateSpeech)).Methods("POST")
-	r.HandleFunc("/ai/voices/{id}", m.requireTTS(m.DeleteSpeech)).Methods("DELETE")
-	r.HandleFunc("/ai/voices/{id}/file", m.requireTTS(m.GetSpeechFile)).Methods("GET")
+	r.HandleFunc("/ai/images/config", m.ImageConfig).Methods("GET")
+	r.HandleFunc("/ai/images", m.ListImages).Methods("GET")
+	r.HandleFunc("/ai/images", m.GenerateImage).Methods("POST")
+	r.HandleFunc("/ai/images/{id}", m.DeleteImage).Methods("DELETE")
+	r.HandleFunc("/ai/images/{id}/file", m.GetImageFile).Methods("GET")
+	r.HandleFunc("/ai/voices/config", m.VoiceGalleryConfig).Methods("GET")
+	r.HandleFunc("/ai/voices", m.ListVoices).Methods("GET")
+	r.HandleFunc("/ai/voices", m.GenerateSpeech).Methods("POST")
+	r.HandleFunc("/ai/voices/{id}", m.DeleteSpeech).Methods("DELETE")
+	r.HandleFunc("/ai/voices/{id}/file", m.GetSpeechFile).Methods("GET")
 	r.HandleFunc("/ai/conversations/{id}/messages/append", m.requireAI(m.AppendMessage)).Methods("POST")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.UpdateMessage)).Methods("PATCH")
 	r.HandleFunc("/ai/conversations/{id}/messages/{msgId}", m.requireAI(m.DeleteMessage)).Methods("DELETE")

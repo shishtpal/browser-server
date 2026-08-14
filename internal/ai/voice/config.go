@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -80,24 +81,50 @@ func Load(baseDir string) (*Config, error) {
 	} else if !filepath.IsAbs(path) {
 		path = filepath.Join(baseDir, path)
 	}
-	c := &Config{Path: path}
-	b, err := os.ReadFile(path)
+	return LoadPath(path)
+}
+
+// LoadPath loads an explicit voice config path, bypassing environment path
+// overrides. A missing file is a valid disabled configuration.
+func LoadPath(path string) (*Config, error) {
+	content, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return c, nil
+		return &Config{Path: path}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read voice config: %w", err)
 	}
-	dec := json.NewDecoder(strings.NewReader(string(b)))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(c); err != nil {
+	return parseBytes(content, path)
+}
+
+// ValidateBytes validates a candidate without publishing or opening a network
+// connection.
+func ValidateBytes(content []byte) error {
+	_, err := parseBytes(content, defaultFile)
+	return err
+}
+
+func parseBytes(content []byte, path string) (*Config, error) {
+	config := &Config{Path: path}
+	decoder := json.NewDecoder(strings.NewReader(string(content)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(config); err != nil {
 		return nil, fmt.Errorf("parse voice config: %w", err)
 	}
-	c.Path = path
-	if err := c.defaultsAndValidate(); err != nil {
+	// Reject a second JSON value; Decoder.Decode alone would otherwise accept
+	// a valid object followed by unrelated content.
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return nil, errors.New("parse voice config: multiple JSON values")
+		}
+		return nil, fmt.Errorf("parse voice config: %w", err)
+	}
+	config.Path = path
+	if err := config.defaultsAndValidate(); err != nil {
 		return nil, fmt.Errorf("validate voice config: %w", err)
 	}
-	return c, nil
+	return config, nil
 }
 
 func (c *Config) defaultsAndValidate() error {

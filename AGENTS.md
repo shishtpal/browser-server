@@ -40,7 +40,7 @@ This root `AGENTS.md` covers the Go backend and cross-cutting concerns. Each fro
 - **Shared packages**: framework-free API types/client/utilities, the shared markdown renderer (`shared/browser-markdown`), plus shared Vue extension code in `shared/browser-extension-core`
 - **Package manager**: pnpm 11 (workspace defined in `pnpm-workspace.yaml`)
 - **Build**: PowerShell script (`scripts/build.ps1`), `CGO_ENABLED=1` required
-- **Auth**: opaque operator-level API token (Bearer header), generated via `server token generate`
+- **Auth**: disjoint opaque Bearer tokens — operator (`server token generate`) and optional project administrator (`server token admin-generate`)
 
 ## Building
 
@@ -71,17 +71,17 @@ Serves on `:9191` by default. Override the port with `server --port 9090` or `PO
 
 ### Token CLI subcommands
 
-- `server token generate` — create a random token, save to `.bs-token` next to the binary (refuses to overwrite).
-- `server token refresh` — regenerate (rotate) the token, overwriting the existing file.
+- `server token generate` / `refresh` — create or rotate `.bs-token` for ordinary API access.
+- `server token admin-generate` / `admin-refresh` / `admin-delete` — manage the optional `.bs-token-admin` credential for Project Settings.
 
 ## Authentication
 
-Auth is a single **operator-level API token** — there is no user login/registration. See [`internal/auth/token.go`](internal/auth/token.go) and [`internal/middleware/auth.go`](internal/middleware/auth.go).
+There is no user login/registration. Ordinary APIs use an operator token while `/api/admin/*` uses a separate, opt-in administrator token; neither credential is accepted by the other tier. See [`internal/auth`](internal/auth) and [`internal/middleware/auth.go`](internal/middleware/auth.go).
 
 - The token is an opaque random hex string stored in `.bs-token` alongside the binary (path overridable via `SERVER_TOKEN_PATH`).
 - `auth.Load()` reads it into memory at startup; if missing, the server still starts but every `/api` request returns `503` until a token is generated.
-- The `middleware.Auth` middleware is applied to the `/api` subrouter only. It accepts the token via `Authorization: Bearer <token>`, or via a `?token=` query param (needed for `<img>`-loaded screenshots that can't set headers). Comparison is constant-time.
-- Responses: `401` for missing/invalid token, `503` when no token is configured. `/health` is intentionally left public.
+- `middleware.Auth` protects ordinary `/api` routes with `.bs-token`; `middleware.AdminAuth` protects the earlier-registered `/api/admin` prefix with `.bs-token-admin`. Both accept `Authorization: Bearer <token>` or `?token=` and compare in constant time.
+- Responses: `401` for missing/invalid credentials, `503` when no operator token is configured, and `403 admin_disabled` when no admin token is configured. `/health` is intentionally public.
 - The multiple `users` records are data, **not** auth principals; `?user_id=` filtering is unchanged.
 - Clients send the token through the shared client: `createBrowserServerClient(baseUrl, { getToken })`. The web app stores it in `localStorage` ([`frontend/src/lib/auth.ts`](frontend/src/lib/auth.ts)); the extension stores it in settings.
 
@@ -563,7 +563,7 @@ known := map[string]bool{
 
 - All handlers receive `(w http.ResponseWriter, r *http.Request)`
 - Database connections are global vars exported from `internal/db`
-- All `/api` routes are token-protected; only public endpoints (e.g. `/health`) go on the root router
+- All `/api` routes are token-protected; ordinary routes use the operator token and `/api/admin/*` uses only the admin token. Only public endpoints (e.g. `/health`) go on the root router
 - User filtering is done via `?user_id=` query parameter
 - Cross-package struct literals use keyed fields (go vet compliance)
 - Sample data is inserted on first run if tables are empty

@@ -110,6 +110,10 @@ function Invoke-Create {
         & $nssm set $ServiceName AppStdout      "$logDir\stdout.log" | Out-Null
         & $nssm set $ServiceName AppStderr      "$logDir\stderr.log" | Out-Null
         & $nssm set $ServiceName AppRotateFiles 1 | Out-Null
+        # Opt in to the admin API's self-restart endpoint only when NSSM is
+        # present and configured to bring a cleanly exited process back.
+        & $nssm set $ServiceName AppEnvironmentExtra "BS_MANAGED=1" | Out-Null
+        & $nssm set $ServiceName AppExit Default Restart | Out-Null
 
     } else {
         # ── Fallback: sc.exe via New-Service ────────────────────────────────

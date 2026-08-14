@@ -87,62 +87,87 @@ type Service struct {
 }
 
 func Load(base string) (Config, error) {
-	p := filepath.Join(base, modelsFile)
-	b, err := os.ReadFile(p)
+	return LoadPath(filepath.Join(base, modelsFile))
+}
+
+// LoadPath loads an explicit image config. A missing file is a valid disabled
+// configuration.
+func LoadPath(path string) (Config, error) {
+	content, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return Config{Path: p, Providers: map[string]Provider{}}, nil
+		return Config{Path: path, Providers: map[string]Provider{}}, nil
 	}
 	if err != nil {
 		return Config{}, err
 	}
-	var c Config
-	if err = json.Unmarshal(b, &c); err != nil {
-		return c, fmt.Errorf("parse image models: %w", err)
+	return parseConfig(content, path)
+}
+
+// ValidateBytes performs semantic validation without opening the gallery DB.
+func ValidateBytes(content []byte) error {
+	_, err := parseConfig(content, modelsFile)
+	return err
+}
+
+func parseConfig(content []byte, path string) (Config, error) {
+	var config Config
+	decoder := json.NewDecoder(bytes.NewReader(content))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&config); err != nil {
+		return config, fmt.Errorf("parse image models: %w", err)
 	}
-	c.Path = p
-	if c.Providers == nil {
-		c.Providers = map[string]Provider{}
-	}
-	if !c.Enabled {
-		return c, nil
-	}
-	if c.DefaultProvider == "" {
-		return c, errors.New("image default_provider is required")
-	}
-	if _, ok := c.Providers[c.DefaultProvider]; !ok {
-		return c, errors.New("image default_provider is not configured")
-	}
-	for n, p := range c.Providers {
-		if p.Type != "gemini_interactions" && p.Type != "openrouter_images" {
-			return c, fmt.Errorf("image provider %q has unsupported type", n)
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return config, errors.New("parse image models: multiple JSON values")
 		}
-		if p.APIKey == "" {
-			return c, fmt.Errorf("image provider %q api_key is required", n)
+		return config, fmt.Errorf("parse image models: %w", err)
+	}
+	config.Path = path
+	if config.Providers == nil {
+		config.Providers = map[string]Provider{}
+	}
+	if !config.Enabled {
+		return config, nil
+	}
+	if config.DefaultProvider == "" {
+		return config, errors.New("image default_provider is required")
+	}
+	if _, ok := config.Providers[config.DefaultProvider]; !ok {
+		return config, errors.New("image default_provider is not configured")
+	}
+	for name, provider := range config.Providers {
+		if provider.Type != "gemini_interactions" && provider.Type != "openrouter_images" {
+			return config, fmt.Errorf("image provider %q has unsupported type", name)
 		}
-		if env, ok := strings.CutPrefix(p.APIKey, "env:"); ok {
-			p.APIKey = os.Getenv(env)
-			if p.APIKey == "" {
-				return c, fmt.Errorf("image provider %q API key environment variable %q is empty", n, env)
+		if provider.APIKey == "" {
+			return config, fmt.Errorf("image provider %q api_key is required", name)
+		}
+		if env, ok := strings.CutPrefix(provider.APIKey, "env:"); ok {
+			provider.APIKey = os.Getenv(env)
+			if provider.APIKey == "" {
+				return config, fmt.Errorf("image provider %q API key environment variable %q is empty", name, env)
 			}
 		}
-		if p.BaseURL == "" && p.Type == "gemini_interactions" {
-			p.BaseURL = "https://generativelanguage.googleapis.com/v1beta"
+		if provider.BaseURL == "" && provider.Type == "gemini_interactions" {
+			provider.BaseURL = "https://generativelanguage.googleapis.com/v1beta"
 		}
-		if p.BaseURL == "" {
-			p.BaseURL = "https://openrouter.ai/api/v1"
+		if provider.BaseURL == "" {
+			provider.BaseURL = "https://openrouter.ai/api/v1"
 		}
-		if p.RequestTimeoutSeconds == 0 {
+		if provider.RequestTimeoutSeconds == 0 {
 			// Image providers can spend several minutes rendering an image;
 			// keep this independent from the shorter chat completion timeout.
-			p.RequestTimeoutSeconds = 600
+			provider.RequestTimeoutSeconds = 600
 		}
-		if len(p.Models) == 0 {
-			return c, fmt.Errorf("image provider %q needs models", n)
+		if len(provider.Models) == 0 {
+			return config, fmt.Errorf("image provider %q needs models", name)
 		}
-		c.Providers[n] = p
+		config.Providers[name] = provider
 	}
-	return c, nil
+	return config, nil
 }
+
 func New(cfg Config, dataDir string) (*Service, error) {
 	if !cfg.Enabled {
 		return nil, nil

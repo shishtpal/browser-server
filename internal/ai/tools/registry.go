@@ -22,6 +22,10 @@ type Tool struct {
 	Keywords []string
 	Schema   json.RawMessage
 	Execute  func(context.Context, json.RawMessage) (any, error)
+	// Available is evaluated when definitions are built and again at execution.
+	// Hot-swappable external tools use it to disappear while their leaf service
+	// is disabled and reappear on the next provider step after a reload.
+	Available func() bool
 	// RawContentFunc extracts raw output from an Execute result. When the tool
 	// is listed in tools.raw_output (or a request forces raw mode), the
 	// registry calls this function instead of JSON-marshaling. Return
@@ -205,8 +209,8 @@ func (r *Registry) add(t Tool) { r.tools[t.Name] = t }
 func (r *Registry) Categories(allowed []string) map[string]string {
 	out := make(map[string]string, len(allowed))
 	for _, n := range allowed {
-		if t, ok := r.tools[n]; ok {
-			out[n] = t.Category
+		if tool, ok := r.tools[n]; ok && toolAvailable(tool) {
+			out[n] = tool.Category
 		}
 	}
 	return out
@@ -216,11 +220,15 @@ func (r *Registry) Categories(allowed []string) map[string]string {
 func (r *Registry) Specs(allowed []string) []provider.ToolSpec {
 	var out []provider.ToolSpec
 	for _, n := range allowed {
-		if t, ok := r.tools[n]; ok {
-			out = append(out, provider.ToolSpec{Name: t.Name, Description: t.Description, Parameters: t.Schema})
+		if tool, ok := r.tools[n]; ok && toolAvailable(tool) {
+			out = append(out, provider.ToolSpec{Name: tool.Name, Description: tool.Description, Parameters: tool.Schema})
 		}
 	}
 	return out
+}
+
+func toolAvailable(tool Tool) bool {
+	return tool.Available == nil || tool.Available()
 }
 
 // Execute runs a tool by name with the given JSON arguments.
@@ -228,6 +236,9 @@ func (r *Registry) Execute(ctx context.Context, name string, args json.RawMessag
 	t, ok := r.tools[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown tool")
+	}
+	if !toolAvailable(t) {
+		return nil, fmt.Errorf("tool is unavailable")
 	}
 	if t.Execute == nil {
 		return nil, fmt.Errorf("tool is not directly executable")

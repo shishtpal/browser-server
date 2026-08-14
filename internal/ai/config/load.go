@@ -50,6 +50,11 @@ func Load() (*Config, error) {
 		modelsPath = filepath.Join(filepath.Dir(path), defaultModelsFile)
 	}
 	cfg.ModelsPath = modelsPath
+	if !cfg.Enabled {
+		cfg.Providers = map[string]ProviderConfig{}
+		applyDefaults(cfg, mainRaw, nil)
+		return cfg, nil
+	}
 
 	modelsContent, err := os.ReadFile(modelsPath)
 	if err != nil {
@@ -76,5 +81,42 @@ func Load() (*Config, error) {
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
+	if err := validateStorage(cfg); err != nil {
+		return nil, err
+	}
 	return cfg, nil
+}
+
+// ValidateBytes validates a candidate main config together with its sibling
+// model catalog. It applies the exact startup defaults, secret resolution, and
+// semantic checks without constructing providers, stores, tools, or workers.
+func ValidateBytes(mainContent, modelsContent []byte, baseDir string) error {
+	mainPath := filepath.Join(baseDir, defaultConfigFile)
+	modelsPath := filepath.Join(baseDir, defaultModelsFile)
+	cfg := &Config{Enabled: true, Path: mainPath, ModelsPath: modelsPath}
+	if err := json.Unmarshal(mainContent, cfg); err != nil {
+		return fmt.Errorf("parse AI config: %w", err)
+	}
+	var mainRaw map[string]json.RawMessage
+	if err := json.Unmarshal(mainContent, &mainRaw); err != nil {
+		return fmt.Errorf("parse AI config: %w", err)
+	}
+	if !cfg.Enabled {
+		return nil
+	}
+
+	var models modelsFile
+	if err := json.Unmarshal(modelsContent, &models); err != nil {
+		return fmt.Errorf("parse AI models: %w", err)
+	}
+	var modelsRaw map[string]json.RawMessage
+	if err := json.Unmarshal(modelsContent, &modelsRaw); err != nil {
+		return fmt.Errorf("parse AI models: %w", err)
+	}
+	cfg.Providers = models.Providers
+	applyDefaults(cfg, mainRaw, modelsRaw)
+	if err := resolveSecrets(cfg); err != nil {
+		return err
+	}
+	return validate(cfg)
 }

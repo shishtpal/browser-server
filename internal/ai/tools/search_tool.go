@@ -162,7 +162,7 @@ func (r *Registry) searchTools(query string, limit int, load bool, visible, load
 			continue
 		}
 		tool, ok := r.tools[name]
-		if !ok {
+		if !ok || !toolAvailable(tool) {
 			continue
 		}
 		score, matchType := searchToolScore(tool, normalizedQuery, terms)
@@ -221,11 +221,12 @@ func (r *Registry) Load(names []string, visible, loaded map[string]bool) LoadRes
 			result.AlreadyLoaded = append(result.AlreadyLoaded, name)
 			continue
 		}
-		if _, ok := r.tools[name]; !ok {
+		tool, ok := r.tools[name]
+		if !ok {
 			result.Unknown = append(result.Unknown, name)
 			continue
 		}
-		if !visible[name] {
+		if !visible[name] || !toolAvailable(tool) {
 			result.Unavailable = append(result.Unavailable, name)
 			continue
 		}
@@ -249,7 +250,7 @@ func (r *Registry) List(category string, limit int, visible map[string]bool) []s
 	result := make([]string, 0, limit)
 	for _, name := range sortedToolNames(visible) {
 		tool, ok := r.tools[name]
-		if !ok || name == SearchToolName || normalizeCategory(tool.Category) != wanted {
+		if !ok || !toolAvailable(tool) || name == SearchToolName || normalizeCategory(tool.Category) != wanted {
 			continue
 		}
 		result = append(result, name)
@@ -264,7 +265,7 @@ func (r *Registry) DiscoveryCategories(visible map[string]bool) []ToolCategory {
 	counts := map[string]int{}
 	for name := range visible {
 		tool, ok := r.tools[name]
-		if !ok || name == SearchToolName {
+		if !ok || !toolAvailable(tool) || name == SearchToolName {
 			continue
 		}
 		counts[normalizeCategory(tool.Category)]++

@@ -46,7 +46,7 @@ type PaperGenConfig struct {
 
 // Config is the parsed bs-quiz-config.json.
 type Config struct {
-	Enabled              bool           `json:"-"`
+	Enabled              bool           `json:"enabled"`
 	Path                 string         `json:"-"`
 	DBPath               string         `json:"db_path"`
 	ImageDir             string         `json:"image_dir"`
@@ -151,7 +151,13 @@ func Load() (*Config, error) {
 		}
 		path = filepath.Join(exeDir, defaultConfigFile)
 	}
+	return LoadPath(path)
+}
 
+// LoadPath reloads an explicit whitelisted path and atomically publishes the
+// resulting rules. It intentionally ignores BS_QUIZ_CONFIG_PATH so the admin
+// file API always reloads the same file it just committed.
+func LoadPath(path string) (*Config, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -165,6 +171,48 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("read quiz config: %w", err)
 	}
 
+	cfg, err := parseBytes(content, path)
+	if err != nil {
+		return nil, err
+	}
+	global.Store(cfg)
+	return cfg, nil
+}
+
+// LoadPathPreservingRuntime reloads quiz rules while retaining fields whose
+// resources are wired only at boot. Publishing those changes early could
+// expose handlers without a database or redirect image operations away from
+// the initialized data location.
+func LoadPathPreservingRuntime(path string, current *Config) (*Config, bool, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false, fmt.Errorf("read quiz config: %w", err)
+	}
+	cfg, err := parseBytes(content, path)
+	if err != nil {
+		return nil, false, err
+	}
+	if current == nil {
+		current = &Config{}
+	}
+	restartRequired := cfg.Enabled != current.Enabled || cfg.DBPath != current.DBPath ||
+		cfg.ImageDir != current.ImageDir || cfg.CORSEnabled != current.CORSEnabled
+	cfg.Enabled = current.Enabled
+	cfg.DBPath = current.DBPath
+	cfg.ImageDir = current.ImageDir
+	cfg.CORSEnabled = current.CORSEnabled
+	global.Store(cfg)
+	return cfg, restartRequired, nil
+}
+
+// ValidateBytes performs the same defaulting and semantic checks as Load
+// without changing the process-global active quiz rules.
+func ValidateBytes(content []byte) error {
+	_, err := parseBytes(content, defaultConfigFile)
+	return err
+}
+
+func parseBytes(content []byte, path string) (*Config, error) {
 	cfg := defaultConfig()
 	cfg.Enabled = true
 	cfg.Path = path
@@ -174,7 +222,6 @@ func Load() (*Config, error) {
 	if err := validate(cfg); err != nil {
 		return nil, fmt.Errorf("quiz config: %w", err)
 	}
-	global.Store(cfg)
 	return cfg, nil
 }
 

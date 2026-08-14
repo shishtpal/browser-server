@@ -14,6 +14,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"browser-server/internal/ai/attachments"
@@ -42,6 +44,87 @@ type Options struct {
 	ReconcilePending bool
 }
 
+// ServiceHolder publishes a hot-swappable service while keeping the retired
+// instance alive until all requests that acquired it have completed. The
+// atomic pointer makes availability checks cheap; the RWMutex supplies the
+// lifecycle guarantee needed before closing SQLite-backed services.
+type ServiceHolder[T any] struct {
+	ptr atomic.Pointer[T]
+	mu  sync.RWMutex
+}
+
+// NewServiceHolder initializes a holder with service, which may be nil.
+func NewServiceHolder[T any](service *T) *ServiceHolder[T] {
+	holder := &ServiceHolder[T]{}
+	holder.ptr.Store(service)
+	return holder
+}
+
+// Available reports whether the holder currently contains a service.
+func (h *ServiceHolder[T]) Available() bool {
+	return h != nil && h.ptr.Load() != nil
+}
+
+// Acquire returns a stable service and a release callback. Callers must defer
+// release before using a non-nil service so a concurrent swap cannot close it.
+func (h *ServiceHolder[T]) Acquire() (*T, func()) {
+	if h == nil {
+		return nil, func() {}
+	}
+	h.mu.RLock()
+	service := h.ptr.Load()
+	if service == nil {
+		h.mu.RUnlock()
+		return nil, func() {}
+	}
+	return service, h.mu.RUnlock
+}
+
+// Swap installs service and, after all users of the previous instance drain,
+// passes that previous instance to closeOld while holding the lifecycle lock.
+func (h *ServiceHolder[T]) Swap(service *T, closeOld func(*T) error) error {
+	if h == nil {
+		return errors.New("service holder is nil")
+	}
+	h.mu.Lock()
+	old := h.ptr.Swap(service)
+	var err error
+	if old != nil && closeOld != nil {
+		err = closeOld(old)
+	}
+	h.mu.Unlock()
+	return err
+}
+
+// ServiceHolders are shared by the bootstrap tool closures and HTTP module so
+// both paths observe leaf-config reloads on their next request.
+type ServiceHolders struct {
+	TTS    *ServiceHolder[tts.Service]
+	Images *ServiceHolder[images.Service]
+}
+
+func newServiceHolders() *ServiceHolders {
+	return &ServiceHolders{
+		TTS:    NewServiceHolder[tts.Service](nil),
+		Images: NewServiceHolder[images.Service](nil),
+	}
+}
+
+// Close drains and closes both leaf services.
+func (h *ServiceHolders) Close() error {
+	if h == nil {
+		return nil
+	}
+	var imageErr, ttsErr error
+	if h.Images != nil {
+		imageErr = h.Images.Swap(nil, func(service *images.Service) error { return service.Close() })
+	}
+	if h.TTS != nil {
+		ttsErr = h.TTS.Swap(nil, func(service *tts.Service) error { return service.Close() })
+	}
+	return errors.Join(imageErr, ttsErr)
+}
+
 // Runtime is the fully wired, provider-agnostic AI runtime.
 type Runtime struct {
 	Config         *aiconfig.Config
@@ -52,8 +135,7 @@ type Runtime struct {
 	MCP            *aimcp.Manager
 	Memory         *memory.Store
 	AttachmentsDir string
-	Images         *images.Service
-	TTS            *tts.Service
+	Holders        *ServiceHolders
 }
 
 //go:embed generate_image.json
@@ -67,6 +149,7 @@ var textToSpeechSchema []byte
 // with Config.Enabled == false and Profiles loaded for reporting; callers must
 // check Enabled and exit with a clear message.
 func Init(opts Options) (*Runtime, error) {
+	holders := newServiceHolders()
 	if opts.ConfigPath != "" {
 		if err := os.Setenv("BS_AI_CONFIG_PATH", opts.ConfigPath); err != nil {
 			return nil, fmt.Errorf("set BS_AI_CONFIG_PATH: %w", err)
@@ -82,7 +165,7 @@ func Init(opts Options) (*Runtime, error) {
 		// can report them.
 		baseDir := filepath.Dir(cfg.Path)
 		profileReg, _ := profiles.Load(baseDir)
-		return &Runtime{Config: cfg, Profiles: profileReg}, nil
+		return &Runtime{Config: cfg, Profiles: profileReg, Holders: holders}, nil
 	}
 	baseDir := filepath.Dir(cfg.Path)
 	profileReg, err := profiles.Load(baseDir)
@@ -138,15 +221,23 @@ func Init(opts Options) (*Runtime, error) {
 		st.Close()
 		return nil, fmt.Errorf("initialize AI tts service: %w", err)
 	}
+	holders.Images.ptr.Store(imageService)
+	holders.TTS.ptr.Store(ttsService)
 
 	var externalTools []tools.Tool
-	if imageService != nil {
+	{
 		externalTools = append(externalTools, tools.Tool{
 			Name:        "generate_image",
 			Category:    "Images",
 			Description: "Generate or edit an image from a prompt. Optionally pass existing gallery image IDs as source_image_ids.",
 			Schema:      json.RawMessage(generateImageSchema),
+			Available:   holders.Images.Available,
 			Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				service, release := holders.Images.Acquire()
+				if service == nil {
+					return nil, errors.New("image generation is disabled")
+				}
+				defer release()
 				var a struct {
 					Prompt, Provider, Model, ImageSize string
 					SourceImageIDs                     []string `json:"source_image_ids"`
@@ -156,40 +247,46 @@ func Init(opts Options) (*Runtime, error) {
 				}
 				sources := make([][]byte, 0, len(a.SourceImageIDs))
 				for _, id := range a.SourceImageIDs {
-					_, b, err := imageService.Read(ctx, id)
+					_, b, err := service.Read(ctx, id)
 					if err != nil {
 						return nil, fmt.Errorf("read source image: %w", err)
 					}
 					sources = append(sources, b)
 				}
-				x, err := imageService.Generate(ctx, images.GenerateRequest{Prompt: a.Prompt, Provider: a.Provider, Model: a.Model, ImageSize: a.ImageSize, Sources: sources})
+				x, err := service.Generate(ctx, images.GenerateRequest{Prompt: a.Prompt, Provider: a.Provider, Model: a.Model, ImageSize: a.ImageSize, Sources: sources})
 				if err != nil {
 					return nil, err
 				}
 				return map[string]any{"image": x, "url": "/api/ai/images/" + x.ID + "/file"}, nil
 			}})
 	}
-	if ttsService != nil {
+	{
 		externalTools = append(externalTools, tools.Tool{
 			Name:        "text_to_speech",
 			Category:    "Audio",
 			Description: "Convert text to speech and save an MP3 in the local gallery. Optionally pass provider, model, and voice; omitted fields use the configured defaults.",
 			Schema:      json.RawMessage(textToSpeechSchema),
+			Available:   holders.TTS.Available,
 			Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				service, release := holders.TTS.Acquire()
+				if service == nil {
+					return nil, errors.New("text-to-speech is disabled")
+				}
+				defer release()
 				var a struct {
 					Text, Provider, Model, Voice string
 				}
 				if err := json.Unmarshal(raw, &a); err != nil {
 					return nil, err
 				}
-				x, err := ttsService.Generate(ctx, tts.GenerateRequest{Text: a.Text, Provider: a.Provider, Model: a.Model, Voice: a.Voice})
+				x, err := service.Generate(ctx, tts.GenerateRequest{Text: a.Text, Provider: a.Provider, Model: a.Model, Voice: a.Voice})
 				if err != nil {
 					return nil, err
 				}
 				return map[string]any{
 					"speech": x,
 					"url":    "/api/ai/voices/" + x.ID + "/file",
-					"path":   ttsService.FilePath(x.Filename),
+					"path":   service.FilePath(x.Filename),
 				}, nil
 			}})
 	}
@@ -299,8 +396,7 @@ func Init(opts Options) (*Runtime, error) {
 		MCP:            mcpManager,
 		Memory:         memStore,
 		AttachmentsDir: attachmentsDir,
-		Images:         imageService,
-		TTS:            ttsService,
+		Holders:        holders,
 	}, nil
 }
 
@@ -318,13 +414,9 @@ func (r *Runtime) Close() error {
 	if r.MCP != nil {
 		mcpErr = r.MCP.Close()
 	}
-	var imageErr error
-	if r.Images != nil {
-		imageErr = r.Images.Close()
+	var holdersErr error
+	if r.Holders != nil {
+		holdersErr = r.Holders.Close()
 	}
-	var ttsErr error
-	if r.TTS != nil {
-		ttsErr = r.TTS.Close()
-	}
-	return errors.Join(mcpErr, imageErr, ttsErr, r.Store.Close())
+	return errors.Join(mcpErr, holdersErr, r.Store.Close())
 }

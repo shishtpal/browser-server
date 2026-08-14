@@ -51,6 +51,7 @@ func main() {
 		log.Fatalf("Failed to initialize AI module: %v", err)
 	}
 	defer aiModule.Close()
+	handlers.AdminShutdown = aiModule.PrepareRestart
 
 	// The quiz feature is fully gated by bs-quiz-config.json: when the file is
 	// missing or enabled is false, no quiz database is created and no routes
@@ -62,12 +63,21 @@ func main() {
 
 	if err := auth.Load(); err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("WARNING: no API token found. Run 'server token generate' to create one; all /api requests will return 503 until then.")
+			log.Printf("WARNING: no API token found. Run 'server token generate' to create one; operator /api requests will return 503 until then.")
 		} else {
 			log.Printf("WARNING: failed to load API token: %v", err)
 		}
 	} else {
-		log.Printf("API token loaded; /api routes require Authorization: Bearer <token>")
+		log.Printf("API token loaded; operator API routes require Authorization: Bearer <token>")
+	}
+	if err := auth.AdminLoad(); err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("Admin API disabled; run 'server token admin-generate' and restart to enable it")
+		} else {
+			log.Printf("WARNING: failed to load admin API token: %v", err)
+		}
+	} else {
+		log.Printf("Admin API enabled with a separate administrator token")
 	}
 
 	r := mux.NewRouter()
@@ -77,10 +87,19 @@ func main() {
 
 	handlers.StartedAt = time.Now()
 	handlers.ServerPort = port
-	// /health stays public for Docker/CI checks.
+	// /health stays public for Docker/CI checks and restart polling.
 	r.HandleFunc("/health", handlers.Health).Methods("GET")
 
-	// All /api routes require a valid API token.
+	// Register the more-specific admin prefix before the general /api prefix:
+	// gorilla/mux evaluates routes in order. Admin routes accept only the
+	// separate administrator token, not the day-to-day operator token.
+	admin := r.PathPrefix("/api/admin").Subrouter()
+	admin.Use(middleware.AdminAuth)
+	aiModule.RegisterAdmin(admin)
+	admin.HandleFunc("/restart", handlers.AdminRestart).Methods(http.MethodPost)
+	admin.HandleFunc("/status", handlers.AdminStatus).Methods(http.MethodGet)
+
+	// All remaining /api routes require a valid operator token.
 	api := r.PathPrefix("/api").Subrouter()
 	api.Use(middleware.Auth)
 
@@ -142,7 +161,7 @@ func main() {
 		quiz.SetDefaultScheduler(quizCfg.Scheduler)
 		db.InitQuizDB(dataPath)
 		defer db.CloseQuizDB()
-		if err := os.MkdirAll(filepath.Join(dataPath, quizCfg.ImageDir), 0755); err != nil {
+		if err := os.MkdirAll(quizCfg.ResolveImageDir(dataPath), 0755); err != nil {
 			log.Fatalf("Failed to create quiz image dir: %v", err)
 		}
 		api.HandleFunc("/quiz/questions", handlers.GetQuestions).Methods("GET")
@@ -227,10 +246,8 @@ func validatePort(port string) (string, error) {
 	return strconv.Itoa(portNumber), nil
 }
 
-// runCLI handles non-server subcommands. Currently:
-//
-//	server token generate   - create and save a new API token (won't overwrite)
-//	server token refresh    - regenerate and overwrite the API token
+// runCLI handles non-server token-management subcommands for both the
+// operator and administrator credential tiers.
 func runCLI(args []string) {
 	switch args[0] {
 	case "token":
@@ -262,6 +279,27 @@ func runTokenCLI(args []string) {
 			os.Exit(1)
 		}
 		fmt.Printf("API token refreshed and saved to %s\n\n  %s\n\nUpdate the token in the web UI and browser extension to keep access.\n", path, token)
+	case "admin-generate":
+		token, path, err := auth.AdminGenerate()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Admin API token generated and saved to %s\n\n  %s\n\nRestart the server, then save this separate token on the Project Settings page.\n", path, token)
+	case "admin-refresh":
+		token, path, err := auth.AdminRefresh()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Admin API token refreshed and saved to %s\n\n  %s\n\nRestart the server and update the Project Settings page.\n", path, token)
+	case "admin-delete":
+		path, err := auth.AdminDelete()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Admin API token removed from %s. Restart the server to disable the admin API in the running process.\n", path)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown token command: %s\n\n", args[0])
 		printUsage()
@@ -272,8 +310,12 @@ func runTokenCLI(args []string) {
 func printUsage() {
 	fmt.Fprintf(os.Stderr, "Usage:\n")
 	fmt.Fprintf(os.Stderr, "  server [--port PORT]    Start the HTTP server\n")
-	fmt.Fprintf(os.Stderr, "  server token generate   Generate and save a new API token\n")
-	fmt.Fprintf(os.Stderr, "  server token refresh    Regenerate (rotate) the API token\n")
+	fmt.Fprintf(os.Stderr, "  server token generate        Generate and save a new operator API token\n")
+	fmt.Fprintf(os.Stderr, "  server token refresh         Rotate the operator API token\n")
+	fmt.Fprintf(os.Stderr, "  server token admin-generate  Generate the separate admin API token\n")
+	fmt.Fprintf(os.Stderr, "  server token admin-refresh   Rotate the admin API token\n")
+	fmt.Fprintf(os.Stderr, "  server token admin-delete    Remove and disable the admin token on restart\n")
 	fmt.Fprintf(os.Stderr, "\nEnvironment:\n")
-	fmt.Fprintf(os.Stderr, "  PORT=9090 server        Start the HTTP server on port 9090\n")
+	fmt.Fprintf(os.Stderr, "  PORT=9090 server             Start the HTTP server on port 9090\n")
+	fmt.Fprintf(os.Stderr, "  SERVER_ADMIN_TOKEN_PATH=...  Override the admin token file path\n")
 }

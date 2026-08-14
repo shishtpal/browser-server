@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"browser-server/internal/db"
@@ -290,7 +291,11 @@ var settingsGetter = func(_ int, _ string) (string, error) {
 	return "", sql.ErrNoRows
 }
 
-var defaultScheduler = SchedulerSM2
+var defaultScheduler atomic.Value
+
+func init() {
+	defaultScheduler.Store(SchedulerSM2)
+}
 
 // SetUserSettingsGetter installs the KV lookup used to resolve a user's
 // scheduler. Called once from the handlers package init.
@@ -302,10 +307,10 @@ func SetUserSettingsGetter(fn func(userID int, key string) (string, error)) {
 // preference. Invalid values retain the safe SM-2 default.
 func SetDefaultScheduler(scheduler string) {
 	if scheduler == SchedulerFSRS {
-		defaultScheduler = SchedulerFSRS
+		defaultScheduler.Store(SchedulerFSRS)
 		return
 	}
-	defaultScheduler = SchedulerSM2
+	defaultScheduler.Store(SchedulerSM2)
 }
 
 // UserSettingKeyScheduler is the user_settings key for the scheduler choice.
@@ -326,7 +331,7 @@ func resolveSchedulerForUser(userID int, fallback string) string {
 // SchedulerForUser resolves the effective scheduler for a user: their stored
 // preference wins; the configured scheduler is the default.
 func SchedulerForUser(userID int) string {
-	return resolveSchedulerForUser(userID, defaultScheduler)
+	return resolveSchedulerForUser(userID, defaultScheduler.Load().(string))
 }
 
 // ReviewQuestion verifies ownership and inserts or updates scheduling state atomically.

@@ -41,7 +41,7 @@ The standard pattern:
 - Prefer functions exported from [`lib/api`](../src/lib/api/index.ts) — the barrel re-exports every domain module (`todos.ts`, `bookmarks.ts`, …).
 - [`lib/api/client.ts`](../src/lib/api/client.ts) owns the shared client: `API_BASE` (derived from `window.location` origin, fallback `http://localhost:9191`), the `createBrowserServerClient(API_BASE, { getToken })` instance, and `authHeaders`.
 - New endpoints belong in the **shared client** (`shared/browser-client`) first, then a thin re-export in `lib/api/<domain>.ts` plus an entry in `lib/api/index.ts`.
-- Any raw `fetch` in `lib/api/*` MUST include the auth header: `headers: { 'Content-Type': 'application/json', ...authHeaders() }` for JSON bodies, or `headers: authHeaders()` for GET/DELETE/FormData. Otherwise requests get `401`.
+- Any raw `fetch` in `lib/api/*` MUST include the correct auth header. Ordinary modules use `authHeaders()`; `admin.ts` is the deliberate exception and uses `adminHeaders()` so the disjoint Project Settings credential never flows to ordinary routes.
 
 ## Authentication / token
 

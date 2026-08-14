@@ -55,25 +55,36 @@ func Load(configDir string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read MCP configuration: %w", err)
 	}
-	var c Config
-	d := json.NewDecoder(strings.NewReader(string(b)))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&c); err != nil {
+	return parseConfig(b, path)
+}
+
+// ValidateBytes applies the same strict parsing, environment resolution, and
+// semantic validation as Load without starting any MCP processes.
+func ValidateBytes(content []byte, path string) error {
+	_, err := parseConfig(content, path)
+	return err
+}
+
+func parseConfig(content []byte, path string) (*Config, error) {
+	var config Config
+	decoder := json.NewDecoder(strings.NewReader(string(content)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&config); err != nil {
 		return nil, fmt.Errorf("parse MCP configuration: %w", err)
 	}
-	if err := ensureEOF(d); err != nil {
+	if err := ensureEOF(decoder); err != nil {
 		return nil, err
 	}
-	c.Configured = true
-	abs, err := filepath.Abs(path)
+	config.Configured = true
+	absolutePath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("resolve MCP configuration path: %w", err)
 	}
-	c.path = abs
-	if err := c.validateAndResolve(); err != nil {
+	config.path = absolutePath
+	if err := config.validateAndResolve(); err != nil {
 		return nil, err
 	}
-	return &c, nil
+	return &config, nil
 }
 
 func ensureEOF(d *json.Decoder) error {

@@ -1,0 +1,10 @@
+---
+import ProjectSettingsPage from '../components/ProjectSettingsPage.vue'
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Project Settings">
+  <main>
+    <ProjectSettingsPage client:only="vue" />
+  </main>
+</Layout>

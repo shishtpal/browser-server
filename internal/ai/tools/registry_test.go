@@ -119,6 +119,41 @@ func TestExternalToolIsSearchableAndExecutable(t *testing.T) {
 	}
 }
 
+func TestExternalToolAvailabilityIsDynamic(t *testing.T) {
+	available := false
+	const name = "hot_tool"
+	registry, err := NewWithExternal(Options{
+		Allowed: []string{SearchToolName, name},
+		External: []Tool{{
+			Name:        name,
+			Description: "A hot-swappable test tool",
+			Category:    "Test",
+			Schema:      json.RawMessage(`{"type":"object","properties":{}}`),
+			Available:   func() bool { return available },
+			Execute: func(context.Context, json.RawMessage) (any, error) {
+				return map[string]bool{"ok": true}, nil
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if specs := registry.Specs([]string{name}); len(specs) != 0 {
+		t.Fatalf("disabled tool exposed %d definition(s)", len(specs))
+	}
+	if _, err := registry.Execute(context.Background(), name, json.RawMessage(`{}`)); err == nil {
+		t.Fatal("disabled tool executed")
+	}
+
+	available = true
+	if specs := registry.Specs([]string{name}); len(specs) != 1 {
+		t.Fatalf("enabled tool exposed %d definition(s), want 1", len(specs))
+	}
+	if _, err := registry.Execute(context.Background(), name, json.RawMessage(`{}`)); err != nil {
+		t.Fatalf("enabled tool failed: %v", err)
+	}
+}
+
 func TestExternalToolCannotOverwriteBuiltin(t *testing.T) {
 	_, err := NewWithExternal(Options{External: []Tool{{
 		Name:    "read_file",

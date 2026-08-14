@@ -144,63 +144,87 @@ type Service struct {
 }
 
 func Load(base string) (Config, error) {
-	p := filepath.Join(base, modelsFile)
-	b, err := os.ReadFile(p)
+	return LoadPath(filepath.Join(base, modelsFile))
+}
+
+// LoadPath loads an explicit TTS config. A missing file is a valid disabled
+// configuration.
+func LoadPath(path string) (Config, error) {
+	content, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return Config{Path: p, Providers: map[string]Provider{}}, nil
+		return Config{Path: path, Providers: map[string]Provider{}}, nil
 	}
 	if err != nil {
 		return Config{}, err
 	}
-	var c Config
-	if err = json.Unmarshal(b, &c); err != nil {
-		return c, fmt.Errorf("parse tts models: %w", err)
+	return parseConfig(content, path)
+}
+
+// ValidateBytes performs semantic validation without opening the gallery DB.
+func ValidateBytes(content []byte) error {
+	_, err := parseConfig(content, modelsFile)
+	return err
+}
+
+func parseConfig(content []byte, path string) (Config, error) {
+	var config Config
+	decoder := json.NewDecoder(bytes.NewReader(content))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&config); err != nil {
+		return config, fmt.Errorf("parse tts models: %w", err)
 	}
-	c.Path = p
-	if c.Providers == nil {
-		c.Providers = map[string]Provider{}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return config, errors.New("parse tts models: multiple JSON values")
+		}
+		return config, fmt.Errorf("parse tts models: %w", err)
 	}
-	if !c.Enabled {
-		return c, nil
+	config.Path = path
+	if config.Providers == nil {
+		config.Providers = map[string]Provider{}
 	}
-	if c.DefaultProvider == "" {
-		return c, errors.New("tts default_provider is required")
+	if !config.Enabled {
+		return config, nil
 	}
-	if _, ok := c.Providers[c.DefaultProvider]; !ok {
-		return c, errors.New("tts default_provider is not configured")
+	if config.DefaultProvider == "" {
+		return config, errors.New("tts default_provider is required")
 	}
-	for n, p := range c.Providers {
-		switch p.Type {
+	if _, ok := config.Providers[config.DefaultProvider]; !ok {
+		return config, errors.New("tts default_provider is not configured")
+	}
+	for name, provider := range config.Providers {
+		switch provider.Type {
 		case providerTypeOpenRouter, providerTypeFishAudio:
 			// supported
 		default:
-			return c, fmt.Errorf("tts provider %q has unsupported type", n)
+			return config, fmt.Errorf("tts provider %q has unsupported type", name)
 		}
-		if p.APIKey == "" {
-			return c, fmt.Errorf("tts provider %q api_key is required", n)
+		if provider.APIKey == "" {
+			return config, fmt.Errorf("tts provider %q api_key is required", name)
 		}
-		if env, ok := strings.CutPrefix(p.APIKey, "env:"); ok {
-			p.APIKey = os.Getenv(env)
-			if p.APIKey == "" {
-				return c, fmt.Errorf("tts provider %q API key environment variable %q is empty", n, env)
+		if env, ok := strings.CutPrefix(provider.APIKey, "env:"); ok {
+			provider.APIKey = os.Getenv(env)
+			if provider.APIKey == "" {
+				return config, fmt.Errorf("tts provider %q API key environment variable %q is empty", name, env)
 			}
 		}
-		if p.BaseURL == "" {
-			if p.Type == providerTypeFishAudio {
-				p.BaseURL = defaultFishBaseURL
+		if provider.BaseURL == "" {
+			if provider.Type == providerTypeFishAudio {
+				provider.BaseURL = defaultFishBaseURL
 			} else {
-				p.BaseURL = defaultBaseURL
+				provider.BaseURL = defaultBaseURL
 			}
 		}
-		if p.RequestTimeoutSeconds == 0 {
-			p.RequestTimeoutSeconds = defaultTimeoutSeconds
+		if provider.RequestTimeoutSeconds == 0 {
+			provider.RequestTimeoutSeconds = defaultTimeoutSeconds
 		}
-		if len(p.Models) == 0 {
-			return c, fmt.Errorf("tts provider %q needs models", n)
+		if len(provider.Models) == 0 {
+			return config, fmt.Errorf("tts provider %q needs models", name)
 		}
-		c.Providers[n] = p
+		config.Providers[name] = provider
 	}
-	return c, nil
+	return config, nil
 }
 
 func New(cfg Config, dataDir string) (*Service, error) {

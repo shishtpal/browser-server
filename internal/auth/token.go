@@ -1,7 +1,6 @@
-// Package auth manages the single operator-level API token used to protect the
-// server's API routes. The token is an opaque, long-lived secret stored in a
-// .bs-token file alongside the binary and presented by clients via the
-// Authorization: Bearer <token> header.
+// Package auth manages the disjoint operator and administrator API tokens used
+// to protect the server's API routes. Tokens are opaque, long-lived secrets
+// stored beside the binary unless their paths are overridden by environment.
 package auth
 
 import (
@@ -24,7 +23,7 @@ const tokenBytes = 32
 
 var (
 	mu      sync.RWMutex
-	current string // the in-memory expected token, loaded at startup
+	current string // the in-memory expected operator token, loaded at startup
 )
 
 // TokenPath returns the path to the .bs-token file. It honors the
@@ -41,8 +40,8 @@ func TokenPath() (string, error) {
 	return filepath.Join(filepath.Dir(ex), tokenFileName), nil
 }
 
-// generate creates a cryptographically random hex token.
-func generate() (string, error) {
+// generateToken creates a cryptographically random hex token.
+func generateToken() (string, error) {
 	buf := make([]byte, tokenBytes)
 	if _, err := rand.Read(buf); err != nil {
 		return "", fmt.Errorf("failed to read random bytes: %w", err)
@@ -50,67 +49,128 @@ func generate() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// write saves the token to path with restrictive (0600) permissions.
-func write(path, token string) error {
-	if err := os.WriteFile(path, []byte(token+"\n"), 0600); err != nil {
+// writeTokenFile saves a token with restrictive permissions. OpenFile is used
+// instead of relying solely on WriteFile so an existing token's mode is also
+// tightened on Unix-like systems when it is rotated.
+func writeTokenFile(path, token string) error {
+	return writeTokenFileWithFlags(path, token, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
+}
+
+func writeNewTokenFile(path, token string) error {
+	err := writeTokenFileWithFlags(path, token, os.O_WRONLY|os.O_CREATE|os.O_EXCL)
+	if err != nil && !errors.Is(err, os.ErrExist) {
+		// Clean up the partial file so a failed create does not leave behind an
+		// unusable token that later blocks `token generate` with 'exists'.
+		_ = os.Remove(path)
+	}
+	return err
+}
+
+func writeTokenFileWithFlags(path, token string, flags int) error {
+	file, err := os.OpenFile(path, flags, 0600)
+	if err != nil {
 		return fmt.Errorf("failed to write token file: %w", err)
+	}
+	if err := file.Chmod(0600); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("failed to secure token file: %w", err)
+	}
+	if _, err := file.WriteString(token + "\n"); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("failed to write token file: %w", err)
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("failed to sync token file: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close token file: %w", err)
 	}
 	return nil
 }
 
-// Generate creates a new token and saves it, refusing to overwrite an existing
-// token file. Returns the generated token and the path it was written to.
+func generateAt(path, existsMessage string) (string, string, error) {
+	if _, statErr := os.Stat(path); statErr == nil {
+		return "", path, errors.New(existsMessage)
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return "", path, fmt.Errorf("failed to check token file: %w", statErr)
+	}
+	token, err := generateToken()
+	if err != nil {
+		return "", path, err
+	}
+	if err := writeNewTokenFile(path, token); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return "", path, errors.New(existsMessage)
+		}
+		return "", path, err
+	}
+	return token, path, nil
+}
+
+func refreshAt(path string) (string, string, error) {
+	token, err := generateToken()
+	if err != nil {
+		return "", path, err
+	}
+	if err := writeTokenFile(path, token); err != nil {
+		return "", path, err
+	}
+	return token, path, nil
+}
+
+func readTokenFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	token := strings.TrimSpace(string(data))
+	if token == "" {
+		return "", fmt.Errorf("token file %s is empty", path)
+	}
+	return token, nil
+}
+
+func tokenMatches(expected, supplied string) bool {
+	if expected == "" || supplied == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(expected), []byte(supplied)) == 1
+}
+
+// Generate creates a new operator token and saves it, refusing to overwrite an
+// existing token file. Returns the generated token and its path.
 func Generate() (token, path string, err error) {
 	path, err = TokenPath()
 	if err != nil {
 		return "", "", err
 	}
-	if _, statErr := os.Stat(path); statErr == nil {
-		return "", path, fmt.Errorf("token already exists at %s (use 'token refresh' to rotate it)", path)
-	} else if !errors.Is(statErr, os.ErrNotExist) {
-		return "", path, fmt.Errorf("failed to check token file: %w", statErr)
-	}
-	token, err = generate()
-	if err != nil {
-		return "", path, err
-	}
-	if err = write(path, token); err != nil {
-		return "", path, err
-	}
-	return token, path, nil
+	return generateAt(path, fmt.Sprintf("token already exists at %s (use 'token refresh' to rotate it)", path))
 }
 
-// Refresh regenerates the token and overwrites any existing token file. Returns
-// the new token and the path it was written to.
+// Refresh regenerates the operator token and overwrites any existing token
+// file. Returns the new token and its path.
 func Refresh() (token, path string, err error) {
 	path, err = TokenPath()
 	if err != nil {
 		return "", "", err
 	}
-	token, err = generate()
-	if err != nil {
-		return "", path, err
-	}
-	if err = write(path, token); err != nil {
-		return "", path, err
-	}
-	return token, path, nil
+	return refreshAt(path)
 }
 
-// Load reads the token from disk into memory so the middleware can validate
-// requests against it. Returns os.ErrNotExist (wrapped) if no token file exists.
+// Load reads the operator token from disk into memory so middleware can
+// validate requests against it.
 func Load() error {
 	path, err := TokenPath()
 	if err != nil {
 		return err
 	}
-	data, err := os.ReadFile(path)
+	token, err := readTokenFile(path)
 	if err != nil {
+		mu.Lock()
+		current = ""
+		mu.Unlock()
 		return err
-	}
-	token := strings.TrimSpace(string(data))
-	if token == "" {
-		return fmt.Errorf("token file %s is empty", path)
 	}
 	mu.Lock()
 	current = token
@@ -118,22 +178,18 @@ func Load() error {
 	return nil
 }
 
-// Configured reports whether a non-empty token has been loaded into memory.
+// Configured reports whether a non-empty operator token has been loaded.
 func Configured() bool {
 	mu.RLock()
 	defer mu.RUnlock()
 	return current != ""
 }
 
-// Valid reports whether the supplied token matches the loaded token using a
-// constant-time comparison to avoid timing attacks. Returns false if no token
-// is configured.
+// Valid reports whether the supplied token matches the loaded operator token
+// using a constant-time comparison.
 func Valid(token string) bool {
 	mu.RLock()
 	expected := current
 	mu.RUnlock()
-	if expected == "" || token == "" {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(expected), []byte(token)) == 1
+	return tokenMatches(expected, token)
 }

@@ -29,6 +29,7 @@ const primaryNav = [
 
 const secondaryNav = [
   { href: '/users/', label: 'Users' },
+  { href: '/settings/', label: 'Settings' },
   { href: '/contact/', label: 'Contact' },
   { href: '/about/', label: 'About' },
 ]
@@ -50,7 +51,7 @@ const isActive = (href: string) => {
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <meta name="generator" content={Astro.generator} />
@@ -239,4 +240,3 @@ const isActive = (href: string) => {
     menu.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu))
   }
 </script>
-

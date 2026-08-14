@@ -21,7 +21,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# environment variables
+# local credentials and environment variables
+.bs-token
+.bs-token-admin
 .env
 .env.production
 

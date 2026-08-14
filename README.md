@@ -4,7 +4,7 @@ Browser Server is a self-hosted personal-data service with a web app and browser
 
 The project includes:
 
-- A Go REST API protected by a single operator API token
+- A Go REST API protected by an operator token, with a separate opt-in administrator token for project configuration
 - An Astro + Vue web interface
 - An AI chat interface with multi-provider LLM support and server-side tool calling
 - Chromium and Firefox extensions for history capture, usage tracking, popup access, and omnibox search
@@ -23,7 +23,7 @@ The project includes:
 - Prompt management with folder-aware storage and search
 - Combined bookmark/history search through the extension omnibox keyword `bs`
 - One-click bookmark and todo capture from the page context menu or keyboard shortcuts
-- Bearer-token authentication for every `/api/*` endpoint
+- Disjoint Bearer-token tiers for ordinary `/api/*` routes and administrator-only project settings
 - Configurable data directory and server port
 - Separate local SQLite databases for each domain
 
@@ -73,7 +73,9 @@ $env:CGO_ENABLED = "1"
 
 # Create the operator token (first run only)
 ./bin/server.exe token generate
-# Put the token inside of `.bs-token` file, along with go binary
+
+# Optional: enable the administrator-only Project Settings page
+./bin/server.exe token admin-generate
 
 # Start the server
 ./bin/server.exe
@@ -87,6 +89,7 @@ The build output is arranged as follows because the server resolves its static a
 bin/
 ├── server.exe
 ├── .bs-token
+├── .bs-token-admin       # optional
 ├── .data/
 └── frontend/dist/
 ```
@@ -101,6 +104,8 @@ The token and data directories are created when their corresponding commands run
 | `PORT` | `9191` | Server port when `--port` is not supplied |
 | `DATA_PATH` | `.data/` beside the executable | SQLite databases and screenshot files |
 | `SERVER_TOKEN_PATH` | `.bs-token` beside the executable | Operator token file |
+| `SERVER_ADMIN_TOKEN_PATH` | `.bs-token-admin` beside the executable | Optional administrator token file |
+| `BS_MANAGED` | unset | Set to `1` only under a restarting supervisor to enable admin self-restart |
 | `bs-ai-config.json` | beside the executable | AI chat behavior config (tools, chat, memory, web/file/skills settings) |
 | `bs-ai-models.json` | beside the executable | AI provider/model catalog |
 | `bs-ai-mcp.json` | beside `bs-ai-config.json` | Optional local or remote MCP tool servers |
@@ -130,9 +135,28 @@ Rotate the operator token with:
 
 After rotation, update the token stored by the web app and each browser extension.
 
+### Administrator token and Project Settings
+
+The Project Settings page at `/settings/` is protected by a second, disjoint credential. The ordinary operator token is intentionally rejected by `/api/admin/*`, and the admin token is intentionally rejected by ordinary routes. This keeps the token copied into browser extensions from gaining configuration-write access.
+
+```powershell
+# Create once; refuses to overwrite an existing admin token
+./bin/server.exe token admin-generate
+
+# Rotate or disable the administrator tier
+./bin/server.exe token admin-refresh
+./bin/server.exe token admin-delete
+```
+
+Restart the server after generating, rotating, or deleting `.bs-token-admin`, then paste the admin token into the Project Settings page. If the file is absent, administrator endpoints return `403 admin_disabled`; this never affects operator routes.
+
+The page can view and edit only this explicit whitelist: `bs-ai-config.json`, `bs-ai-models.json`, `bs-ai-mcp.json`, `bs-ai-tts.json`, `bs-ai-image-models.json`, `bs-ai-voice.json`, and `bs-quiz-config.json`. Its Fira Code JSON editor provides syntax highlighting, line numbers, persistent font-size controls, syntax feedback, and a full-screen view. Literal values under secret-like keys are returned as `"__KEEP__"` and restored from the on-disk file on save; `env:VARIABLE_NAME` references remain visible. Writes are validated and replaced atomically.
+
+TTS, image, voice-typing, and quiz rules hot-reload. Changing quiz boot-time fields (`enabled`, `db_path`, `image_dir`, or CORS) still requires a restart because its database, routes, and paths are initialized at boot. Main AI, model-catalog, and MCP changes always require a restart. The restart button appears only when `BS_MANAGED=1`; `scripts/Manage-Service.ps1` sets this flag and NSSM's restart-on-exit policy when it creates an NSSM service. A server started manually must be restarted manually.
+
 ## API authentication
 
-`GET /health` is public. Every route under `/api/` requires the operator token:
+`GET /health` is public. Ordinary routes under `/api/` require the operator token; `/api/admin/*` uses only the separate administrator token:
 
 ```bash
 curl http://localhost:9191/health
@@ -144,7 +168,7 @@ curl "http://localhost:9191/api/todos?user_id=1" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-The server returns `401` for a missing or invalid token. If no token file was available at startup, protected routes return `503`; generate a token and restart the server.
+The server returns `401` for a missing or invalid credential. If no operator token was available at startup, ordinary protected routes return `503`; if no administrator token was loaded, admin routes return `403 admin_disabled`. Generate the relevant token and restart the server.
 
 See [PRD.md](PRD.md) for the detailed API reference. The authenticated `POST /api/routes` endpoint also returns the server's route catalog.
 

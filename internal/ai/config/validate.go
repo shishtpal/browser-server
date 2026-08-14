@@ -259,6 +259,12 @@ func validate(cfg *Config) error {
 	if err := validateOCR(cfg); err != nil {
 		return err
 	}
+	return nil
+}
+
+// validateStorage performs the startup-only writable-path probe. It is kept
+// out of validate so administrator dry runs remain side-effect free.
+func validateStorage(cfg *Config) error {
 	parent := filepath.Dir(cfg.ResolvePath(cfg.Logging.DBPath))
 	if err := os.MkdirAll(parent, 0755); err != nil {
 		return fmt.Errorf("logging database parent: %w", err)
@@ -268,7 +274,12 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("logging database parent is not writable: %w", err)
 	}
 	probeName := probe.Name()
-	probe.Close()
-	os.Remove(probeName)
+	if err := probe.Close(); err != nil {
+		_ = os.Remove(probeName)
+		return fmt.Errorf("close logging database probe: %w", err)
+	}
+	if err := os.Remove(probeName); err != nil {
+		return fmt.Errorf("remove logging database probe: %w", err)
+	}
 	return nil
 }

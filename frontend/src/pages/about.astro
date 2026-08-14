@@ -1,10 +1,10 @@
 ---
-import AboutUs from '../components/AboutUs.vue';
-import Layout from '../layouts/Layout.astro';
+import AboutUs from '../components/AboutUs.vue'
+import Layout from '../layouts/Layout.astro'
 ---
 
 <Layout title="About Us">
-	<main>
-		<AboutUs client:load />
-	</main>
+  <main>
+    <AboutUs client:only="vue" />
+  </main>
 </Layout>

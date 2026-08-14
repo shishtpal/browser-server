@@ -1,10 +1,10 @@
 ---
-import ContactUs from '../components/ContactUs.astro';
-import Layout from '../layouts/Layout.astro';
+import ContactUs from '../components/ContactUs.vue'
+import Layout from '../layouts/Layout.astro'
 ---
 
 <Layout title="Contact Us">
-	<main>
-		<ContactUs />
-	</main>
+  <main>
+    <ContactUs client:only="vue" />
+  </main>
 </Layout>

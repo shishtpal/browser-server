@@ -49,7 +49,7 @@ frontend/src/
 │   │   prompts/, quiz/, tasks/, todos/, wallet/   # Per-domain modules (see sub-module guides)
 │   ├── ui/           # Reusable primitives (Button, Modal, InputField, SelectField,
 │   │                 # PageHeader, StatCard, MultiSelectDropdown, UserSelector, …)
-│   ├── AboutUs.vue, ContactUs.astro   # Static pages
+│   ├── AboutUs.vue, ContactUs.vue     # Product/about and contribution/contact pages
 │   ├── ServerStatus.vue, ThemeToggle.vue, ApiTokenSettings.vue   # Header widgets
 │   └── AppModalHost.vue  # Mounts the shared-modal host
 ├── composables/      # App-wide composables (useUser, useUsers, usePrompts,

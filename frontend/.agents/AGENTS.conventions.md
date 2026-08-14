@@ -16,7 +16,7 @@ import Layout from '../layouts/Layout.astro'
 </Layout>
 ```
 
-Static pages (`about.astro`, `contact.astro`, `404.astro`, `faqs.md`) may use plain Astro markup; `ContactUs.astro` is an Astro component, everything else is a Vue island.
+Static pages (`404.astro`, `faqs.md`) may use plain Astro markup; interactive product pages such as About and Contact use Vue islands.
 
 ## Components use `<script setup lang="ts">`
 

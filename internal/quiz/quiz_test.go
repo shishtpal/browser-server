@@ -2,9 +2,11 @@ package quiz
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"browser-server/internal/db"
 	"browser-server/internal/models"
@@ -288,6 +290,168 @@ func TestDelete(t *testing.T) {
 	deleted, err = Delete(ctx, int(id))
 	if err != nil || deleted {
 		t.Fatalf("expected second delete to miss, got %v err=%v", deleted, err)
+	}
+}
+
+// ─── Scheduler resolution + FSRS path through ReviewQuestion ─────────────
+
+func TestUserSettingResolver(t *testing.T) {
+	if got := resolveSchedulerForUser(9999, SchedulerFSRS); got != SchedulerFSRS {
+		t.Fatalf("empty setting must fall back to default, got %q", got)
+	}
+	if got := resolveSchedulerForUser(9999, SchedulerSM2); got != SchedulerSM2 {
+		t.Fatalf("fall back to sm2, got %q", got)
+	}
+}
+
+func TestUserSettingResolverWithKV(t *testing.T) {
+	dir := t.TempDir()
+	db.InitUserDB(dir)
+	// In production cmd/server imports handlers, which registers the getter;
+	// here we register it directly since setupDB doesn't touch UserDB.
+	SetUserSettingsGetter(func(userID int, key string) (string, error) {
+		var v string
+		err := db.UserDB.QueryRow("SELECT value FROM user_settings WHERE user_id = ? AND key = ?", userID, key).Scan(&v)
+		return v, err
+	})
+	t.Cleanup(func() { db.UserDB.Close(); db.UserDB = nil })
+	if _, err := db.UserDB.Exec(
+		"INSERT INTO user_settings (user_id, key, value) VALUES (1, 'quiz.scheduler', 'fsrs')",
+	); err != nil {
+		t.Fatalf("seed setting: %v", err)
+	}
+	if got := resolveSchedulerForUser(1, SchedulerSM2); got != SchedulerFSRS {
+		t.Fatalf("fsrs user should win over sm2 default, got %q", got)
+	}
+	if got := resolveSchedulerForUser(2, SchedulerSM2); got != SchedulerSM2 {
+		t.Fatalf("unset user falls back to default, got %q", got)
+	}
+	// An unknown key never hijacks the scheduler.
+	if _, err := db.UserDB.Exec(
+		"INSERT INTO user_settings (user_id, key, value) VALUES (2, 'quiz.scheduler', 'bogus')",
+	); err != nil {
+		t.Fatalf("seed bogus: %v", err)
+	}
+	if got := resolveSchedulerForUser(2, SchedulerSM2); got != SchedulerSM2 {
+		t.Fatalf("bogus value must fall back to default, got %q", got)
+	}
+}
+
+// ─── FSRS path through ReviewQuestion ────────────────────
+
+func TestReviewQuestionFSRSPersistsColumns(t *testing.T) {
+	setupDB(t)
+	ctx := context.Background()
+	id, err := Create(ctx, CreateInput{UserID: 1, Type: "input", Question: "Q"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow, SchedulerFSRS); err != nil {
+		t.Fatalf("fsrs review: %v", err)
+	}
+	var difficulty, stability float64
+	var learningStep int
+	var interval int64
+	if err := db.QuizDB.QueryRow(
+		"SELECT difficulty, stability, learning_step, interval_seconds FROM question_review_state WHERE question_id = ?", id,
+	).Scan(&difficulty, &stability, &learningStep, &interval); err != nil {
+		t.Fatalf("read fsrs columns: %v", err)
+	}
+	if stability <= 0 || difficulty <= 0 {
+		t.Fatalf("fsrs columns empty: difficulty=%v stability=%v", difficulty, stability)
+	}
+	if learningStep != LearnStepReview {
+		t.Fatalf("learning_step = %d, want %d", learningStep, LearnStepReview)
+	}
+	if got := time.Duration(interval) * time.Second; got != 24*time.Hour {
+		t.Fatalf("first Good interval = %v, want capped 24h", got)
+	}
+
+	// Second day Good should grow the interval via FSRS stability.
+	state, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow.Add(24*time.Hour), SchedulerFSRS)
+	if err != nil {
+		t.Fatalf("second fsrs review: %v", err)
+	}
+	if got := time.Duration(state.IntervalSeconds) * time.Second; got <= 24*time.Hour {
+		t.Fatalf("second Good interval = %v, want > 24h", got)
+	}
+	if state.Repetitions != 2 {
+		t.Fatalf("repetitions = %d, want 2", state.Repetitions)
+	}
+}
+
+func TestReviewQuestionSM2LeavesFSRSColumnsNull(t *testing.T) {
+	setupDB(t)
+	ctx := context.Background()
+	id, err := Create(ctx, CreateInput{UserID: 1, Type: "input", Question: "Q"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow, SchedulerSM2); err != nil {
+		t.Fatalf("sm2 review: %v", err)
+	}
+	var difficulty, stability sql.NullFloat64
+	var learningStep sql.NullInt64
+	if err := db.QuizDB.QueryRow(
+		"SELECT difficulty, stability, learning_step FROM question_review_state WHERE question_id = ?", id,
+	).Scan(&difficulty, &stability, &learningStep); err != nil {
+		t.Fatalf("read fsrs columns: %v", err)
+	}
+	if difficulty.Valid || stability.Valid || learningStep.Valid {
+		t.Fatalf("SM-2 should leave FSRS columns NULL, got difficulty=%v stability=%v step=%v",
+			difficulty.Valid, stability.Valid, learningStep.Valid)
+	}
+}
+
+func TestMigrateSM2ToFSRS(t *testing.T) {
+	setupDB(t)
+	ctx := context.Background()
+	id, err := Create(ctx, CreateInput{UserID: 1, Type: "input", Question: "Q"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// Build a small SM-2 history: two Good reviews a day apart.
+	if _, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow.Add(-48*time.Hour), SchedulerSM2); err != nil {
+		t.Fatalf("sm2 first: %v", err)
+	}
+	sm2, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow.Add(-24*time.Hour), SchedulerSM2)
+	if err != nil {
+		t.Fatalf("sm2 second: %v", err)
+	}
+	if got := time.Duration(sm2.IntervalSeconds) * time.Second; got != 3*24*time.Hour {
+		t.Fatalf("sm2 seed interval = %v, want 3d", got)
+	}
+	// The original 3-day due date must remain; conversion only seeds new columns.
+	wantDue := sm2.DueAt
+
+	flipped, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow, SchedulerFSRS)
+	if err != nil {
+		t.Fatalf("fsrs review after flip: %v", err)
+	}
+	var difficulty, stability float64
+	var learningStep int
+	if err := db.QuizDB.QueryRow(
+		"SELECT difficulty, stability, learning_step FROM question_review_state WHERE question_id = ?", id,
+	).Scan(&difficulty, &stability, &learningStep); err != nil {
+		t.Fatalf("read converted columns: %v", err)
+	}
+	if difficulty <= 0 || stability <= 0 {
+		t.Fatalf("conversion left columns empty: difficulty=%v stability=%v", difficulty, stability)
+	}
+	// The converted 3d/EF stability seed grew by exactly one FSRS Good at
+	// 1-day retrievability; assert it stayed in a sane band rather than
+	// exact-equals (FSRS growth depends on difficulty and decay curves).
+	if stability < 1.2 || stability > 6 {
+		t.Fatalf("stability %v out of the expected post-flip band", stability)
+	}
+	if learningStep != LearnStepReview {
+		t.Fatalf("learning_step = %d, want %d", learningStep, LearnStepReview)
+	}
+	if flipped.DueAt.Before(reviewNow.Add(24 * time.Hour)) {
+		t.Fatalf("fsrs interval after conversion should reach past tomorrow, due_at = %v (was %v)", flipped.DueAt, wantDue)
+	}
+	if flipped.Repetitions != 3 {
+		t.Fatalf("repetitions = %d, want 3", flipped.Repetitions)
 	}
 }
 

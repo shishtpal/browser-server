@@ -1,6 +1,7 @@
 import { computed, ref, type Ref } from 'vue';
 import {
   getQuestionCards,
+  getQuizSettings,
   reviewQuestion,
   skipQuestionCard,
   updateQuestion,
@@ -10,6 +11,7 @@ import type {
   QuestionCardItem,
   QuestionDifficulty,
   QuestionResponse,
+  QuizScheduler,
   ReviewRating,
   TagVocabulary,
 } from '../../../types';
@@ -37,6 +39,7 @@ export function useQuestionCards(
   const skippedCount = ref(0);
   const skippedQuestionIDs = new Set<number>();
   const ratingCounts = ref<Record<ReviewRating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
+  const scheduler = ref<QuizScheduler>('sm2');
   let session = 0;
 
   const current = computed(() => items.value[0] ?? null);
@@ -74,7 +77,11 @@ export function useQuestionCards(
     error.value = null;
     try {
       practiceMode.value = practice;
-      const queue = await getQuestionCards(userId.value, {
+      const uid = userId.value;
+      const settings = await getQuizSettings(uid).catch(() => null);
+      if (activeSession !== session) return;
+      if (settings) scheduler.value = settings.scheduler;
+      const queue = await getQuestionCards(uid, {
         tags: allQuestions.value ? undefined : selectedTags.value,
         limit: limit.value,
         practice,
@@ -221,6 +228,7 @@ export function useQuestionCards(
     isSavingDifficulty,
     skippedCount,
     ratingCounts,
+    scheduler,
     current,
     reviewed,
     canStart,

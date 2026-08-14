@@ -99,6 +99,8 @@ func GetRoutes(w http.ResponseWriter, r *http.Request) {
 		{Method: "DELETE", Path: "/api/quiz/papers/{id}", Description: "Delete a paper"},
 		{Method: "GET", Path: "/api/quiz/tags", Description: "Get distinct tag/subject/topic/sub_topic vocabulary (filter: user_id)"},
 		{Method: "GET", Path: "/api/quiz/stats", Description: "Get question counts grouped by type, difficulty, and tag (filter: user_id)"},
+		{Method: "GET", Path: "/api/users/{id}/quiz-settings", Description: "Get a user's quiz scheduler (sm2 or fsrs)"},
+		{Method: "POST", Path: "/api/users/{id}/quiz-settings", Description: "Set a user's quiz scheduler (body: scheduler; sm2 | fsrs)"},
 	}
 
 	w.Header().Set("Content-Type", "application/json")

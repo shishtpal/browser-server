@@ -18,6 +18,7 @@ import (
 	"browser-server/internal/db"
 	"browser-server/internal/handlers"
 	"browser-server/internal/middleware"
+	"browser-server/internal/quiz"
 	quizconfig "browser-server/internal/quiz/config"
 )
 
@@ -138,6 +139,7 @@ func main() {
 	api.HandleFunc("/prompts/{id:[0-9]+}", handlers.DeletePrompt).Methods("DELETE")
 
 	if quizCfg.Enabled {
+		quiz.SetDefaultScheduler(quizCfg.Scheduler)
 		db.InitQuizDB(dataPath)
 		defer db.CloseQuizDB()
 		if err := os.MkdirAll(filepath.Join(dataPath, quizCfg.ImageDir), 0755); err != nil {
@@ -159,6 +161,8 @@ func main() {
 		api.HandleFunc("/quiz/papers/{id:[0-9]+}", handlers.DeletePaper).Methods("DELETE")
 		api.HandleFunc("/quiz/tags", handlers.GetTagVocabulary).Methods("GET")
 		api.HandleFunc("/quiz/stats", handlers.GetQuizStats).Methods("GET")
+		api.HandleFunc("/users/{id:[0-9]+}/quiz-settings", handlers.GetQuizSettings).Methods("GET")
+		api.HandleFunc("/users/{id:[0-9]+}/quiz-settings", handlers.UpdateQuizSettings).Methods("POST")
 		log.Printf("Quiz feature enabled (db: %s)", quizCfg.DBPath)
 	}
 

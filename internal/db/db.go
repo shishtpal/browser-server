@@ -110,6 +110,16 @@ func InitUserDB(dataPath string) {
 			email TEXT NOT NULL
 		)
 	`)
+	// One key-value row per (user, setting) so future preferences don't need
+	// another table. quiz.scheduler is the only consumer for now.
+	Exec(UserDB, `
+		CREATE TABLE IF NOT EXISTS user_settings (
+			user_id INTEGER NOT NULL,
+			key TEXT NOT NULL,
+			value TEXT NOT NULL,
+			PRIMARY KEY (user_id, key)
+		)
+	`)
 }
 
 func InitTodoDB(dataPath string) {
@@ -395,6 +405,11 @@ func InitQuizDB(dataPath string) {
 	// but power the "Only skipped" practice mode.
 	ensureColumn(QuizDB, "question_review_state", "skip_count", "skip_count INTEGER NOT NULL DEFAULT 0")
 	ensureColumn(QuizDB, "question_review_state", "last_skipped_at", "last_skipped_at DATETIME NULL")
+	// FSRS state (idempotent, nullable so old SM-2 rows stay untouched until
+	// the FSRS scheduler first writes them).
+	ensureColumn(QuizDB, "question_review_state", "difficulty", "difficulty REAL NULL")
+	ensureColumn(QuizDB, "question_review_state", "stability", "stability REAL NULL")
+	ensureColumn(QuizDB, "question_review_state", "learning_step", "learning_step INTEGER NULL")
 }
 
 func CloseQuizDB() {

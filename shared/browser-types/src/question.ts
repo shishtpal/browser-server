@@ -174,3 +174,15 @@ export interface ReviewQuestionInput {
 export interface SkipQuestionCardInput {
   user_id: number
 }
+
+/** User's spaced-repetition scheduler choice; "sm2" is the default. */
+export type QuizScheduler = 'sm2' | 'fsrs'
+
+export interface QuizSettings {
+  user_id: number
+  scheduler: QuizScheduler
+}
+
+export interface UpdateQuizSettingsInput {
+  scheduler: QuizScheduler
+}

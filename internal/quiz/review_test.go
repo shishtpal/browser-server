@@ -100,10 +100,10 @@ func TestReviewQuestionOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := ReviewQuestion(ctx, int(id), 2, RatingGood, reviewNow); !errors.Is(err, ErrQuestionNotOwned) {
+	if _, err := ReviewQuestion(ctx, int(id), 2, RatingGood, reviewNow, SchedulerSM2); !errors.Is(err, ErrQuestionNotOwned) {
 		t.Fatalf("expected ErrQuestionNotOwned, got %v", err)
 	}
-	if _, err := ReviewQuestion(ctx, 9999, 1, RatingGood, reviewNow); !errors.Is(err, ErrQuestionNotFound) {
+	if _, err := ReviewQuestion(ctx, 9999, 1, RatingGood, reviewNow, SchedulerSM2); !errors.Is(err, ErrQuestionNotFound) {
 		t.Fatalf("expected ErrQuestionNotFound, got %v", err)
 	}
 }
@@ -115,11 +115,11 @@ func TestReviewQuestionUpsertPreservesCreatedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow); err != nil {
+	if _, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow, SchedulerSM2); err != nil {
 		t.Fatalf("first review: %v", err)
 	}
 	second := reviewNow.Add(48 * time.Hour)
-	state, err := ReviewQuestion(ctx, int(id), 1, RatingGood, second)
+	state, err := ReviewQuestion(ctx, int(id), 1, RatingGood, second, SchedulerSM2)
 	if err != nil {
 		t.Fatalf("second review: %v", err)
 	}
@@ -161,15 +161,15 @@ func TestListCardsCountsDueAndNew(t *testing.T) {
 	}
 
 	// Reviewed a day ago with "again" (10m interval), so it is overdue now.
-	if _, err := ReviewQuestion(ctx, ids[0], 1, RatingAgain, reviewNow.Add(-24*time.Hour)); err != nil {
+	if _, err := ReviewQuestion(ctx, ids[0], 1, RatingAgain, reviewNow.Add(-24*time.Hour), SchedulerSM2); err != nil {
 		t.Fatalf("review overdue: %v", err)
 	}
 	// Reviewed just now with "easy" (4d interval), so it is not yet due.
-	if _, err := ReviewQuestion(ctx, ids[1], 1, RatingEasy, reviewNow); err != nil {
+	if _, err := ReviewQuestion(ctx, ids[1], 1, RatingEasy, reviewNow, SchedulerSM2); err != nil {
 		t.Fatalf("review future: %v", err)
 	}
 
-	queue, err := ListCards(ctx, 1, nil, 20, reviewNow, false, "")
+	queue, err := ListCards(ctx, 1, nil, 20, reviewNow, false, "", SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list cards: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestListCardsTagFilterAndLimit(t *testing.T) {
 		}
 	}
 
-	tagged, err := ListCards(ctx, 1, []string{"SSC"}, 20, reviewNow, false, "")
+	tagged, err := ListCards(ctx, 1, []string{"SSC"}, 20, reviewNow, false, "", SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list cards by tag: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestListCardsTagFilterAndLimit(t *testing.T) {
 	}
 
 	// Limit truncates the items but the counts still describe the whole queue.
-	limited, err := ListCards(ctx, 1, nil, 1, reviewNow, false, "")
+	limited, err := ListCards(ctx, 1, nil, 1, reviewNow, false, "", SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list cards with limit: %v", err)
 	}
@@ -240,11 +240,11 @@ func TestListCardsPracticeIncludesScheduledOnlySelection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := ReviewQuestion(ctx, int(id), 1, RatingEasy, reviewNow); err != nil {
+	if _, err := ReviewQuestion(ctx, int(id), 1, RatingEasy, reviewNow, SchedulerSM2); err != nil {
 		t.Fatalf("review: %v", err)
 	}
 
-	normal, err := ListCards(ctx, 1, []string{"SSC"}, 20, reviewNow, false, "")
+	normal, err := ListCards(ctx, 1, []string{"SSC"}, 20, reviewNow, false, "", SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list normal cards: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestListCardsPracticeIncludesScheduledOnlySelection(t *testing.T) {
 		t.Fatalf("normal queue should be empty, got items=%d available=%d", len(normal.Items), normal.AvailableCount)
 	}
 
-	practice, err := ListCards(ctx, 1, []string{"SSC"}, 20, reviewNow, true, "")
+	practice, err := ListCards(ctx, 1, []string{"SSC"}, 20, reviewNow, true, "", SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list practice cards: %v", err)
 	}
@@ -321,7 +321,7 @@ func TestRecordSkipKeepsSM2Scheduling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := ReviewQuestion(ctx, int(loc), 1, RatingGood, reviewNow); err != nil {
+	if _, err := ReviewQuestion(ctx, int(loc), 1, RatingGood, reviewNow, SchedulerSM2); err != nil {
 		t.Fatalf("review: %v", err)
 	}
 	state, err := RecordSkip(ctx, int(loc), 1, reviewNow.Add(time.Hour))
@@ -364,7 +364,7 @@ func TestListCardsSkipsMode(t *testing.T) {
 	if _, err := RecordSkip(ctx, ids[0], 1, reviewNow); err != nil {
 		t.Fatalf("skip: %v", err)
 	}
-	queue, err := ListCards(ctx, 1, nil, 20, reviewNow, false, CardModeSkipped)
+	queue, err := ListCards(ctx, 1, nil, 20, reviewNow, false, CardModeSkipped, SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list skipped: %v", err)
 	}
@@ -387,17 +387,17 @@ func TestListCardsModesNewAndHard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := ReviewQuestion(ctx, int(hardID), 1, RatingEasy, reviewNow); err != nil {
+	if _, err := ReviewQuestion(ctx, int(hardID), 1, RatingEasy, reviewNow, SchedulerSM2); err != nil {
 		t.Fatalf("review hard: %v", err)
 	}
-	queueNew, err := ListCards(ctx, 1, nil, 20, reviewNow, false, CardModeNew)
+	queueNew, err := ListCards(ctx, 1, nil, 20, reviewNow, false, CardModeNew, SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list new: %v", err)
 	}
 	if len(queueNew.Items) != 1 || queueNew.Items[0].Question.ID != int(nuid) {
 		t.Fatalf("mode=new should return only the unrated question, got %v", queueNew.Items)
 	}
-	queueHard, err := ListCards(ctx, 1, nil, 20, reviewNow, false, CardModeHard)
+	queueHard, err := ListCards(ctx, 1, nil, 20, reviewNow, false, CardModeHard, SchedulerSM2)
 	if err != nil {
 		t.Fatalf("list hard: %v", err)
 	}
@@ -426,7 +426,7 @@ func TestDeleteRemovesReviewState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow); err != nil {
+	if _, err := ReviewQuestion(ctx, int(id), 1, RatingGood, reviewNow, SchedulerSM2); err != nil {
 		t.Fatalf("review: %v", err)
 	}
 	if _, err := Delete(ctx, int(id)); err != nil {

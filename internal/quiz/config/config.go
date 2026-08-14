@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	aiconfig "browser-server/internal/ai/config"
@@ -57,6 +58,8 @@ type Config struct {
 	PaperGeneration      PaperGenConfig `json:"paper_generation"`
 	RetentionDays        int            `json:"retention_days"`
 	CORSEnabled          bool           `json:"cors_enabled"`
+	// Scheduler picks the spaced-repetition engine: "sm2" (default) or "fsrs".
+	Scheduler string `json:"scheduler"`
 }
 
 var global atomic.Pointer[Config]
@@ -198,6 +201,7 @@ func defaultConfig() *Config {
 			AllowDuplicateQuestionsWithinPaper: false,
 		},
 		RetentionDays: 365,
+		Scheduler:     "sm2",
 	}
 }
 
@@ -235,6 +239,13 @@ func validate(cfg *Config) error {
 	}
 	if len(cfg.TagCategories) == 0 {
 		return fmt.Errorf("tag_categories must not be empty")
+	}
+	cfg.Scheduler = strings.ToLower(strings.TrimSpace(cfg.Scheduler))
+	if cfg.Scheduler == "" {
+		cfg.Scheduler = quiz.SchedulerSM2
+	}
+	if cfg.Scheduler != quiz.SchedulerSM2 && cfg.Scheduler != quiz.SchedulerFSRS {
+		return fmt.Errorf(`scheduler must be %q or %q`, quiz.SchedulerSM2, quiz.SchedulerFSRS)
 	}
 	return nil
 }

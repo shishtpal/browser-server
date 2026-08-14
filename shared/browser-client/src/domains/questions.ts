@@ -12,6 +12,8 @@ import type {
   QuestionReviewState,
   ReviewQuestionInput,
   SkipQuestionCardInput,
+  QuizSettings,
+  UpdateQuizSettingsInput,
 } from '@browser-server/shared-types'
 import { type TokenProvider, apiFetch, buildQuery } from '../internals'
 
@@ -109,6 +111,17 @@ export function createQuestionMethods(baseUrl: string, getToken?: TokenProvider)
      *  for Only Skipped mode. Returns the review row for the queue UI. */
     skipQuestionCard(questionId: number, input: SkipQuestionCardInput): Promise<QuestionReviewState> {
       return apiFetch<QuestionReviewState>(baseUrl, 'POST', `/api/quiz/cards/${questionId}/skip`, input, getToken)
+    },
+
+    /** Returns the active spaced-repetition scheduler ("sm2" or "fsrs"). The
+     *  frontend reads it once at session start so the cards UI can adapt
+     *  (e.g. learning-step requeue) without changing the four answer buttons. */
+    getQuizSettings(userId: number): Promise<QuizSettings> {
+      return apiFetch<QuizSettings>(baseUrl, 'GET', `/api/users/${userId}/quiz-settings`, undefined, getToken)
+    },
+
+    updateQuizSettings(userId: number, input: UpdateQuizSettingsInput): Promise<QuizSettings> {
+      return apiFetch<QuizSettings>(baseUrl, 'POST', `/api/users/${userId}/quiz-settings`, input, getToken)
     },
   }
 }

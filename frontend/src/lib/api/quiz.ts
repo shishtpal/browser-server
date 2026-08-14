@@ -9,8 +9,10 @@ import type {
   QuestionReviewState,
   QuizStats,
   ReviewQuestionInput,
+  QuizSettings,
   SkipQuestionCardInput,
   TagVocabulary,
+  UpdateQuizSettingsInput,
   UpdateQuestionInput,
 } from '@browser-server/shared-types';
 import { client } from './client';
@@ -67,3 +69,11 @@ export const skipQuestionCard = (
   id: number,
   input: SkipQuestionCardInput,
 ): Promise<QuestionReviewState> => client.skipQuestionCard(id, input);
+
+export const getQuizSettings = (userId: number): Promise<QuizSettings> =>
+  client.getQuizSettings(userId);
+
+export const updateQuizSettings = (
+  userId: number,
+  input: UpdateQuizSettingsInput,
+): Promise<QuizSettings> => client.updateQuizSettings(userId, input);

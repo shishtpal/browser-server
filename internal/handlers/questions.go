@@ -285,7 +285,7 @@ func GetQuestionCards(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	queue, err := quiz.ListCards(r.Context(), userID, r.URL.Query()["tag"], limit, time.Now(), practice, mode)
+	queue, err := quiz.ListCards(r.Context(), userID, r.URL.Query()["tag"], limit, time.Now(), practice, mode, quiz.SchedulerForUser(userID))
 	if err != nil {
 		helpers.WriteError(w, http.StatusInternalServerError, "Database error")
 		return
@@ -319,7 +319,7 @@ func ReviewQuestionCard(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	state, err := quiz.ReviewQuestion(r.Context(), questionID, input.UserID, input.Rating, time.Now())
+	state, err := quiz.ReviewQuestion(r.Context(), questionID, input.UserID, input.Rating, time.Now(), quiz.SchedulerForUser(input.UserID))
 	if errors.Is(err, quiz.ErrQuestionNotFound) || errors.Is(err, quiz.ErrQuestionNotOwned) {
 		helpers.WriteError(w, http.StatusNotFound, "Question not found")
 		return

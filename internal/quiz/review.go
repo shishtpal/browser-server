@@ -29,7 +29,11 @@ const (
 	maxInterval   = 365 * 24 * time.Hour
 )
 
-// ReviewState is the persisted scheduling state for one question.
+// ReviewState is the persisted scheduling state for one question. The three
+// tail fields hold FSRS state and stay zero for rows the SM-2 engine owns.
+//
+// LearningStep uses FSRS semantics: LearnStepLearning (0) means the card is
+// sitting on the 10-minute Again requeue; LearnStepReview (1) is graduated.
 type ReviewState struct {
 	QuestionID      int
 	UserID          int
@@ -43,6 +47,9 @@ type ReviewState struct {
 	LastSkippedAt   *time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	Difficulty      float64
+	Stability       float64
+	LearningStep    int
 }
 
 func clampEase(value float64) float64 { return math.Max(minEaseFactor, math.Min(maxEaseFactor, value)) }
@@ -119,7 +126,12 @@ func ScheduleReview(previous *ReviewState, rating string, now time.Time) ReviewS
 
 func scanReview(scanner interface{ Scan(...any) error }) (ReviewState, error) {
 	var s ReviewState
-	err := scanner.Scan(&s.QuestionID, &s.UserID, &s.Repetitions, &s.IntervalSeconds, &s.EaseFactor, &s.DueAt, &s.LastRating, &s.LastReviewedAt, &s.SkipCount, &s.LastSkippedAt, &s.CreatedAt, &s.UpdatedAt)
+	var difficulty, stability sql.NullFloat64
+	var learningStep sql.NullInt64
+	err := scanner.Scan(&s.QuestionID, &s.UserID, &s.Repetitions, &s.IntervalSeconds, &s.EaseFactor, &s.DueAt, &s.LastRating, &s.LastReviewedAt, &s.SkipCount, &s.LastSkippedAt, &s.CreatedAt, &s.UpdatedAt, &difficulty, &stability, &learningStep)
+	s.Difficulty = difficulty.Float64
+	s.Stability = stability.Float64
+	s.LearningStep = int(learningStep.Int64)
 	return s, err
 }
 
@@ -127,7 +139,7 @@ func reviewResponse(s ReviewState) models.QuestionReviewState {
 	return models.QuestionReviewState{QuestionID: s.QuestionID, Repetitions: s.Repetitions, IntervalSeconds: s.IntervalSeconds, EaseFactor: s.EaseFactor, DueAt: s.DueAt, LastRating: s.LastRating, LastReviewedAt: s.LastReviewedAt, SkipCount: s.SkipCount, LastSkippedAt: s.LastSkippedAt}
 }
 
-const reviewColumns = "question_id, user_id, repetitions, interval_seconds, ease_factor, due_at, last_rating, last_reviewed_at, skip_count, last_skipped_at, created_at, updated_at"
+const reviewColumns = "question_id, user_id, repetitions, interval_seconds, ease_factor, due_at, last_rating, last_reviewed_at, skip_count, last_skipped_at, created_at, updated_at, difficulty, stability, learning_step"
 
 // qualifiedQuestionColumns prefixes each Columns entry with a table alias.
 // Columns must stay a plain comma-separated identifier list; a column holding
@@ -176,7 +188,7 @@ func modeFilter(mode string) string {
 }
 
 // ListCards returns due reviews followed by never-reviewed questions. Tags reuse Filter.Where via a matching-ID subquery.
-func ListCards(ctx context.Context, userID int, tags []string, limit int, now time.Time, practice bool, mode string) (models.QuestionCardQueue, error) {
+func ListCards(ctx context.Context, userID int, tags []string, limit int, now time.Time, practice bool, mode string, scheduler string) (models.QuestionCardQueue, error) {
 	var out models.QuestionCardQueue
 	predicate, args := (Filter{UserID: userID, Tags: tags}).Where()
 	base := "q.id IN (SELECT id FROM questions WHERE " + predicate + ")"
@@ -207,16 +219,28 @@ func ListCards(ctx context.Context, userID int, tags []string, limit int, now ti
 	if practice || mode != "" {
 		cardFilter = "1=1"
 	}
-	query := "SELECT " + qualifiedQuestionColumns("q") + ", " +
-		"r.question_id, r.user_id, r.repetitions, r.interval_seconds, r.ease_factor, r.due_at, r.last_rating, r.last_reviewed_at, r.skip_count, r.last_skipped_at, r.created_at, r.updated_at " +
-		"FROM questions q " + joinClause + " WHERE " + base + modeFilter(mode) +
-		" AND " + cardFilter + " " +
-		"ORDER BY CASE WHEN r.question_id IS NULL THEN 1 ELSE 0 END, r.due_at ASC, q.id DESC LIMIT ?"
-	// userID for the join, then filter args, then now + limit.
-	queryArgs := append(append([]any{userID}, args...), now.UTC(), limit)
-	if practice || mode != "" {
-		queryArgs = append(append([]any{userID}, args...), limit)
+	// SM-2 keeps its historical due-group/new-group ordering. FSRS surfaces
+	// cards still on the 10-minute Again requeue first so the user can flush
+	// a just-failed card before fresh material.
+	orderClause := "ORDER BY CASE WHEN r.question_id IS NULL THEN 1 ELSE 0 END, r.due_at ASC, q.id DESC"
+	if scheduler == SchedulerFSRS {
+		orderClause = "ORDER BY CASE WHEN r.question_id IS NOT NULL AND r.learning_step = ? AND r.due_at <= ? THEN 0 " +
+			"WHEN r.question_id IS NOT NULL AND r.due_at <= ? THEN 1 ELSE 2 END, r.due_at ASC, q.id DESC"
 	}
+	query := "SELECT " + qualifiedQuestionColumns("q") + ", " +
+		"r.question_id, r.user_id, r.repetitions, r.interval_seconds, r.ease_factor, r.due_at, r.last_rating, r.last_reviewed_at, r.skip_count, r.last_skipped_at, r.created_at, r.updated_at, r.difficulty, r.stability, r.learning_step " +
+		"FROM questions q " + joinClause + " WHERE " + base + modeFilter(mode) +
+		" AND " + cardFilter + " " + orderClause + " LIMIT ?"
+	// userID for the join, then filter args, then (FSRS order-rank params) now + limit.
+	queryArgs := append([]any{userID}, args...)
+	if !practice && mode == "" {
+		// cardFilter appears before the FSRS ordering expression in the SQL.
+		queryArgs = append(queryArgs, now.UTC())
+	}
+	if scheduler == SchedulerFSRS {
+		queryArgs = append(queryArgs, LearnStepLearning, now.UTC(), now.UTC())
+	}
+	queryArgs = append(queryArgs, limit)
 	rows, err := db.QuizDB.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return out, err
@@ -225,8 +249,8 @@ func ListCards(ctx context.Context, userID int, tags []string, limit int, now ti
 	out.Items = []models.QuestionCardItem{}
 	for rows.Next() {
 		var rec Record
-		var reviewID, reviewUserID, repetitions, intervalSeconds, skipCount sql.NullInt64
-		var ease sql.NullFloat64
+		var reviewID, reviewUserID, repetitions, intervalSeconds, skipCount, learningStep sql.NullInt64
+		var ease, difficulty, stability sql.NullFloat64
 		var dueAt, lastReviewedAt, lastSkippedAt, createdAt, updatedAt sql.NullTime
 		var lastRating sql.NullString
 		err := rows.Scan(
@@ -235,7 +259,7 @@ func ListCards(ctx context.Context, userID int, tags []string, limit int, now ti
 			&rec.Question.ImageFilename, &rec.Question.Tags, &rec.Question.Subject, &rec.Question.Topic,
 			&rec.Question.SubTopic, &rec.Question.Source, &rec.Question.CreatedAt, &rec.Question.UpdatedAt,
 			&reviewID, &reviewUserID, &repetitions, &intervalSeconds, &ease, &dueAt, &lastRating,
-			&lastReviewedAt, &skipCount, &lastSkippedAt, &createdAt, &updatedAt,
+			&lastReviewedAt, &skipCount, &lastSkippedAt, &createdAt, &updatedAt, &difficulty, &stability, &learningStep,
 		)
 		if err != nil {
 			return out, err
@@ -259,8 +283,56 @@ func ListCards(ctx context.Context, userID int, tags []string, limit int, now ti
 	return out, rows.Err()
 }
 
+// settingsGetter reads one user_settings value. It is a var so the quiz
+// package stays decoupled from the users DB; handlers wire it up at import
+// time for the HTTP path.
+var settingsGetter = func(_ int, _ string) (string, error) {
+	return "", sql.ErrNoRows
+}
+
+var defaultScheduler = SchedulerSM2
+
+// SetUserSettingsGetter installs the KV lookup used to resolve a user's
+// scheduler. Called once from the handlers package init.
+func SetUserSettingsGetter(fn func(userID int, key string) (string, error)) {
+	settingsGetter = fn
+}
+
+// SetDefaultScheduler sets the scheduler used when a user has not stored a
+// preference. Invalid values retain the safe SM-2 default.
+func SetDefaultScheduler(scheduler string) {
+	if scheduler == SchedulerFSRS {
+		defaultScheduler = SchedulerFSRS
+		return
+	}
+	defaultScheduler = SchedulerSM2
+}
+
+// UserSettingKeyScheduler is the user_settings key for the scheduler choice.
+const UserSettingKeyScheduler = "quiz.scheduler"
+
+// resolveSchedulerForUser reads the user's stored scheduler and falls back
+// to the supplied default when the row is missing, unreadable, or unknown.
+func resolveSchedulerForUser(userID int, fallback string) string {
+	if v, err := settingsGetter(userID, UserSettingKeyScheduler); err == nil {
+		switch v {
+		case SchedulerSM2, SchedulerFSRS:
+			return v
+		}
+	}
+	return fallback
+}
+
+// SchedulerForUser resolves the effective scheduler for a user: their stored
+// preference wins; the configured scheduler is the default.
+func SchedulerForUser(userID int) string {
+	return resolveSchedulerForUser(userID, defaultScheduler)
+}
+
 // ReviewQuestion verifies ownership and inserts or updates scheduling state atomically.
-func ReviewQuestion(ctx context.Context, questionID, userID int, rating string, now time.Time) (models.QuestionReviewState, error) {
+// scheduler selects the engine (SchedulerSM2 default); on an FSRS caller's
+// first rating of an SM-2-era row, ConvertSM2ToFSRS seeds the FSRS columns.
+func ReviewQuestion(ctx context.Context, questionID, userID int, rating string, now time.Time, scheduler string) (models.QuestionReviewState, error) {
 	var out models.QuestionReviewState
 	tx, err := db.QuizDB.BeginTx(ctx, nil)
 	if err != nil {
@@ -285,6 +357,14 @@ func ReviewQuestion(ctx context.Context, questionID, userID int, rating string, 
 		return out, err
 	}
 	next := ScheduleReview(prior, rating, now)
+	if scheduler == SchedulerFSRS {
+		snapshot := prior
+		if snapshot != nil && (snapshot.Stability <= 0 || snapshot.Difficulty <= 0) {
+			converted := ConvertSM2ToFSRS(*snapshot)
+			snapshot = &converted
+		}
+		next = ScheduleFSRS(snapshot, rating, now)
+	}
 	next.QuestionID, next.UserID = questionID, userID
 	if prior == nil {
 		next.CreatedAt = now.UTC()
@@ -292,10 +372,19 @@ func ReviewQuestion(ctx context.Context, questionID, userID int, rating string, 
 		next.CreatedAt = prior.CreatedAt
 	}
 	next.UpdatedAt = now.UTC()
-	_, err = tx.ExecContext(ctx, `INSERT INTO question_review_state (question_id, user_id, repetitions, interval_seconds, ease_factor, due_at, last_rating, last_reviewed_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(question_id) DO UPDATE SET user_id=excluded.user_id, repetitions=excluded.repetitions, interval_seconds=excluded.interval_seconds, ease_factor=excluded.ease_factor, due_at=excluded.due_at, last_rating=excluded.last_rating, last_reviewed_at=excluded.last_reviewed_at, updated_at=excluded.updated_at`,
-		next.QuestionID, next.UserID, next.Repetitions, next.IntervalSeconds, next.EaseFactor, next.DueAt, next.LastRating, next.LastReviewedAt, next.CreatedAt, next.UpdatedAt)
+	// FSRS columns stay NULL for SM-2 rows (only the FSRS engine writes
+	// them); use nullable values so the upsert doesn't have to branch.
+	var diffArg, stabArg sql.NullFloat64
+	var stepArg sql.NullInt64
+	if scheduler == SchedulerFSRS {
+		diffArg = sql.NullFloat64{Float64: next.Difficulty, Valid: true}
+		stabArg = sql.NullFloat64{Float64: next.Stability, Valid: true}
+		stepArg = sql.NullInt64{Int64: int64(next.LearningStep), Valid: true}
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO question_review_state (question_id, user_id, repetitions, interval_seconds, ease_factor, due_at, last_rating, last_reviewed_at, created_at, updated_at, difficulty, stability, learning_step)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(question_id) DO UPDATE SET user_id=excluded.user_id, repetitions=excluded.repetitions, interval_seconds=excluded.interval_seconds, ease_factor=excluded.ease_factor, due_at=excluded.due_at, last_rating=excluded.last_rating, last_reviewed_at=excluded.last_reviewed_at, updated_at=excluded.updated_at, difficulty=excluded.difficulty, stability=excluded.stability, learning_step=excluded.learning_step`,
+		next.QuestionID, next.UserID, next.Repetitions, next.IntervalSeconds, next.EaseFactor, next.DueAt, next.LastRating, next.LastReviewedAt, next.CreatedAt, next.UpdatedAt, diffArg, stabArg, stepArg)
 	if err != nil {
 		return out, err
 	}

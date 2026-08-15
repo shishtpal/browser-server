@@ -7,6 +7,15 @@ import {
   listGeneratedImages,
 } from '../../../lib/api/ai';
 
+/** A set of images generated from the exact same prompt — shown as a folder. */
+export interface ImageGroup {
+  key: string;
+  prompt: string;
+  images: GeneratedImage[];
+  models: number;
+  providers: number;
+}
+
 /** Config, generation form state and gallery for the image workspace. */
 export function useImageGeneration() {
   const config = ref<AIImageConfig | null>(null);
@@ -105,6 +114,41 @@ export function useImageGeneration() {
     }
   }
 
+  // Group images by exact prompt so the user can compare outputs from
+  // different providers/models side by side. Prompts with a single image are
+  // not folded into a folder — they render as plain cards.
+  const groups = computed<ImageGroup[]>(() => {
+    const map = new Map<string, GeneratedImage[]>();
+    for (const img of images.value) {
+      const key = img.prompt;
+      const bucket = map.get(key);
+      if (bucket) bucket.push(img);
+      else map.set(key, [img]);
+    }
+    const out: ImageGroup[] = [];
+    for (const [key, items] of map) {
+      if (items.length < 2) continue;
+      out.push({
+        key,
+        prompt: key,
+        images: items,
+        models: new Set(items.map((i) => i.model)).size,
+        providers: new Set(items.map((i) => i.provider)).size,
+      });
+    }
+    return out;
+  });
+
+  // Images that belong to a prompt with exactly one generation; rendered as
+  // plain cards (never wrapped in a folder).
+  const singles = computed<GeneratedImage[]>(() => {
+    const counts = new Map<string, number>();
+    for (const img of images.value) {
+      counts.set(img.prompt, (counts.get(img.prompt) ?? 0) + 1);
+    }
+    return images.value.filter((i) => (counts.get(i.prompt) ?? 0) < 2);
+  });
+
   return {
     config,
     images,
@@ -126,6 +170,8 @@ export function useImageGeneration() {
     canEdit,
     sourceImage,
     modelCount,
+    groups,
+    singles,
     load,
     submit,
     remove,

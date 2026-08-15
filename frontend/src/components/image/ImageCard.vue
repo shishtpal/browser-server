@@ -26,15 +26,31 @@
       </div>
     </div>
     <div class="p-3">
-      <p
-        class="line-clamp-2 text-xs font-semibold text-slate-700 dark:text-slate-200"
-        :title="image.prompt"
+      <button
+        type="button"
+        class="block w-full text-left"
+        :title="`Inject prompt: ${image.prompt}`"
+        @click="$emit('reuse', image)"
       >
-        {{ image.prompt }}
-      </p>
+        <span
+          class="line-clamp-2 text-xs font-semibold text-slate-700 underline decoration-transparent transition hover:decoration-slate-300 dark:text-slate-200 dark:hover:decoration-slate-600"
+        >
+          {{ image.prompt }}
+        </span>
+      </button>
       <div
         class="mt-2 flex flex-wrap items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-slate-500"
       >
+        <span
+          class="rounded bg-violet-100 px-1.5 py-0.5 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+        >
+          {{ image.provider }}
+        </span>
+        <span
+          class="rounded bg-gray-100 px-1.5 py-0.5 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+        >
+          {{ image.model }}
+        </span>
         <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-slate-700">
           {{ image.image_size }}
         </span>

@@ -1,6 +1,7 @@
 import type { GeneratedImage } from '@browser-server/shared-types';
 import type { PromptResponse } from '../../../types';
 import { computed, nextTick, onMounted, ref } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
 import { useModal } from '@browser-server/shared-modal';
 import { useImageGeneration } from './useImageGeneration';
 
@@ -16,6 +17,9 @@ export function useImagePage() {
 
   const preview = ref<GeneratedImage | null>(null);
   const showPromptLibrary = ref(false);
+
+  // Gallery layout: grouped by prompt (default) or the original flat grid.
+  const viewMode = useLocalStorage<'grouped' | 'all'>('bs.image.viewMode', 'grouped');
 
   /** Focus the composer textarea after the DOM updates. */
   const composerRef = ref<{ focus: () => void } | null>(null);
@@ -42,9 +46,13 @@ export function useImagePage() {
     focusComposer();
   }
 
-  function reusePrompt(image: GeneratedImage) {
-    prompt.value = image.prompt;
+  function injectPrompt(text: string) {
+    prompt.value = text;
     focusComposer();
+  }
+
+  function reusePrompt(image: GeneratedImage) {
+    injectPrompt(image.prompt);
   }
 
   function reuseFromPreview(image: GeneratedImage) {
@@ -86,10 +94,12 @@ export function useImagePage() {
     preview,
     previewIndex,
     showPromptLibrary,
+    viewMode,
     openPreview,
     closePreview,
     step,
     useAsSource,
+    injectPrompt,
     reusePrompt,
     reuseFromPreview,
     editFromPreview,

@@ -36,6 +36,7 @@
           {{ image.prompt }}
         </p>
         <div class="flex flex-wrap gap-1 text-[10px] font-bold text-slate-500 dark:text-white/60">
+          <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ image.provider }}</span>
           <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">{{ image.model }}</span>
           <span class="rounded bg-slate-200 px-2 py-1 dark:bg-white/10">
             {{ image.image_size }}

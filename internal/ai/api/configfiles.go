@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	browserconfig "browser-server/internal/ai/browser/config"
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/images"
 	aimcp "browser-server/internal/ai/mcp"
@@ -48,6 +49,7 @@ var (
 		"bs-ai-image-models.json": {Name: "bs-ai-image-models.json", Class: "leaf", Reload: "hot_reload"},
 		"bs-ai-voice.json":        {Name: "bs-ai-voice.json", Class: "leaf", Reload: "hot_reload"},
 		"bs-quiz-config.json":     {Name: "bs-quiz-config.json", Class: "leaf", Reload: "hot_reload"},
+		"bs-browser-config.json":  {Name: "bs-browser-config.json", Class: "leaf", Reload: "hot_reload"},
 	}
 )
 
@@ -363,6 +365,8 @@ func (m *Module) validateConfigFile(name string, content []byte) error {
 		return voice.ValidateBytes(content)
 	case "bs-quiz-config.json":
 		return quizconfig.ValidateBytes(content)
+	case "bs-browser-config.json":
+		return browserconfig.ValidateBytes(content)
 	case "bs-ai-mcp.json":
 		return aimcp.ValidateBytes(content, m.configPath(name))
 	case "bs-ai-config.json":
@@ -452,6 +456,12 @@ func (m *Module) reloadLeaf(name string) (string, error) {
 		quiz.SetDefaultScheduler(config.Scheduler)
 		if restartRequired {
 			return "Quiz rules were hot-reloaded, but boot-time settings remain unchanged in this process and require a server restart.", nil
+		}
+		return "", nil
+
+	case "bs-browser-config.json":
+		if _, err := browserconfig.LoadPath(path); err != nil {
+			return "", err
 		}
 		return "", nil
 	}

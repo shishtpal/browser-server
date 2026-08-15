@@ -52,6 +52,9 @@ func main() {
 	}
 	defer aiModule.Close()
 	handlers.AdminShutdown = aiModule.PrepareRestart
+	handlers.BrowserBus = aiModule.BrowserBus()
+	handlers.BrowserScreenshotDir = aiModule.ScreenshotDir()
+	handlers.BrowserPdfDir = aiModule.PdfDir()
 
 	// The quiz feature is fully gated by bs-quiz-config.json: when the file is
 	// missing or enabled is false, no quiz database is created and no routes
@@ -106,6 +109,28 @@ func main() {
 	api.HandleFunc("/routes", handlers.GetRoutes).Methods("POST")
 	api.HandleFunc("/search/omnibox", handlers.SearchOmnibox).Methods("GET")
 	aiModule.Register(api)
+
+	// Browser automation command channel (extension command bus).
+	api.HandleFunc("/browser/register", handlers.BrowserRegister).Methods("POST")
+	api.HandleFunc("/browser/heartbeat", handlers.BrowserHeartbeat).Methods("POST")
+	api.HandleFunc("/browser/tabs", handlers.BrowserTabs).Methods("POST")
+	api.HandleFunc("/browser/instances", handlers.BrowserListInstances).Methods("GET")
+	api.HandleFunc("/browser/instances/{id}/tabs", func(w http.ResponseWriter, r *http.Request) {
+		handlers.BrowserListTabs(w, r, mux.Vars(r)["id"])
+	}).Methods("GET")
+	api.HandleFunc("/browser/cmd", handlers.BrowserCreateCommand).Methods("POST")
+	api.HandleFunc("/browser/commands/{id}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.BrowserGetCommand(w, r, mux.Vars(r)["id"])
+	}).Methods("GET")
+	api.HandleFunc("/browser/result", handlers.BrowserResult).Methods("POST")
+	api.HandleFunc("/browser/events", handlers.BrowserEvents).Methods("GET")
+	api.HandleFunc("/browser/queue", handlers.BrowserQueue).Methods("GET")
+	api.HandleFunc("/browser/screenshots/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.BrowserScreenshotFile(w, r, mux.Vars(r)["filename"])
+	}).Methods("GET")
+	api.HandleFunc("/browser/pdfs/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		handlers.BrowserPdfFile(w, r, mux.Vars(r)["filename"])
+	}).Methods("GET")
 
 	api.HandleFunc("/todos", handlers.GetTodos).Methods("GET")
 	api.HandleFunc("/todos", handlers.CreateTodo).Methods("POST")

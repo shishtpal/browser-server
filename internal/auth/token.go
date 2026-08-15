@@ -185,6 +185,15 @@ func Configured() bool {
 	return current != ""
 }
 
+// Token returns the loaded operator token. It is empty when Load has not been
+// called or no token is configured. Used by outbound HTTP clients (e.g. the
+// browser automation HTTP client in bs-ai-chat) to authenticate to the server.
+func Token() string {
+	mu.RLock()
+	defer mu.RUnlock()
+	return current
+}
+
 // Valid reports whether the supplied token matches the loaded operator token
 // using a constant-time comparison.
 func Valid(token string) bool {

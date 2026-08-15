@@ -9,8 +9,8 @@
       "strict_min_version": "126.0"
     }
   },
-  "permissions": ["tabs", "storage", "activeTab", "clipboardWrite", "idle", "alarms", "menus", "notifications", "declarativeNetRequest"],
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "permissions": ["tabs", "storage", "activeTab", "clipboardWrite", "idle", "alarms", "menus", "notifications", "declarativeNetRequest", "scripting", "debugger", "cookies"],
+  "host_permissions": ["<all_urls>", "http://*/*", "https://*/*"],
   "omnibox": {
     "keyword": "bs"
   },

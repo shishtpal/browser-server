@@ -1,9 +1,19 @@
-import type { BrowserApi, BrowserTab, ContextMenuClickInfo } from '@browser-server/extension-core'
+import type { BrowserApi, BrowserTab, ContextMenuClickInfo, CookieInfo, CookieSetInput } from '@browser-server/extension-core'
 import type browserType from 'webextension-polyfill'
 
 declare const browser: typeof browserType
 
 type OmniboxSuggestion = { content: string; description: string }
+
+/**
+ * `@types/webextension-polyfill` does not type `browser.debugger`; Firefox
+ * exposes it when the manifest grants the `debugger` permission.
+ */
+type FirefoxDebugger = {
+  attach(target: { tabId: number }, requiredVersion: string): Promise<void>
+  detach(target: { tabId: number }): Promise<void>
+  sendCommand(target: { tabId: number }, method: string, params?: Record<string, unknown>): Promise<unknown>
+}
 
 function stripOmniboxMarkup(description: string): string {
   return description.replace(/<\/?(?:match|dim)>/g, '')
@@ -12,7 +22,7 @@ function stripOmniboxMarkup(description: string): string {
 export class FirefoxAdapter implements BrowserApi {
   storage = {
     local: {
-      get: (key: string) => browser.storage.local.get(key) as Promise<Record<string, unknown>>,
+      get: (key: string | string[]) => browser.storage.local.get(key) as Promise<Record<string, unknown>>,
       set: (items: Record<string, unknown>) => browser.storage.local.set(items),
       remove: (key: string) => browser.storage.local.remove(key),
     },
@@ -26,10 +36,15 @@ export class FirefoxAdapter implements BrowserApi {
 
   tabs = {
     query: (queryInfo: { active?: boolean; currentWindow?: boolean }) => browser.tabs.query(queryInfo),
+    get: (tabId: number) => browser.tabs.get(tabId),
     update: (updateProperties: { url?: string }) =>
       browser.tabs.update(updateProperties).then(() => undefined),
-    create: (createProperties: { url: string; active: boolean }) =>
-      browser.tabs.create(createProperties).then(() => undefined),
+    updateTab: (tabId: number, updateProperties: { active?: boolean; url?: string }) =>
+      browser.tabs.update(tabId, updateProperties).then(() => undefined),
+    create: (createProperties: { url?: string; active?: boolean }) =>
+      browser.tabs.create(createProperties) as Promise<BrowserTab>,
+    remove: (tabId: number) => browser.tabs.remove(tabId).then(() => undefined),
+    sendMessage: (tabId: number, message: unknown) => browser.tabs.sendMessage(tabId, message),
     captureVisibleTab: (windowId: number, options: { format: string }) =>
       browser.tabs.captureVisibleTab(windowId, options as browserType.ExtensionTypes.ImageDetails),
     onUpdated: {
@@ -40,10 +55,25 @@ export class FirefoxAdapter implements BrowserApi {
           tab: { active?: boolean; id?: number },
         ) => void,
       ) => browser.tabs.onUpdated.addListener(callback),
+      removeListener: (
+        callback: (
+          tabId: number,
+          changeInfo: { url?: string; status?: string },
+          tab: { active?: boolean; id?: number },
+        ) => void,
+      ) => browser.tabs.onUpdated.removeListener(callback),
     },
     onActivated: {
       addListener: (callback: (activeInfo: { tabId: number }) => void) =>
         browser.tabs.onActivated.addListener(callback),
+    },
+    onRemoved: {
+      addListener: (callback: (tabId: number) => void) =>
+        browser.tabs.onRemoved.addListener(callback),
+    },
+    focus: (tabId: number, windowId?: number) => {
+      const win = windowId !== undefined ? browser.windows.update(windowId, { focused: true }) : Promise.resolve(undefined)
+      return Promise.all([browser.tabs.update(tabId, { active: true }), win]).then(() => undefined)
     },
   }
 
@@ -163,7 +193,25 @@ export class FirefoxAdapter implements BrowserApi {
     openOptionsPage: () => {
       void browser.runtime.openOptionsPage()
     },
+    getURL: (path: string) => browser.runtime.getURL(path),
   }
+
+  scripting = typeof browser.scripting !== 'undefined'
+    ? {
+        executeScript: (script: { target: { tabId: number }; files?: string[] }) =>
+          browser.scripting.executeScript(script as Parameters<typeof browser.scripting.executeScript>[0]),
+      }
+    : undefined
+
+  debugger = (browser as unknown as { debugger?: FirefoxDebugger }).debugger
+
+  cookies = typeof browser.cookies !== 'undefined'
+    ? {
+        getAll: (filter: { domain?: string; name?: string; url?: string }) =>
+          browser.cookies.getAll(filter) as Promise<CookieInfo[]>,
+        set: (cookie: CookieSetInput) => browser.cookies.set(cookie).then(() => undefined),
+      }
+    : undefined
 
   declarativeNetRequest = typeof browser.declarativeNetRequest !== 'undefined'
     ? {

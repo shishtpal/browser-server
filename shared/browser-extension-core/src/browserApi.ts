@@ -14,6 +14,31 @@ export interface BrowserTab {
   title?: string
   windowId?: number
   active?: boolean
+  status?: string
+}
+
+/** Minimal cookie shape shared by adapters. */
+export interface CookieInfo {
+  name: string
+  value: string
+  domain: string
+  path: string
+  secure: boolean
+  httpOnly: boolean
+  session: boolean
+  expirationDate?: number
+}
+
+/** Input for cookies.set. */
+export interface CookieSetInput {
+  url: string
+  name: string
+  value: string
+  path?: string
+  domain?: string
+  secure?: boolean
+  httpOnly?: boolean
+  expirationDate?: number
 }
 
 export interface ContextMenuClickInfo {
@@ -26,7 +51,7 @@ export interface ContextMenuClickInfo {
 export interface BrowserApi {
   storage: {
     local: {
-      get(key: string): Promise<Record<string, unknown>>
+      get(key: string | string[]): Promise<Record<string, unknown>>
       set(items: Record<string, unknown>): Promise<void>
       remove(key: string): Promise<void>
     }
@@ -38,11 +63,23 @@ export interface BrowserApi {
 
   tabs: {
     query(queryInfo: { active?: boolean; currentWindow?: boolean }): Promise<BrowserTab[]>
+    get(tabId: number): Promise<BrowserTab>
     update(updateProperties: { url?: string }): Promise<void>
-    create(createProperties: { url: string; active: boolean }): Promise<void>
+    /** Update a specific tab (e.g. activate it so its visible area can be captured). */
+    updateTab(tabId: number, updateProperties: { active?: boolean; url?: string }): Promise<void>
+    create(createProperties: { url?: string; active?: boolean }): Promise<BrowserTab>
+    remove(tabId: number): Promise<void>
+    sendMessage(tabId: number, message: unknown): Promise<unknown>
     captureVisibleTab(windowId: number, options: { format: string }): Promise<string>
     onUpdated: {
       addListener(
+        callback: (
+          tabId: number,
+          changeInfo: { url?: string; status?: string },
+          tab: { active?: boolean; id?: number },
+        ) => void,
+      ): void
+      removeListener(
         callback: (
           tabId: number,
           changeInfo: { url?: string; status?: string },
@@ -53,6 +90,11 @@ export interface BrowserApi {
     onActivated: {
       addListener(callback: (activeInfo: { tabId: number }) => void): void
     }
+    onRemoved: {
+      addListener(callback: (tabId: number) => void): void
+    }
+    /** Focus a tab (and its window). */
+    focus(tabId: number, windowId?: number): Promise<void>
   }
 
   windows: {
@@ -141,6 +183,24 @@ export interface BrowserApi {
     }
     sendMessage(message: unknown): Promise<unknown>
     openOptionsPage(): void
+    getURL(path: string): string
+  }
+
+  scripting?: {
+    executeScript(script: { target: { tabId: number }; files?: string[] }): Promise<unknown[]>
+  }
+
+  /** CDP debugger bridge: present when the manifest grants the `debugger` permission. */
+  debugger?: {
+    attach(target: { tabId: number }, requiredVersion: string): Promise<void>
+    detach(target: { tabId: number }): Promise<void>
+    sendCommand(target: { tabId: number }, method: string, params?: Record<string, unknown>): Promise<unknown>
+  }
+
+  /** Cookie access: present when the manifest grants the `cookies` permission. */
+  cookies?: {
+    getAll(filter: { domain?: string; name?: string; url?: string }): Promise<CookieInfo[]>
+    set(cookie: CookieSetInput): Promise<void>
   }
 
   declarativeNetRequest?: {

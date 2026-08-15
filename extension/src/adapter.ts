@@ -1,9 +1,9 @@
-import type { BrowserApi, BrowserTab, ContextMenuClickInfo } from '@browser-server/extension-core'
+import type { BrowserApi, BrowserTab, ContextMenuClickInfo, CookieInfo, CookieSetInput } from '@browser-server/extension-core'
 
 export class ChromeAdapter implements BrowserApi {
   storage = {
     local: {
-      get: (key: string) => chrome.storage.local.get(key) as Promise<Record<string, unknown>>,
+      get: (key: string | string[]) => chrome.storage.local.get(key) as Promise<Record<string, unknown>>,
       set: (items: Record<string, unknown>) => chrome.storage.local.set(items),
       remove: (key: string) => chrome.storage.local.remove(key),
     },
@@ -17,14 +17,23 @@ export class ChromeAdapter implements BrowserApi {
 
   tabs = {
     query: (queryInfo: chrome.tabs.QueryInfo) => chrome.tabs.query(queryInfo),
+    get: (tabId: number) => chrome.tabs.get(tabId),
     update: (updateProperties: chrome.tabs.UpdateProperties) =>
       chrome.tabs.update(updateProperties).then(() => undefined),
-    create: (createProperties: chrome.tabs.CreateProperties) =>
-      chrome.tabs.create(createProperties).then(() => undefined),
+    updateTab: (tabId: number, updateProperties: { active?: boolean; url?: string }) =>
+      chrome.tabs.update(tabId, updateProperties as chrome.tabs.UpdateProperties).then(() => undefined),
+    create: (createProperties: chrome.tabs.CreateProperties) => chrome.tabs.create(createProperties),
+    remove: (tabId: number) => chrome.tabs.remove(tabId).then(() => undefined),
+    sendMessage: (tabId: number, message: unknown) => chrome.tabs.sendMessage(tabId, message),
     captureVisibleTab: (windowId: number, options: { format: string }) =>
       chrome.tabs.captureVisibleTab(windowId, options as chrome.extensionTypes.ImageDetails),
     onUpdated: chrome.tabs.onUpdated,
     onActivated: chrome.tabs.onActivated,
+    onRemoved: chrome.tabs.onRemoved,
+    focus: (tabId: number, windowId?: number) => {
+      const win = windowId !== undefined ? chrome.windows.update(windowId, { focused: true }) : Promise.resolve()
+      return Promise.all([chrome.tabs.update(tabId, { active: true }), win]).then(() => undefined)
+    },
   }
 
   windows = {
@@ -99,7 +108,33 @@ export class ChromeAdapter implements BrowserApi {
     onSuspend: chrome.runtime.onSuspend,
     sendMessage: (message: unknown) => chrome.runtime.sendMessage(message),
     openOptionsPage: () => chrome.runtime.openOptionsPage(),
+    getURL: (path: string) => chrome.runtime.getURL(path),
   }
+
+  scripting = chrome.scripting
+    ? {
+        executeScript: (script: { target: { tabId: number }; files?: string[] }) =>
+          chrome.scripting.executeScript(script as unknown as Parameters<typeof chrome.scripting.executeScript>[0]),
+      }
+    : undefined
+
+  debugger = chrome.debugger
+    ? {
+        attach: (target: { tabId: number }, requiredVersion: string) =>
+          chrome.debugger.attach(target, requiredVersion),
+        detach: (target: { tabId: number }) => chrome.debugger.detach(target),
+        sendCommand: (target: { tabId: number }, method: string, params?: Record<string, unknown>) =>
+          chrome.debugger.sendCommand(target, method, params as { [key: string]: unknown }),
+      }
+    : undefined
+
+  cookies = chrome.cookies
+    ? {
+        getAll: (filter: { domain?: string; name?: string; url?: string }) =>
+          chrome.cookies.getAll(filter) as Promise<CookieInfo[]>,
+        set: (cookie: CookieSetInput) => chrome.cookies.set(cookie).then(() => undefined),
+      }
+    : undefined
 
   declarativeNetRequest = chrome.declarativeNetRequest
     ? {

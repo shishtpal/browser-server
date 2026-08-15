@@ -2,8 +2,13 @@ import { createBrowserServerClient } from '@browser-server/shared-client'
 import type { OmniboxSearchResult, WalletEntry } from '@browser-server/shared-types'
 import { getBrowserApi } from './browserApi'
 import { isTrackableUrl } from './lib/browser'
+import { DEFAULT_STEP_EVAL_TIMEOUT_MS, evalInTabViaCdp } from './lib/cdpEval'
+import { CommandClient } from './lib/commandClient'
+import { CommandDispatcher } from './lib/commandDispatcher'
+import { heartbeat, registerInstance } from './lib/instance'
 import { initOneClickCapture } from './lib/oneClickCapture'
 import { getSettings } from './lib/settings'
+import { TabRegistry } from './lib/tabRegistry'
 import { TimeTracker } from './lib/timeTracker'
 
 const USAGE_FLUSH_ALARM = 'usage-flush'
@@ -195,6 +200,17 @@ async function syncActiveTab(): Promise<void> {
 export function initBackground(): void {
   const api = getBrowserApi()
 
+  // Browser automation: instance registration, tab registry, command channel.
+  const tabRegistry = new TabRegistry()
+  tabRegistry.start()
+  const dispatcher = new CommandDispatcher(tabRegistry)
+  const commandClient = new CommandClient((command) => {
+    void dispatcher.dispatch(command)
+  })
+  commandClient.start()
+  void registerInstance()
+  console.info('[browser] background worker initialized; tab registry, command channel, and instance registration are active')
+
   api.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (!tab.active || tab.id !== tabId) {
       return
@@ -233,6 +249,11 @@ export function initBackground(): void {
   api.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === USAGE_FLUSH_ALARM) {
       void tracker.flush()
+      void heartbeat()
+      // Periodic tab re-sync: recovers tabs when the server restarted and
+      // wiped the bus, or when the initial sync ran before settings were
+      // configured. Without this the snapshot only updates on tab events.
+      void tabRegistry.refreshSnapshot()
     }
   })
 
@@ -262,9 +283,30 @@ export function initBackground(): void {
     }
   })
 
-  api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  api.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof message !== 'object' || message === null || !('type' in message)) {
       return false
+    }
+
+    if (message.type === 'browserEvalCdp') {
+      // Eval via the debugger API (mode "cdp" and the automatic CDP fallback
+      // when a page CSP blocks inject-mode eval): the content script asks the
+      // background to evaluate and relay the JSON string back.
+      const msg = message as { expression?: string; timeout_ms?: number }
+      const tabId = (sender as { tab?: { id?: number } }).tab?.id
+      const expression = typeof msg.expression === 'string' ? msg.expression : ''
+      if (!expression.trim() || tabId === undefined) {
+        sendResponse({ error: 'eval_cdp: missing expression or sender tab' })
+        return false
+      }
+      const timeoutMs =
+        typeof msg.timeout_ms === 'number' && msg.timeout_ms > 0
+          ? msg.timeout_ms
+          : DEFAULT_STEP_EVAL_TIMEOUT_MS
+      void evalInTabViaCdp(api, tabId, expression, timeoutMs)
+        .then(sendResponse)
+        .catch((error) => sendResponse({ error: error instanceof Error ? error.message : String(error) }))
+      return true
     }
 
     if (message.type === 'captureScreenshot') {

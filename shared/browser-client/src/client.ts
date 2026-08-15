@@ -10,6 +10,7 @@ import { type TokenProvider, normalizeBaseUrl } from './internals'
 import { createAIMethods } from './domains/ai'
 import { createAnalyticsMethods } from './domains/analytics'
 import { createBookmarkMethods } from './domains/bookmarks'
+import { createBrowserMethods } from './domains/browser'
 import { createHealthMethods } from './domains/health'
 import { createHistoryMethods } from './domains/history'
 import { createQuestionMethods } from './domains/questions'
@@ -42,5 +43,6 @@ export function createBrowserServerClient(baseUrl: string, options: BrowserServe
     ...createQuestionMethods(normalized, getToken),
     ...createAnalyticsMethods(normalized, getToken),
     ...createAIMethods(normalized, getToken),
+    ...createBrowserMethods(normalized, getToken),
   }
 }

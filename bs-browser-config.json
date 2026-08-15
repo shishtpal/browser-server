@@ -1,0 +1,41 @@
+{
+  "enabled": true,
+  "tools": {
+    "browser_list_instances": true,
+    "browser_list_tabs": true,
+    "browser_stats": true,
+    "browser_navigate": true,
+    "browser_click": true,
+    "browser_type": true,
+    "browser_press": true,
+    "browser_scroll": true,
+    "browser_wait": true,
+    "browser_scrape": true,
+    "browser_eval": true,
+    "browser_screenshot": true,
+    "browser_new_tab": true,
+    "browser_close_tab": true,
+    "browser_focus": true,
+    "browser_select": true,
+    "browser_check": true,
+    "browser_hover": true,
+    "browser_drag": true,
+    "browser_get_cookies": true,
+    "browser_set_cookie": true,
+    "browser_pdf": true,
+    "browser_bring_to_front": true,
+    "browser_storage": true,
+    "browser_execute": true
+  },
+  "eval": {
+    "default_mode": "inject",
+    "domains": {
+      "youtube.com": "cdp"
+    }
+  },
+  "timeouts": {
+    "default_command_timeout_ms": 60000,
+    "max_command_timeout_ms": 600000,
+    "selector_timeout_ms": 10000
+  }
+}

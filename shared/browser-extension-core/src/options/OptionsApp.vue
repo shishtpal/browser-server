@@ -10,6 +10,8 @@ const form = reactive({
   userId: DEFAULT_SETTINGS.userId,
   autoCapture: DEFAULT_SETTINGS.autoCapture,
   unsafePreview: DEFAULT_SETTINGS.unsafePreview,
+  instanceLabel: DEFAULT_SETTINGS.instanceLabel,
+  allowAiControl: DEFAULT_SETTINGS.allowAiControl,
 })
 
 const statusMessage = ref<string>('')
@@ -59,6 +61,8 @@ async function handleSave() {
   const userId = form.userId.trim()
   const autoCapture = form.autoCapture
   const unsafePreview = form.unsafePreview
+  const instanceLabel = form.instanceLabel.trim()
+  const allowAiControl = form.allowAiControl
 
   if (!apiBase) {
     showStatus('Server URL is required.', 'err')
@@ -80,7 +84,7 @@ async function handleSave() {
 
   isSaving.value = true
   try {
-    await saveSettings({ apiBase, apiToken, userId, autoCapture, unsafePreview })
+    await saveSettings({ apiBase, apiToken, userId, autoCapture, unsafePreview, instanceLabel, allowAiControl })
     showStatus('Settings saved.', 'ok')
   } finally {
     isSaving.value = false
@@ -104,7 +108,7 @@ async function testConnection() {
   isTesting.value = true
   connectionStatus.value = 'idle'
   try {
-    const client = createApiClient({ apiBase, apiToken: form.apiToken, userId: form.userId, autoCapture: form.autoCapture, unsafePreview: form.unsafePreview })
+    const client = createApiClient({ apiBase, apiToken: form.apiToken, userId: form.userId, autoCapture: form.autoCapture, unsafePreview: form.unsafePreview, instanceLabel: form.instanceLabel, allowAiControl: form.allowAiControl })
     const reachable = await client.ping()
     connectionStatus.value = reachable ? 'online' : 'offline'
     showStatus(reachable ? 'Server is reachable.' : 'Cannot reach server.', reachable ? 'ok' : 'err')
@@ -194,6 +198,36 @@ onMounted(() => {
             <span class="block text-sm font-medium text-slate-200">Auto-capture screenshots</span>
             <span class="mt-1 block text-xs text-slate-500">
               Capture the active tab when you open the Todos view.
+            </span>
+          </span>
+        </label>
+
+        <label class="block">
+          <span class="mb-2 block text-sm font-medium text-slate-300">Browser Instance Label</span>
+          <input
+            v-model="form.instanceLabel"
+            type="text"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-400 focus:outline-none"
+            placeholder="Work Chrome"
+          />
+          <span class="mt-2 block text-xs text-slate-500">
+            Friendly name for this browser profile. The AI can target this browser by label
+            (e.g. "Work Chrome") when multiple browsers are online.
+          </span>
+        </label>
+
+        <label class="flex items-start gap-3 rounded-lg border border-amber-900/60 bg-amber-950/20 px-4 py-3">
+          <input
+            v-model="form.allowAiControl"
+            type="checkbox"
+            class="mt-1 h-4 w-4 accent-rose-500"
+          />
+          <span>
+            <span class="block text-sm font-medium text-amber-200">Allow AI to control this browser</span>
+            <span class="mt-1 block text-xs text-amber-100/60">
+              Lets the AI assistant navigate, click, type, scrape, and screenshot tabs in this
+              browser. Commands are ignored while this is off. Keep it off unless you want
+              hands-off automation.
             </span>
           </span>
         </label>

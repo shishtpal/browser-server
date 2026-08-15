@@ -2,6 +2,8 @@ package api
 
 import (
 	"browser-server/internal/ai/bootstrap"
+	aibrowser "browser-server/internal/ai/browser"
+	browserconfig "browser-server/internal/ai/browser/config"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
 	aimcp "browser-server/internal/ai/mcp"
@@ -11,6 +13,7 @@ import (
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tasks"
 	"browser-server/internal/ai/voice"
+	"browser-server/internal/browser"
 	"context"
 	"errors"
 	"fmt"
@@ -24,23 +27,26 @@ import (
 )
 
 type Module struct {
-	cfg            *aiconfig.Config
-	store          *store.Store
-	service        *chat.Service
-	profiles       *profiles.Registry
-	skills         *skills.Registry
-	mcp            *aimcp.Manager
-	voice          atomic.Pointer[voice.Config]
-	tasks          *tasks.Runner
-	memory         *memory.Store
-	attachmentsDir string
-	holders        *bootstrap.ServiceHolders
-	configDir      string
-	configMu       sync.RWMutex
-	stop           chan struct{}
-	wg             sync.WaitGroup
-	closeOnce      sync.Once
-	closeErr       error
+	cfg             *aiconfig.Config
+	store           *store.Store
+	service         *chat.Service
+	profiles        *profiles.Registry
+	skills          *skills.Registry
+	mcp             *aimcp.Manager
+	voice           atomic.Pointer[voice.Config]
+	tasks           *tasks.Runner
+	memory          *memory.Store
+	attachmentsDir  string
+	holders         *bootstrap.ServiceHolders
+	browser         *browser.Bus
+	screenshotStore *aibrowser.ScreenshotStore
+	pdfStore        *aibrowser.PdfStore
+	configDir       string
+	configMu        sync.RWMutex
+	stop            chan struct{}
+	wg              sync.WaitGroup
+	closeOnce       sync.Once
+	closeErr        error
 }
 
 // The Module struct keeps the same field names as the provider-agnostic runtime
@@ -48,8 +54,10 @@ type Module struct {
 // referencing m.cfg / m.store / m.service unchanged.
 
 func Init() (*Module, error) {
-	rt, err := bootstrap.Init(bootstrap.Options{ReconcilePending: true})
+	browserBus := browser.New()
+	rt, err := bootstrap.Init(bootstrap.Options{ReconcilePending: true, BrowserBus: browserBus})
 	if err != nil {
+		browserBus.Close()
 		return nil, err
 	}
 	configDir, err := aiconfig.ExecutableDir()
@@ -68,6 +76,23 @@ func Init() (*Module, error) {
 		attachmentsDir: rt.AttachmentsDir,
 		holders:        rt.Holders,
 		configDir:      configDir,
+		browser:        rt.Browser,
+	}
+	// Browser screenshots are persisted to disk and referenced by URL instead
+	// of inlined base64. Wired regardless of the AI enabled state so extension
+	// captures are always stored and results stay small.
+	module.screenshotStore = aibrowser.NewScreenshotStore(rt.Config.ResolvePath(".data"))
+	// Browser PDFs are persisted the same way (the CDP print-to-PDF payload is
+	// base64 that would otherwise blow the model output budget).
+	module.pdfStore = aibrowser.NewPdfStore(rt.Config.ResolvePath(".data"))
+	if browserBus != nil {
+		browserBus.SetScreenshotSink(module.screenshotStore.Save)
+		browserBus.SetPdfSink(module.pdfStore.Save)
+		// Domain-based eval modes and timeout bounds come from
+		// bs-browser-config.json. The funcs re-read the live config on every
+		// call, so admin Project Settings edits hot-reload without a restart.
+		browserBus.SetEvalModeFunc(browserconfig.EvalModeForURL)
+		browserBus.SetCommandLimitsFunc(browserconfig.CommandLimits)
 	}
 	if !rt.Config.Enabled {
 		return module, nil
@@ -169,6 +194,10 @@ func (m *Module) Close() error {
 		if m.tasks != nil {
 			m.tasks.Stop()
 		}
+		if m.browser != nil {
+			m.browser.Close()
+			m.browser = nil
+		}
 		if m.service != nil {
 			m.service.Close()
 		}
@@ -206,6 +235,35 @@ func (m *Module) PrepareRestart() {
 		m.mcp = nil
 	}
 	_ = m.Close()
+}
+
+// BrowserBus returns the in-process browser command bus (nil when AI is
+// disabled). Handlers in cmd/server wire it into internal/handlers.
+func (m *Module) BrowserBus() *browser.Bus {
+	if m == nil {
+		return nil
+	}
+	return m.browser
+}
+
+// ScreenshotDir returns the directory holding saved browser screenshot PNGs
+// (empty when the module was never initialized). cmd/server wires it into
+// internal/handlers for the serving route.
+func (m *Module) ScreenshotDir() string {
+	if m == nil || m.screenshotStore == nil {
+		return ""
+	}
+	return m.screenshotStore.Dir()
+}
+
+// PdfDir returns the directory holding saved browser PDFs (empty when the
+// module was never initialized). cmd/server wires it into internal/handlers for
+// the serving route.
+func (m *Module) PdfDir() string {
+	if m == nil || m.pdfStore == nil {
+		return ""
+	}
+	return m.pdfStore.Dir()
 }
 
 // Profiles returns the loaded profile registry for use by other components.

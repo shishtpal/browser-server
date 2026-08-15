@@ -6,9 +6,13 @@ export interface ExtensionSettings {
   userId: string
   autoCapture: boolean
   unsafePreview: boolean
+  /** Human-readable label for this browser profile, e.g. "Work Chrome". */
+  instanceLabel: string
+  /** Master arm switch: when false the extension ignores AI browser commands. */
+  allowAiControl: boolean
 }
 
-const SETTINGS_KEY = 'tracker_settings'
+export const SETTINGS_KEY = 'tracker_settings'
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   apiBase: 'http://localhost:9191',
@@ -16,6 +20,8 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   userId: '1',
   autoCapture: true,
   unsafePreview: false,
+  instanceLabel: '',
+  allowAiControl: false,
 }
 
 export async function getSettings(): Promise<ExtensionSettings> {

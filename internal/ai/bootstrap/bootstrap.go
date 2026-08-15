@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"browser-server/internal/ai/attachments"
+	aibrowser "browser-server/internal/ai/browser"
+	browserconfig "browser-server/internal/ai/browser/config"
 	"browser-server/internal/ai/chat"
 	aiconfig "browser-server/internal/ai/config"
 	"browser-server/internal/ai/images"
@@ -30,6 +32,7 @@ import (
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tools"
 	"browser-server/internal/ai/tts"
+	"browser-server/internal/browser"
 )
 
 // Options controls bootstrap behavior.
@@ -42,6 +45,11 @@ type Options struct {
 	// process like the CLI passes false so it never cancels another process's
 	// in-flight turn.
 	ReconcilePending bool
+	// BrowserBus, when non-nil, is the in-process browser command bus the
+	// server owns. Browser tools use a LocalClient against it. When nil (the
+	// CLI), browser tools use the HTTP client that relays through the running
+	// server on localhost.
+	BrowserBus *browser.Bus
 }
 
 // ServiceHolder publishes a hot-swappable service while keeping the retired
@@ -136,6 +144,9 @@ type Runtime struct {
 	Memory         *memory.Store
 	AttachmentsDir string
 	Holders        *ServiceHolders
+	// Browser is the in-process browser command bus when this process owns one
+	// (the server). Nil in the CLI, which relays through the server's HTTP API.
+	Browser *browser.Bus
 }
 
 //go:embed generate_image.json
@@ -342,6 +353,50 @@ func Init(opts Options) (*Runtime, error) {
 			log.Printf("AI MCP: %d configured, %d connected, %d unavailable, %d usable tool(s)", len(statuses), connected, unavailable, len(discovered))
 		}
 	}
+	// Browser automation tools. The server passes an in-process bus; the CLI
+	// falls back to the HTTP relay against the running server. Tools are
+	// auto-allowed when tools are enabled so both entry points expose them.
+	// Per-tool availability is gated by bs-browser-config.json: a missing or
+	// disabled config makes every browser tool unavailable through the same
+	// Available closures the registry evaluates at build and execution time.
+	if browserCfg, loadErr := browserconfig.Load(); loadErr != nil {
+		_ = ttsService.Close()
+		_ = imageService.Close()
+		st.Close()
+		return nil, fmt.Errorf("load browser config: %w", loadErr)
+	} else if browserCfg.Enabled {
+		toolNames := browserconfig.ToolNames()
+		enabled := 0
+		for _, name := range toolNames {
+			if browserCfg.ToolEnabled(name) {
+				enabled++
+			}
+		}
+		log.Printf("Browser automation tools: %d of %d enabled (%s)", enabled, len(toolNames), browserCfg.Path)
+	} else {
+		log.Printf("Browser automation tools disabled by config (%s)", browserCfg.Path)
+	}
+	if cfg.Tools.Enabled {
+		var browserClient browser.Client
+		if opts.BrowserBus != nil {
+			browserClient = &browser.LocalClient{Bus: opts.BrowserBus}
+		} else {
+			browserClient = browser.NewHTTPClient(browser.ServerURL(), browser.OperatorTokenProvider())
+		}
+		browserTools := aibrowser.Tools(browserClient)
+		externalTools = append(externalTools, browserTools...)
+		allowedSet := make(map[string]bool, len(cfg.Tools.Allowed))
+		for _, name := range cfg.Tools.Allowed {
+			allowedSet[name] = true
+		}
+		for _, bt := range browserTools {
+			if !allowedSet[bt.Name] {
+				cfg.Tools.Allowed = append(cfg.Tools.Allowed, bt.Name)
+				allowedSet[bt.Name] = true
+			}
+		}
+	}
+
 	// Memory graph store (process singleton shared with tools, persona
 	// injection and the admin endpoint). Wire the "librarian" synthesizer to a
 	// cheap model referenced from bs-ai-models.json when enabled.
@@ -397,6 +452,7 @@ func Init(opts Options) (*Runtime, error) {
 		Memory:         memStore,
 		AttachmentsDir: attachmentsDir,
 		Holders:        holders,
+		Browser:        opts.BrowserBus,
 	}, nil
 }
 

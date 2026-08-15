@@ -65,6 +65,8 @@ function showProviderBanner(accounts: LoginProviderAccount[]): void {
   })
 }
 
+export { initAutomationContentScript } from './lib/automationExecutor'
+
 export async function initLoginProviderContentScript(sendMessage: SendMessage): Promise<void> {
   try {
     const response = await sendMessage({ type: 'getLoginProviders', hostname: location.hostname })

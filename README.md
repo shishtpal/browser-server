@@ -20,6 +20,7 @@ The project includes:
 - Todo screenshot capture and storage
 - Domain usage analytics
 - AI chat with streaming responses, configurable providers (OpenRouter, OpenAI, etc.), server-side tool calling, and optional web/file/memory/skill integrations
+- AI browser automation: the AI (web chat and `bs-ai-chat`) can drive your real browser — navigate, click, type, scrape, screenshot — with per-browser/per-tab targeting, session locking, and an explicit opt-in arm switch in the extension options (see `plans/Browser-Automation-Plan.md`)
 - Prompt management with folder-aware storage and search
 - Combined bookmark/history search through the extension omnibox keyword `bs`
 - One-click bookmark and todo capture from the page context menu or keyboard shortcuts
@@ -112,10 +113,12 @@ The token and data directories are created when their corresponding commands run
 | `bs-ai-voice.json` | beside `bs-ai-config.json` | Optional voice typing providers, models, languages, and recording limits |
 | `bs-ai-image-models.json` | beside `bs-ai-config.json` | Optional AI image-generation providers and models |
 | `bs-ai-tts.json` | beside `bs-ai-config.json` | Optional AI text-to-speech providers, models, and voices |
+| `bs-browser-config.json` | beside `bs-ai-config.json` | Optional per-tool gate, per-domain eval modes, and timeout bounds for the browser automation AI tools |
 | `BS_AI_CONFIG_PATH` | — | Override path to `bs-ai-config.json` |
 | `BS_AI_MODELS_PATH` | — | Override path to `bs-ai-models.json` |
 | `BS_AI_MCP_PATH` | — | Override path to `bs-ai-mcp.json` |
 | `BS_AI_VOICE_PATH` | — | Override path to `bs-ai-voice.json` |
+| `BS_BROWSER_CONFIG_PATH` | — | Override path to `bs-browser-config.json` |
 
 Examples:
 
@@ -150,9 +153,9 @@ The Project Settings page at `/settings/` is protected by a second, disjoint cre
 
 Restart the server after generating, rotating, or deleting `.bs-token-admin`, then paste the admin token into the Project Settings page. If the file is absent, administrator endpoints return `403 admin_disabled`; this never affects operator routes.
 
-The page can view and edit only this explicit whitelist: `bs-ai-config.json`, `bs-ai-models.json`, `bs-ai-mcp.json`, `bs-ai-tts.json`, `bs-ai-image-models.json`, `bs-ai-voice.json`, and `bs-quiz-config.json`. Its Fira Code JSON editor provides syntax highlighting, line numbers, persistent font-size controls, syntax feedback, and a full-screen view. Literal values under secret-like keys are returned as `"__KEEP__"` and restored from the on-disk file on save; `env:VARIABLE_NAME` references remain visible. Writes are validated and replaced atomically.
+The page can view and edit only this explicit whitelist: `bs-ai-config.json`, `bs-ai-models.json`, `bs-ai-mcp.json`, `bs-ai-tts.json`, `bs-ai-image-models.json`, `bs-ai-voice.json`, `bs-quiz-config.json`, and `bs-browser-config.json`. Its Fira Code JSON editor provides syntax highlighting, line numbers, persistent font-size controls, syntax feedback, and a full-screen view. Literal values under secret-like keys are returned as `"__KEEP__"` and restored from the on-disk file on save; `env:VARIABLE_NAME` references remain visible. Writes are validated and replaced atomically.
 
-TTS, image, voice-typing, and quiz rules hot-reload. Changing quiz boot-time fields (`enabled`, `db_path`, `image_dir`, or CORS) still requires a restart because its database, routes, and paths are initialized at boot. Main AI, model-catalog, and MCP changes always require a restart. The restart button appears only when `BS_MANAGED=1`; `scripts/Manage-Service.ps1` sets this flag and NSSM's restart-on-exit policy when it creates an NSSM service. A server started manually must be restarted manually.
+TTS, image, voice-typing, quiz, and browser-tools rules hot-reload. Changing quiz boot-time fields (`enabled`, `db_path`, `image_dir`, or CORS) still requires a restart because its database, routes, and paths are initialized at boot. Main AI, model-catalog, and MCP changes always require a restart. The restart button appears only when `BS_MANAGED=1`; `scripts/Manage-Service.ps1` sets this flag and NSSM's restart-on-exit policy when it creates an NSSM service. A server started manually must be restarted manually.
 
 ## API authentication
 

@@ -340,7 +340,17 @@ func (c *OpenAICompatibleClient) streamOnce(ctx context.Context, raw []byte, emi
 		return out, &Error{Code: "malformed_provider_stream", Status: 502, Retryable: true, Diagnostic: "stream ended without terminal event"}
 	}
 	out.Reasoning = reasoning.String()
-	for i := 0; i < len(calls); i++ {
+	// Iterate up to the maximum tool-call index rather than len(calls): if a
+	// stream ever uses non-dense indices (e.g. a reasoning chunk at index 0
+	// followed by a call at index 1), a len(calls)-bounded loop silently
+	// drops every call whose index >= len(calls).
+	maxIndex := -1
+	for idx := range calls {
+		if idx > maxIndex {
+			maxIndex = idx
+		}
+	}
+	for i := 0; i <= maxIndex; i++ {
 		if calls[i] != nil {
 			out.ToolCalls = append(out.ToolCalls, *calls[i])
 			_ = emit(Event{Type: "tool_call", ToolCall: calls[i]})

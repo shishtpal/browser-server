@@ -123,7 +123,8 @@ func NewService(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Regi
 func NewServiceWithTools(cfg *aiconfig.Config, st *store.Store, profileReg *profiles.Registry, skillReg *skills.Registry, external []tools.Tool) (*Service, error) {
 	clients := map[string]provider.Client{}
 	for name, item := range cfg.Providers {
-		clients[name] = provider.NewOpenAICompatibleClient(
+		clients[name] = provider.New(
+			item.Type,
 			item.BaseURL,
 			item.APIKey,
 			time.Duration(item.RequestTimeoutSeconds)*time.Second,
@@ -296,6 +297,7 @@ func (s *Service) SubmitStream(ctx context.Context, conversationID string, req S
 		Messages:        providerMessages,
 		Temperature:     s.cfg.Chat.Temperature,
 		MaxOutputTokens: maxOutput,
+		GoogleSearch:    s.cfg.Providers[providerName].GoogleSearch,
 	}
 	activeToolSet := map[string]bool{}
 	loadedToolSet := map[string]bool{}

@@ -15,6 +15,7 @@ type ModelInfo struct {
 	ID              string
 	Label           string
 	SupportsTools   bool
+	SupportsVision  bool
 	MaxOutputTokens int
 }
 
@@ -54,6 +55,7 @@ func init() {
 	Register(openRouterProvider{})
 	Register(openCodeProvider{})
 	Register(huggingfaceProvider{})
+	Register(geminiProvider{})
 }
 
 func unknownProviderError(name string) error {

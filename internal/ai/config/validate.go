@@ -87,7 +87,9 @@ func validate(cfg *Config) error {
 		if strings.TrimSpace(name) == "" {
 			return fmt.Errorf("provider name cannot be empty")
 		}
-		if provider.Type != "openai_compatible" {
+		switch provider.Type {
+		case "openai_compatible", "gemini_interactions":
+		default:
 			return fmt.Errorf("provider %q has unsupported type %q", name, provider.Type)
 		}
 		parsed, err := url.Parse(provider.BaseURL)

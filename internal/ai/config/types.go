@@ -101,6 +101,9 @@ type ProviderConfig struct {
 	RetryAttempts         int           `json:"retry_attempts"`
 	RetryDelaySeconds     int           `json:"retry_delay_seconds"`
 	Models                []ModelConfig `json:"models"`
+	// GoogleSearch opts Gemini interactions into the model's native
+	// google_search tool in addition to server-side tools.
+	GoogleSearch bool `json:"google_search,omitempty"`
 }
 
 type ModelConfig struct {

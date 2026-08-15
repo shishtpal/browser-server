@@ -26,6 +26,7 @@ func Merge(existing []config.ModelConfig, fetched []ModelInfo) []config.ModelCon
 			ID:              info.ID,
 			Label:           info.Label,
 			SupportsTools:   info.SupportsTools,
+			SupportsVision:  info.SupportsVision,
 			MaxOutputTokens: info.MaxOutputTokens,
 			Default:         false,
 		})

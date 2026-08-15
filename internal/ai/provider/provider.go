@@ -43,6 +43,10 @@ type ChatRequest struct {
 	Temperature     float64
 	MaxOutputTokens int
 	Tools           []ToolSpec
+	// GoogleSearch opts the request into the provider's native web-search
+	// tool (Gemini's google_search) in addition to server-side tools. It is
+	// set from per-provider config and ignored by OpenAI-compatible clients.
+	GoogleSearch bool
 }
 
 type ChatResponse struct {
@@ -68,6 +72,16 @@ type Usage struct {
 type Client interface {
 	Complete(ctx context.Context, req ChatRequest) (ChatResponse, error)
 	Stream(ctx context.Context, req ChatRequest, emit func(Event) error) (ChatResponse, error)
+}
+
+// New builds a provider client for the given provider type ("openai_compatible"
+// or "gemini_interactions"). Unknown types fall back to the OpenAI-compatible
+// client; config validation rejects them before any client is constructed.
+func New(typ, baseURL, apiKey string, timeout time.Duration, retryAttempts int, retryDelay time.Duration) Client {
+	if typ == "gemini_interactions" {
+		return NewGeminiInteractionsClient(baseURL, apiKey, timeout, retryAttempts, retryDelay)
+	}
+	return NewOpenAICompatibleClient(baseURL, apiKey, timeout, retryAttempts, retryDelay)
 }
 
 type Event struct {

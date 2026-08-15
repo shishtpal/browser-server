@@ -267,6 +267,18 @@ Create two sibling files next to the server binary: `bs-ai-config.json` for beha
         { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true, "max_output_tokens": 4096 },
         { "id": "anthropic/claude-sonnet-4", "label": "Claude Sonnet 4", "supports_tools": true, "max_output_tokens": 8192 }
       ]
+    },
+    "gemini": {
+      "type": "gemini_interactions",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "api_key": "env:GEMINI_API_KEY",
+      "request_timeout_seconds": 120,
+      "retry_attempts": 10,
+      "retry_delay_seconds": 5,
+      "google_search": true,
+      "models": [
+        { "id": "models/gemini-3-flash", "label": "Gemini 3 Flash", "supports_tools": true, "supports_vision": true, "default": true, "max_output_tokens": 8192 }
+      ]
     }
   }
 }

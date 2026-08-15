@@ -318,12 +318,14 @@ Provider/model catalog in `bs-ai-models.json`:
 {
   "providers": {
     "<name>": {
-      "type": "openai_compatible",
+      "type": "openai_compatible",   // or "gemini_interactions"
       "base_url": "https://...",
       "api_key": "env:ENV_VAR_NAME",   // resolved from environment at runtime
       "request_timeout_seconds": 120,
       "retry_attempts": 10,
       "retry_delay_seconds": 5,
+      "google_search": true,   // gemini_interactions only: adds the model's
+                               // native google_search tool alongside server tools
       "models": [
         { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "supports_tools": true, "default": true }
       ]
@@ -331,6 +333,18 @@ Provider/model catalog in `bs-ai-models.json`:
   }
 }
 ```
+
+Two provider types are supported. `openai_compatible` (OpenRouter, OpenAI, etc.)
+is the default. `gemini_interactions` targets Google's Gemini Interactions API
+(`POST {base}/interactions`, typically `https://generativelanguage.googleapis.com/v1beta`).
+It is stateless — the full history is re-sent as an input step array every turn —
+so branching/regeneration/editing keep working without interaction chaining.
+Model IDs may carry the `models/` prefix (stripped before the request). The
+client lives in `internal/ai/provider/gemini_interactions.go` and is selected by
+`provider.New` (see `internal/ai/provider/provider.go`); unknown types fall back
+to the OpenAI-compatible client, and config validation rejects them first.
+`google_search: true` on a `gemini_interactions` provider appends the model's
+native `google_search` tool to every request in addition to server-side tools.
 
 API keys that start with `env:` are resolved from the corresponding environment variable.
 
@@ -349,7 +363,7 @@ Provider requests retry transient failures (network errors, timeouts, HTTP `429`
 |---------|---------------|
 | `ai/config` | Parses `bs-ai-config.json` and `bs-ai-models.json`, resolves env-based keys, exposes typed config |
 | `ai/mcp` | Parses optional `bs-ai-mcp.json`, connects MCP servers, discovers/routes tools, and owns sessions |
-| `ai/provider` | LLM abstraction; currently supports OpenAI-compatible (OpenRouter, OpenAI, etc.) |
+| `ai/provider` | LLM abstraction; supports OpenAI-compatible (OpenRouter, OpenAI, etc.) and Gemini Interactions clients |
 | `ai/store` | SQLite persistence for conversations + messages |
 | `ai/tools` | Registry of server-side tools the model can invoke (e.g. `get_current_time`, `search_bookmarks`) |
 | `ai/chat` | Orchestration: builds prompts, streams completions, handles multi-turn tool-call loops |

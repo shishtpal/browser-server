@@ -405,8 +405,8 @@ func Init(opts Options) (*Runtime, error) {
 		memStore = memory.New(cfg.Memory)
 		if cfg.Memory.Synthesizer.Enabled {
 			if pc, ok := cfg.Providers[cfg.Memory.Synthesizer.Provider]; ok {
-				client := provider.NewOpenAICompatibleClient(
-					pc.BaseURL, pc.APIKey,
+				client := provider.New(
+					pc.Type, pc.BaseURL, pc.APIKey,
 					time.Duration(pc.RequestTimeoutSeconds)*time.Second,
 					pc.RetryAttempts,
 					time.Duration(pc.RetryDelaySeconds)*time.Second,

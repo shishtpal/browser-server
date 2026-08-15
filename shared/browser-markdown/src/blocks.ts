@@ -8,6 +8,7 @@ import {
   TABLE_DELIM_RE,
   isBlank,
   isBlockStart,
+  stripBlockquoteMarker,
 } from './patterns';
 import { renderInline } from './inline';
 import { alignStyle, codeBlockHtml, headingHtml, splitTableRow } from './block-renderers';
@@ -79,11 +80,12 @@ export function parseBlocks(lines: string[], ctx: Ctx, tight = false): string {
     }
 
     /* ── blockquote (with GitHub alerts) ─────────────────────────── */
-    if (/^ {0,3}>/.test(line)) {
+    if (stripBlockquoteMarker(line) !== null) {
       const body: string[] = [];
       while (i < lines.length) {
-        if (/^ {0,3}>/.test(lines[i])) {
-          body.push(lines[i].replace(/^ {0,3}>[ \t]?/, ''));
+        const stripped = stripBlockquoteMarker(lines[i]);
+        if (stripped !== null) {
+          body.push(stripped);
           i++;
           continue;
         }

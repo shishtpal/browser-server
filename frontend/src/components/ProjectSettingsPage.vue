@@ -12,6 +12,7 @@ const {
   files,
   selected,
   draft,
+  schema,
   dirty,
   needsRestart,
   canRestart,
@@ -120,6 +121,7 @@ function refreshFiles() {
           :reloading="reloading"
           :restarting="restarting"
           :managed="status?.managed ?? false"
+          :schema="schema"
           :restart-required="needsRestart"
           :can-restart="canRestart"
           @save="save"

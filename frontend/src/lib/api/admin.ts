@@ -35,6 +35,17 @@ export interface AdminConfigMutation {
   error?: string;
 }
 
+/**
+ * A JSON Schema (draft-07 shape) describing the editable shape of a config
+ * file, as derived from the Go structs that parse it. `schema` is null when
+ * the server does not expose a form editor for the file (falls back to code
+ * mode).
+ */
+export interface AdminConfigSchema {
+  name: string;
+  schema: Record<string, unknown> | null;
+}
+
 export class AdminAPIError extends Error {
   constructor(
     public readonly status: number,
@@ -101,6 +112,10 @@ export function listAdminConfigFiles(): Promise<AdminConfigFile[]> {
 
 export function getAdminConfigFile(name: string): Promise<AdminConfigContent> {
   return fetchJSON(`/api/admin/config/files/${encodeURIComponent(name)}`);
+}
+
+export function getAdminConfigSchema(name: string): Promise<AdminConfigSchema> {
+  return fetchJSON(`/api/admin/config/schema/${encodeURIComponent(name)}`);
 }
 
 export function putAdminConfigFile(name: string, content: string): Promise<AdminConfigMutation> {

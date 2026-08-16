@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   AdminAPIError,
   getAdminConfigFile,
+  getAdminConfigSchema,
   getAdminStatus,
   isServerOnline,
   listAdminConfigFiles,
@@ -9,6 +10,7 @@ import {
   reloadAdminConfigFile,
   restartServer,
   type AdminConfigFile,
+  type AdminConfigSchema,
   type AdminStatus,
 } from '../../../lib/api';
 import { hasAdminToken } from '../../../lib/auth';
@@ -29,6 +31,7 @@ export function useProjectSettings() {
   const selected = ref<AdminConfigFile | null>(null);
   const draft = ref('');
   const original = ref('');
+  const schema = ref<AdminConfigSchema | null>(null);
   const loadingFiles = ref(false);
   const loadingContent = ref(false);
   const saving = ref(false);
@@ -78,6 +81,7 @@ export function useProjectSettings() {
     status.value = null;
     files.value = [];
     selected.value = null;
+    schema.value = null;
     loadingContent.value = false;
     needsRestart.value = false;
     if (!hasAdminToken()) {
@@ -117,6 +121,7 @@ export function useProjectSettings() {
     selected.value = file;
     needsRestart.value = false;
     error.value = '';
+    schema.value = null;
     if (!file.exists) {
       const starter = '{\n  \n}\n';
       draft.value = starter;
@@ -129,6 +134,14 @@ export function useProjectSettings() {
       if (requestID !== selectionRequest) return;
       draft.value = content.content;
       original.value = content.content;
+      schema.value = null;
+      try {
+        const schemaResponse = await getAdminConfigSchema(file.name);
+        if (requestID === selectionRequest) schema.value = schemaResponse;
+      } catch {
+        // Schema loading is best-effort: fall back to code mode if it fails.
+        if (requestID === selectionRequest) schema.value = null;
+      }
     } catch (caught) {
       if (requestID === selectionRequest) error.value = describeError(caught);
     } finally {
@@ -243,6 +256,7 @@ export function useProjectSettings() {
     files,
     selected,
     draft,
+    schema,
     dirty,
     needsRestart,
     canRestart,

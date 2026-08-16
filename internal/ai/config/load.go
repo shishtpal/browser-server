@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 )
 
-type modelsFile struct {
+// ModelsFile is the parsed shape of bs-ai-models.json (the provider/model
+// catalog). It is exported so internal/ai/api can derive a JSON Schema for the
+// admin config editor form.
+type ModelsFile struct {
 	Providers map[string]ProviderConfig `json:"providers"`
 }
 
@@ -66,7 +69,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("read AI models: %w", err)
 	}
 
-	var mf modelsFile
+	var mf ModelsFile
 	if err := json.Unmarshal(modelsContent, &mf); err != nil {
 		return nil, fmt.Errorf("parse AI models: %w", err)
 	}
@@ -105,7 +108,7 @@ func ValidateBytes(mainContent, modelsContent []byte, baseDir string) error {
 		return nil
 	}
 
-	var models modelsFile
+	var models ModelsFile
 	if err := json.Unmarshal(modelsContent, &models); err != nil {
 		return fmt.Errorf("parse AI models: %w", err)
 	}

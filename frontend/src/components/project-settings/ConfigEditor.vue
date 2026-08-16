@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   AlertTriangle,
   Maximize2,
@@ -11,8 +11,10 @@ import {
   RotateCcw,
   Save,
 } from '@lucide/vue';
-import type { AdminConfigFile } from '../../lib/api';
+import type { AdminConfigFile, AdminConfigSchema } from '../../lib/api';
+import type { SchemaNode } from './schema/schemaUtils';
 import JsonCodeEditor from './JsonCodeEditor.vue';
+import SchemaForm from './schema/SchemaForm.vue';
 
 const props = defineProps<{
   file: AdminConfigFile | null;
@@ -24,6 +26,7 @@ const props = defineProps<{
   managed: boolean;
   restartRequired: boolean;
   canRestart: boolean;
+  schema: AdminConfigSchema | null;
 }>();
 
 const emit = defineEmits<{
@@ -80,6 +83,131 @@ function requestSave() {
   if (props.dirty && !props.loading && !props.saving && !jsonError.value) emit('save');
 }
 
+const hasSchema = computed(() => Boolean(props.schema && props.schema.schema));
+const formSchema = computed<SchemaNode | undefined>(
+  () => (props.schema?.schema as SchemaNode | undefined) ?? undefined,
+);
+
+const mode = ref<'code' | 'form'>('code');
+const formData = ref<Record<string, unknown>>({});
+const suppressSync = ref(false);
+const modeKey = (name: string) => `project-settings-mode-${name}`;
+
+function parseDraft(): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(draft.value);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
+function initFromDraft() {
+  const parsed = parseDraft();
+  suppressSync.value = true;
+  formData.value = parsed ?? {};
+  // Allow the deep watcher to settle without echoing back into draft.
+  nextTick(() => {
+    suppressSync.value = false;
+  });
+}
+
+// Pick the editor mode whenever the selected file changes. A schema may not
+// be loaded yet at this point (it is fetched alongside the file content), so
+// this only sets a default; the schema watcher below re-applies the stored
+// preference once a schema actually arrives.
+watch(
+  () => props.file?.name,
+  () => {
+    mode.value = hasSchema.value ? ('form' as const) : ('code' as const);
+    const stored = props.file?.name ? localStorage.getItem(modeKey(props.file.name)) : null;
+    if (stored === 'code' && hasSchema.value) mode.value = 'code';
+    if (mode.value !== 'form') return;
+    // The new file's content has not loaded yet. Clear the form so values
+    // from the previous file are never shown or edited; the draft watcher
+    // rebuilds it once the content arrives.
+    suppressSync.value = true;
+    formData.value = {};
+    nextTick(() => {
+      suppressSync.value = false;
+    });
+  },
+);
+
+// The schema is fetched after the file content, so a file switch that
+// happened while props.schema was still null would otherwise leave the editor
+// in code mode despite a stored "form" preference. Apply the preference when
+// a schema first becomes available for the current selection.
+watch(
+  () => props.schema?.schema,
+  (now, before) => {
+    if (!now || before) return;
+    if (mode.value !== 'code') return;
+    const stored = props.file?.name ? localStorage.getItem(modeKey(props.file.name)) : null;
+    if (stored === 'code') return;
+    mode.value = 'form';
+    initFromDraft();
+  },
+);
+
+// Rebuild the form whenever the draft changes from outside the form (file
+// switch, async content load, post-save refresh). Form-driven edits already
+// round-trip through the deep watcher below, and the serialized-equality
+// check keeps this watcher from echoing our own writes back into the form.
+watch(draft, () => {
+  if (mode.value !== 'form' || suppressSync.value) return;
+  if (draft.value === JSON.stringify(formData.value, null, 2) + '\n') return;
+  initFromDraft();
+});
+
+onMounted(() => {
+  if (hasSchema.value) initFromDraft();
+});
+
+function switchToForm() {
+  if (!hasSchema.value || jsonError.value) {
+    mode.value = 'code';
+    return;
+  }
+  initFromDraft();
+  mode.value = 'form';
+}
+
+function switchToCode() {
+  // Commit any in-flight form state back to the JSON draft so Code mode sees
+  // exactly what the form produced.
+  suppressSync.value = true;
+  draft.value = JSON.stringify(formData.value, null, 2) + '\n';
+  suppressSync.value = false;
+  mode.value = 'code';
+}
+
+function setMode(next: 'code' | 'form') {
+  if (next === mode.value) return;
+  if (next === 'form') switchToForm();
+  else switchToCode();
+  // Persist only when the switch actually happened (Form is rejected while the
+  // draft has invalid JSON, so it must not become the stored preference).
+  if (mode.value === next && props.file?.name) {
+    localStorage.setItem(modeKey(props.file.name), next);
+  }
+}
+
+// Keep the JSON draft in sync with form edits so dirty detection and save use
+// the latest structured value. A suppress flag prevents the round-trip when we
+// are programmatically initializing from (or syncing back to) the draft.
+watch(
+  formData,
+  () => {
+    if (mode.value !== 'form' || suppressSync.value) return;
+    draft.value = JSON.stringify(formData.value, null, 2) + '\n';
+  },
+  { deep: true },
+);
+
 onMounted(() => {
   const stored = Number.parseInt(localStorage.getItem(FONT_SIZE_KEY) ?? '', 10);
   if (Number.isFinite(stored)) {
@@ -122,6 +250,38 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div v-if="file" class="flex flex-wrap items-center gap-2">
+        <div
+          v-if="hasSchema"
+          class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-950"
+          aria-label="Editor mode"
+        >
+          <button
+            type="button"
+            title="Edit as generated form fields"
+            :class="
+              mode === 'form'
+                ? 'bg-violet-600 text-white'
+                : 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-white/10'
+            "
+            class="grid h-8 w-16 place-items-center text-xs font-bold transition"
+            @click="setMode('form')"
+          >
+            Form
+          </button>
+          <button
+            type="button"
+            title="Edit raw JSON"
+            :class="
+              mode === 'code'
+                ? 'bg-violet-600 text-white'
+                : 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-white/10'
+            "
+            class="grid h-8 w-16 place-items-center border-l border-slate-200 text-xs font-bold transition dark:border-white/10"
+            @click="setMode('code')"
+          >
+            Code
+          </button>
+        </div>
         <div
           class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-950"
           aria-label="Editor font size"
@@ -240,30 +400,46 @@ onBeforeUnmount(() => {
     >
       Choose a whitelisted file to view or edit it.
     </div>
-    <div v-else class="relative flex flex-1 flex-col bg-slate-950">
-      <JsonCodeEditor
-        v-model="draft"
-        :aria-label="`JSON editor for ${file.name}`"
-        :disabled="saving || restarting"
-        :font-size="fontSize"
-        class="flex-1"
-        @save="requestSave"
-      />
-      <footer
-        class="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-2 font-mono text-[10px] text-slate-500"
-      >
-        <span class="flex min-w-0 items-center gap-2">
-          <span>Fira Code · JSON · {{ lineCount }} lines</span>
-          <span
-            class="truncate"
-            :class="jsonError ? 'text-rose-400' : 'text-emerald-400'"
-            :title="jsonError || 'Valid JSON syntax'"
-          >
-            {{ jsonError || 'Valid JSON' }}
+    <template v-else>
+      <div v-if="mode === 'form'" class="relative flex flex-1 flex-col overflow-y-auto">
+        <div class="flex-1 overflow-y-auto p-4">
+          <SchemaForm v-model="formData" :schema="formSchema" />
+        </div>
+        <footer
+          class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-2 font-mono text-[10px] text-slate-500 dark:border-white/10"
+        >
+          <span class="flex min-w-0 items-center gap-2">
+            <span>Generated form · {{ byteCount }} bytes</span>
+            <span class="text-emerald-400" title="Form serializes to valid JSON">Valid</span>
           </span>
-        </span>
-        <span>{{ byteCount }} bytes · Tab inserts 2 spaces · Ctrl/⌘+S saves</span>
-      </footer>
-    </div>
+          <span>Switch to Code to inspect or edit the raw JSON.</span>
+        </footer>
+      </div>
+      <div v-else class="relative flex flex-1 flex-col bg-slate-950">
+        <JsonCodeEditor
+          v-model="draft"
+          :aria-label="`JSON editor for ${file.name}`"
+          :disabled="saving || restarting"
+          :font-size="fontSize"
+          class="flex-1"
+          @save="requestSave"
+        />
+        <footer
+          class="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-2 font-mono text-[10px] text-slate-500"
+        >
+          <span class="flex min-w-0 items-center gap-2">
+            <span>Fira Code · JSON · {{ lineCount }} lines</span>
+            <span
+              class="truncate"
+              :class="jsonError ? 'text-rose-400' : 'text-emerald-400'"
+              :title="jsonError || 'Valid JSON syntax'"
+            >
+              {{ jsonError || 'Valid JSON' }}
+            </span>
+          </span>
+          <span>{{ byteCount }} bytes · Tab inserts 2 spaces · Ctrl/⌘+S saves</span>
+        </footer>
+      </div>
+    </template>
   </section>
 </template>

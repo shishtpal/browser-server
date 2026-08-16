@@ -70,7 +70,29 @@
         />
 
         <template v-else>
-          <div class="mb-3 flex items-center justify-end">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div
+              class="relative inline-flex items-center rounded-lg border border-gray-300 bg-white px-2.5 focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-100 dark:border-slate-600 dark:bg-slate-800 dark:focus-within:ring-violet-900/30"
+            >
+              <Search class="h-3.5 w-3.5 text-slate-400" :stroke-width="2.5" aria-hidden="true" />
+              <input
+                v-model="search"
+                type="search"
+                placeholder="Search prompt, provider, or model…"
+                aria-label="Search image generations"
+                class="search-input w-48 bg-transparent px-2 py-1.5 text-xs font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none sm:w-64 dark:text-slate-200"
+              />
+              <button
+                v-if="search"
+                type="button"
+                class="grid h-5 w-5 place-items-center rounded text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Clear search"
+                @click="search = ''"
+              >
+                <X class="h-3.5 w-3.5" :stroke-width="2.5" aria-hidden="true" />
+              </button>
+            </div>
+
             <div
               class="inline-flex overflow-hidden rounded-lg border border-gray-300 dark:border-slate-600"
             >
@@ -105,8 +127,17 @@
             </div>
           </div>
 
+          <!-- No search matches -->
+          <EmptyState
+            v-if="search && !groups.length && !singles.length && !busy"
+            title="No matching images"
+            :description="`Nothing matches “${search}”. Try a different prompt, provider, or model.`"
+            icon="search"
+            color="violet"
+          />
+
           <!-- Grouped by prompt -->
-          <div v-if="viewMode === 'grouped'" class="space-y-3">
+          <div v-else-if="viewMode === 'grouped'" class="space-y-3">
             <ImageGroup
               v-for="group in groups"
               :key="group.key"
@@ -174,7 +205,7 @@
             </article>
 
             <ImageCard
-              v-for="image in images"
+              v-for="image in filteredImages"
               :key="image.id"
               :image="image"
               :can-edit="canEdit"
@@ -209,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { Folder, LayoutGrid, ListOrdered, LoaderCircle, RefreshCw } from '@lucide/vue';
+import { Folder, LayoutGrid, ListOrdered, LoaderCircle, RefreshCw, Search, X } from '@lucide/vue';
 import { useUser } from '../composables/useUser';
 import { useImagePage } from './image/composables/useImagePage';
 import ImageCard from './image/ImageCard.vue';
@@ -254,6 +285,8 @@ const {
   busy,
   error,
   prompt,
+  search,
+  filteredImages,
   provider,
   model,
   size,
@@ -271,3 +304,12 @@ const {
   submit,
 } = gen;
 </script>
+
+<style scoped>
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+.search-input::-moz-search-clear {
+  display: none;
+}
+</style>

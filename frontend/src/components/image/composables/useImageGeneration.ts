@@ -25,6 +25,7 @@ export function useImageGeneration() {
   const error = ref('');
 
   const prompt = ref('');
+  const search = ref('');
   const provider = ref('');
   const model = ref('');
   const size = ref('1K');
@@ -114,12 +115,25 @@ export function useImageGeneration() {
     }
   }
 
+  // Only images whose prompt/provider/model match the search box. When the
+  // search box is empty this is the full gallery.
+  const filteredImages = computed<GeneratedImage[]>(() => {
+    const q = search.value.trim().toLowerCase();
+    if (!q) return images.value;
+    return images.value.filter(
+      (img) =>
+        img.prompt.toLowerCase().includes(q) ||
+        img.provider.toLowerCase().includes(q) ||
+        img.model.toLowerCase().includes(q),
+    );
+  });
+
   // Group images by exact prompt so the user can compare outputs from
   // different providers/models side by side. Prompts with a single image are
   // not folded into a folder — they render as plain cards.
   const groups = computed<ImageGroup[]>(() => {
     const map = new Map<string, GeneratedImage[]>();
-    for (const img of images.value) {
+    for (const img of filteredImages.value) {
       const key = img.prompt;
       const bucket = map.get(key);
       if (bucket) bucket.push(img);
@@ -143,10 +157,10 @@ export function useImageGeneration() {
   // plain cards (never wrapped in a folder).
   const singles = computed<GeneratedImage[]>(() => {
     const counts = new Map<string, number>();
-    for (const img of images.value) {
+    for (const img of filteredImages.value) {
       counts.set(img.prompt, (counts.get(img.prompt) ?? 0) + 1);
     }
-    return images.value.filter((i) => (counts.get(i.prompt) ?? 0) < 2);
+    return filteredImages.value.filter((i) => (counts.get(i.prompt) ?? 0) < 2);
   });
 
   return {
@@ -156,6 +170,7 @@ export function useImageGeneration() {
     busy,
     error,
     prompt,
+    search,
     provider,
     model,
     size,
@@ -172,6 +187,7 @@ export function useImageGeneration() {
     modelCount,
     groups,
     singles,
+    filteredImages,
     load,
     submit,
     remove,

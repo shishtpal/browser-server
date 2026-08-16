@@ -35,6 +35,7 @@ var knownToolNames = map[string]bool{
 	"recall_memory": true, "write_memory": true,
 	"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
 	"generate_image": true,
+	"generate_video": true,
 	"text_to_speech": true,
 	"ocr_image":      true,
 }

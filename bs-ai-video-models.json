@@ -1,0 +1,311 @@
+{
+  "enabled": true,
+  "default_provider": "agnes",
+  "db_path": "ai-videos.db",
+  "video_dir": "ai-videos",
+  "providers": {
+    "agnes": {
+      "type": "agnes_video",
+      "base_url": "https://apihub.agnes-ai.com",
+      "api_key": "env:AGNES_API_KEY",
+      "request_timeout_seconds": 900,
+      "models": [
+        {
+          "id": "agnes-video-v2.0",
+          "label": "Agnes Video V2.0",
+          "default": true,
+          "parameters": [
+            {
+              "key": "prompt",
+              "type": "text",
+              "label": "Prompt",
+              "group": "Core",
+              "required": true
+            },
+            {
+              "key": "mode",
+              "type": "select",
+              "label": "Mode",
+              "group": "Core",
+              "options": [
+                "ti2vid",
+                "keyframes"
+              ],
+              "help": "text-to-video or keyframe-to-video"
+            },
+            {
+              "key": "width",
+              "type": "number",
+              "label": "Width",
+              "group": "Size",
+              "min": 64,
+              "max": 1920,
+              "step": 8,
+              "default": 1152
+            },
+            {
+              "key": "height",
+              "type": "number",
+              "label": "Height",
+              "group": "Size",
+              "min": 64,
+              "max": 1080,
+              "step": 8,
+              "default": 768
+            },
+            {
+              "key": "num_frames",
+              "type": "number",
+              "label": "Frames",
+              "group": "Timing",
+              "min": 9,
+              "max": 441,
+              "step": 8,
+              "default": 121,
+              "help": "Absolute ceiling 441; must satisfy 8n+1"
+            },
+            {
+              "key": "frame_rate",
+              "type": "number",
+              "label": "Frame Rate",
+              "group": "Timing",
+              "min": 8,
+              "max": 30,
+              "default": 24
+            },
+            {
+              "key": "num_inference_steps",
+              "type": "number",
+              "label": "Inference Steps",
+              "group": "Quality",
+              "min": 1,
+              "max": 100,
+              "default": 50
+            },
+            {
+              "key": "seed",
+              "type": "number",
+              "label": "Seed",
+              "group": "Quality",
+              "help": "omit for random"
+            },
+            {
+              "key": "negative_prompt",
+              "type": "text",
+              "label": "Negative Prompt",
+              "group": "Quality"
+            },
+            {
+              "key": "image",
+              "type": "image_urls",
+              "label": "Image (I2V)",
+              "group": "Inputs",
+              "help": "single public URL"
+            },
+            {
+              "key": "extra_body.image",
+              "type": "image_urls",
+              "label": "Keyframes",
+              "group": "Inputs",
+              "help": "array of public URLs; sets keyframes mode"
+            }
+          ]
+        }
+      ]
+    },
+    "openrouter": {
+      "type": "openrouter_video",
+      "base_url": "https://openrouter.ai",
+      "api_key": "env:OPENROUTER_API_KEY",
+      "request_timeout_seconds": 900,
+      "models": [
+        {
+          "id": "google/veo-3.1-lite",
+          "label": "Google Veo 3.1 Lite",
+          "default": false,
+          "parameters": [
+            {
+              "key": "prompt",
+              "type": "text",
+              "label": "Prompt",
+              "group": "Core",
+              "required": true
+            },
+            {
+              "key": "duration",
+              "type": "select",
+              "label": "Duration",
+              "group": "Core",
+              "options": ["4", "6", "8"],
+              "default": "6",
+              "help": "length in seconds"
+            },
+            {
+              "key": "size",
+              "type": "select",
+              "label": "Size",
+              "group": "Resolution",
+              "options": ["1280x720", "720x1280", "1920x1080", "1080x1920"],
+              "default": "1280x720",
+              "help": "exact pixel dimensions (WIDTHxHEIGHT)"
+            },
+            {
+              "key": "generate_audio",
+              "type": "boolean",
+              "label": "Generate Audio",
+              "group": "Audio",
+              "default": false
+            },
+            {
+              "key": "seed",
+              "type": "number",
+              "label": "Seed",
+              "group": "Quality",
+              "help": "omit for a random seed"
+            },
+            {
+              "key": "frame_images",
+              "type": "image_urls",
+              "label": "Frame Images",
+              "group": "Inputs",
+              "help": "1-2 public URLs: first frame, then last frame"
+            },
+            {
+              "key": "input_references",
+              "type": "image_urls",
+              "label": "Reference Images",
+              "group": "Inputs",
+              "help": "images to guide generation"
+            }
+          ]
+        },
+        {
+          "id": "bytedance/seedance-2.0-mini",
+          "label": "ByteDance Seedance 2.0 Mini",
+          "default": false,
+          "parameters": [
+            {
+              "key": "prompt",
+              "type": "text",
+              "label": "Prompt",
+              "group": "Core",
+              "required": true
+            },
+            {
+              "key": "duration",
+              "type": "select",
+              "label": "Duration",
+              "group": "Core",
+              "options": ["4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"],
+              "default": "8",
+              "help": "length in seconds"
+            },
+            {
+              "key": "size",
+              "type": "select",
+              "label": "Size",
+              "group": "Resolution",
+              "options": [
+                "480x480", "480x640", "480x854", "640x480", "854x480", "1120x480",
+                "720x720", "720x960", "720x1280", "720x1680", "960x720", "1280x720", "1680x720"
+              ],
+              "default": "1280x720",
+              "help": "exact pixel dimensions (WIDTHxHEIGHT)"
+            },
+            {
+              "key": "generate_audio",
+              "type": "boolean",
+              "label": "Generate Audio",
+              "group": "Audio",
+              "default": false
+            },
+            {
+              "key": "seed",
+              "type": "number",
+              "label": "Seed",
+              "group": "Quality",
+              "help": "omit for a random seed"
+            },
+            {
+              "key": "frame_images",
+              "type": "image_urls",
+              "label": "Frame Images",
+              "group": "Inputs",
+              "help": "1-2 public URLs: first frame, then last frame"
+            },
+            {
+              "key": "input_references",
+              "type": "image_urls",
+              "label": "Reference Images",
+              "group": "Inputs",
+              "help": "images to guide generation"
+            }
+          ]
+        },
+        {
+          "id": "bytedance/seedance-2.0-fast",
+          "label": "ByteDance Seedance 2.0 Fast",
+          "default": false,
+          "parameters": [
+            {
+              "key": "prompt",
+              "type": "text",
+              "label": "Prompt",
+              "group": "Core",
+              "required": true
+            },
+            {
+              "key": "duration",
+              "type": "select",
+              "label": "Duration",
+              "group": "Core",
+              "options": ["4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"],
+              "default": "8",
+              "help": "length in seconds"
+            },
+            {
+              "key": "size",
+              "type": "select",
+              "label": "Size",
+              "group": "Resolution",
+              "options": [
+                "480x480", "480x640", "480x854", "640x480", "854x480", "1120x480",
+                "720x720", "720x960", "720x1280", "720x1680", "960x720", "1280x720", "1680x720"
+              ],
+              "default": "1280x720",
+              "help": "exact pixel dimensions (WIDTHxHEIGHT)"
+            },
+            {
+              "key": "generate_audio",
+              "type": "boolean",
+              "label": "Generate Audio",
+              "group": "Audio",
+              "default": false
+            },
+            {
+              "key": "seed",
+              "type": "number",
+              "label": "Seed",
+              "group": "Quality",
+              "help": "omit for a random seed"
+            },
+            {
+              "key": "frame_images",
+              "type": "image_urls",
+              "label": "Frame Images",
+              "group": "Inputs",
+              "help": "1-2 public URLs: first frame, then last frame"
+            },
+            {
+              "key": "input_references",
+              "type": "image_urls",
+              "label": "Reference Images",
+              "group": "Inputs",
+              "help": "images to guide generation"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -21,6 +21,7 @@ const primaryNav = [
   { href: '/analytics/', label: 'Usage', icon: 'chart' },
   { href: '/chat/', label: 'Chat', icon: 'chat' },
   { href: '/image/', label: 'Image', icon: 'image' },
+  { href: '/video/', label: 'Video', icon: 'video' },
   { href: '/tasks/', label: 'Tasks', icon: 'bolt' },
   { href: '/ai-monitoring/', label: 'AI Monitor', icon: 'activity' },
   { href: '/memory/', label: 'Memory', icon: 'git-branch' },
@@ -98,6 +99,7 @@ const isActive = (href: string) => {
               >
                 <svg class="h-3.5 w-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   {item.icon === 'check' && <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />}
+                  {item.icon === 'video' && <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 3l-2 6M15 3l-2 6" /><path d="M10 13.5l3 1.75-3 1.75z" /></>}
                   {item.icon === 'calendar' && <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>}
                   {item.icon === 'bookmark' && <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />}
                   {item.icon === 'clock' && <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
@@ -176,6 +178,7 @@ const isActive = (href: string) => {
               >
                 <svg class="h-4 w-4 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   {item.icon === 'check' && <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />}
+                  {item.icon === 'video' && <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 3l-2 6M15 3l-2 6" /><path d="M10 13.5l3 1.75-3 1.75z" /></>}
                   {item.icon === 'calendar' && <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>}
                   {item.icon === 'bookmark' && <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />}
                   {item.icon === 'clock' && <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}

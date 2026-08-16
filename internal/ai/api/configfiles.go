@@ -19,6 +19,7 @@ import (
 	"browser-server/internal/ai/images"
 	aimcp "browser-server/internal/ai/mcp"
 	"browser-server/internal/ai/tts"
+	"browser-server/internal/ai/videos"
 	"browser-server/internal/ai/voice"
 	"browser-server/internal/quiz"
 	quizconfig "browser-server/internal/quiz/config"
@@ -47,6 +48,7 @@ var (
 		"bs-ai-mcp.json":          {Name: "bs-ai-mcp.json", Class: "core", Reload: "restart_required"},
 		"bs-ai-tts.json":          {Name: "bs-ai-tts.json", Class: "leaf", Reload: "hot_reload"},
 		"bs-ai-image-models.json": {Name: "bs-ai-image-models.json", Class: "leaf", Reload: "hot_reload"},
+		"bs-ai-video-models.json": {Name: "bs-ai-video-models.json", Class: "leaf", Reload: "hot_reload"},
 		"bs-ai-voice.json":        {Name: "bs-ai-voice.json", Class: "leaf", Reload: "hot_reload"},
 		"bs-quiz-config.json":     {Name: "bs-quiz-config.json", Class: "leaf", Reload: "hot_reload"},
 		"bs-browser-config.json":  {Name: "bs-browser-config.json", Class: "leaf", Reload: "hot_reload"},
@@ -75,6 +77,7 @@ func (m *Module) RegisterAdmin(router *mux.Router) {
 	router.HandleFunc("/config/files/{name}", m.getConfigFile).Methods(http.MethodGet)
 	router.HandleFunc("/config/files/{name}", m.putConfigFile).Methods(http.MethodPut)
 	router.HandleFunc("/config/reload/{name}", m.reloadConfigFile).Methods(http.MethodPost)
+	router.HandleFunc("/config/schema/{name}", m.configSchemaFile).Methods(http.MethodGet)
 }
 
 func configMeta(name string) (configFileMeta, int, bool) {
@@ -361,6 +364,8 @@ func (m *Module) validateConfigFile(name string, content []byte) error {
 		return tts.ValidateBytes(content)
 	case "bs-ai-image-models.json":
 		return images.ValidateBytes(content)
+	case "bs-ai-video-models.json":
+		return videos.ValidateBytes(content)
 	case "bs-ai-voice.json":
 		return voice.ValidateBytes(content)
 	case "bs-quiz-config.json":
@@ -437,6 +442,26 @@ func (m *Module) reloadLeaf(name string) (string, error) {
 		}
 		if err := m.holders.Images.Swap(service, func(old *images.Service) error { return old.Close() }); err != nil {
 			log.Printf("close retired image service: %v", err)
+		}
+		return "", nil
+
+	case "bs-ai-video-models.json":
+		config, err := videos.LoadPath(path)
+		if err != nil {
+			return "", err
+		}
+		service, err := videos.New(config, dataDir)
+		if err != nil {
+			return "", fmt.Errorf("initialize video service: %w", err)
+		}
+		if m.holders == nil || m.holders.Videos == nil {
+			if service != nil {
+				_ = service.Close()
+			}
+			return "", errors.New("video service holder is unavailable")
+		}
+		if err := m.holders.Videos.Swap(service, func(old *videos.Service) error { return old.Close() }); err != nil {
+			log.Printf("close retired video service: %v", err)
 		}
 		return "", nil
 

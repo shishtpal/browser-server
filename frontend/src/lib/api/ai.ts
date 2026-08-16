@@ -24,6 +24,10 @@ import type {
   GeneratedImage,
   GenerateImageInput,
   GenerateImageResponse,
+  AIVideoConfig,
+  GeneratedVideo,
+  GenerateVideoInput,
+  GenerateVideoResponse,
   AITTSConfig,
   GeneratedSpeech,
   GenerateSpeechInput,
@@ -67,6 +71,22 @@ export function deleteGeneratedSpeech(id: string): Promise<void> {
 }
 export function getGeneratedSpeechUrl(id: string, withToken = true): string {
   return client.getGeneratedSpeechUrl(id, withToken);
+}
+
+export function getAIVideoConfig(): Promise<AIVideoConfig> {
+  return client.getAIVideoConfig();
+}
+export function listGeneratedVideos(limit?: number): Promise<GeneratedVideo[]> {
+  return client.listGeneratedVideos(limit);
+}
+export function generateVideo(data: GenerateVideoInput): Promise<GenerateVideoResponse> {
+  return client.generateVideo(data);
+}
+export function deleteGeneratedVideo(id: string): Promise<void> {
+  return client.deleteGeneratedVideo(id);
+}
+export function getGeneratedVideoUrl(id: string, withToken = true): string {
+  return client.getGeneratedVideoUrl(id, withToken);
 }
 
 export function getAIVoiceConfig(): Promise<AIVoiceConfig> {

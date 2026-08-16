@@ -32,6 +32,7 @@ import (
 	"browser-server/internal/ai/store"
 	"browser-server/internal/ai/tools"
 	"browser-server/internal/ai/tts"
+	"browser-server/internal/ai/videos"
 	"browser-server/internal/browser"
 )
 
@@ -109,12 +110,14 @@ func (h *ServiceHolder[T]) Swap(service *T, closeOld func(*T) error) error {
 type ServiceHolders struct {
 	TTS    *ServiceHolder[tts.Service]
 	Images *ServiceHolder[images.Service]
+	Videos *ServiceHolder[videos.Service]
 }
 
 func newServiceHolders() *ServiceHolders {
 	return &ServiceHolders{
 		TTS:    NewServiceHolder[tts.Service](nil),
 		Images: NewServiceHolder[images.Service](nil),
+		Videos: NewServiceHolder[videos.Service](nil),
 	}
 }
 
@@ -123,14 +126,17 @@ func (h *ServiceHolders) Close() error {
 	if h == nil {
 		return nil
 	}
-	var imageErr, ttsErr error
+	var imageErr, ttsErr, videoErr error
 	if h.Images != nil {
 		imageErr = h.Images.Swap(nil, func(service *images.Service) error { return service.Close() })
 	}
 	if h.TTS != nil {
 		ttsErr = h.TTS.Swap(nil, func(service *tts.Service) error { return service.Close() })
 	}
-	return errors.Join(imageErr, ttsErr)
+	if h.Videos != nil {
+		videoErr = h.Videos.Swap(nil, func(service *videos.Service) error { return service.Close() })
+	}
+	return errors.Join(imageErr, ttsErr, videoErr)
 }
 
 // Runtime is the fully wired, provider-agnostic AI runtime.
@@ -154,6 +160,9 @@ var generateImageSchema []byte
 
 //go:embed text_to_speech.json
 var textToSpeechSchema []byte
+
+//go:embed generate_video.json
+var generateVideoSchema []byte
 
 // Init loads the AI config and builds the full runtime. When AI is disabled
 // (missing config or models file, or "enabled": false), it returns a Runtime
@@ -235,6 +244,23 @@ func Init(opts Options) (*Runtime, error) {
 	holders.Images.ptr.Store(imageService)
 	holders.TTS.ptr.Store(ttsService)
 
+	videoCfg, err := videos.Load(baseDir)
+	if err != nil {
+		_ = imageService.Close()
+		_ = ttsService.Close()
+		st.Close()
+		return nil, fmt.Errorf("load AI video models: %w", err)
+	}
+	videoService, err := videos.New(videoCfg, cfg.ResolvePath(".data"))
+	if err != nil {
+		// Videos is a leaf feature: one bad config (e.g. a missing API key env
+		// var the tool can surface via the AI chat) must not take the rest of
+		// the AI runtime down. Leave the disabled holder in place and log.
+		log.Printf("AI video service unavailable: %v", err)
+		videoService = nil
+	}
+	holders.Videos.ptr.Store(videoService)
+
 	var externalTools []tools.Tool
 	{
 		externalTools = append(externalTools, tools.Tool{
@@ -298,6 +324,39 @@ func Init(opts Options) (*Runtime, error) {
 					"speech": x,
 					"url":    "/api/ai/voices/" + x.ID + "/file",
 					"path":   service.FilePath(x.Filename),
+				}, nil
+			}})
+	}
+	{
+		externalTools = append(externalTools, tools.Tool{
+			Name:        "generate_video",
+			Category:    "Video",
+			Description: "Start an asynchronous video generation from a prompt and return immediately. Generation typically takes minutes (often longer than one chat turn), so this returns a queued gallery record — never wait for completion or claim the video is ready. Valid params keys, types, and defaults depend on the selected provider/model (mirrored by GET /api/ai/videos/config); pass only params that exist in that model's parameter schema. Do not fabricate a playable link from the returned URL until the record status flips to completed.",
+			Schema:      json.RawMessage(generateVideoSchema),
+			Available:   holders.Videos.Available,
+			Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				service, release := holders.Videos.Acquire()
+				if service == nil {
+					return nil, errors.New("video generation is disabled")
+				}
+				defer release()
+				var a struct {
+					Prompt   string         `json:"prompt"`
+					Provider string         `json:"provider"`
+					Model    string         `json:"model"`
+					Params   map[string]any `json:"params"`
+				}
+				if err := json.Unmarshal(raw, &a); err != nil {
+					return nil, err
+				}
+				v, err := service.Submit(ctx, videos.GenerateRequest{Prompt: a.Prompt, Provider: a.Provider, Model: a.Model, Params: a.Params})
+				if err != nil {
+					return nil, err
+				}
+				return map[string]any{
+					"video": v,
+					"url":   "/api/ai/videos/" + v.ID + "/file",
+					"note":  "Queued. Generation is asynchronous and typically takes minutes: the record is queued now and the url above returns 404 until the task completes. Progress can be watched via GET /api/ai/videos (status queued/in_progress, up to the provider request_timeout_seconds). Never present the url to the user as ready; once status flips to completed the file is served at url.",
 				}, nil
 			}})
 	}

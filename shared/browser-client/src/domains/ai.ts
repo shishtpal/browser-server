@@ -34,6 +34,10 @@ import type {
   AIMemoryFragment,
   AIMemoryWriteResult,
   AIMemoryWriteOp,
+  AIVideoConfig,
+  GeneratedVideo,
+  GenerateVideoInput,
+  GenerateVideoResponse,
 } from "@browser-server/shared-types";
 import {
   type TokenProvider,
@@ -107,6 +111,36 @@ export function createAIMethods(baseUrl: string, getToken?: TokenProvider) {
       const token = withToken ? getToken?.() : null;
       const q = token ? `?token=${encodeURIComponent(token)}` : "";
       return `${baseUrl}/api/ai/voices/${encodeURIComponent(id)}/file${q}`;
+    },
+
+    getAIVideoConfig(): Promise<AIVideoConfig> {
+      return apiFetch<AIVideoConfig>(baseUrl, "GET", "/api/ai/videos/config", undefined, getToken);
+    },
+    listGeneratedVideos(limit?: number): Promise<GeneratedVideo[]> {
+      return apiFetch<GeneratedVideo[]>(
+        baseUrl,
+        "GET",
+        `/api/ai/videos${buildQuery({ limit })}`,
+        undefined,
+        getToken,
+      );
+    },
+    generateVideo(data: GenerateVideoInput): Promise<GenerateVideoResponse> {
+      return apiFetch<GenerateVideoResponse>(baseUrl, "POST", "/api/ai/videos", data, getToken);
+    },
+    deleteGeneratedVideo(id: string): Promise<void> {
+      return apiFetch<void>(
+        baseUrl,
+        "DELETE",
+        `/api/ai/videos/${encodeURIComponent(id)}`,
+        undefined,
+        getToken,
+      );
+    },
+    getGeneratedVideoUrl(id: string, withToken = true): string {
+      const token = withToken ? getToken?.() : null;
+      const q = token ? `?token=${encodeURIComponent(token)}` : "";
+      return `${baseUrl}/api/ai/videos/${encodeURIComponent(id)}/file${q}`;
     },
 
     getAIVoiceConfig(): Promise<AIVoiceConfig> {

@@ -72,6 +72,7 @@
             "execute_command",
             "execute_python",
             "generate_image",
+            "generate_video",
             "text_to_speech",
             "ocr_image",
             "read_file",

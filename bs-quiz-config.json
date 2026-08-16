@@ -1,7 +1,7 @@
 {
   "enabled": true,
-  "db_path": ".data/quiz.db",
-  "image_dir": ".data/quiz-images",
+  "db_path": "quiz.db",
+  "image_dir": "quiz-images",
   "limits": {
     "max_question_length": 2000,
     "max_explanation_length": 20000,

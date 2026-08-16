@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "prompt": {
+            "type": "string"
+        },
+        "provider": {
+            "type": "string"
+        },
+        "model": {
+            "type": "string"
+        },
+            "params": {
+            "type": "object",
+            "description": "Provider- and model-specific generation options (mode, dimensions, frame count, frame rate, seed, negative prompt, image URLs, etc.). Valid keys, types, and defaults come from the selected model's parameter schema (exposed via GET /api/ai/videos/config) — pass only parameters that schema defines; unknown keys are silently ignored by some providers.",
+            "additionalProperties": true
+        }
+    },
+    "required": [
+        "prompt"
+    ],
+    "additionalProperties": false
+}

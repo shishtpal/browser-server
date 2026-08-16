@@ -182,6 +182,12 @@ type Provider struct {
 	APIKey                string  `json:"api_key"`
 	RequestTimeoutSeconds int     `json:"request_timeout_seconds"`
 	Models                []Model `json:"models"`
+	// OpenRouterSiteURL and OpenRouterAppName carry the attribution values from
+	// bs-ai-config.json's openrouter section (injected by the service layer, not
+	// part of this file). They are sent as HTTP-Referer/Referer and X-Title on
+	// requests to OpenRouter so the app shows up in its rankings.
+	OpenRouterSiteURL string `json:"-"`
+	OpenRouterAppName string `json:"-"`
 }
 
 // Config is the parsed bs-ai-video-models.json document.
@@ -192,4 +198,8 @@ type Config struct {
 	VideoDir        string              `json:"video_dir"`
 	Providers       map[string]Provider `json:"providers"`
 	Path            string              `json:"-"`
+	// OpenRouterSiteURL and OpenRouterAppName are the attribution values from
+	// bs-ai-config.json's openrouter section, injected by the bootstrap layer.
+	OpenRouterSiteURL string `json:"-"`
+	OpenRouterAppName string `json:"-"`
 }

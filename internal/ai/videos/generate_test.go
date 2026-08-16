@@ -87,3 +87,32 @@ func TestValidateAgnesConstraints(t *testing.T) {
 }
 
 func float64Ptr(v float64) *float64 { return &v }
+
+func TestNewInjectsOpenRouterAttribution(t *testing.T) {
+	cfg := Config{
+		Enabled:           true,
+		DefaultProvider:   "openrouter",
+		OpenRouterSiteURL: "https://example.com/app",
+		OpenRouterAppName: "My App",
+		Providers: map[string]Provider{
+			"openrouter": {
+				Type:    "openrouter_video",
+				BaseURL: "https://openrouter.ai",
+				APIKey:  "k",
+				Models: []Model{{
+					ID:         "google/veo-3.1-lite",
+					Parameters: []ParamSpec{{Key: "prompt", Type: "text", Label: "Prompt"}},
+				}},
+			},
+		},
+	}
+	svc, err := New(cfg, t.TempDir())
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer svc.Close()
+	got := svc.Config().Providers["openrouter"]
+	if got.OpenRouterSiteURL != "https://example.com/app" || got.OpenRouterAppName != "My App" {
+		t.Fatalf("attribution not injected into provider: %+v", got)
+	}
+}

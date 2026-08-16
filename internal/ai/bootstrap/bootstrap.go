@@ -224,6 +224,8 @@ func Init(opts Options) (*Runtime, error) {
 		st.Close()
 		return nil, fmt.Errorf("load AI image models: %w", err)
 	}
+	imageCfg.OpenRouterSiteURL = cfg.OpenRouter.SiteURL
+	imageCfg.OpenRouterAppName = cfg.OpenRouter.AppName
 	imageService, err := images.New(imageCfg, cfg.ResolvePath(".data"))
 	if err != nil {
 		st.Close()
@@ -251,6 +253,8 @@ func Init(opts Options) (*Runtime, error) {
 		st.Close()
 		return nil, fmt.Errorf("load AI video models: %w", err)
 	}
+	videoCfg.OpenRouterSiteURL = cfg.OpenRouter.SiteURL
+	videoCfg.OpenRouterAppName = cfg.OpenRouter.AppName
 	videoService, err := videos.New(videoCfg, cfg.ResolvePath(".data"))
 	if err != nil {
 		// Videos is a leaf feature: one bad config (e.g. a missing API key env

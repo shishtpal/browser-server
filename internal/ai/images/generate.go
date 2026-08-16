@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"browser-server/internal/ai/attachments"
+	"browser-server/internal/ai/openrouter"
 	"browser-server/internal/ai/store"
 )
 
@@ -142,6 +143,7 @@ func (s *Service) generateOne(ctx context.Context, r GenerateRequest) (Image, er
 	} else {
 		req.Header.Set("x-goog-api-key", p.APIKey)
 	}
+	openrouter.SetAttributionHeaders(req.Header, p.BaseURL, s.cfg.OpenRouterSiteURL, s.cfg.OpenRouterAppName)
 	c := *s.client
 	c.Timeout = time.Duration(p.RequestTimeoutSeconds) * time.Second
 	resp, err := c.Do(req)

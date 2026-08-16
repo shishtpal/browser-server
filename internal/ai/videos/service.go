@@ -85,6 +85,13 @@ func New(cfg Config, dataDir string) (*Service, error) {
 		db.Close()
 		return nil, err
 	}
+	// Hand each provider the OpenRouter attribution values injected from
+	// bs-ai-config.json so its requests can carry HTTP-Referer / X-Title.
+	for name, p := range cfg.Providers {
+		p.OpenRouterSiteURL = cfg.OpenRouterSiteURL
+		p.OpenRouterAppName = cfg.OpenRouterAppName
+		cfg.Providers[name] = p
+	}
 	s := &Service{
 		cfg:    cfg,
 		db:     db,

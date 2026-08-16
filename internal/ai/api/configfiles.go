@@ -430,6 +430,10 @@ func (m *Module) reloadLeaf(name string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if m.cfg != nil {
+			config.OpenRouterSiteURL = m.cfg.OpenRouter.SiteURL
+			config.OpenRouterAppName = m.cfg.OpenRouter.AppName
+		}
 		service, err := images.New(config, dataDir)
 		if err != nil {
 			return "", fmt.Errorf("initialize image service: %w", err)
@@ -449,6 +453,10 @@ func (m *Module) reloadLeaf(name string) (string, error) {
 		config, err := videos.LoadPath(path)
 		if err != nil {
 			return "", err
+		}
+		if m.cfg != nil {
+			config.OpenRouterSiteURL = m.cfg.OpenRouter.SiteURL
+			config.OpenRouterAppName = m.cfg.OpenRouter.AppName
 		}
 		service, err := videos.New(config, dataDir)
 		if err != nil {

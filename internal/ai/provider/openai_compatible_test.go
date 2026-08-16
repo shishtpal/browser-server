@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"browser-server/internal/ai/openrouter"
 	"context"
 	"encoding/json"
 	"errors"
@@ -301,9 +302,10 @@ func TestCompleteRespectsContextCancellation(t *testing.T) {
 }
 
 func TestOpenRouterHeadersSentOnlyForOpenRouter(t *testing.T) {
-	openRouter := NewOpenAICompatibleClient("https://openrouter.ai/api/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
+	orClient := NewOpenAICompatibleClient("https://openrouter.ai/api/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
 	h := http.Header{}
-	openRouter.setOpenRouterHeaders(h)
+	openrouter.SetAttributionHeaders(h, orClient.baseURL, orClient.openRouterSiteURL, orClient.openRouterAppName)
+
 	if h.Get("HTTP-Referer") != "https://example.com/app" {
 		t.Errorf("HTTP-Referer = %q", h.Get("HTTP-Referer"))
 	}
@@ -315,17 +317,17 @@ func TestOpenRouterHeadersSentOnlyForOpenRouter(t *testing.T) {
 	}
 
 	// Detection is case-insensitive and covers subdomains.
-	openRouterCase := NewOpenAICompatibleClient("https://api.OPENROUTER.ai/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
+	orCase := NewOpenAICompatibleClient("https://api.OPENROUTER.ai/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
 	hCase := http.Header{}
-	openRouterCase.setOpenRouterHeaders(hCase)
+	openrouter.SetAttributionHeaders(hCase, orCase.baseURL, orCase.openRouterSiteURL, orCase.openRouterAppName)
 	if hCase.Get("X-Title") != "My App" {
 		t.Errorf("case-insensitive detection failed: X-Title = %q", hCase.Get("X-Title"))
 	}
 
 	// Non-OpenRouter providers receive no attribution headers.
-	other := NewOpenAICompatibleClient("https://api.openai.com/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
+	orOther := NewOpenAICompatibleClient("https://api.openai.com/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
 	hOther := http.Header{}
-	other.setOpenRouterHeaders(hOther)
+	openrouter.SetAttributionHeaders(hOther, orOther.baseURL, orOther.openRouterSiteURL, orOther.openRouterAppName)
 	if hOther.Get("HTTP-Referer") != "" || hOther.Get("X-Title") != "" || hOther.Get("Referer") != "" {
 		t.Errorf("non-OpenRouter provider should not receive attribution headers: %v", hOther)
 	}
@@ -334,7 +336,7 @@ func TestOpenRouterHeadersSentOnlyForOpenRouter(t *testing.T) {
 	// the referer headers still go out.
 	noTitle := NewOpenAICompatibleClient("https://openrouter.ai/api/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "")
 	hNoTitle := http.Header{}
-	noTitle.setOpenRouterHeaders(hNoTitle)
+	openrouter.SetAttributionHeaders(hNoTitle, noTitle.baseURL, noTitle.openRouterSiteURL, noTitle.openRouterAppName)
 	if hNoTitle.Get("X-Title") != "" {
 		t.Errorf("empty X-Title should be omitted, got %q", hNoTitle.Get("X-Title"))
 	}

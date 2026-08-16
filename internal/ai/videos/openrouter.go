@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"browser-server/internal/ai/openrouter"
 )
 
 // openrouterVideoProvider implements OpenRouter's asynchronous video API:
@@ -102,6 +104,7 @@ func (openrouterVideoProvider) Create(ctx context.Context, p Provider, m Model, 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+	setOpenRouterHeadersAttribution(req.Header, p)
 	client := &http.Client{Transport: sharedTransport, Timeout: time.Duration(p.RequestTimeoutSeconds) * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -132,6 +135,7 @@ func (openrouterVideoProvider) Poll(ctx context.Context, p Provider, videoID, mo
 		return pollResult{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+	setOpenRouterHeadersAttribution(req.Header, p)
 	// A status GET should be quick; cap it well below the per-task context
 	// budget (p.RequestTimeoutSeconds), which also covers the result download.
 	client := &http.Client{Transport: sharedTransport, Timeout: 60 * time.Second}
@@ -195,6 +199,7 @@ func (openrouterVideoProvider) Fetch(ctx context.Context, p Provider, res pollRe
 		return nil, "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+	setOpenRouterHeadersAttribution(req.Header, p)
 	client := &http.Client{Transport: sharedTransport, Timeout: time.Duration(p.RequestTimeoutSeconds) * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -214,4 +219,11 @@ func (openrouterVideoProvider) Fetch(ctx context.Context, p Provider, res pollRe
 		contentType = "video/mp4"
 	}
 	return data, contentType, nil
+}
+
+// setOpenRouterHeadersAttribution attaches OpenRouter attribution headers read
+// from the provider, delegating host matching and empty-value handling to the
+// shared openrouter package.
+func setOpenRouterHeadersAttribution(h http.Header, p Provider) {
+	openrouter.SetAttributionHeaders(h, p.BaseURL, p.OpenRouterSiteURL, p.OpenRouterAppName)
 }

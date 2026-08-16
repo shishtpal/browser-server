@@ -1,6 +1,9 @@
 package videos
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+)
 
 func TestOpenRouterCreatePayload(t *testing.T) {
 	r := GenerateRequest{
@@ -186,4 +189,48 @@ func TestOpenRouterStatusMapping(t *testing.T) {
 			t.Errorf("%q → %v, want %v", c.status, got, c.want)
 		}
 	}
+}
+
+func TestSetOpenRouterHeadersAttribution(t *testing.T) {
+	const (
+		siteURL = "https://example.com/app"
+		appName = "My App"
+	)
+	t.Run("openrouter target attaches attribution", func(t *testing.T) {
+		h := http.Header{}
+		setOpenRouterHeadersAttribution(h, Provider{BaseURL: "https://openrouter.ai", OpenRouterSiteURL: siteURL, OpenRouterAppName: appName})
+		if h.Get("HTTP-Referer") != siteURL {
+			t.Errorf("HTTP-Referer = %q, want %q", h.Get("HTTP-Referer"), siteURL)
+		}
+		if h.Get("Referer") != siteURL {
+			t.Errorf("Referer = %q, want %q", h.Get("Referer"), siteURL)
+		}
+		if h.Get("X-Title") != appName {
+			t.Errorf("X-Title = %q, want %q", h.Get("X-Title"), appName)
+		}
+	})
+	t.Run("non-openrouter target gets nothing", func(t *testing.T) {
+		h := http.Header{}
+		setOpenRouterHeadersAttribution(h, Provider{BaseURL: "https://apihub.agnes-ai.com", OpenRouterSiteURL: siteURL, OpenRouterAppName: appName})
+		if h.Get("HTTP-Referer") != "" || h.Get("Referer") != "" || h.Get("X-Title") != "" {
+			t.Errorf("non-openrouter request got attribution headers: %v", h)
+		}
+	})
+	t.Run("empty app name omits X-Title", func(t *testing.T) {
+		h := http.Header{}
+		setOpenRouterHeadersAttribution(h, Provider{BaseURL: "https://openrouter.ai", OpenRouterSiteURL: siteURL})
+		if h.Get("HTTP-Referer") != siteURL {
+			t.Errorf("HTTP-Referer = %q, want %q", h.Get("HTTP-Referer"), siteURL)
+		}
+		if h.Get("X-Title") != "" {
+			t.Errorf("X-Title = %q, want empty", h.Get("X-Title"))
+		}
+	})
+	t.Run("empty site url skips everything", func(t *testing.T) {
+		h := http.Header{}
+		setOpenRouterHeadersAttribution(h, Provider{BaseURL: "https://openrouter.ai", OpenRouterAppName: appName})
+		if h.Get("HTTP-Referer") != "" || h.Get("Referer") != "" || h.Get("X-Title") != "" {
+			t.Errorf("empty site_url still set headers: %v", h)
+		}
+	})
 }

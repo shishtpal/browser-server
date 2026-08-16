@@ -29,7 +29,7 @@ An optional `bs-ai-mcp.json` sibling configures stdio or Streamable HTTP MCP ser
 }
 ```
 
-- `openrouter` — user-editable OpenRouter attribution headers. When a provider's `base_url` points to OpenRouter, the agent chat (streaming and non-streaming), `ocr_image`, and `recall_memory` (synthesize) attach `HTTP-Referer`/`Referer` (from `site_url`) and `X-Title` (from `app_name`) to their `chat/completions` requests. Other OpenAI-compatible providers receive no attribution headers. Omitting the section uses the defaults shown above.
+- `openrouter` — user-editable OpenRouter attribution headers. When a provider's `base_url` points to OpenRouter, the agent chat (streaming and non-streaming), `ocr_image`, `recall_memory` (synthesize), image generation, video generation, and TTS attach `HTTP-Referer`/`Referer` (from `site_url`) and `X-Title` (from `app_name`) to their provider requests. Other OpenAI-compatible providers receive no attribution headers. Omitting the section uses the defaults shown above.
 
 ## Configured PATHs
 

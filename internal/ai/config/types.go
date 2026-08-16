@@ -23,6 +23,17 @@ type Config struct {
 	Tasks           TasksConfig               `json:"tasks"`
 	Paths           PathsConfig               `json:"paths"`
 	OCR             OCRConfig                 `json:"ocr"`
+	OpenRouter      OpenRouterConfig          `json:"openrouter"`
+}
+
+// OpenRouterConfig carries the attribution headers sent to OpenRouter on
+// chat-completions calls (the agent chat, ocr_image, and recall_memory
+// synthesize). The values are user-editable so the app shows up correctly in
+// OpenRouter's rankings. They are only attached when a provider's base_url
+// points to OpenRouter; other OpenAI-compatible providers receive none.
+type OpenRouterConfig struct {
+	SiteURL string `json:"site_url"`
+	AppName string `json:"app_name"`
 }
 
 // TasksConfig controls the durable background task runner. The runner survives

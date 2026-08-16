@@ -65,6 +65,9 @@ type Options struct {
 	// rasterization). Providers must be set when OCR.Enabled is true.
 	OCR       config.OCRConfig
 	Providers map[string]config.ProviderConfig
+	// OpenRouter carries the editable attribution headers (site_url/app_name)
+	// sent to OpenRouter on chat-completions calls; forwarded to the OCR client.
+	OpenRouter config.OpenRouterConfig
 }
 
 // New creates a Registry with all built-in tools registered.
@@ -146,7 +149,7 @@ func newRegistry(options ...Options) (*Registry, error) {
 		registerWebTools(r, options[0].WebSearch)
 	}
 	if len(options) > 0 && options[0].OCR.Enabled {
-		registerOCRImage(r, options[0].OCR, options[0].ConfigPath, options[0].Providers, options[0].Paths.AdditionalDirs)
+		registerOCRImage(r, options[0].OCR, options[0].ConfigPath, options[0].Providers, options[0].Paths.AdditionalDirs, options[0].OpenRouter)
 	}
 
 	// File operation tools

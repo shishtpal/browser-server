@@ -40,14 +40,17 @@ type ocrImageTool struct {
 	newClient  ocrClientFactory
 	convertPDF ocrPDFConvert
 	pdfDirs    []string // paths.additional_dirs, forwarded to Poppler resolution
+	orSiteURL  string   // OpenRouter attribution site_url, forwarded to the client
+	orAppName  string   // OpenRouter attribution app_name, forwarded to the client
 }
 
 // registerOCRImage wires the ocr_image tool. Providers come from the models
 // file; cfgPath anchors relative ocr.output_dir values next to bs-ai-config.json.
-func registerOCRImage(r *Registry, cfg config.OCRConfig, cfgPath string, providers map[string]config.ProviderConfig, additionalDirs []string) {
-	t := &ocrImageTool{cfg: cfg, cfgPath: cfgPath, providers: providers}
+// orCfg carries the editable OpenRouter attribution headers sent on vision calls.
+func registerOCRImage(r *Registry, cfg config.OCRConfig, cfgPath string, providers map[string]config.ProviderConfig, additionalDirs []string, orCfg config.OpenRouterConfig) {
+	t := &ocrImageTool{cfg: cfg, cfgPath: cfgPath, providers: providers, orSiteURL: orCfg.SiteURL, orAppName: orCfg.AppName}
 	t.newClient = func(baseURL, apiKey string, timeout time.Duration, retryAttempts int, retryDelay time.Duration) visionCompleter {
-		return provider.NewOpenAICompatibleClient(baseURL, apiKey, timeout, retryAttempts, retryDelay)
+		return provider.NewOpenAICompatibleClient(baseURL, apiKey, timeout, retryAttempts, retryDelay, t.orSiteURL, t.orAppName)
 	}
 	t.convertPDF = func(ctx context.Context, pc config.OCRPopplerConfig, pdfPath, outDir string, fp, lp int, extraDirs []string) ([]string, error) {
 		return ocr.Convert(ctx, pc, pdfPath, outDir, fp, lp, extraDirs)

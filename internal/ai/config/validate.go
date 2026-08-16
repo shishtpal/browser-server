@@ -261,6 +261,32 @@ func validate(cfg *Config) error {
 	if err := validateOCR(cfg); err != nil {
 		return err
 	}
+	if err := validateOpenRouter(cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateOpenRouter enforces that the openrouter attribution section, when
+// set, carries an absolute http(s) URL and header-safe values. The values
+// travel verbatim as HTTP headers, so line breaks (which Go's HTTP writer
+// rejects) and oversized strings are refused here at config time.
+func validateOpenRouter(cfg *Config) error {
+	if cfg.OpenRouter.SiteURL == "" && cfg.OpenRouter.AppName == "" {
+		return nil
+	}
+	if len(cfg.OpenRouter.SiteURL) > 2048 || len(cfg.OpenRouter.AppName) > 128 {
+		return fmt.Errorf("openrouter.site_url/app_name exceeds the length limit")
+	}
+	if strings.ContainsAny(cfg.OpenRouter.SiteURL, "\r\n") || strings.ContainsAny(cfg.OpenRouter.AppName, "\r\n") {
+		return fmt.Errorf("openrouter.site_url/app_name must not contain line breaks")
+	}
+	if cfg.OpenRouter.SiteURL != "" {
+		parsed, err := url.Parse(cfg.OpenRouter.SiteURL)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return fmt.Errorf("openrouter.site_url must be an absolute http(s) URL")
+		}
+	}
 	return nil
 }
 

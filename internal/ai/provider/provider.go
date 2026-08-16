@@ -77,11 +77,11 @@ type Client interface {
 // New builds a provider client for the given provider type ("openai_compatible"
 // or "gemini_interactions"). Unknown types fall back to the OpenAI-compatible
 // client; config validation rejects them before any client is constructed.
-func New(typ, baseURL, apiKey string, timeout time.Duration, retryAttempts int, retryDelay time.Duration) Client {
+func New(typ, baseURL, apiKey string, timeout time.Duration, retryAttempts int, retryDelay time.Duration, openRouterSiteURL, openRouterAppName string) Client {
 	if typ == "gemini_interactions" {
 		return NewGeminiInteractionsClient(baseURL, apiKey, timeout, retryAttempts, retryDelay)
 	}
-	return NewOpenAICompatibleClient(baseURL, apiKey, timeout, retryAttempts, retryDelay)
+	return NewOpenAICompatibleClient(baseURL, apiKey, timeout, retryAttempts, retryDelay, openRouterSiteURL, openRouterAppName)
 }
 
 type Event struct {

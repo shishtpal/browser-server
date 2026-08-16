@@ -281,9 +281,15 @@ Key sections in `bs-ai-config.json`:
   "memory": { ... },
   "skills": { ... },
   "paths": { "additional_dirs": [], "binaries": {} },
-  "cors_enabled": false
+  "cors_enabled": false,
+  "openrouter": {
+    "site_url": "https://github.com/shishtpal/browser-server",
+    "app_name": "Browser Server"
+  }
 }
 ```
+
+- `openrouter` — user-editable OpenRouter attribution headers. When a provider's `base_url` points to OpenRouter, the agent chat (streaming and non-streaming), `ocr_image`, and `recall_memory` (synthesize) attach `HTTP-Referer`/`Referer` (from `site_url`) and `X-Title` (from `app_name`) to their `chat/completions` requests. Other OpenAI-compatible providers receive no attribution headers. Omitting the section uses the defaults shown above.
 
 ### Configured PATHs
 

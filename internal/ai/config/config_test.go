@@ -610,6 +610,68 @@ func TestValidateFileToolsGlobs(t *testing.T) {
 	}
 }
 
+func TestOpenRouterDefaultsAndValidation(t *testing.T) {
+	// Missing section applies the defaults.
+	setupBothConfigAndModels(t, minimalProviderConfig(), minimalProviderModels())
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.OpenRouter.SiteURL != "https://github.com/shishtpal/browser-server" || cfg.OpenRouter.AppName != "Browser Server" {
+		t.Fatalf("unexpected openrouter defaults: %+v", cfg.OpenRouter)
+	}
+
+	// A relative/garbage site_url is rejected.
+	bad := `{
+		"default_provider": "openrouter",
+		"openrouter": {"site_url": "not-an-absolute-url", "app_name": "Name"}
+	}`
+	setupBothConfigAndModels(t, bad, minimalProviderModels())
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "openrouter.site_url") {
+		t.Fatalf("expected openrouter.site_url error, got %v", err)
+	}
+
+	// Line breaks in the app name are rejected because the value travels as a
+	// raw HTTP header.
+	crlf := `{
+		"default_provider": "openrouter",
+		"openrouter": {"site_url": "https://example.com", "app_name": "Bad Name\nInjected"}
+	}`
+	setupBothConfigAndModels(t, crlf, minimalProviderModels())
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "line breaks") {
+		t.Fatalf("expected line-break error, got %v", err)
+	}
+
+	// An explicit valid section is accepted and honored.
+	specific := `{
+		"default_provider": "openrouter",
+		"openrouter": {"site_url": "https://my.app.example.org", "app_name": "My App"}
+	}`
+	setupBothConfigAndModels(t, specific, minimalProviderModels())
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.OpenRouter.SiteURL != "https://my.app.example.org" || cfg.OpenRouter.AppName != "My App" {
+		t.Fatalf("unexpected openrouter values: %+v", cfg.OpenRouter)
+	}
+}
+
+func TestOpenRouterValidationStandalone(t *testing.T) {
+	// validateOpenRouter accepts the documented empty (defaulted) state.
+	if err := validateOpenRouter(&Config{}); err != nil {
+		t.Fatalf("empty openrouter section should validate: %v", err)
+	}
+	// A bare app_name without site_url is tolerated (X-Title simply omitted).
+	if err := validateOpenRouter(&Config{OpenRouter: OpenRouterConfig{AppName: "Only Title"}}); err != nil {
+		t.Fatalf("app_name-only should validate: %v", err)
+	}
+	// ftp: scheme is not a valid attribution URL.
+	if err := validateOpenRouter(&Config{OpenRouter: OpenRouterConfig{SiteURL: "ftp://example.com"}}); err == nil {
+		t.Fatal("non-http(s) site_url should fail validation")
+	}
+}
+
 func TestParseErrorReturnsWrapped(t *testing.T) {
 	_, _ = setupBothConfigAndModels(t, "{not json", minimalProviderModels())
 	_, err := Load()

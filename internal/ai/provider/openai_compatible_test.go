@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -17,7 +19,7 @@ func TestStreamParsesDeltasUsageAndToolFragments(t *testing.T) {
 		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"hi\",\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"function\":{\"name\":\"get_\",\"arguments\":\"{\"}}]}}]}\n\ndata: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"name\":\"current_time\",\"arguments\":\"}\"}}]}}],\"usage\":{\"total_tokens\":3}}\n\ndata: [DONE]\n\n"))
 	}))
 	defer s.Close()
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second, "", "")
 	resp, err := c.Stream(context.Background(), ChatRequest{Model: "m"}, func(Event) error { return nil })
 	if err != nil || resp.Content != "hi" || len(resp.ToolCalls) != 1 || resp.ToolCalls[0].Name != "get_current_time" || resp.ToolCalls[0].Arguments != "{}" {
 		t.Fatalf("response=%+v err=%v", resp, err)
@@ -31,7 +33,7 @@ func TestStreamRejectsPrematureEOF(t *testing.T) {
 	}))
 	defer s.Close()
 
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second, "", "")
 	resp, err := c.Stream(context.Background(), ChatRequest{Model: "m"}, func(Event) error { return nil })
 	if err == nil || resp.Content != "partial" {
 		t.Fatalf("response=%+v err=%v", resp, err)
@@ -39,7 +41,7 @@ func TestStreamRejectsPrematureEOF(t *testing.T) {
 }
 
 func TestPayloadEncodesAssistantToolCallsInOpenAIFormat(t *testing.T) {
-	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second, "", "")
 	payload, err := json.Marshal(c.payload(ChatRequest{Model: "m", Messages: []Message{{
 		Role: "assistant", ToolCalls: []ToolCall{{ID: "c1", Name: "get_current_time", Arguments: "{}"}},
 	}}}, false))
@@ -65,7 +67,7 @@ func TestPayloadEncodesAssistantToolCallsInOpenAIFormat(t *testing.T) {
 }
 
 func TestPayloadKeepsTextOnlyContentAsAString(t *testing.T) {
-	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second, "", "")
 	payload, err := json.Marshal(c.payload(ChatRequest{Model: "m", Messages: []Message{
 		{Role: "system", Content: "system prompt"},
 		{Role: "user", Content: "hello"},
@@ -96,7 +98,7 @@ func TestPayloadKeepsTextOnlyContentAsAString(t *testing.T) {
 }
 
 func TestPayloadEncodesImageAttachmentsAsContentParts(t *testing.T) {
-	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second, "", "")
 	payload, err := json.Marshal(c.payload(ChatRequest{Model: "m", Messages: []Message{
 		{Role: "user", Content: "describe this", ImageParts: []ImagePart{
 			{DataURL: "data:image/png;base64,Qk=="},
@@ -139,7 +141,7 @@ func TestPayloadEncodesImageAttachmentsAsContentParts(t *testing.T) {
 
 func TestPayloadImagePartsOmitTextWhenEmpty(t *testing.T) {
 	// An image-only user message (no text) must not emit an empty text part.
-	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient("http://localhost", "secret", time.Second, 0, time.Second, "", "")
 	payload, err := json.Marshal(c.payload(ChatRequest{Model: "m", Messages: []Message{
 		{Role: "user", Content: "", ImageParts: []ImagePart{{DataURL: "data:image/png;base64,Qk=="}}},
 	}}, false))
@@ -168,7 +170,7 @@ func TestCompleteReturnsToolCalls(t *testing.T) {
 	}))
 	defer s.Close()
 
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second, "", "")
 	resp, err := c.Complete(context.Background(), ChatRequest{Model: "m"})
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +191,7 @@ func TestCompleteRetriesTransientFailures(t *testing.T) {
 	}))
 	defer s.Close()
 
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 2, time.Millisecond)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 2, time.Millisecond, "", "")
 	resp, err := c.Complete(context.Background(), ChatRequest{Model: "m"})
 	if err != nil || resp.Content != "ok" || attempts.Load() != 3 {
 		t.Fatalf("attempts=%d response=%+v err=%v", attempts.Load(), resp, err)
@@ -204,7 +206,7 @@ func TestCompleteDoesNotRetryClientErrors(t *testing.T) {
 	}))
 	defer s.Close()
 
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 2, time.Millisecond)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 2, time.Millisecond, "", "")
 	_, err := c.Complete(context.Background(), ChatRequest{Model: "m"})
 	if err == nil || attempts.Load() != 1 {
 		t.Fatalf("attempts=%d err=%v", attempts.Load(), err)
@@ -223,7 +225,7 @@ func TestStreamRetriesBeforeEmittingContent(t *testing.T) {
 	}))
 	defer s.Close()
 
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 1, time.Millisecond)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 1, time.Millisecond, "", "")
 	resp, err := c.Stream(context.Background(), ChatRequest{Model: "m"}, func(Event) error { return nil })
 	if err != nil || resp.Content != "ok" || attempts.Load() != 2 {
 		t.Fatalf("attempts=%d response=%+v err=%v", attempts.Load(), resp, err)
@@ -242,7 +244,7 @@ func TestCompleteRetriesProviderErrorInBody(t *testing.T) {
 	}))
 	defer s.Close()
 
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 3, time.Millisecond)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 3, time.Millisecond, "", "")
 	resp, err := c.Complete(context.Background(), ChatRequest{Model: "m"})
 	if err != nil || resp.Content != "success" || attempts.Load() != 3 {
 		t.Fatalf("attempts=%d response=%+v err=%v", attempts.Load(), resp, err)
@@ -255,7 +257,7 @@ func TestErrorIncludesDiagnostic(t *testing.T) {
 	}))
 	defer s.Close()
 
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 0, time.Second, "", "")
 	_, err := c.Complete(context.Background(), ChatRequest{Model: "m"})
 	if err == nil {
 		t.Fatal("expected error")
@@ -283,7 +285,7 @@ func TestCompleteRespectsContextCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	// Cancel after first attempt
-	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 5, 50*time.Millisecond)
+	c := NewOpenAICompatibleClient(s.URL, "secret", time.Second, 5, 50*time.Millisecond, "", "")
 	go func() {
 		time.Sleep(10 * time.Millisecond)
 		cancel()
@@ -295,5 +297,141 @@ func TestCompleteRespectsContextCancellation(t *testing.T) {
 	// Should have stopped retrying promptly
 	if attempts.Load() > 2 {
 		t.Fatalf("expected at most 2 attempts, got %d", attempts.Load())
+	}
+}
+
+func TestOpenRouterHeadersSentOnlyForOpenRouter(t *testing.T) {
+	openRouter := NewOpenAICompatibleClient("https://openrouter.ai/api/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
+	h := http.Header{}
+	openRouter.setOpenRouterHeaders(h)
+	if h.Get("HTTP-Referer") != "https://example.com/app" {
+		t.Errorf("HTTP-Referer = %q", h.Get("HTTP-Referer"))
+	}
+	if h.Get("Referer") != "https://example.com/app" {
+		t.Errorf("Referer = %q", h.Get("Referer"))
+	}
+	if h.Get("X-Title") != "My App" {
+		t.Errorf("X-Title = %q", h.Get("X-Title"))
+	}
+
+	// Detection is case-insensitive and covers subdomains.
+	openRouterCase := NewOpenAICompatibleClient("https://api.OPENROUTER.ai/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
+	hCase := http.Header{}
+	openRouterCase.setOpenRouterHeaders(hCase)
+	if hCase.Get("X-Title") != "My App" {
+		t.Errorf("case-insensitive detection failed: X-Title = %q", hCase.Get("X-Title"))
+	}
+
+	// Non-OpenRouter providers receive no attribution headers.
+	other := NewOpenAICompatibleClient("https://api.openai.com/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
+	hOther := http.Header{}
+	other.setOpenRouterHeaders(hOther)
+	if hOther.Get("HTTP-Referer") != "" || hOther.Get("X-Title") != "" || hOther.Get("Referer") != "" {
+		t.Errorf("non-OpenRouter provider should not receive attribution headers: %v", hOther)
+	}
+
+	// An empty app name is omitted rather than sent as an empty X-Title, while
+	// the referer headers still go out.
+	noTitle := NewOpenAICompatibleClient("https://openrouter.ai/api/v1", "secret", time.Second, 0, time.Second, "https://example.com/app", "")
+	hNoTitle := http.Header{}
+	noTitle.setOpenRouterHeaders(hNoTitle)
+	if hNoTitle.Get("X-Title") != "" {
+		t.Errorf("empty X-Title should be omitted, got %q", hNoTitle.Get("X-Title"))
+	}
+	if hNoTitle.Get("HTTP-Referer") != "https://example.com/app" {
+		t.Errorf("HTTP-Referer = %q", hNoTitle.Get("HTTP-Referer"))
+	}
+}
+
+// routeToAddr returns an http.Transport that dials addr for every request
+// regardless of the Host in the request URL, so a test can keep an
+// "https://openrouter.ai/..." base URL while the local test server
+// intercepts the traffic.
+func routeToAddr(addr string) *http.Transport {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, network, addr)
+	}
+	return tr
+}
+
+// TestCompleteAndStreamOpenRouterAttributionHeaders verifies end-to-end that
+// both request paths attach the attribution headers only when the provider
+// base URL actually points at OpenRouter, and that lookalike hosts receive
+// nothing. This guards the setOpenRouterHeaders call sites in completeOnce and
+// streamOnce, not just the helper.
+func TestCompleteAndStreamOpenRouterAttributionHeaders(t *testing.T) {
+	cases := []struct {
+		name    string
+		baseURL string
+		open    bool
+	}{
+		{"openrouter root host", "http://openrouter.ai/api/v1", true},
+		{"openrouter subdomain", "http://api.openrouter.ai/v1", true},
+		{"openrouter case-insensitive", "http://API.OpenRouter.ai/v1", true},
+		{"openrouter with port", "http://openrouter.ai:8080/v1", true},
+		{"non-openrouter host", "http://api.example.com/v1", false},
+		{"lookalike host", "http://myopenrouter.ai/v1", false},
+		{"suffix attack host", "http://openrouter.ai.evil.example.com/v1", false},
+	}
+	for _, stream := range []bool{false, true} {
+		method := "Complete"
+		if stream {
+			method = "Stream"
+		}
+		for _, tc := range cases {
+			t.Run(method+"/"+tc.name, func(t *testing.T) {
+				var mu sync.Mutex
+				var headers []http.Header
+				s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					mu.Lock()
+					headers = append(headers, r.Header.Clone())
+					mu.Unlock()
+					if stream {
+						w.Header().Set("Content-Type", "text/event-stream")
+						_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n"))
+						return
+					}
+					_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"ok"}}]}`))
+				}))
+				defer s.Close()
+
+				c := NewOpenAICompatibleClient(tc.baseURL, "secret", time.Second, 0, time.Second, "https://example.com/app", "My App")
+				// Route the base URL's (possibly openrouter.ai) host through the
+				// local test server. Detection is host-only, so the plain-http
+				// scheme is fine for exercising header attachment.
+				c.httpClient.Transport = routeToAddr(s.Listener.Addr().String())
+
+				var err error
+				if stream {
+					_, err = c.Stream(context.Background(), ChatRequest{Model: "m"}, func(Event) error { return nil })
+				} else {
+					_, err = c.Complete(context.Background(), ChatRequest{Model: "m"})
+				}
+				if err != nil {
+					t.Fatalf("%s failed: %v", method, err)
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+				if len(headers) != 1 {
+					t.Fatalf("expected 1 request, got %d", len(headers))
+				}
+				h := headers[0]
+				if (h.Get("HTTP-Referer") != "") != tc.open {
+					t.Errorf("HTTP-Referer = %q, want present=%v", h.Get("HTTP-Referer"), tc.open)
+				}
+				if (h.Get("Referer") != "") != tc.open {
+					t.Errorf("Referer = %q, want present=%v", h.Get("Referer"), tc.open)
+				}
+				if (h.Get("X-Title") != "") != tc.open {
+					t.Errorf("X-Title = %q, want present=%v", h.Get("X-Title"), tc.open)
+				}
+				if tc.open && h.Get("X-Title") != "My App" {
+					t.Errorf("X-Title = %q, want %q", h.Get("X-Title"), "My App")
+				}
+			})
+		}
 	}
 }

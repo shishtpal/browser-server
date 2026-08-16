@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -20,14 +21,25 @@ type OpenAICompatibleClient struct {
 	httpClient    *http.Client
 	retryAttempts int
 	retryDelay    time.Duration
+	// openRouterReferer and openRouterTitle are populated only when baseURL
+	// points to OpenRouter; they stay empty for other OpenAI-compatible
+	// providers so no OpenRouter-specific attribution headers are leaked.
+	openRouterReferer string
+	openRouterTitle   string
 }
 
-func NewOpenAICompatibleClient(baseURL, apiKey string, timeout time.Duration, retryAttempts int, retryDelay time.Duration) *OpenAICompatibleClient {
+func NewOpenAICompatibleClient(baseURL, apiKey string, timeout time.Duration, retryAttempts int, retryDelay time.Duration, openRouterSiteURL, openRouterAppName string) *OpenAICompatibleClient {
+	referer, title := "", ""
+	if isOpenRouterBaseURL(baseURL) {
+		referer, title = openRouterSiteURL, openRouterAppName
+	}
 	return &OpenAICompatibleClient{
-		baseURL:       strings.TrimRight(baseURL, "/"),
-		apiKey:        apiKey,
-		retryAttempts: retryAttempts,
-		retryDelay:    retryDelay,
+		baseURL:           strings.TrimRight(baseURL, "/"),
+		apiKey:            apiKey,
+		retryAttempts:     retryAttempts,
+		retryDelay:        retryDelay,
+		openRouterReferer: referer,
+		openRouterTitle:   title,
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -100,6 +112,37 @@ type chatCompletionResponse struct {
 	} `json:"error"`
 }
 
+// isOpenRouterBaseURL reports whether a client targets OpenRouter, in which
+// case the attribution headers should be attached. Matching is host-based and
+// exact: the bare host "openrouter.ai" or any subdomain ending in
+// ".openrouter.ai" (e.g. api.openrouter.ai) qualifies. Lookalike hosts such as
+// "myopenrouter.ai" or suffix tricks like "openrouter.ai.evil.example.com"
+// contain the substring but are NOT OpenRouter, so they never match and never
+// receive attribution headers.
+func isOpenRouterBaseURL(baseURL string) bool {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	return host == "openrouter.ai" || strings.HasSuffix(host, ".openrouter.ai")
+}
+
+// setOpenRouterHeaders attaches the OpenRouter attribution headers (HTTP-Referer,
+// Referer, X-Title) only when this client targets OpenRouter. For other
+// OpenAI-compatible providers the fields are empty and nothing is set. An empty
+// X-Title is skipped rather than sent, since OpenRouter expects a real value.
+func (c *OpenAICompatibleClient) setOpenRouterHeaders(h http.Header) {
+	if c.openRouterReferer == "" {
+		return
+	}
+	h.Set("HTTP-Referer", c.openRouterReferer)
+	h.Set("Referer", c.openRouterReferer)
+	if c.openRouterTitle != "" {
+		h.Set("X-Title", c.openRouterTitle)
+	}
+}
+
 func (c *OpenAICompatibleClient) Complete(ctx context.Context, req ChatRequest) (ChatResponse, error) {
 	payload := c.payload(req, false)
 	rawRequest, err := json.Marshal(payload)
@@ -128,8 +171,7 @@ func (c *OpenAICompatibleClient) completeOnce(ctx context.Context, rawRequest []
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
-	httpReq.Header.Set("HTTP-Referer", "http://localhost")
-	httpReq.Header.Set("X-Title", "browser-server")
+	c.setOpenRouterHeaders(httpReq.Header)
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -236,6 +278,7 @@ func (c *OpenAICompatibleClient) streamOnce(ctx context.Context, raw []byte, emi
 	}
 	h.Header.Set("Content-Type", "application/json")
 	h.Header.Set("Authorization", "Bearer "+c.apiKey)
+	c.setOpenRouterHeaders(h.Header)
 	start := time.Now()
 	res, err := c.httpClient.Do(h)
 	if err != nil {

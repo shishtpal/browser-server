@@ -410,6 +410,8 @@ func Init(opts Options) (*Runtime, error) {
 					time.Duration(pc.RequestTimeoutSeconds)*time.Second,
 					pc.RetryAttempts,
 					time.Duration(pc.RetryDelaySeconds)*time.Second,
+					cfg.OpenRouter.SiteURL,
+					cfg.OpenRouter.AppName,
 				)
 				model := cfg.Memory.Synthesizer.Model
 				memStore.SetCompleter(memory.CompleterFunc(func(ctx context.Context, req memory.CompletionRequest) (memory.CompletionResponse, error) {

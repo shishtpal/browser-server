@@ -212,5 +212,9 @@
             "max_pages": 32,
             "timeout_seconds": 120
         }
+    },
+    "openrouter": {
+        "site_url": "https://github.com/shishtpal/browser-server",
+        "app_name": "Browser Server"
     }
 }

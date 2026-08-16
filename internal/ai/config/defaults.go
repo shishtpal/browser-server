@@ -146,6 +146,12 @@ func applyDefaults(cfg *Config, mainRaw, modelsRaw map[string]json.RawMessage) {
 	if !nestedPresent(mainRaw, "chat", "tool_retry_delay_seconds") {
 		cfg.Chat.ToolRetryDelaySeconds = 5
 	}
+	if cfg.OpenRouter.SiteURL == "" {
+		cfg.OpenRouter.SiteURL = "https://github.com/shishtpal/browser-server"
+	}
+	if cfg.OpenRouter.AppName == "" {
+		cfg.OpenRouter.AppName = "Browser Server"
+	}
 	applyAttachmentDefaults(cfg, mainRaw)
 	applyOCRDefaults(cfg, mainRaw)
 	cfg.Tasks.Normalize()

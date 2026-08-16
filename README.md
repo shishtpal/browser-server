@@ -107,7 +107,7 @@ The token and data directories are created when their corresponding commands run
 | `SERVER_TOKEN_PATH` | `.bs-token` beside the executable | Operator token file |
 | `SERVER_ADMIN_TOKEN_PATH` | `.bs-token-admin` beside the executable | Optional administrator token file |
 | `BS_MANAGED` | unset | Set to `1` only under a restarting supervisor to enable admin self-restart |
-| `bs-ai-config.json` | beside the executable | AI chat behavior config (tools, chat, memory, web/file/skills settings) |
+| `bs-ai-config.json` | beside the executable | AI chat behavior config (tools, chat, memory, web/file/skills settings, openrouter attribution) |
 | `bs-ai-models.json` | beside the executable | AI provider/model catalog |
 | `bs-ai-mcp.json` | beside `bs-ai-config.json` | Optional local or remote MCP tool servers |
 | `bs-ai-voice.json` | beside `bs-ai-config.json` | Optional voice typing providers, models, languages, and recording limits |
@@ -247,9 +247,15 @@ Create two sibling files next to the server binary: `bs-ai-config.json` for beha
     "enabled": true,
     "directory": ".skills"
   },
-  "chat": { "system_prompt": "You are a helpful assistant.", "stream": true, "temperature": 0.7 }
+  "chat": { "system_prompt": "You are a helpful assistant.", "stream": true, "temperature": 0.7 },
+  "openrouter": {
+    "site_url": "https://github.com/shishtpal/browser-server",
+    "app_name": "Browser Server"
+  }
 }
 ```
+
+The optional `openrouter` section carries the attribution headers sent to OpenRouter. When a provider's `base_url` points at the `openrouter.ai` host, the agent chat (streaming and non-streaming), `ocr_image`, and `recall_memory` synthesis attach `HTTP-Referer`/`Referer` (from `site_url`) and `X-Title` (from `app_name`) to their `chat/completions` requests, so your app is credited in OpenRouter's rankings. Other OpenAI-compatible providers never receive these headers. Omit the section (or the individual keys) to use the defaults shown above.
 
 `bs-ai-models.json`:
 

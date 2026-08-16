@@ -100,14 +100,14 @@ func TestGeminiCompleteErrorEnvelope(t *testing.T) {
 }
 
 func TestNewFactoryDispatchesByType(t *testing.T) {
-	if _, ok := New("gemini_interactions", "", "", time.Second, 0, time.Second).(*GeminiInteractionsClient); !ok {
-		t.Error("gemini_interactions should build a GeminiInteractionsClient")
+	if _, ok := New("gemini_interactions", "", "", time.Second, 0, time.Second, "", "").(*GeminiInteractionsClient); !ok {
+		t.Fatal("gemini_interactions should build a GeminiInteractionsClient")
 	}
-	if _, ok := New("openai_compatible", "http://localhost", "k", time.Second, 0, time.Second).(*OpenAICompatibleClient); !ok {
-		t.Error("openai_compatible should build an OpenAICompatibleClient")
+	if _, ok := New("openai_compatible", "http://localhost", "k", time.Second, 0, time.Second, "", "").(*OpenAICompatibleClient); !ok {
+		t.Fatal("openai_compatible should build an OpenAICompatibleClient")
 	}
-	if _, ok := New("bogus", "http://localhost", "k", time.Second, 0, time.Second).(*OpenAICompatibleClient); !ok {
-		t.Error("unknown types should fall back to the OpenAI-compatible client")
+	if _, ok := New("bogus", "http://localhost", "k", time.Second, 0, time.Second, "", "").(*OpenAICompatibleClient); !ok {
+		t.Fatal("unknown types should fall back to the OpenAI-compatible client")
 	}
 }
 

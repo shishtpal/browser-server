@@ -279,6 +279,90 @@ func TestMultiEditSchemaIsValidJSON(t *testing.T) {
 	}
 }
 
+func TestMultiEditRawOutputSuccess(t *testing.T) {
+	dir := t.TempDir()
+	path := writeMultiEditFixture(t, dir, "test.txt", "alpha\nbeta\n")
+
+	result, err := multiEdit(context.Background(), multiEditArgs(t, []multiEditOp{
+		{Path: path, Find: "alpha", Replace: "ALPHA"},
+	}, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raw, ok := rawMultiEditResult(result)
+	if !ok {
+		t.Fatal("expected raw output for successful multi_edit")
+	}
+
+	out := string(raw)
+	if !strings.Contains(out, "ok=true") {
+		t.Fatalf("missing ok=true: %s", out)
+	}
+	if !strings.Contains(out, "files_changed=1") {
+		t.Fatalf("missing files_changed=1: %s", out)
+	}
+	if !strings.Contains(out, "total_replacements=1") {
+		t.Fatalf("missing total_replacements=1: %s", out)
+	}
+	if !strings.Contains(out, "test.txt: 1 edit(s), 1 replacement(s)") {
+		t.Fatalf("missing file summary: %s", out)
+	}
+}
+
+func TestMultiEditRawOutputDryRun(t *testing.T) {
+	path := writeMultiEditFixture(t, t.TempDir(), "test.txt", "before\n")
+
+	result, err := multiEdit(context.Background(), multiEditArgs(t, []multiEditOp{
+		{Path: path, Find: "before", Replace: "after"},
+	}, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raw, ok := rawMultiEditResult(result)
+	if !ok {
+		t.Fatal("expected raw output for dry_run multi_edit")
+	}
+
+	out := string(raw)
+	if !strings.Contains(out, "ok=true") {
+		t.Fatalf("missing ok=true: %s", out)
+	}
+	if !strings.Contains(out, "---") {
+		t.Fatalf("missing diff header: %s", out)
+	}
+	if !strings.Contains(out, "-before") {
+		t.Fatalf("missing removed line in diff: %s", out)
+	}
+	if !strings.Contains(out, "+after") {
+		t.Fatalf("missing added line in diff: %s", out)
+	}
+}
+
+func TestMultiEditRawOutputRejectsError(t *testing.T) {
+	path := writeMultiEditFixture(t, t.TempDir(), "test.txt", "before\n")
+
+	result, err := multiEdit(context.Background(), multiEditArgs(t, []multiEditOp{
+		{Path: path, Find: "missing", Replace: "replacement"},
+	}, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := rawMultiEditResult(result)
+	if ok {
+		t.Fatal("expected raw output to reject error response")
+	}
+}
+
+func TestMultiEditRawOutputRejectsNonMap(t *testing.T) {
+	_, ok := rawMultiEditResult("not a map")
+	if ok {
+		t.Fatal("expected raw output to reject non-map input")
+	}
+}
+
 func writeMultiEditFixture(t *testing.T, dir, name, content string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)

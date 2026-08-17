@@ -61,8 +61,9 @@ func registerMultiEdit(r *Registry) {
 		Description: "Apply literal find/replace edits across existing files in one atomic transaction. " +
 			"Each find must match exactly once unless all is true. If any edit fails, no file is modified. " +
 			"Use read_file first to obtain exact content and write_file to create new files.",
-		Schema:  json.RawMessage(multiEditSchema),
-		Execute: multiEdit,
+		Schema:         json.RawMessage(multiEditSchema),
+		Execute:        multiEdit,
+		RawContentFunc: rawMultiEditResult,
 	})
 }
 
@@ -568,4 +569,56 @@ func rollbackMultiEditFiles(written []stagedMultiEditFile, rename func(string, s
 		}
 	}
 	return rollbackErr
+}
+
+// toInt safely extracts an int value from any JSON-unmarshaled or direct int/float64.
+func toInt(v any) int {
+	switch val := v.(type) {
+	case int:
+		return val
+	case float64:
+		return int(val)
+	case int64:
+		return int(val)
+	default:
+		return 0
+	}
+}
+
+// rawMultiEditResult formats a multi_edit result as compact raw output.
+// Returns (nil, false) for non-map results so the registry falls back to JSON.
+func rawMultiEditResult(value any) ([]byte, bool) {
+	result, ok := value.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	okBool, ok := result["ok"].(bool)
+	if !ok {
+		return nil, false
+	}
+	if !okBool {
+		// Error responses — fall back to JSON for structured error details.
+		return nil, false
+	}
+
+	filesChanged := toInt(result["files_changed"])
+	totalReplacements := toInt(result["total_replacements"])
+	files, _ := result["files"].([]map[string]any)
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "ok=true files_changed=%d total_replacements=%d\n", filesChanged, totalReplacements)
+	for _, f := range files {
+		path, _ := f["path"].(string)
+		edits := toInt(f["edits"])
+		replacements := toInt(f["replacements"])
+		fmt.Fprintf(&b, "  %s: %d edit(s), %d replacement(s)\n", path, edits, replacements)
+	}
+
+	if dryRun, ok := result["dry_run"].(bool); ok && dryRun {
+		if diff, ok := result["diff"].(string); ok {
+			b.WriteString(diff)
+		}
+	}
+
+	return []byte(b.String()), true
 }

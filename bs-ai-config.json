@@ -45,6 +45,7 @@
             "copy_file",
             "move_file",
             "edit_file",
+            "multi_edit",
             "list_directory",
             "web_search",
             "web_fetch",

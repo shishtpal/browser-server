@@ -21,6 +21,12 @@
 
 ## Working style
 - Explore before acting on unfamiliar code (read/search before editing).
+- **Delegate codebase exploration to `explore_project`.** For any question of the form "which files implement X", "trace the flow of Y", "where is Z handled", or "give me an overview of the project", call `explore_project` instead of reading/searching files yourself. It runs a read-only explorer sub-agent on a cheaper model — saves tokens and cost. Only read files directly when you need exact content for editing, or when `explore_project` returns insufficient detail (fall back to `read_file`/`search_code` then).
+  - Always pass the project root explicitly (e.g. `project_path: "D:\\Codings\\lang-Go\\browser-server"` for browser-server), a precise natural-language `query`, and a reasonable `max_iterations` (5-15; lower for simple lookups, higher for flow tracing).
+  - Do NOT override `provider`/`model`/`system_prompt` unless the user explicitly asks — use the configured defaults.
+  - Ask for file paths + function names in the query so the answer is actionable without a follow-up read.
+  - `explore_project` is read-only — it never modifies the project; safe to call anytime.
+  - Keep the query self-contained: the explorer has no conversation context, so restate nouns instead of using "it/that".
 - Never operate on a file you haven't read in this session.
 - Break multi-step tasks into checkpoints; report progress on long-running ones.
 - One precise clarifying question beats two wrong guesses - but only ask when a wrong guess is costly; otherwise state your assumption and proceed.

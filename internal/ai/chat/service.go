@@ -134,7 +134,7 @@ func NewServiceWithTools(cfg *aiconfig.Config, st *store.Store, profileReg *prof
 			cfg.OpenRouter.AppName,
 		)
 	}
-	registry, err := tools.NewWithExternal(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths, External: external, ConfigPath: cfg.Path, OCR: cfg.OCR, Providers: cfg.Providers, OpenRouter: cfg.OpenRouter})
+	registry, err := tools.NewWithExternal(tools.Options{Memory: cfg.Memory, Skills: skillReg, WebSearch: cfg.WebSearch, FileTools: cfg.FileTools, Tools: cfg.Tools, Allowed: cfg.Tools.Allowed, Paths: cfg.Paths, External: external, ConfigPath: cfg.Path, OCR: cfg.OCR, ExploreProject: cfg.ExploreProject, Providers: cfg.Providers, OpenRouter: cfg.OpenRouter})
 	if err != nil {
 		return nil, err
 	}

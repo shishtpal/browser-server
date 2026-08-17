@@ -63,8 +63,9 @@ type Options struct {
 	ConfigPath string
 	// OCR gates the built-in ocr_image tool (vision OCR + Poppler PDF
 	// rasterization). Providers must be set when OCR.Enabled is true.
-	OCR       config.OCRConfig
-	Providers map[string]config.ProviderConfig
+	OCR            config.OCRConfig
+	ExploreProject config.ExploreProjectConfig
+	Providers      map[string]config.ProviderConfig
 	// OpenRouter carries the editable attribution headers (site_url/app_name)
 	// sent to OpenRouter on chat-completions calls; forwarded to the OCR client.
 	OpenRouter config.OpenRouterConfig
@@ -182,6 +183,13 @@ func newRegistry(options ...Options) (*Registry, error) {
 	registerGitPush(r, r.paths)
 	registerGitPull(r, r.paths)
 	registerGitMerge(r, r.paths)
+
+	// explore_project is registered last among the built-ins: its registration
+	// inspects the schemas of the read-only tools it drives (search_code,
+	// read_file, git tools, ...), so those must already be registered.
+	if len(options) > 0 && options[0].ExploreProject.Enabled {
+		registerExploreProject(r, options[0].ExploreProject, options[0].ConfigPath, options[0].Providers, options[0].Skills, options[0].OpenRouter)
+	}
 
 	if len(options) > 0 {
 		for _, external := range options[0].External {

@@ -50,7 +50,8 @@
             "web_fetch",
             "search_code",
             "search_questions",
-            "execute_python"
+            "execute_python",
+            "explore_project"
         ],
         "allowed": [
             "search_tool",
@@ -103,7 +104,8 @@
             "list_skills",
             "activate_skill",
             "deactivate_skill",
-            "get_active_skills"
+            "get_active_skills",
+            "explore_project"
         ]
     },
     "web_search": {
@@ -200,6 +202,27 @@
     "skills": {
         "enabled": true,
         "directory": ".skills"
+    },
+    "explore_project": {
+        "enabled": true,
+        "default_provider": "openrouter.ai",
+        "default_model": "anthropic/claude-sonnet-4",
+        "temperature": 0.2,
+        "max_output_tokens": 4096,
+        "timeout_ms": 120000,
+        "max_iterations": 20,
+        "excluded_dirs": [
+            "node_modules",
+            "dist",
+            "bin",
+            ".git",
+            ".data",
+            ".memory",
+            "target",
+            "vendor",
+            "build"
+        ],
+        "skill_name": "explorer"
     },
     "ocr": {
         "enabled": true,

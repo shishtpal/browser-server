@@ -154,6 +154,7 @@ func applyDefaults(cfg *Config, mainRaw, modelsRaw map[string]json.RawMessage) {
 	}
 	applyAttachmentDefaults(cfg, mainRaw)
 	applyOCRDefaults(cfg, mainRaw)
+	applyExploreProjectDefaults(cfg, mainRaw)
 	cfg.Tasks.Normalize()
 	for name, provider := range cfg.Providers {
 		if !providerFieldPresent(modelsRaw, name, "request_timeout_seconds") {

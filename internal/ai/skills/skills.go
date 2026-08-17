@@ -120,6 +120,39 @@ func (r *Registry) MaxActive() int {
 	return maxActive
 }
 
+// ReadSkillBody returns the prompt body (frontmatter stripped) of the
+// .skills/<name>.md file under baseDir, without requiring the full registry to
+// be loaded. It is used as a fallback when the skills subsystem is disabled but
+// a tool still wants a skill's guidance as a system prompt (e.g. the
+// explore_project tool defaulting to .skills/explorer.md).
+func ReadSkillBody(baseDir, name string) (string, error) {
+	dir := filepath.Join(baseDir, skillDir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+	// Preferred match: frontmatter name equals name. Fallback: file stem equals
+	// name (so "explorer" matches explorer.md even if frontmatter name differs).
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+			continue
+		}
+		filePath := filepath.Join(dir, entry.Name())
+		skill, err := parseSkillFile(filePath)
+		if err != nil {
+			continue
+		}
+		stem := strings.TrimSuffix(strings.ToLower(entry.Name()), ".md")
+		if skill.Name == name || stem == strings.ToLower(name) {
+			return skill.Content, nil
+		}
+	}
+	return "", fmt.Errorf("skill %q not found in %s", name, dir)
+}
+
 // parseSkillFile reads a .md file and extracts YAML frontmatter + body content.
 func parseSkillFile(filePath string) (*Skill, error) {
 	data, err := os.ReadFile(filePath)

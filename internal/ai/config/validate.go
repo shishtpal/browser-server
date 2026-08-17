@@ -34,11 +34,12 @@ var knownToolNames = map[string]bool{
 	"git_push": true, "git_pull": true, "git_merge": true,
 	"recall_memory": true, "write_memory": true,
 	"list_skills": true, "activate_skill": true, "deactivate_skill": true, "get_active_skills": true,
-	"generate_image": true,
-	"generate_video": true,
-	"text_to_speech": true,
-	"speech_to_text": true,
-	"ocr_image":      true,
+	"generate_image":  true,
+	"generate_video":  true,
+	"text_to_speech":  true,
+	"speech_to_text":  true,
+	"ocr_image":       true,
+	"explore_project": true,
 }
 
 // supportedAttachmentTypes is the closed set of image MIME types the feature
@@ -261,6 +262,9 @@ func validate(cfg *Config) error {
 		return err
 	}
 	if err := validateOCR(cfg); err != nil {
+		return err
+	}
+	if err := validateExploreProject(cfg); err != nil {
 		return err
 	}
 	if err := validateOpenRouter(cfg); err != nil {

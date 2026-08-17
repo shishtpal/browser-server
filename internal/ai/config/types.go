@@ -23,6 +23,7 @@ type Config struct {
 	Tasks           TasksConfig               `json:"tasks"`
 	Paths           PathsConfig               `json:"paths"`
 	OCR             OCRConfig                 `json:"ocr"`
+	ExploreProject  ExploreProjectConfig      `json:"explore_project"`
 	OpenRouter      OpenRouterConfig          `json:"openrouter"`
 }
 

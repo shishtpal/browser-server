@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "query": {
+            "type": "string",
+            "description": "The exploration question from the parent agent, e.g. 'List the key files involved in the voice typing start-recording flow, with the relevant functions in each'."
+        },
+        "project_path": {
+            "type": "string",
+            "description": "Path to the project root to explore. Required. May be absolute or relative to the bs-ai-config.json directory. The explorer agent scopes all search/read tools under this root."
+        },
+        "provider": {
+            "type": "string",
+            "description": "Optional provider override. Defaults to explore_project.default_provider."
+        },
+        "model": {
+            "type": "string",
+            "description": "Optional model override. Must support tool calling (supports_tools: true). Defaults to explore_project.default_model."
+        },
+        "system_prompt": {
+            "type": "string",
+            "description": "Optional override for the explorer LLM system prompt. Defaults to the body of the configured .skills/<skill_name>.md (explorer.md)."
+        },
+        "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Optional temperature override for the explorer LLM."
+        },
+        "max_iterations": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Optional cap on the explorer agent's tool-calling loop. Defaults to explore_project.max_iterations."
+        }
+    },
+    "required": [
+        "query",
+        "project_path"
+    ],
+    "additionalProperties": false
+}

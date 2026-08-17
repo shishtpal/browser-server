@@ -138,7 +138,7 @@ export interface AIVoiceProviderConfig {
 export interface AIVoiceModelConfig {
   id: string
   label: string
-  sample_rate: 8000 | 16000
+  sample_rate?: 8000 | 16000
   mode?: string
   input_audio_codec?: string
   default: boolean

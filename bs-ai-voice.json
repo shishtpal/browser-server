@@ -1,10 +1,51 @@
 {
-  "enabled": false,
-  "default_provider": "sarvam",
+  "enabled": true,
+  "default_provider": "openrouter",
   "languages": [
-    { "code": "unknown", "label": "Auto" },
-    { "code": "hi-IN", "label": "Hindi" },
-    { "code": "en-IN", "label": "English" }
+    {
+      "code": "unknown",
+      "label": "Auto"
+    },
+    {
+      "code": "en",
+      "label": "English"
+    },
+    {
+      "code": "hi",
+      "label": "Hindi"
+    },
+    {
+      "code": "es",
+      "label": "Spanish"
+    },
+    {
+      "code": "fr",
+      "label": "French"
+    },
+    {
+      "code": "de",
+      "label": "German"
+    },
+    {
+      "code": "ja",
+      "label": "Japanese"
+    },
+    {
+      "code": "zh",
+      "label": "Chinese"
+    },
+    {
+      "code": "pt",
+      "label": "Portuguese"
+    },
+    {
+      "code": "ar",
+      "label": "Arabic"
+    },
+    {
+      "code": "ko",
+      "label": "Korean"
+    }
   ],
   "recording": {
     "silence_duration_ms": 1400,
@@ -14,9 +55,31 @@
     "max_audio_bytes": 4194304
   },
   "providers": {
+    "openrouter": {
+      "type": "openrouter_stt",
+      "enabled": true,
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key": "env:OPENROUTER_API_KEY",
+      "request_timeout_seconds": 120,
+      "models": [
+        {
+          "id": "nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b",
+          "label": "Nemotron 3.5 ASR",
+          "default": true
+        },
+        {
+          "id": "mistralai/voxtral-small-24b-2507-stt",
+          "label": "Voxtral Small 24B STT"
+        },
+        {
+          "id": "openai/gpt-transcribe",
+          "label": "GPT Transcribe"
+        }
+      ]
+    },
     "sarvam": {
       "type": "sarvam_streaming",
-      "enabled": true,
+      "enabled": false,
       "base_url": "wss://api.sarvam.ai/speech-to-text/ws",
       "api_key": "env:SARVAM_API_KEY",
       "request_timeout_seconds": 150,

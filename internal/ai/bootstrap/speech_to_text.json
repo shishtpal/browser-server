@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "provider": {
+            "type": "string",
+            "description": "Voice provider ID from bs-ai-voice.json (e.g. 'openrouter'). Uses the configured default when omitted."
+        },
+        "model": {
+            "type": "string",
+            "description": "STT model ID (e.g. 'openai/gpt-transcribe'). Uses the provider's default model when omitted."
+        },
+        "file_path": {
+            "type": "string",
+            "description": "Full path to the audio file to transcribe. Supports mp3, wav, flac, m4a, ogg, webm, aac (max 25 MB)."
+        },
+        "language": {
+            "type": "string",
+            "description": "ISO-639-1 language code (e.g. 'en', 'ja'). Omit for auto-detection."
+        },
+        "temperature": {
+            "type": "number",
+            "description": "Sampling temperature between 0 and 1. Lower values produce more deterministic results."
+        },
+        "provider_options": {
+            "type": "object",
+            "description": "Provider-specific passthrough options (e.g. Groq prompt)."
+        }
+    },
+    "required": [
+        "file_path"
+    ],
+    "additionalProperties": false
+}

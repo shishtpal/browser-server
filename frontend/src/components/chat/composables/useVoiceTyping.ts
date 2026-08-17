@@ -336,7 +336,8 @@ export function useVoiceTyping(open: Ref<boolean>) {
         return;
       }
     }
-    const frame = toPCM16(downsample(input, context.sampleRate, selectedModel.value.sample_rate));
+    const targetRate = selectedModel.value.sample_rate || 16000;
+    const frame = toPCM16(downsample(input, context.sampleRate, targetRate));
     if (frame.byteLength > 0) socket.send(frame);
   }
 

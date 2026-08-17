@@ -37,6 +37,7 @@ var knownToolNames = map[string]bool{
 	"generate_image": true,
 	"generate_video": true,
 	"text_to_speech": true,
+	"speech_to_text": true,
 	"ocr_image":      true,
 }
 

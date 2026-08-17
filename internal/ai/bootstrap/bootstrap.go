@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,6 +34,7 @@ import (
 	"browser-server/internal/ai/tools"
 	"browser-server/internal/ai/tts"
 	"browser-server/internal/ai/videos"
+	"browser-server/internal/ai/voice"
 	"browser-server/internal/browser"
 )
 
@@ -111,6 +113,7 @@ type ServiceHolders struct {
 	TTS    *ServiceHolder[tts.Service]
 	Images *ServiceHolder[images.Service]
 	Videos *ServiceHolder[videos.Service]
+	Voice  *ServiceHolder[voice.Config]
 }
 
 func newServiceHolders() *ServiceHolders {
@@ -118,6 +121,7 @@ func newServiceHolders() *ServiceHolders {
 		TTS:    NewServiceHolder[tts.Service](nil),
 		Images: NewServiceHolder[images.Service](nil),
 		Videos: NewServiceHolder[videos.Service](nil),
+		Voice:  NewServiceHolder[voice.Config](nil),
 	}
 }
 
@@ -135,6 +139,10 @@ func (h *ServiceHolders) Close() error {
 	}
 	if h.Videos != nil {
 		videoErr = h.Videos.Swap(nil, func(service *videos.Service) error { return service.Close() })
+	}
+	// Voice config has no Close method; just clear the pointer.
+	if h.Voice != nil {
+		_ = h.Voice.Swap(nil, nil)
 	}
 	return errors.Join(imageErr, ttsErr, videoErr)
 }
@@ -163,6 +171,9 @@ var textToSpeechSchema []byte
 
 //go:embed generate_video.json
 var generateVideoSchema []byte
+
+//go:embed speech_to_text.json
+var speechToTextSchema []byte
 
 // Init loads the AI config and builds the full runtime. When AI is disabled
 // (missing config or models file, or "enabled": false), it returns a Runtime
@@ -246,6 +257,15 @@ func Init(opts Options) (*Runtime, error) {
 	holders.Images.ptr.Store(imageService)
 	holders.TTS.ptr.Store(ttsService)
 
+	// Load voice config for the speech_to_text tool. A missing or disabled
+	// config is not a fatal error — the tool simply reports as unavailable.
+	voiceCfg, voiceErr := voice.Load(baseDir)
+	if voiceErr != nil {
+		log.Printf("AI voice config unavailable: %v", voiceErr)
+	} else if voiceCfg.Enabled {
+		holders.Voice.ptr.Store(voiceCfg)
+	}
+
 	videoCfg, err := videos.Load(baseDir)
 	if err != nil {
 		_ = imageService.Close()
@@ -324,10 +344,70 @@ func Init(opts Options) (*Runtime, error) {
 				if err != nil {
 					return nil, err
 				}
+			return map[string]any{
+				"speech": x,
+				"url":    "/api/ai/voices/" + x.ID + "/file",
+				"path":   service.FilePath(x.Filename),
+			}, nil
+		}})
+	}
+	{
+		externalTools = append(externalTools, tools.Tool{
+			Name:        "speech_to_text",
+			Category:    "Audio",
+			Description: "Transcribe an audio file to text using a speech-to-text model. Accepts mp3, wav, flac, m4a, ogg, webm, aac files up to 25 MB. Returns the transcribed text and usage statistics.",
+			Schema:      json.RawMessage(speechToTextSchema),
+			Available:   holders.Voice.Available,
+			Execute: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				cfg, release := holders.Voice.Acquire()
+				if cfg == nil {
+					return nil, errors.New("speech-to-text is disabled: configure bs-ai-voice.json with an openrouter_stt provider")
+				}
+				defer release()
+				var a struct {
+					Provider       string         `json:"provider"`
+					Model          string         `json:"model"`
+					FilePath       string         `json:"file_path"`
+					Language       string         `json:"language"`
+					Temperature    float64        `json:"temperature"`
+					ProviderOpts   map[string]any `json:"provider_options"`
+				}
+				if err := json.Unmarshal(raw, &a); err != nil {
+					return nil, err
+				}
+				if a.FilePath == "" {
+					return nil, errors.New("file_path is required")
+				}
+				info, err := os.Stat(a.FilePath)
+				if err != nil {
+					return nil, fmt.Errorf("cannot access audio file: %w", err)
+				}
+				const maxFileSize = 25 << 20 // 25 MB
+				if info.Size() > maxFileSize {
+					return nil, fmt.Errorf("audio file exceeds %d bytes (%d bytes)", maxFileSize, info.Size())
+				}
+				audioBytes, err := os.ReadFile(a.FilePath)
+				if err != nil {
+					return nil, fmt.Errorf("read audio file: %w", err)
+				}
+				format := sttFormatFromPath(a.FilePath)
+				result, err := voice.Transcribe(ctx, cfg, voice.STTRequest{
+					AudioBytes:   audioBytes,
+					AudioFormat:  format,
+					ProviderID:   a.Provider,
+					ModelID:      a.Model,
+					Language:     a.Language,
+					Temperature:  a.Temperature,
+					ProviderOpts: a.ProviderOpts,
+				})
+				if err != nil {
+					return nil, err
+				}
 				return map[string]any{
-					"speech": x,
-					"url":    "/api/ai/voices/" + x.ID + "/file",
-					"path":   service.FilePath(x.Filename),
+					"text":  result.Text,
+					"usage": result.Usage,
+					"model":    result.ModelID,
+					"provider": result.ProviderID,
 				}, nil
 			}})
 	}
@@ -540,4 +620,19 @@ func (r *Runtime) Close() error {
 		holdersErr = r.Holders.Close()
 	}
 	return errors.Join(mcpErr, holdersErr, r.Store.Close())
+}
+
+// sttFormatFromPath returns the audio format string for OpenRouter STT based
+// on the file extension. Defaults to "mp3" for unknown extensions.
+func sttFormatFromPath(path string) string {
+	path = strings.ToLower(path)
+	for ext, f := range map[string]string{
+		".wav": "wav", ".mp3": "mp3", ".flac": "flac",
+		".m4a": "m4a", ".ogg": "ogg", ".webm": "webm", ".aac": "aac",
+	} {
+		if strings.HasSuffix(path, ext) {
+			return f
+		}
+	}
+	return "mp3"
 }

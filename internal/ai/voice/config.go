@@ -9,9 +9,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
-const defaultFile = "bs-ai-voice.json"
+const (
+	defaultFile               = "bs-ai-voice.json"
+	providerTypeSarvam        = "sarvam_streaming"
+	providerTypeOpenRouterSTT = "openrouter_stt"
+	defaultOpenRouterBaseURL  = "https://openrouter.ai/api/v1"
+	openRouterReferer         = "https://github.com/shishtpal/browser-server"
+	openRouterTitle           = "Browser Server"
+)
 
 type Config struct {
 	Enabled         bool                `json:"enabled"`
@@ -171,12 +179,17 @@ func (c *Config) defaultsAndValidate() error {
 		if firstProvider == "" || id < firstProvider {
 			firstProvider = id
 		}
-		if p.Type != "sarvam_streaming" {
-			return fmt.Errorf("provider %q has unsupported type", id)
-		}
-		u, err := url.Parse(p.BaseURL)
-		if err != nil || u.Host == "" || (u.Scheme != "wss" && !(u.Scheme == "ws" && isLoopback(u.Hostname()))) {
-			return fmt.Errorf("provider %q has unsafe base_url", id)
+		switch p.Type {
+		case providerTypeSarvam:
+			if err := validateSarvamProvider(id, &p); err != nil {
+				return err
+			}
+		case providerTypeOpenRouterSTT:
+			if err := validateOpenRouterSTTProvider(id, &p); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("provider %q has unsupported type %q", id, p.Type)
 		}
 		if p.RequestTimeoutSeconds == 0 {
 			p.RequestTimeoutSeconds = 150
@@ -184,15 +197,17 @@ func (c *Config) defaultsAndValidate() error {
 		if p.RequestTimeoutSeconds < 5 || p.RequestTimeoutSeconds > 300 {
 			return fmt.Errorf("provider %q timeout is out of range", id)
 		}
-		if strings.HasPrefix(p.APIKey, "env:") {
-			name := strings.TrimPrefix(p.APIKey, "env:")
-			if name == "" {
-				return fmt.Errorf("provider %q has invalid api_key environment reference", id)
+		if p.Enabled {
+			if strings.HasPrefix(p.APIKey, "env:") {
+				name := strings.TrimPrefix(p.APIKey, "env:")
+				if name == "" {
+					return fmt.Errorf("provider %q has invalid api_key environment reference", id)
+				}
+				p.APIKey = os.Getenv(name)
 			}
-			p.APIKey = os.Getenv(name)
-		}
-		if p.APIKey == "" {
-			return fmt.Errorf("provider %q api_key is not configured", id)
+			if p.APIKey == "" {
+				return fmt.Errorf("provider %q api_key is not configured", id)
+			}
 		}
 		seen, defaultCount := map[string]bool{}, 0
 		for i := range p.Models {
@@ -201,14 +216,16 @@ func (c *Config) defaultsAndValidate() error {
 				return fmt.Errorf("provider %q has invalid or duplicate model", id)
 			}
 			seen[m.ID] = true
-			if m.SampleRate != 8000 && m.SampleRate != 16000 {
-				return fmt.Errorf("model %q has unsupported sample_rate", m.ID)
-			}
-			if !oneOf(m.Mode, "transcribe", "translate", "verbatim", "translit", "codemix") {
-				return fmt.Errorf("model %q has unsupported mode", m.ID)
-			}
-			if m.InputAudioCodec != "pcm_s16le" {
-				return fmt.Errorf("model %q must use pcm_s16le", m.ID)
+			if p.Type == providerTypeSarvam {
+				if m.SampleRate != 8000 && m.SampleRate != 16000 {
+					return fmt.Errorf("model %q has unsupported sample_rate", m.ID)
+				}
+				if !oneOf(m.Mode, "transcribe", "translate", "verbatim", "translit", "codemix") {
+					return fmt.Errorf("model %q has unsupported mode", m.ID)
+				}
+				if m.InputAudioCodec != "pcm_s16le" {
+					return fmt.Errorf("model %q must use pcm_s16le", m.ID)
+				}
 			}
 			if m.Default {
 				defaultCount++
@@ -242,7 +259,7 @@ func (c *Config) Select(providerID, modelID, languageCode string) (Selection, er
 		return Selection{}, errors.New("voice typing is disabled")
 	}
 	p, ok := c.Providers[providerID]
-	if !ok || !p.Enabled || p.Type != "sarvam_streaming" {
+	if !ok || !p.Enabled || (p.Type != providerTypeSarvam && p.Type != providerTypeOpenRouterSTT) {
 		return Selection{}, errors.New("invalid voice provider")
 	}
 	var model *Model
@@ -289,3 +306,45 @@ func oneOf(v string, values ...string) bool {
 	return false
 }
 func isLoopback(host string) bool { return host == "localhost" || host == "127.0.0.1" || host == "::1" }
+
+// validateSarvamProvider validates a Sarvam streaming provider's base URL.
+func validateSarvamProvider(id string, p *Provider) error {
+	u, err := url.Parse(p.BaseURL)
+	if err != nil || u.Host == "" || (u.Scheme != "wss" && !(u.Scheme == "ws" && isLoopback(u.Hostname()))) {
+		return fmt.Errorf("provider %q has unsafe base_url", id)
+	}
+	return nil
+}
+
+// validateOpenRouterSTTProvider validates an OpenRouter STT provider's base URL.
+func validateOpenRouterSTTProvider(id string, p *Provider) error {
+	if p.BaseURL == "" {
+		p.BaseURL = defaultOpenRouterBaseURL
+	}
+	u, err := url.Parse(p.BaseURL)
+	if err != nil || u.Host == "" || u.Scheme != "https" {
+		return fmt.Errorf("provider %q has unsafe base_url (must be https)", id)
+	}
+	return nil
+}
+
+// OpenRouterLanguageCode converts a BCP-47 locale tag (e.g. "en-IN") to an
+// ISO-639-1 code (e.g. "en") suitable for the OpenRouter STT API. Returns
+// the original code if it is already a simple two-letter code.
+func OpenRouterLanguageCode(locale string) string {
+	if len(locale) >= 2 && unicode.IsLetter(rune(locale[0])) && unicode.IsLetter(rune(locale[1])) {
+		if len(locale) == 2 {
+			return locale
+		}
+		if locale[2] == '-' || locale[2] == '_' {
+			return locale[:2]
+		}
+	}
+	return locale
+}
+
+// IsOpenRouterSTT reports whether the provider uses the OpenRouter batch STT API.
+func (p Provider) IsOpenRouterSTT() bool { return p.Type == providerTypeOpenRouterSTT }
+
+// IsSarvam reports whether the provider uses the Sarvam WebSocket streaming API.
+func (p Provider) IsSarvam() bool { return p.Type == providerTypeSarvam }

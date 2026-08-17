@@ -74,6 +74,7 @@
             "generate_image",
             "generate_video",
             "text_to_speech",
+            "speech_to_text",
             "ocr_image",
             "read_file",
             "read_files",

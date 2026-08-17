@@ -1,7 +1,9 @@
 package voice
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,6 +65,15 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid voice selection", http.StatusBadRequest)
 		return
 	}
+	if s.Provider.IsOpenRouterSTT() {
+		p.serveBatchSTT(w, r, s)
+		return
+	}
+	p.serveStreaming(w, r, s)
+}
+
+// serveStreaming handles the Sarvam WebSocket streaming proxy path.
+func (p *Proxy) serveStreaming(w http.ResponseWriter, r *http.Request, s Selection) {
 	upstreamURL, err := BuildUpstreamURL(s)
 	if err != nil {
 		http.Error(w, "voice service unavailable", http.StatusServiceUnavailable)
@@ -109,6 +120,88 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writeMu.Lock()
 	_ = client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
 	writeMu.Unlock()
+}
+
+// serveBatchSTT handles the OpenRouter batch STT path: accumulates PCM frames
+// from the browser, then on flush sends the complete audio as a single
+// request to the OpenRouter /audio/transcriptions endpoint.
+func (p *Proxy) serveBatchSTT(w http.ResponseWriter, r *http.Request, s Selection) {
+	upgrader := websocket.Upgrader{CheckOrigin: SameOrigin, ReadBufferSize: 4096, WriteBufferSize: 4096}
+	client, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer client.Close()
+
+	var writeMu sync.Mutex
+	if err := writeClientJSON(client, &writeMu, map[string]string{"type": "ready"}); err != nil {
+		return
+	}
+
+	var audioBuf bytes.Buffer
+	var totalBytes int64
+	sampleRate := s.Model.SampleRate
+	if sampleRate == 0 {
+		sampleRate = 16000
+	}
+
+	deadline := time.Now().Add(time.Duration(p.Config.Recording.MaxDurationSecs)*time.Second + 30*time.Second)
+	client.SetReadDeadline(deadline)
+	client.SetWriteDeadline(deadline)
+	client.SetReadLimit(p.Config.Recording.MaxFrameBytes)
+
+	for {
+		messageType, data, err := client.ReadMessage()
+		if err != nil {
+			return
+		}
+		switch messageType {
+		case websocket.BinaryMessage:
+			totalBytes += int64(len(data))
+			if int64(len(data)) > p.Config.Recording.MaxFrameBytes || totalBytes > p.Config.Recording.MaxAudioBytes {
+				_ = writeClientJSON(client, &writeMu, map[string]any{"type": "error", "message": "audio limit exceeded"})
+				return
+			}
+			audioBuf.Write(data)
+		case websocket.TextMessage:
+			var control struct {
+				Type string `json:"type"`
+			}
+			if json.Unmarshal(data, &control) != nil || control.Type != "flush" {
+				_ = writeClientJSON(client, &writeMu, map[string]any{"type": "error", "message": "invalid control message"})
+				return
+			}
+			// Build WAV from accumulated PCM and send to OpenRouter.
+			wav := buildWAV(audioBuf.Bytes(), sampleRate, 1, 16)
+			result, err := Transcribe(r.Context(), p.Config, STTRequest{
+				AudioBytes:  wav,
+				AudioFormat: "wav",
+				ProviderID:  s.ProviderID,
+				ModelID:     s.Model.ID,
+				Language:    s.Language.Code,
+			})
+			if err != nil {
+				msg := "transcription failed"
+				if errors.Is(err, ErrProvider) {
+					msg = "transcription provider error: " + err.Error()
+				}
+				_ = writeClientJSON(client, &writeMu, map[string]any{"type": "error", "message": msg})
+				return
+			}
+			// Send the transcript in the same envelope format the frontend expects.
+			_ = writeClientJSON(client, &writeMu, map[string]any{
+				"type": "data",
+				"data": map[string]string{"transcript": result.Text},
+			})
+			writeMu.Lock()
+			_ = client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
+			writeMu.Unlock()
+			return
+		default:
+			_ = writeClientJSON(client, &writeMu, map[string]any{"type": "error", "message": "unsupported websocket frame"})
+			return
+		}
+	}
 }
 
 func (p *Proxy) browserToUpstream(client, upstream *websocket.Conn, s Selection, done chan<- error) {
@@ -202,4 +295,29 @@ func clientError(err error) string {
 		return "invalid voice message"
 	}
 	return "voice transcription failed"
+}
+
+// buildWAV prepends a standard 44-byte WAV header to raw PCM16 mono data.
+func buildWAV(pcm []byte, sampleRate, numChannels, bitsPerSample int) []byte {
+	byteRate := sampleRate * numChannels * bitsPerSample / 8
+	blockAlign := numChannels * bitsPerSample / 8
+	dataSize := len(pcm)
+	header := make([]byte, 44)
+	copy(header[0:4], "RIFF")
+	binary.LittleEndian.PutUint32(header[4:8], uint32(36+dataSize))
+	copy(header[8:12], "WAVE")
+	copy(header[12:16], "fmt ")
+	binary.LittleEndian.PutUint32(header[16:20], 16) // PCM chunk size
+	binary.LittleEndian.PutUint16(header[20:22], 1)  // PCM format
+	binary.LittleEndian.PutUint16(header[22:24], uint16(numChannels))
+	binary.LittleEndian.PutUint32(header[24:28], uint32(sampleRate))
+	binary.LittleEndian.PutUint32(header[28:32], uint32(byteRate))
+	binary.LittleEndian.PutUint16(header[32:34], uint16(blockAlign))
+	binary.LittleEndian.PutUint16(header[34:36], uint16(bitsPerSample))
+	copy(header[36:40], "data")
+	binary.LittleEndian.PutUint32(header[40:44], uint32(dataSize))
+	out := make([]byte, 44+dataSize)
+	copy(out, header)
+	copy(out[44:], pcm)
+	return out
 }

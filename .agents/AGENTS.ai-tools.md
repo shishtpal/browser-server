@@ -131,3 +131,4 @@ sections.
 | `get_active_skills` | `skills.go` | Get currently active skills |
 | `generate_image` | `internal/ai/bootstrap` | Generate or edit an image from a prompt |
 | `text_to_speech` | `internal/ai/bootstrap` | Convert text to speech and save an MP3 under `.data/ai-voices/` |
+| `speech_to_text` | `internal/ai/bootstrap` | Transcribe an audio file to text using an OpenRouter STT model |

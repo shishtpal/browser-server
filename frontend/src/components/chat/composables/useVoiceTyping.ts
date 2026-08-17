@@ -477,6 +477,7 @@ export function useVoiceTyping(open: Ref<boolean>) {
     providers,
     models,
     isActive,
+    loadConfig,
     openSession,
     start,
     stop,

@@ -133,7 +133,7 @@ const {
   providers,
   models,
   isActive,
-  openSession,
+  loadConfig,
   start,
   stop,
   cleanup,
@@ -143,7 +143,7 @@ const {
 watch(
   () => props.open,
   (value) => {
-    if (value) void openSession();
+    if (value) void loadConfig();
     else cleanup();
   },
 );
